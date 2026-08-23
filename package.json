@@ -1,0 +1,11 @@
+{
+  "name": "buddygym",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "web": "npm run dev --workspace=@buddygym/web"
+  }
+}
