@@ -1,11 +1,46 @@
-import { isDemo } from "@/lib/data";
+import { getProfile, isDemo } from "@/lib/data";
 import { Card, PageTitle } from "@/components/ui";
+import { ENTITLEMENTS, TIER_LABEL, type Tier } from "@/lib/entitlements";
 
-export default function SettingsPage() {
+const coachTiers: Tier[] = ["coach_free", "coach_pro"];
+
+export default async function SettingsPage() {
+  const profile = await getProfile();
+  const tier = profile?.tier ?? "free";
+
   return (
-    <div className="max-w-xl">
+    <div className="max-w-2xl">
       <PageTitle title="Settings" />
+
       <Card>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Subscription</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {coachTiers.map((t) => {
+            const e = ENTITLEMENTS[t];
+            const current = t === tier;
+            return (
+              <div key={t} className={`rounded-xl border p-4 ${current ? "border-2 border-accent" : "border-line"}`}>
+                <div className="flex items-center justify-between">
+                  <p className="font-bold">{TIER_LABEL[t]}</p>
+                  {current ? (
+                    <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent-ink">Current</span>
+                  ) : null}
+                </div>
+                <ul className="mt-2 space-y-1 text-sm text-ink-soft">
+                  <li>Up to <b className="text-ink">{e.maxClients}</b> clients</li>
+                  <li>{e.advancedAnalytics ? "✓" : "—"} Advanced analytics</li>
+                  <li>{e.customExerciseVideos ? "✓" : "—"} Custom exercise videos</li>
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-xs text-ink-faint">
+          Billing (RevenueCat) lands in V2 — until then tiers are set manually in the subscriptions table.
+        </p>
+      </Card>
+
+      <Card className="mt-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Backend</p>
         {isDemo ? (
           <div className="mt-2 space-y-2 text-sm text-ink-soft">
@@ -19,12 +54,6 @@ export default function SettingsPage() {
         ) : (
           <p className="mt-2 text-sm text-ink-soft">Connected to Supabase.</p>
         )}
-      </Card>
-      <Card className="mt-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Coming later</p>
-        <p className="mt-2 text-sm text-ink-soft">
-          Profile, notification preferences, and language (RO/EN) land with Sprint 2 auth polish.
-        </p>
       </Card>
     </div>
   );

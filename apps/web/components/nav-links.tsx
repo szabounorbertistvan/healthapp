@@ -12,11 +12,14 @@ const items = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function NavLinks() {
+const adminItem = { href: "/admin", label: "Admin" };
+
+export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
+  const visible = isAdmin ? [...items, adminItem] : items;
   return (
     <nav className="flex flex-col gap-1">
-      {items.map((item) => {
+      {visible.map((item) => {
         const active = pathname.startsWith(item.href);
         return (
           <Link

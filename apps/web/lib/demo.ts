@@ -1,15 +1,45 @@
 // Demo fixtures — served when NEXT_PUBLIC_SUPABASE_URL is not set, so the UI
 // is fully browsable before a Supabase project is linked.
 import type {
+  AdminStats,
   CheckInRow,
   ClientRow,
   ConversationRow,
   DashboardRow,
   MessageRow,
+  Profile,
   ProgramDetail,
   ProgramRow,
   NutritionPlanRow,
 } from "./types";
+
+// Demo user is an admin who also coaches, so every surface is browsable.
+export const demoProfile: Profile = {
+  id: "demo-coach",
+  full_name: "Coach Alex",
+  role: "admin",
+  tier: "coach_pro",
+};
+
+export const demoAdminStats: AdminStats = {
+  total_users: 47,
+  coaches: 6,
+  clients: 40,
+  active_relationships: 31,
+  tiers: [
+    { tier: "free", count: 28 },
+    { tier: "premium", count: 12 },
+    { tier: "coach_free", count: 4 },
+    { tier: "coach_pro", count: 3 },
+  ],
+  recent_users: [
+    { id: "u1", full_name: "Maria D.", role: "client", tier: "premium", created_at: daysAgo(2) },
+    { id: "u2", full_name: "Coach Dan", role: "coach", tier: "coach_free", created_at: daysAgo(4) },
+    { id: "u3", full_name: "Andrei P.", role: "client", tier: "free", created_at: daysAgo(6) },
+    { id: "u4", full_name: "Ioana S.", role: "client", tier: "premium", created_at: daysAgo(9) },
+    { id: "u5", full_name: "Coach Vlad", role: "coach", tier: "coach_pro", created_at: daysAgo(12) },
+  ],
+};
 
 export const demoDashboard: DashboardRow[] = [
   {

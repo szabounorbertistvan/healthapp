@@ -28,11 +28,15 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data } = await supabase.auth.getUser();
-  const isLogin = request.nextUrl.pathname.startsWith("/login");
-  if (!data.user && !isLogin) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  const path = request.nextUrl.pathname;
+  const isPublic = path === "/" || path.startsWith("/login");
+
+  // logged-out users see only the landing page (and login)
+  if (!data.user && !isPublic) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
-  if (data.user && isLogin) {
+  // logged-in users skip the landing/login pages
+  if (data.user && isPublic) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
   return response;

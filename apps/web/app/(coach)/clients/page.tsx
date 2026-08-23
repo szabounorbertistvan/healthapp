@@ -1,15 +1,30 @@
-import { getClients } from "@/lib/data";
+import { getClients, getProfile } from "@/lib/data";
 import { Card, EmptyState, PageTitle, SignalBadge } from "@/components/ui";
 import { pct, timeAgo } from "@/lib/format";
 import { InviteButton } from "@/components/invite-button";
+import { entitlementsFor, TIER_LABEL } from "@/lib/entitlements";
 
 export default async function ClientsPage() {
-  const clients = await getClients();
+  const [clients, profile] = await Promise.all([getClients(), getProfile()]);
+  const maxClients = entitlementsFor(profile?.tier ?? "free").maxClients;
+  const used = clients.length;
+  const limitReached = used >= maxClients;
+
   return (
     <div>
       <PageTitle title="Clients">
-        <InviteButton />
+        <div className="flex items-center gap-3">
+          <span className={`text-sm tabular-nums ${limitReached ? "font-semibold text-warn" : "text-ink-soft"}`}>
+            {used} / {maxClients} slots · {TIER_LABEL[profile?.tier ?? "free"]}
+          </span>
+          <InviteButton disabled={limitReached} />
+        </div>
       </PageTitle>
+      {limitReached ? (
+        <p className="mb-4 rounded-xl bg-warn-soft px-4 py-3 text-sm text-warn">
+          Client limit reached for your plan. Upgrade to Coach Pro for up to 30 clients.
+        </p>
+      ) : null}
       {clients.length === 0 ? (
         <EmptyState title="No clients yet" hint="Generate an invite code and share it — your client enters it in the app." />
       ) : (

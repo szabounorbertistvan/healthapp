@@ -2,16 +2,64 @@
 // fixtures; live mode goes through Supabase under RLS.
 import "server-only";
 import {
-  demoCheckIns, demoClients, demoConversations, demoDashboard,
-  demoMessages, demoNutritionPlans, demoProgramDetail, demoPrograms,
+  demoAdminStats, demoCheckIns, demoClients, demoConversations, demoDashboard,
+  demoMessages, demoNutritionPlans, demoProfile, demoProgramDetail, demoPrograms,
 } from "./demo";
 import { isDemo, supabaseServer } from "./supabase/server";
 import type {
-  CheckInRow, ClientRow, ConversationRow, DashboardRow, MessageRow,
-  NutritionPlanRow, ProgramDetail, ProgramRow,
+  AdminStats, CheckInRow, ClientRow, ConversationRow, DashboardRow, MessageRow,
+  NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
 } from "./types";
+import type { Role, Tier } from "./entitlements";
 
 export { isDemo };
+
+export async function getProfile(): Promise<Profile | null> {
+  if (isDemo) return demoProfile;
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+  const [{ data: user }, { data: sub }] = await Promise.all([
+    supabase.from("users").select("id, full_name, role").eq("id", auth.user.id).single(),
+    supabase.from("subscriptions").select("tier, status").eq("user_id", auth.user.id).maybeSingle(),
+  ]);
+  if (!user) return null;
+  return {
+    id: user.id,
+    full_name: user.full_name ?? "Coach",
+    role: user.role as Role,
+    tier: (sub?.status === "active" ? (sub.tier as Tier) : "free"),
+  };
+}
+
+export async function getAdminStats(): Promise<AdminStats> {
+  if (isDemo) return demoAdminStats;
+  const supabase = await supabaseServer();
+  const [{ count: total }, { data: roleRows }, { count: rels }, { data: tierRows }, { data: recent }] =
+    await Promise.all([
+      supabase.from("users").select("id", { count: "exact", head: true }),
+      supabase.from("users").select("role"),
+      supabase.from("trainer_clients").select("id", { count: "exact", head: true }).eq("status", "active"),
+      supabase.from("subscriptions").select("tier").eq("status", "active"),
+      supabase.from("users").select("id, full_name, role, created_at, subscriptions(tier)")
+        .order("created_at", { ascending: false }).limit(10),
+    ]);
+  const roles = roleRows ?? [];
+  const tierCounts = new Map<string, number>();
+  for (const t of tierRows ?? []) tierCounts.set(t.tier, (tierCounts.get(t.tier) ?? 0) + 1);
+  return {
+    total_users: total ?? 0,
+    coaches: roles.filter((r) => r.role === "coach" || r.role === "both").length,
+    clients: roles.filter((r) => r.role === "client" || r.role === "both").length,
+    active_relationships: rels ?? 0,
+    tiers: [...tierCounts.entries()].map(([tier, count]) => ({ tier: tier as Tier, count })),
+    recent_users: (recent ?? []).map((u) => ({
+      id: u.id, full_name: u.full_name ?? "—", role: u.role as Role,
+      tier: ((u.subscriptions as unknown as { tier: string } | null)?.tier ?? "free") as Tier,
+      created_at: u.created_at,
+    })),
+  };
+}
 
 export async function getDashboard(): Promise<DashboardRow[]> {
   if (isDemo) return demoDashboard;

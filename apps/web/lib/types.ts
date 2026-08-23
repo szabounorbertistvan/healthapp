@@ -1,4 +1,22 @@
+import type { Role, Tier } from "./entitlements";
+
 export type Signal = "on_track" | "needs_attention" | "at_risk";
+
+export type Profile = {
+  id: string;
+  full_name: string;
+  role: Role;
+  tier: Tier;
+};
+
+export type AdminStats = {
+  total_users: number;
+  coaches: number;
+  clients: number;
+  active_relationships: number;
+  tiers: { tier: Tier; count: number }[];
+  recent_users: { id: string; full_name: string; role: Role; tier: Tier; created_at: string }[];
+};
 
 export type DashboardRow = {
   client_id: string;
