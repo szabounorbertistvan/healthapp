@@ -1,0 +1,93 @@
+import { matchesQuery, type Macros } from "@buddygym/shared";
+
+// Demo food table.
+//
+// In a live install foods come from the `foods` table, filled on demand by the
+// food-search and barcode-lookup edge functions (Open Food Facts, cached on
+// first use — plan §7). Demo mode has neither a database nor network access, so
+// this is a hand-written set of staples with Romanian names, enough to compose
+// a real meal plan. Values are per 100 g, the same basis the schema uses.
+
+export type DemoFood = {
+  id: string;
+  name_en: string;
+  name_ro: string;
+  group: string;
+  per_100g: Macros;
+};
+
+const f = (
+  id: string,
+  name_en: string,
+  name_ro: string,
+  group: string,
+  kcal: number,
+  protein: number,
+  carbs: number,
+  fat: number,
+): DemoFood => ({ id, name_en, name_ro, group, per_100g: { kcal, protein, carbs, fat } });
+
+export const demoFoods: DemoFood[] = [
+  // protein
+  f("chicken-breast", "Chicken breast, raw", "Piept de pui, crud", "protein", 165, 31, 0, 3.6),
+  f("chicken-thigh", "Chicken thigh, raw", "Pulpă de pui, crudă", "protein", 209, 26, 0, 10.9),
+  f("turkey-breast", "Turkey breast", "Piept de curcan", "protein", 135, 30, 0, 1),
+  f("beef-mince-10", "Beef mince 10%", "Carne tocată de vită 10%", "protein", 176, 20, 0, 10),
+  f("pork-loin", "Pork loin", "Mușchi de porc", "protein", 143, 21, 0, 6),
+  f("salmon", "Salmon", "Somon", "protein", 208, 20, 0, 13),
+  f("cod", "Cod", "Cod", "protein", 82, 18, 0, 0.7),
+  f("tuna-can", "Tuna in water, canned", "Ton în apă, conservă", "protein", 116, 26, 0, 1),
+  f("egg", "Egg, whole", "Ou întreg", "protein", 143, 12.6, 0.7, 9.5),
+  f("egg-white", "Egg white", "Albuș de ou", "protein", 52, 11, 0.7, 0.2),
+  f("whey", "Whey isolate", "Proteină din zer izolat", "protein", 370, 85, 4, 1.5),
+  f("greek-yogurt", "Greek yogurt 2%", "Iaurt grecesc 2%", "dairy", 73, 10, 3.6, 2),
+  f("cottage-cheese", "Cottage cheese", "Brânză de vaci", "dairy", 98, 11, 3.4, 4.3),
+  f("telemea", "Telemea cheese", "Telemea", "dairy", 260, 17, 1, 21),
+  f("milk-15", "Milk 1.5%", "Lapte 1,5%", "dairy", 47, 3.4, 4.8, 1.5),
+  f("kefir", "Kefir", "Chefir", "dairy", 55, 3.3, 4.5, 2.5),
+
+  // carbs
+  f("oats", "Oats", "Fulgi de ovăz", "carbs", 389, 16.9, 66.3, 6.9),
+  f("rice-cooked", "Rice, cooked", "Orez fiert", "carbs", 130, 2.7, 28, 0.3),
+  f("rice-raw", "Rice, raw", "Orez crud", "carbs", 360, 7, 79, 0.6),
+  f("pasta-cooked", "Pasta, cooked", "Paste fierte", "carbs", 158, 5.8, 31, 0.9),
+  f("potato", "Potatoes", "Cartofi", "carbs", 77, 2, 17, 0.1),
+  f("sweet-potato", "Sweet potato", "Cartof dulce", "carbs", 86, 1.6, 20, 0.1),
+  f("bread-wholegrain", "Wholegrain bread", "Pâine integrală", "carbs", 247, 13, 41, 3.4),
+  f("polenta", "Polenta, cooked", "Mămăligă", "carbs", 85, 2, 18, 0.4),
+  f("buckwheat", "Buckwheat, cooked", "Hrișcă fiartă", "carbs", 92, 3.4, 20, 0.6),
+  f("quinoa", "Quinoa, cooked", "Quinoa fiartă", "carbs", 120, 4.4, 21, 1.9),
+  f("lentils", "Lentils, cooked", "Linte fiartă", "carbs", 116, 9, 20, 0.4),
+  f("chickpeas", "Chickpeas, cooked", "Năut fiert", "carbs", 164, 8.9, 27, 2.6),
+  f("beans-white", "White beans, cooked", "Fasole albă fiartă", "carbs", 139, 9.7, 25, 0.5),
+
+  // fruit & veg
+  f("banana", "Banana", "Banană", "fruit", 89, 1.1, 23, 0.3),
+  f("apple", "Apple", "Măr", "fruit", 52, 0.3, 14, 0.2),
+  f("blueberries", "Blueberries", "Afine", "fruit", 57, 0.7, 14.5, 0.3),
+  f("strawberries", "Strawberries", "Căpșuni", "fruit", 32, 0.7, 7.7, 0.3),
+  f("orange", "Orange", "Portocală", "fruit", 47, 0.9, 12, 0.1),
+  f("grapes", "Grapes", "Struguri", "fruit", 69, 0.7, 18, 0.2),
+  f("broccoli", "Broccoli", "Broccoli", "veg", 34, 2.8, 7, 0.4),
+  f("spinach", "Spinach", "Spanac", "veg", 23, 2.9, 3.6, 0.4),
+  f("tomato", "Tomato", "Roșie", "veg", 18, 0.9, 3.9, 0.2),
+  f("cucumber", "Cucumber", "Castravete", "veg", 15, 0.7, 3.6, 0.1),
+  f("bell-pepper", "Bell pepper", "Ardei gras", "veg", 31, 1, 6, 0.3),
+  f("carrot", "Carrot", "Morcov", "veg", 41, 0.9, 10, 0.2),
+  f("onion", "Onion", "Ceapă", "veg", 40, 1.1, 9.3, 0.1),
+  f("zucchini", "Zucchini", "Dovlecel", "veg", 17, 1.2, 3.1, 0.3),
+  f("mixed-salad", "Mixed salad", "Salată mixtă", "veg", 17, 1.4, 2.9, 0.2),
+
+  // fats
+  f("olive-oil", "Olive oil", "Ulei de măsline", "fat", 884, 0, 0, 100),
+  f("sunflower-oil", "Sunflower oil", "Ulei de floarea-soarelui", "fat", 884, 0, 0, 100),
+  f("butter", "Butter", "Unt", "fat", 717, 0.9, 0.1, 81),
+  f("almonds", "Almonds", "Migdale", "fat", 579, 21, 22, 50),
+  f("walnuts", "Walnuts", "Nuci", "fat", 654, 15, 14, 65),
+  f("peanut-butter", "Peanut butter", "Unt de arahide", "fat", 588, 25, 20, 50),
+  f("avocado", "Avocado", "Avocado", "fat", 160, 2, 8.5, 15),
+];
+
+export function searchDemoFoods(q: string): DemoFood[] {
+  return demoFoods.filter((food) => matchesQuery(`${food.name_en} ${food.name_ro}`, q));
+}

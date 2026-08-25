@@ -3,12 +3,17 @@
 import "server-only";
 import {
   demoAdminStats, demoCheckIns, demoClients, demoConversations, demoDashboard,
-  demoMessages, demoNutritionPlans, demoProfile, demoProgramDetail, demoPrograms,
+  demoMessages, demoNutritionPlans, demoProfile,
 } from "./demo";
 import { isDemo, supabaseServer } from "./supabase/server";
+import {
+  demoClientRows, demoDashboardRows, demoRoster, store,
+  type StoredPlan, type StoredProgram,
+} from "./demo-store";
+import { portionMacros, sumMacros } from "@buddygym/shared";
 import type {
   AdminStats, CheckInRow, ClientRow, ConversationRow, DashboardRow, MessageRow,
-  NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
+  NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
 } from "./types";
 import type { Role, Tier } from "./entitlements";
 
@@ -62,7 +67,7 @@ export async function getAdminStats(): Promise<AdminStats> {
 }
 
 export async function getDashboard(): Promise<DashboardRow[]> {
-  if (isDemo) return demoDashboard;
+  if (isDemo) return demoDashboardRows();
   const supabase = await supabaseServer();
   const { data, error } = await supabase.rpc("coach_dashboard");
   if (error) throw error;
@@ -70,7 +75,7 @@ export async function getDashboard(): Promise<DashboardRow[]> {
 }
 
 export async function getClients(): Promise<ClientRow[]> {
-  if (isDemo) return demoClients;
+  if (isDemo) return demoClientRows();
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("trainer_clients")
@@ -118,7 +123,12 @@ export async function getCheckIns(): Promise<CheckInRow[]> {
 }
 
 export async function getPrograms(): Promise<ProgramRow[]> {
-  if (isDemo) return demoPrograms;
+  if (isDemo) {
+    return store().programs.map((p) => ({
+      id: p.id, name: p.name, client_name: p.client_name, status: p.status,
+      days: p.days.length, updated_at: p.updated_at,
+    }));
+  }
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("programs")
@@ -133,7 +143,10 @@ export async function getPrograms(): Promise<ProgramRow[]> {
 }
 
 export async function getProgram(id: string): Promise<ProgramDetail | null> {
-  if (isDemo) return id === demoProgramDetail.id ? demoProgramDetail : demoProgramDetail;
+  if (isDemo) {
+    const program = store().programs.find((p) => p.id === id);
+    return program ? toProgramDetail(program) : null;
+  }
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("programs")
@@ -166,13 +179,22 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
           weight: e.target_weight_kg ? `${e.target_weight_kg} kg` : "—",
           rpe: e.target_rpe?.toString() ?? "—",
           rest: e.rest_seconds ? `${e.rest_seconds}s` : "—",
+          weight_kg: e.target_weight_kg,
+          rpe_value: e.target_rpe,
+          rest_seconds: e.rest_seconds,
         })),
     })),
   };
 }
 
 export async function getNutritionPlans(): Promise<NutritionPlanRow[]> {
-  if (isDemo) return demoNutritionPlans;
+  if (isDemo) {
+    return store().plans.map((p) => ({
+      id: p.id, name: p.name, client_name: p.client_name, status: p.status,
+      kcal_target: p.kcal_target, protein_target_g: p.protein_target_g,
+      carbs_target_g: p.carbs_target_g, fat_target_g: p.fat_target_g,
+    }));
+  }
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("nutrition_plans")
@@ -221,4 +243,128 @@ export async function getMessages(conversationId: string): Promise<MessageRow[]>
     id: m.id, body: m.body, at: m.created_at,
     mine: m.sender_id === auth.user?.id,
   }));
+}
+
+/** Clients a program or plan can be assigned to. */
+export async function getRoster(): Promise<{ id: string; name: string }[]> {
+  if (isDemo) return demoRoster();
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase
+    .from("trainer_clients")
+    .select("client:users!trainer_clients_client_id_fkey(id, full_name)")
+    .eq("status", "active");
+  if (error) throw error;
+  return (data ?? [])
+    .map((row) => row.client as unknown as { id: string; full_name: string })
+    .filter(Boolean)
+    .map((c) => ({ id: c.id, name: c.full_name }));
+}
+
+/** Store row -> the shape the program screens already render. */
+function toProgramDetail(program: StoredProgram): ProgramDetail {
+  return {
+    id: program.id,
+    name: program.name,
+    client_name: program.client_name,
+    status: program.status,
+    intensity_mode: program.intensity_mode,
+    week: 1,
+    weeks: program.weeks,
+    days: program.days.map((day) => ({
+      id: day.id,
+      name: day.name,
+      exercises: [...day.exercises]
+        .sort((a, b) => a.position - b.position)
+        .map((e) => ({
+          id: e.id,
+          exercise: e.exercise_name,
+          sets: e.target_sets,
+          reps: e.target_reps,
+          weight: e.target_weight_kg ? `${e.target_weight_kg} kg` : "—",
+          rpe: e.target_rpe?.toString() ?? "—",
+          rest: e.rest_seconds ? `${e.rest_seconds}s` : "—",
+          weight_kg: e.target_weight_kg,
+          rpe_value: e.target_rpe,
+          rest_seconds: e.rest_seconds,
+        })),
+    })),
+  };
+}
+
+export async function getNutritionPlan(id: string): Promise<NutritionPlanDetail | null> {
+  if (isDemo) {
+    const plan = store().plans.find((p) => p.id === id);
+    return plan ? toPlanDetail(plan) : null;
+  }
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase
+    .from("nutrition_plans")
+    .select(`id, name, status, kcal_target, protein_target_g, carbs_target_g, fat_target_g,
+      client:users!nutrition_plans_client_id_fkey(full_name),
+      planned_meals(id, slot, name, position,
+        planned_meal_foods(id, grams,
+          food:foods(name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g)))`)
+    .eq("id", id)
+    .single();
+  if (error) return null;
+
+  type FoodJoin = {
+    id: string; grams: number;
+    food: { name_ro: string | null; name_en: string; kcal_100g: number;
+      protein_100g: number; carbs_100g: number; fat_100g: number } | null;
+  };
+  type MealJoin = { id: string; slot: PlanSlot; name: string; position: number; planned_meal_foods: FoodJoin[] };
+
+  const meals = (data.planned_meals as unknown as MealJoin[])
+    .sort((a, b) => a.position - b.position)
+    .map((meal) => {
+      const foods = meal.planned_meal_foods.map((row) => ({
+        id: row.id,
+        food_name: row.food?.name_ro ?? row.food?.name_en ?? "—",
+        grams: row.grams,
+        macros: portionMacros(
+          {
+            kcal: row.food?.kcal_100g ?? 0, protein: row.food?.protein_100g ?? 0,
+            carbs: row.food?.carbs_100g ?? 0, fat: row.food?.fat_100g ?? 0,
+          },
+          row.grams,
+        ),
+      }));
+      return { id: meal.id, slot: meal.slot, name: meal.name, foods, totals: sumMacros(foods.map((f) => f.macros)) };
+    });
+
+  return {
+    id: data.id, name: data.name, status: data.status,
+    client_name: (data.client as unknown as { full_name: string })?.full_name ?? "—",
+    kcal_target: data.kcal_target, protein_target_g: data.protein_target_g,
+    carbs_target_g: data.carbs_target_g, fat_target_g: data.fat_target_g,
+    meals, totals: sumMacros(meals.map((m) => m.totals)),
+  };
+}
+
+type PlanSlot = "breakfast" | "lunch" | "dinner" | "snack";
+
+/**
+ * Totals are computed here from per-100g values, never stored — the same
+ * functions the client app uses, so both surfaces show one number.
+ */
+function toPlanDetail(plan: StoredPlan): NutritionPlanDetail {
+  const meals = [...plan.meals]
+    .sort((a, b) => a.position - b.position)
+    .map((meal) => {
+      const foods = meal.foods.map((food) => ({
+        id: food.id,
+        food_name: food.food_name,
+        grams: food.grams,
+        macros: portionMacros(food.per_100g, food.grams),
+      }));
+      return { id: meal.id, slot: meal.slot, name: meal.name, foods, totals: sumMacros(foods.map((f) => f.macros)) };
+    });
+
+  return {
+    id: plan.id, name: plan.name, client_name: plan.client_name, status: plan.status,
+    kcal_target: plan.kcal_target, protein_target_g: plan.protein_target_g,
+    carbs_target_g: plan.carbs_target_g, fat_target_g: plan.fat_target_g,
+    meals, totals: sumMacros(meals.map((m) => m.totals)),
+  };
 }

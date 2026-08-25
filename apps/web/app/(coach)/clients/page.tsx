@@ -1,7 +1,8 @@
-import { getClients, getProfile } from "@/lib/data";
+import { getClients, getProfile, isDemo } from "@/lib/data";
 import { Card, EmptyState, PageTitle, SignalBadge } from "@/components/ui";
 import { pct, timeAgo } from "@/lib/format";
 import { InviteButton } from "@/components/invite-button";
+import { AddClientButton } from "@/components/add-client-button";
 import { entitlementsFor, TIER_LABEL } from "@/lib/entitlements";
 
 export default async function ClientsPage() {
@@ -17,6 +18,7 @@ export default async function ClientsPage() {
           <span className={`text-sm tabular-nums ${limitReached ? "font-semibold text-warn" : "text-ink-soft"}`}>
             {used} / {maxClients} slots · {TIER_LABEL[profile?.tier ?? "free"]}
           </span>
+          {isDemo ? <AddClientButton disabled={limitReached} /> : null}
           <InviteButton disabled={limitReached} />
         </div>
       </PageTitle>

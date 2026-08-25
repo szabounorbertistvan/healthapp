@@ -79,9 +79,14 @@ export type ProgramExerciseRow = {
   exercise: string;
   sets: number;
   reps: string;
+  // Display strings for the read-only view; the raw values below are what the
+  // builder edits and what program_exercises actually stores.
   weight: string;
   rpe: string;
   rest: string;
+  weight_kg: number | null;
+  rpe_value: number | null;
+  rest_seconds: number | null;
 };
 
 export type ProgramDetail = {
@@ -104,6 +109,35 @@ export type NutritionPlanRow = {
   protein_target_g: number;
   carbs_target_g: number;
   fat_target_g: number;
+};
+
+export type PlanFoodRow = {
+  id: string;
+  food_name: string;
+  grams: number;
+  /** Computed from per-100g values by @buddygym/shared, never stored twice. */
+  macros: { kcal: number; protein: number; carbs: number; fat: number };
+};
+
+export type PlanMealRow = {
+  id: string;
+  slot: "breakfast" | "lunch" | "dinner" | "snack";
+  name: string;
+  foods: PlanFoodRow[];
+  totals: { kcal: number; protein: number; carbs: number; fat: number };
+};
+
+export type NutritionPlanDetail = {
+  id: string;
+  name: string;
+  client_name: string;
+  status: "draft" | "published" | "archived";
+  kcal_target: number;
+  protein_target_g: number;
+  carbs_target_g: number;
+  fat_target_g: number;
+  meals: PlanMealRow[];
+  totals: { kcal: number; protein: number; carbs: number; fat: number };
 };
 
 export type ConversationRow = {

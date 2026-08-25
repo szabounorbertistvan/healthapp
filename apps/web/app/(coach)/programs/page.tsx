@@ -7,9 +7,16 @@ export default async function ProgramsPage() {
   const programs = await getPrograms();
   return (
     <div>
-      <PageTitle title="Programs" />
+      <PageTitle title="Programs">
+        <Link
+          href="/programs/new"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+        >
+          New program
+        </Link>
+      </PageTitle>
       {programs.length === 0 ? (
-        <EmptyState title="No programs yet" hint="Program creation lands in Sprint 3 — the builder UI is previewable on a program page." />
+        <EmptyState title="No programs yet" hint="Create one and pull exercises from the 873-exercise library." />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {programs.map((p) => (
