@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# environment — never commit real keys
+.env
+.env.local
+.env.*.local
+
+# supabase local stack
+supabase/.branches/
+supabase/.temp/
+
+# test & coverage
+coverage/
+.vitest/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
