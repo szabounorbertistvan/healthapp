@@ -7,6 +7,7 @@ permission matrix from [PRODUCT_SPEC.md](../PRODUCT_SPEC.md) §4.
 
 ```
 supabase/
+├── config.toml                     # local stack (supabase start / db reset)
 ├── migrations/
 │   ├── 20260823000100_types.sql        # extensions, enums, shared triggers
 │   ├── 20260823000200_core.sql         # users, trainer_clients (invites), goals, RLS helpers
@@ -16,11 +17,17 @@ supabase/
 │   ├── 20260823000600_coaching.sql     # conversations, messages, polymorphic coach feedback
 │   ├── 20260823000700_engagement.sql   # habits, streaks, badges (+MVP catalog), notifications
 │   ├── 20260823000800_rls.sql          # every RLS policy — mirrors the permission matrix 1:1
-│   └── 20260823000900_functions.sql    # invites, coach_dashboard, adherence engine v1, GDPR export, pg_cron
-└── functions/
-    ├── food-search/       # local cache → Open Food Facts search; caches hits into `foods`
-    ├── barcode-lookup/    # cache → OFF product API; 404 = "not found, offer search/custom"
-    └── import-exercises/  # one-shot import of Free Exercise DB (873 exercises, public domain)
+│   ├── 20260823000900_functions.sql    # invites, coach_dashboard, adherence engine v1, GDPR export, pg_cron
+│   ├── 20260823001000_admin_role.sql   # internal admin role
+│   ├── 20260823001100_subscriptions.sql# tiers + server-enforced client limit
+│   └── 20260823001200_deletion_and_jobs.sql # account deletion, streak-risk + check-in-due jobs
+├── functions/
+│   ├── food-search/       # local cache → Open Food Facts search; caches hits into `foods`
+│   ├── barcode-lookup/    # cache → OFF product API; 404 = "not found, offer search/custom"
+│   ├── import-exercises/  # one-shot import of Free Exercise DB (873 exercises, public domain)
+│   ├── sync-ingest/       # offline outbox flush; idempotent on client_generated_id (spec §5)
+│   └── push-dispatch/     # notifications → Expo Push; quiet hours + per-category prefs (spec §8)
+└── tests/                 # pgTAP; `npm run db:test` — RLS is a launch gate (spec §11)
 ```
 
 ## External data sources (both free)
@@ -66,6 +73,11 @@ curl -X POST "https://<ref>.supabase.co/functions/v1/import-exercises" \
   `client_at_risk` notifications — scheduled weekly via pg_cron when available.
 - **Engine tables have no write policies** — snapshots, streaks, badge awards,
   notifications are service-role/cron only by construction.
-- Not yet wired (per plan): `push-dispatch` worker (Phase 4), `sync-ingest`
-  batch endpoint (Phase 1, S5), streak computation job (Phase 5), storage
-  buckets + policies (Phase 0/4).
+- **Verification status**: the SQL and the edge functions in this folder have
+  not been run against a live stack yet — `supabase start` needs Docker, which
+  the current dev machine does not have. Treat `supabase db reset` +
+  `npm run db:test` as the first thing to run once Docker is available.
+- Not yet wired (per plan): streak *computation* job (Phase 5 — `detect_streak_risk`
+  only warns, it does not compute `streaks`), the service-role purge worker that
+  finishes `account_deletion_requests` after 30 days, and storage buckets +
+  policies (Phase 0/4).
