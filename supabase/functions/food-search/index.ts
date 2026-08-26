@@ -3,6 +3,7 @@
 // upserted into `foods` so the cache grows organically (plan §7).
 // GET /functions/v1/food-search?q=chicken&locale=ro
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { portionsFromOff } from "../_shared/portions.ts";
 
 const OFF_USER_AGENT = "BuddyGym/0.1 (relu.plesciuc@sfappworks.com)"; // required by OFF API policy
 
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
       const off = await fetch(
         "https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&search_simple=1" +
           `&page_size=15&search_terms=${encodeURIComponent(q)}` +
-          "&fields=code,product_name,brands,nutriments",
+          "&fields=code,product_name,brands,nutriments,serving_size,serving_quantity,product_quantity,categories_tags",
         { headers: { "User-Agent": OFF_USER_AGENT }, signal: AbortSignal.timeout(5000) },
       );
       const offData = await off.json();
@@ -78,6 +79,7 @@ Deno.serve(async (req) => {
           protein_100g: round2(n.proteins_100g ?? 0),
           carbs_100g: round2(n.carbohydrates_100g ?? 0),
           fat_100g: round2(n.fat_100g ?? 0),
+          portions: portionsFromOff(p),
         };
         // cache for next time; ignore conflicts from concurrent searches
         const { data: cached } = await supabase

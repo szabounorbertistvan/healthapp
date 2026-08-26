@@ -25,6 +25,12 @@ const en = {
     title: "Demo mode",
     body: "sample data. Set Supabase env vars in .env.local to go live.",
   },
+  viewSwitcher: {
+    viewingAs: "Viewing as",
+    coach: "Coach",
+    client: "Client",
+    pickClient: "Pick a client",
+  },
   cookieBanner: {
     ariaLabel: "Cookie notice",
     beforeBold: "uses only",
@@ -106,6 +112,12 @@ const ro: typeof en = {
   demoNotice: {
     title: "Mod demo",
     body: "date de exemplu. Setează variabilele Supabase în .env.local pentru a trece live.",
+  },
+  viewSwitcher: {
+    viewingAs: "Vizualizezi ca",
+    coach: "Antrenor",
+    client: "Client",
+    pickClient: "Alege un client",
   },
   cookieBanner: {
     ariaLabel: "Notificare cookie-uri",
