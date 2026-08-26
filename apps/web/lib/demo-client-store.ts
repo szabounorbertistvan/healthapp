@@ -48,6 +48,8 @@ export type StoredFoodLog = {
   grams: number;
   /** Snapshot at log time — external food data may change, history must not. */
   macros: Macros;
+  /** Kept so an edited portion can be re-costed without re-fetching the food. */
+  per_100g: Macros;
   logged_at: string;
 };
 
@@ -98,7 +100,7 @@ type ClientStore = {
 
 // Bump whenever ClientStore changes shape — a store carried across a hot reload
 // that is missing a new field would crash every reader.
-const STORE_VERSION = 1;
+const STORE_VERSION = 2;
 
 const globalRef = globalThis as unknown as {
   __buddygymClientStore?: ClientStore & { version?: number };
@@ -205,7 +207,12 @@ export function lastActivityAt(clientId: string): string | null {
   const sessionIds = new Set(store.sessions.filter((s) => s.client_id === clientId).map((s) => s.id));
   for (const s of store.sets) if (sessionIds.has(s.session_id)) stamps.push(s.logged_at);
   for (const f of store.foodLogs) if (f.client_id === clientId) stamps.push(f.logged_at);
-  for (const h of store.habitLogs) stamps.push(`${h.done_on}T12:00:00.000Z`);
+  // Habit logs carry only a habit_id, so they have to be filtered through the
+  // habit that owns them — otherwise one client's ticks count as everyone's.
+  const habitIds = new Set(store.habits.filter((h) => h.client_id === clientId).map((h) => h.id));
+  for (const h of store.habitLogs) {
+    if (habitIds.has(h.habit_id)) stamps.push(`${h.done_on}T12:00:00.000Z`);
+  }
   if (stamps.length === 0) return null;
   return stamps.sort().at(-1) ?? null;
 }
@@ -300,6 +307,7 @@ function seed(): ClientStore {
         food_name: meal.name,
         grams: meal.grams,
         macros: portionMacros(meal.per100, meal.grams),
+        per_100g: meal.per100,
         logged_at: daysAgoStamp(back),
       });
     }
@@ -314,6 +322,7 @@ function seed(): ClientStore {
       food_name: meal.name,
       grams: meal.grams,
       macros: portionMacros(meal.per100, meal.grams),
+      per_100g: meal.per100,
       logged_at: daysAgoStamp(5),
     });
   }

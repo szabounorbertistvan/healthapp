@@ -14,9 +14,10 @@ import {
 } from "@buddygym/shared";
 import { isDemo, supabaseServer } from "./supabase/server";
 import { store } from "./demo-store";
+import { viewingClientId } from "./view-mode";
 import { demoConversations, demoMessages } from "./demo";
 import {
-  DEMO_CLIENT_ID,
+
   DEMO_CLIENT_NAME,
   bestLifts,
   clientStore,
@@ -52,7 +53,7 @@ const ZERO: Macros = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
  * so the fixed demo client stands in; live mode uses the signed-in user.
  */
 export async function currentClientId(): Promise<string | null> {
-  if (isDemo) return DEMO_CLIENT_ID;
+  if (isDemo) return viewingClientId();
   const supabase = await supabaseServer();
   const { data } = await supabase.auth.getUser();
   return data.user?.id ?? null;
@@ -63,14 +64,15 @@ export async function currentClientId(): Promise<string | null> {
 /** The published program assigned to this client, if any. */
 export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
   if (isDemo) {
+    const clientId = await viewingClientId();
     const program = store().programs.find(
-      (p) => p.client_id === DEMO_CLIENT_ID && p.status === "published",
+      (p) => p.client_id === clientId && p.status === "published",
     );
     if (!program) return [];
     const cs = clientStore();
     return program.days.map((day) => {
       const session = cs.sessions.find(
-        (s) => s.client_id === DEMO_CLIENT_ID && s.program_day_id === day.id && s.completed_at === null,
+        (s) => s.client_id === clientId && s.program_day_id === day.id && s.completed_at === null,
       );
       const logged = session ? setsForSession(session.id) : [];
       return {
@@ -178,9 +180,10 @@ export async function getMySessions(limit = 12): Promise<
   { id: string; day_name: string; at: string; sets: number; volume_kg: number; prs: number }[]
 > {
   if (isDemo) {
+    const clientId = await viewingClientId();
     const cs = clientStore();
     return cs.sessions
-      .filter((s) => s.client_id === DEMO_CLIENT_ID && s.completed_at !== null)
+      .filter((s) => s.client_id === clientId && s.completed_at !== null)
       .sort((a, b) => (a.started_at < b.started_at ? 1 : -1))
       .slice(0, limit)
       .map((s) => {
@@ -221,7 +224,7 @@ export async function getMySessions(limit = 12): Promise<
 }
 
 export async function getMyPrs(): Promise<ClientPrRow[]> {
-  if (isDemo) return bestLifts(DEMO_CLIENT_ID);
+  if (isDemo) return bestLifts(await viewingClientId());
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];
@@ -256,10 +259,11 @@ function estimate(weight: number, reps: number): number {
 
 export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrition> {
   if (isDemo) {
+    const clientId = await viewingClientId();
     const plan = store().plans.find(
-      (p) => p.client_id === DEMO_CLIENT_ID && p.status === "published",
+      (p) => p.client_id === clientId && p.status === "published",
     );
-    const entries = foodLogsOn(DEMO_CLIENT_ID, day).map((f) => ({
+    const entries = foodLogsOn(clientId, day).map((f) => ({
       id: f.id,
       slot: f.slot,
       food_name: f.food_name,
@@ -277,7 +281,7 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
             fat: plan.fat_target_g,
           }
         : ZERO,
-      totals: totalsOn(DEMO_CLIENT_ID, day),
+      totals: totalsOn(clientId, day),
       entries,
     };
   }
@@ -297,8 +301,8 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
     supabase
       .from("food_logs")
       .select("id, slot, food_name, grams, kcal, protein_g, carbs_g, fat_g")
-      .eq("client_id", auth.user.id)
-      .eq("logged_on", day),
+      .eq("user_id", auth.user.id)
+      .eq("date", day),
   ]);
   type LogRow = {
     id: string; slot: MealSlot; food_name: string; grams: number;
@@ -332,8 +336,9 @@ export async function getMyPlanMeals(): Promise<
   { id: string; slot: MealSlot; name: string; foods: { name: string; grams: number; macros: Macros }[] }[]
 > {
   if (isDemo) {
+    const clientId = await viewingClientId();
     const plan = store().plans.find(
-      (p) => p.client_id === DEMO_CLIENT_ID && p.status === "published",
+      (p) => p.client_id === clientId && p.status === "published",
     );
     if (!plan) return [];
     return [...plan.meals]
@@ -395,9 +400,10 @@ export async function getMyHabits(): Promise<ClientHabitRow[]> {
   const today = isoDay();
   const weekStart = mondayOf(0);
   if (isDemo) {
+    const clientId = await viewingClientId();
     const cs = clientStore();
     return cs.habits
-      .filter((h) => h.client_id === DEMO_CLIENT_ID && !h.archived)
+      .filter((h) => h.client_id === clientId && !h.archived)
       .map((h) => {
         const logs = cs.habitLogs.filter((l) => l.habit_id === h.id);
         return {
@@ -429,8 +435,9 @@ export async function getMyHabits(): Promise<ClientHabitRow[]> {
 
 export async function getMyMeasurements(limit = 12): Promise<ClientMeasurementRow[]> {
   if (isDemo) {
+    const clientId = await viewingClientId();
     return clientStore()
-      .measurements.filter((m) => m.client_id === DEMO_CLIENT_ID)
+      .measurements.filter((m) => m.client_id === clientId)
       .sort((a, b) => (a.taken_on < b.taken_on ? 1 : -1))
       .slice(0, limit)
       .reverse();
@@ -450,8 +457,9 @@ export async function getMyMeasurements(limit = 12): Promise<ClientMeasurementRo
 export async function getMyCheckInState(): Promise<ClientCheckInState> {
   const weekStart = mondayOf(0);
   if (isDemo) {
+    const clientId = await viewingClientId();
     const all = clientStore()
-      .checkIns.filter((c) => c.client_id === DEMO_CLIENT_ID)
+      .checkIns.filter((c) => c.client_id === clientId)
       .sort((a, b) => (a.week_start < b.week_start ? 1 : -1));
     const last = all[0] ?? null;
     return {
@@ -549,7 +557,9 @@ export async function getToday(): Promise<ClientToday | null> {
 
   return {
     client_id: clientId,
-    full_name: isDemo ? DEMO_CLIENT_NAME : "You",
+    full_name: isDemo
+      ? (store().clients.find((c) => c.client_id === clientId)?.full_name ?? DEMO_CLIENT_NAME)
+      : "You",
     adherence,
     streak_days: currentStreak(clientId),
     next_workout: next,
@@ -593,7 +603,8 @@ export async function getMyCoachThread(): Promise<
   { id: string; coach_name: string; messages: MessageRow[] } | null
 > {
   if (isDemo) {
-    const conversation = demoConversations.find((c) => c.client_id === DEMO_CLIENT_ID);
+    const clientId = await viewingClientId();
+    const conversation = demoConversations.find((c) => c.client_id === clientId);
     if (!conversation) return null;
     const messages = (demoMessages[conversation.id] ?? []).map((m) => ({ ...m, mine: !m.mine }));
     return { id: conversation.id, coach_name: "Coach Alex", messages };

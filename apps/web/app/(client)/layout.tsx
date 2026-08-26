@@ -5,12 +5,22 @@ import { isDemo } from "@/lib/supabase/server";
 import { DEMO_CLIENT_NAME } from "@/lib/demo-client-store";
 import { ClientNav, ClientTabBar } from "@/components/client-nav";
 import { APP_NAME, APP_INITIAL } from "@/lib/brand";
+import { ViewSwitcher } from "@/components/view-switcher";
+import { viewableClients } from "@/app/view-actions";
+import { viewingClientId } from "@/lib/view-mode";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   // Demo mode has no auth, so the shell renders as the fixed demo client.
   // Live mode is the real gate: coaches belong in the coach workspace.
   let name = DEMO_CLIENT_NAME;
-  if (!isDemo) {
+  let clients: { id: string; name: string }[] = [];
+  let activeClientId: string | undefined;
+
+  if (isDemo) {
+    clients = await viewableClients();
+    activeClientId = await viewingClientId();
+    name = clients.find((c) => c.id === activeClientId)?.name ?? DEMO_CLIENT_NAME;
+  } else {
     const profile = await getProfile();
     if (!profile) redirect("/");
     if (profile.role === "coach") redirect("/dashboard");
@@ -28,7 +38,10 @@ export default async function ClientLayout({ children }: { children: React.React
         </Link>
         <p className="mb-5 px-2 text-xs text-ink-faint">{name}</p>
         <ClientNav />
-        <div className="mt-auto px-2 pt-6">
+        <div className="mt-auto space-y-3 pt-6">
+          {isDemo ? (
+            <ViewSwitcher surface="client" clients={clients} activeClientId={activeClientId} />
+          ) : null}
           {isDemo ? (
             <p className="rounded-lg bg-warn-soft px-3 py-2 text-[11px] leading-snug text-warn">
               <b>Demo mode</b> — sample data. Set Supabase env vars in <code>.env.local</code> to go live.

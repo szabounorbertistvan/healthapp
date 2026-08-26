@@ -2,6 +2,7 @@ import { getMyDayNutrition, getMyPlanMeals } from "@/lib/client-data";
 import { Card, PageTitle } from "@/components/ui";
 import { MacroPanel } from "@/components/client-ui";
 import { FoodLogger } from "@/components/food-logger";
+import { FoodEntry } from "@/components/food-entry";
 import type { MealSlot } from "@/lib/types";
 
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
@@ -38,17 +39,9 @@ export default async function FoodPage() {
             </p>
 
             {entries.length > 0 ? (
-              <ul className="space-y-1.5">
+              <ul className="divide-y divide-line">
                 {entries.map((e) => (
-                  <li key={e.id} className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="min-w-0 truncate">
-                      {e.food_name}
-                      <span className="ml-1 text-xs text-ink-faint">{e.grams} g</span>
-                    </span>
-                    <span className="shrink-0 tabular-nums text-ink-faint">
-                      <b className="text-ink">{e.macros.kcal}</b> kcal · P{e.macros.protein}
-                    </span>
-                  </li>
+                  <FoodEntry key={e.id} entry={e} />
                 ))}
               </ul>
             ) : (

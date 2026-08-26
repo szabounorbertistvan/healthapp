@@ -41,3 +41,7 @@ PRODUCT_SPEC.md
 PRODUCT_SPEC.pdf
 WIREFRAMES.html
 WIREFRAMES.pdf
+
+# downloaded Supabase env files
+env.download
+*.env.download

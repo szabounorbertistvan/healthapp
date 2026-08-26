@@ -1,4 +1,4 @@
-import { matchesQuery, type Macros } from "@buddygym/shared";
+import { matchesQuery, normalizeForSearch, type Macros } from "@buddygym/shared";
 
 // Demo food table.
 //
@@ -14,6 +14,10 @@ export type DemoFood = {
   name_ro: string;
   group: string;
   per_100g: Macros;
+  /** Manufacturer, for branded products from Open Food Facts. */
+  brand?: string | null;
+  /** Servings carried on the row in live mode; absent for demo rows. */
+  portions?: FoodPortion[];
 };
 
 const f = (
@@ -90,4 +94,142 @@ export const demoFoods: DemoFood[] = [
 
 export function searchDemoFoods(q: string): DemoFood[] {
   return demoFoods.filter((food) => matchesQuery(`${food.name_en} ${food.name_ro}`, q));
+}
+
+// ---------- serving sizes ----------
+
+export type FoodPortion = {
+  /** Chip label, kept short: "M", "1 slice". */
+  label: string;
+  grams: number;
+  /** Shown on hover — says where the number comes from. */
+  note: string;
+};
+
+// Foods bought by the piece, not weighed. Egg grades are the EU scale, and the
+// grams are EDIBLE weight: the shell is about 11% of a graded egg and nobody
+// eats it, so an EU "large" (63-73 g in the box) logs as ~58 g.
+//
+// Keyed by demo food id, with a keyword fallback for live rows, which arrive
+// from Open Food Facts with ids this table has never seen.
+const PORTIONS: Record<string, FoodPortion[]> = {
+  egg: [
+    { label: "S", grams: 44, note: "small, under 53 g with shell" },
+    { label: "M", grams: 50, note: "medium, 53-63 g with shell" },
+    { label: "L", grams: 58, note: "large, 63-73 g with shell" },
+    { label: "XL", grams: 66, note: "very large, over 73 g with shell" },
+  ],
+  "egg-white": [
+    { label: "S", grams: 28, note: "white of a small egg" },
+    { label: "M", grams: 33, note: "white of a medium egg" },
+    { label: "L", grams: 38, note: "white of a large egg" },
+  ],
+  banana: [
+    { label: "S", grams: 90, note: "small, peeled" },
+    { label: "M", grams: 118, note: "medium, peeled" },
+    { label: "L", grams: 136, note: "large, peeled" },
+  ],
+  apple: [
+    { label: "S", grams: 105, note: "small, cored" },
+    { label: "M", grams: 138, note: "medium, cored" },
+    { label: "L", grams: 172, note: "large, cored" },
+  ],
+  orange: [
+    { label: "S", grams: 96, note: "small, peeled" },
+    { label: "M", grams: 131, note: "medium, peeled" },
+    { label: "L", grams: 184, note: "large, peeled" },
+  ],
+  "bread-wholegrain": [
+    { label: "1 slice", grams: 35, note: "standard sandwich slice" },
+    { label: "2 slices", grams: 70, note: "two standard slices" },
+  ],
+  "peanut-butter": [
+    { label: "1 tsp", grams: 6, note: "level teaspoon" },
+    { label: "1 tbsp", grams: 16, note: "level tablespoon" },
+  ],
+  "olive-oil": [
+    { label: "1 tsp", grams: 5, note: "level teaspoon" },
+    { label: "1 tbsp", grams: 14, note: "level tablespoon" },
+  ],
+  "sunflower-oil": [
+    { label: "1 tsp", grams: 5, note: "level teaspoon" },
+    { label: "1 tbsp", grams: 14, note: "level tablespoon" },
+  ],
+  butter: [
+    { label: "1 tsp", grams: 5, note: "level teaspoon" },
+    { label: "1 tbsp", grams: 14, note: "level tablespoon" },
+  ],
+  avocado: [
+    { label: "half", grams: 100, note: "half a medium avocado" },
+    { label: "whole", grams: 200, note: "one medium avocado" },
+  ],
+};
+
+// Matched against the food name when the id is unknown, so a live "Ou de gaina"
+// or "Free range eggs" still offers sizes.
+const KEYWORD_PORTIONS: { match: RegExp; key: string }[] = [
+  // Order matters: "egg white" must be tested before the bare "egg".
+  // Patterns run against already-normalised text, so no /i and no diacritics.
+  { match: /\b(egg whites?|albus|albusuri)\b/, key: "egg-white" },
+  { match: /\b(eggs?|ou|oua|oualor)\b/, key: "egg" },
+  { match: /\b(bananas?|banana|banane)\b/, key: "banana" },
+  { match: /\b(apples?|mar|mere)\b/, key: "apple" },
+  { match: /\b(oranges?|portocala|portocale)\b/, key: "orange" },
+  { match: /\b(bread|paine|painea)\b/, key: "bread-wholegrain" },
+];
+
+/**
+ * Serving sizes for a food, or an empty list when it is only ever weighed.
+ * Falls back to a keyword match so foods that did not come from this table
+ * still get sizes where the name makes it obvious.
+ */
+export function portionsFor(food: {
+  id: string;
+  name_en: string;
+  name_ro: string;
+  portions?: FoodPortion[];
+}): FoodPortion[] {
+  // A row that carries its own servings wins: those are either curated in the
+  // database or imported from this product's own label, both closer to the
+  // truth than a keyword guess made here.
+  if (food.portions && food.portions.length > 0) return food.portions;
+  const byId = PORTIONS[food.id];
+  if (byId) return byId;
+  const haystack = normalizeForSearch(`${food.name_en} ${food.name_ro}`);
+  const hit = KEYWORD_PORTIONS.find((entry) => entry.match.test(haystack));
+  return hit ? PORTIONS[hit.key] : [];
+}
+
+// ---------- barcodes ----------
+
+// Demo mode has no `foods` table and no network, so the scanner needs
+// something to resolve against. These are real EAN-13 codes for products that
+// match the generic entries closely enough to demo with; a live install
+// resolves against `foods.barcode` and then Open Food Facts.
+const BARCODES: Record<string, string> = {
+  "5941234567890": "oats",
+  "4008400402222": "peanut-butter",
+  "5000112637922": "rice-cooked",
+  "8076809513692": "pasta-cooked",
+  "3017620422003": "peanut-butter",
+  "5941070000091": "milk-15",
+  "5941299000018": "telemea",
+  "20057251": "egg",
+  "5900951017667": "tuna-can",
+  "8410076472115": "olive-oil",
+};
+
+/** Resolve a scanned code against the demo table, or null. */
+export function findDemoFoodByBarcode(code: string): DemoFood | null {
+  const id = BARCODES[code.trim()];
+  if (!id) return null;
+  return demoFoods.find((f) => f.id === id) ?? null;
+}
+
+/** Codes a tester can type in when there is no camera to point at anything. */
+export function demoBarcodeSamples(): { code: string; name: string }[] {
+  return Object.entries(BARCODES)
+    .map(([code, id]) => ({ code, name: demoFoods.find((f) => f.id === id)?.name_ro ?? id }))
+    .filter((entry, index, all) => all.findIndex((e) => e.name === entry.name) === index)
+    .slice(0, 5);
 }

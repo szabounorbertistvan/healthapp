@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { newId, store, type StoredPlan } from "@/lib/demo-store";
-import { demoFoods, searchDemoFoods, type DemoFood } from "@/lib/demo-foods";
+import { demoFoods, findDemoFoodByBarcode, searchDemoFoods, type DemoFood } from "@/lib/demo-foods";
 import type { ActionResult } from "./actions";
 
 // Nutrition plan builder writes (W6, Sprint 6).
@@ -16,7 +16,7 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
   const supabase = await supabaseServer();
   let query = supabase
     .from("foods")
-    .select("id, name_en, name_ro, kcal_100g, protein_100g, carbs_100g, fat_100g")
+    .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
     .limit(30);
   if (q.trim()) {
     const safe = q.replace(/[,()%\\]/g, " ").trim();
@@ -28,12 +28,16 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
     name_en: row.name_en,
     name_ro: row.name_ro ?? row.name_en,
     group: "",
+    brand: row.brand,
     per_100g: {
       kcal: row.kcal_100g,
       protein: row.protein_100g,
       carbs: row.carbs_100g,
       fat: row.fat_100g,
     },
+    // Servings stored on the row: OFF imports plus any curated range. The
+    // client falls back to its own table when this is empty.
+    portions: (row.portions ?? []) as DemoFood["portions"],
   }));
 }
 
@@ -209,4 +213,87 @@ export async function publishNutritionPlan(planId: string): Promise<ActionResult
 
 function find(planId: string): StoredPlan | undefined {
   return store().plans.find((p) => p.id === planId);
+}
+
+export type BarcodeResult =
+  | { ok: true; food: DemoFood }
+  | { ok: false; reason: "invalid" | "not_found" | "upstream" };
+
+/**
+ * Resolve a scanned barcode to a food.
+ *
+ * Live mode checks the local `foods` cache first and only then calls the
+ * barcode-lookup function, which hits Open Food Facts and caches the result —
+ * so the second person to scan the same product pays nothing. A miss is not an
+ * error: the caller falls back to search, because a scan must never dead-end
+ * (PRODUCT_SPEC C3).
+ */
+export async function lookupBarcode(code: string): Promise<BarcodeResult> {
+  const clean = code.trim();
+  if (!/^\d{6,14}$/.test(clean)) return { ok: false, reason: "invalid" };
+
+  if (isDemo) {
+    const found = findDemoFoodByBarcode(clean);
+    return found ? { ok: true, food: found } : { ok: false, reason: "not_found" };
+  }
+
+  const supabase = await supabaseServer();
+  const { data: cached } = await supabase
+    .from("foods")
+    .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
+    .eq("barcode", clean)
+    .limit(1)
+    .maybeSingle();
+  if (cached) return { ok: true, food: toDemoFood(cached) };
+
+  try {
+    const { data, error } = await supabase.functions.invoke("barcode-lookup", {
+      body: { code: clean },
+    });
+    if (error || !data?.food) return { ok: false, reason: "not_found" };
+    return {
+      ok: true,
+      food: {
+        id: data.food.food_id ?? clean,
+        name_en: data.food.name,
+        name_ro: data.food.name,
+        group: "",
+        brand: data.food.brand ?? null,
+        per_100g: data.food.per_100g,
+        portions: data.food.portions ?? [],
+      },
+    };
+  } catch {
+    return { ok: false, reason: "upstream" };
+  }
+}
+
+type FoodRow = {
+  id: string;
+  name_en: string | null;
+  name_ro: string | null;
+  brand: string | null;
+  kcal_100g: number;
+  protein_100g: number;
+  carbs_100g: number;
+  fat_100g: number;
+  portions?: unknown;
+};
+
+function toDemoFood(row: FoodRow): DemoFood {
+  const name = row.name_ro ?? row.name_en ?? "—";
+  return {
+    id: row.id,
+    name_en: row.name_en ?? name,
+    name_ro: name,
+    group: "",
+    brand: row.brand ?? null,
+    per_100g: {
+      kcal: row.kcal_100g,
+      protein: row.protein_100g,
+      carbs: row.carbs_100g,
+      fat: row.fat_100g,
+    },
+    portions: (row.portions ?? []) as DemoFood["portions"],
+  };
 }

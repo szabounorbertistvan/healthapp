@@ -8,8 +8,9 @@
 import { revalidatePath } from "next/cache";
 import { isPersonalRecord, portionMacros, type Macros } from "@buddygym/shared";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { viewingClientId } from "@/lib/view-mode";
 import {
-  DEMO_CLIENT_ID,
+
   bestFor,
   clientStore,
   isoDay,
@@ -43,14 +44,15 @@ export async function logSet(input: {
   }
 
   if (isDemo) {
+    const clientId = await viewingClientId();
     const cs = clientStore();
     let session = cs.sessions.find(
-      (s) => s.client_id === DEMO_CLIENT_ID && s.program_day_id === input.dayId && s.completed_at === null,
+      (s) => s.client_id === clientId && s.program_day_id === input.dayId && s.completed_at === null,
     );
     if (!session) {
       session = {
         id: newId("ls"),
-        client_id: DEMO_CLIENT_ID,
+        client_id: clientId,
         program_day_id: input.dayId,
         day_name: input.dayName,
         started_at: new Date().toISOString(),
@@ -58,7 +60,7 @@ export async function logSet(input: {
       };
       cs.sessions.push(session);
     }
-    const best = bestFor(DEMO_CLIENT_ID, input.exerciseName);
+    const best = bestFor(clientId, input.exerciseName);
     const isPr = isPersonalRecord({ weight: input.weightKg, reps: input.reps }, best);
     cs.sets.push({
       id: newId("lst"),
@@ -112,9 +114,10 @@ export async function logSet(input: {
 
 export async function finishWorkout(dayId: string): Promise<ActionResult> {
   if (isDemo) {
+    const clientId = await viewingClientId();
     const cs = clientStore();
     const session = cs.sessions.find(
-      (s) => s.client_id === DEMO_CLIENT_ID && s.program_day_id === dayId && s.completed_at === null,
+      (s) => s.client_id === clientId && s.program_day_id === dayId && s.completed_at === null,
     );
     if (!session) return { ok: false, message: "Nothing logged yet" };
     session.completed_at = new Date().toISOString();
@@ -153,14 +156,16 @@ export async function logFood(input: {
   const macros = portionMacros(input.per100g, input.grams);
 
   if (isDemo) {
+    const clientId = await viewingClientId();
     clientStore().foodLogs.push({
       id: newId("fl"),
-      client_id: DEMO_CLIENT_ID,
+      client_id: clientId,
       logged_on: day,
       slot: input.slot,
       food_name: input.foodName,
       grams: input.grams,
       macros,
+      per_100g: input.per100g,
       logged_at: new Date().toISOString(),
     });
     revalidatePath("/food");
@@ -172,8 +177,8 @@ export async function logFood(input: {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: "Not signed in" };
   const { error } = await supabase.from("food_logs").insert({
-    client_id: auth.user.id,
-    logged_on: day,
+    user_id: auth.user.id,
+    date: day,
     slot: input.slot,
     food_name: input.foodName,
     grams: input.grams,
@@ -181,8 +186,66 @@ export async function logFood(input: {
     protein_g: macros.protein,
     carbs_g: macros.carbs,
     fat_g: macros.fat,
-    client_generated_id: newId("fl"),
+    client_generated_id: crypto.randomUUID(),
+    client_ts: new Date().toISOString(),
   });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/food");
+  revalidatePath("/today");
+  return { ok: true };
+}
+
+/**
+ * Correct a portion that was logged wrong. Macros are re-derived from the
+ * per-100g basis rather than scaled from the stored snapshot, so repeated
+ * edits cannot accumulate rounding drift.
+ */
+export async function updateFoodLog(id: string, grams: number): Promise<ActionResult> {
+  if (!Number.isFinite(grams) || grams <= 0) {
+    return { ok: false, message: "Grams must be above zero" };
+  }
+
+  if (isDemo) {
+    const clientId = await viewingClientId();
+    // Scope by client as well as id: RLS does this in live mode, and the demo
+    // store has no such guard while an admin can switch between clients.
+    const entry = clientStore().foodLogs.find((f) => f.id === id && f.client_id === clientId);
+    if (!entry) return { ok: false, message: "That entry is gone" };
+    entry.grams = grams;
+    entry.macros = portionMacros(entry.per_100g, grams);
+    revalidatePath("/food");
+    revalidatePath("/today");
+    return { ok: true, demo: true };
+  }
+
+  const supabase = await supabaseServer();
+  // The row stores only the portion snapshot, so recover the per-100g basis
+  // from it before re-costing. Exact for any grams > 0.
+  const { data: row, error: readError } = await supabase
+    .from("food_logs")
+    .select("grams, kcal, protein_g, carbs_g, fat_g")
+    .eq("id", id)
+    .single();
+  if (readError) return { ok: false, message: readError.message };
+  const factor = 100 / row.grams;
+  const per100g: Macros = {
+    kcal: row.kcal * factor,
+    protein: row.protein_g * factor,
+    carbs: row.carbs_g * factor,
+    fat: row.fat_g * factor,
+  };
+  const macros = portionMacros(per100g, grams);
+
+  const { error } = await supabase
+    .from("food_logs")
+    .update({
+      grams,
+      kcal: macros.kcal,
+      protein_g: macros.protein,
+      carbs_g: macros.carbs,
+      fat_g: macros.fat,
+    })
+    .eq("id", id);
   if (error) return { ok: false, message: error.message };
   revalidatePath("/food");
   revalidatePath("/today");
@@ -191,9 +254,11 @@ export async function logFood(input: {
 
 export async function deleteFoodLog(id: string): Promise<ActionResult> {
   if (isDemo) {
+    const clientId = await viewingClientId();
     const cs = clientStore();
-    const index = cs.foodLogs.findIndex((f) => f.id === id);
-    if (index >= 0) cs.foodLogs.splice(index, 1);
+    const index = cs.foodLogs.findIndex((f) => f.id === id && f.client_id === clientId);
+    if (index < 0) return { ok: false, message: "That entry is gone" };
+    cs.foodLogs.splice(index, 1);
     revalidatePath("/food");
     revalidatePath("/today");
     return { ok: true, demo: true };
@@ -240,9 +305,10 @@ export async function addHabit(name: string, targetPerWeek: number): Promise<Act
   if (!name.trim()) return { ok: false, message: "Give the habit a name" };
   const target = Math.min(Math.max(Math.round(targetPerWeek) || 7, 1), 7);
   if (isDemo) {
+    const clientId = await viewingClientId();
     clientStore().habits.push({
       id: newId("hb"),
-      client_id: DEMO_CLIENT_ID,
+      client_id: clientId,
       name: name.trim(),
       target_per_week: target,
       archived: false,
@@ -274,9 +340,10 @@ export async function addMeasurement(input: {
   }
   const takenOn = input.takenOn ?? isoDay();
   if (isDemo) {
+    const clientId = await viewingClientId();
     const cs = clientStore();
     const existing = cs.measurements.find(
-      (m) => m.client_id === DEMO_CLIENT_ID && m.taken_on === takenOn,
+      (m) => m.client_id === clientId && m.taken_on === takenOn,
     );
     if (existing) {
       existing.weight_kg = input.weightKg ?? existing.weight_kg;
@@ -284,7 +351,7 @@ export async function addMeasurement(input: {
     } else {
       cs.measurements.push({
         id: newId("me"),
-        client_id: DEMO_CLIENT_ID,
+        client_id: clientId,
         taken_on: takenOn,
         weight_kg: input.weightKg,
         waist_cm: input.waistCm,
@@ -322,13 +389,14 @@ export async function submitCheckIn(input: {
 }): Promise<ActionResult> {
   const weekStart = mondayOf(0);
   if (isDemo) {
+    const clientId = await viewingClientId();
     const cs = clientStore();
-    if (cs.checkIns.some((c) => c.client_id === DEMO_CLIENT_ID && c.week_start === weekStart)) {
+    if (cs.checkIns.some((c) => c.client_id === clientId && c.week_start === weekStart)) {
       return { ok: false, message: "This week is already checked in" };
     }
     cs.checkIns.push({
       id: newId("ci"),
-      client_id: DEMO_CLIENT_ID,
+      client_id: clientId,
       week_start: weekStart,
       weight_kg: input.weightKg,
       sleep: input.sleep,
