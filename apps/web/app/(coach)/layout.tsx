@@ -8,8 +8,8 @@ import { TIER_LABEL } from "@/lib/entitlements";
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
   if (!profile) redirect("/");
-  // the coach web area is for coaches and admins; clients get the mobile app
-  if (profile.role === "client") redirect("/get-the-app");
+  // the coach web area is for coaches and admins; clients have their own surface
+  if (profile.role === "client") redirect("/today");
 
   return (
     <div className="flex min-h-screen">

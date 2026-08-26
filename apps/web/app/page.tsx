@@ -48,9 +48,14 @@ export default function LandingPage() {
             Start free
           </Link>
           {isDemo ? (
-            <Link href="/dashboard" className="rounded-xl border border-line bg-surface px-6 py-3 font-semibold text-ink-soft hover:border-accent">
-              Browse the coach demo
-            </Link>
+            <>
+              <Link href="/dashboard" className="rounded-xl border border-line bg-surface px-6 py-3 font-semibold text-ink-soft hover:border-accent">
+                Browse the coach demo
+              </Link>
+              <Link href="/today" className="rounded-xl border border-line bg-surface px-6 py-3 font-semibold text-ink-soft hover:border-accent">
+                Browse the client demo
+              </Link>
+            </>
           ) : null}
         </div>
       </section>

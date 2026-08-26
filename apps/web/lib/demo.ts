@@ -131,6 +131,7 @@ export const demoConversations: ConversationRow[] = [
   { id: "cv1", client_id: "d2", full_name: "Andrei P.", last_message: "Should I swap deadlifts this week?", last_at: daysAgo(0), unread: 1 },
   { id: "cv2", client_id: "d4", full_name: "Radu M.", last_message: "Thanks coach!", last_at: daysAgo(0), unread: 1 },
   { id: "cv3", client_id: "d5", full_name: "Elena V.", last_message: "Done, felt strong today.", last_at: daysAgo(1), unread: 0 },
+  { id: "cv4", client_id: "d1", full_name: "Maria D.", last_message: "I know, work has been brutal. Restarting today.", last_at: daysAgo(5), unread: 0 },
 ];
 
 export const demoMessages: Record<string, MessageRow[]> = {
@@ -144,6 +145,10 @@ export const demoMessages: Record<string, MessageRow[]> = {
   ],
   cv3: [
     { id: "m5", mine: false, body: "Done, felt strong today.", at: daysAgo(1) },
+  ],
+  cv4: [
+    { id: "m6", mine: true, body: "Noticed the logs stopped after Monday — everything alright?", at: daysAgo(6) },
+    { id: "m7", mine: false, body: "I know, work has been brutal. Restarting today.", at: daysAgo(5) },
   ],
 };
 
