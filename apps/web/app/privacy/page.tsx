@@ -217,7 +217,7 @@ export default async function PrivacyPage() {
   const locale = await getLocale();
   return (
     <main className="mx-auto max-w-2xl px-6 pb-24">
-      <div className="fixed right-4 top-4"><LanguageSelector /></div>
+      <div className="fixed right-4 top-4 z-20"><LanguageSelector /></div>
       <header className="flex items-center justify-between py-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-black text-white">{APP_INITIAL}</span>

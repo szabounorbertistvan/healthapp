@@ -9,7 +9,7 @@ export default async function GetTheAppPage() {
   const { t } = await getI18n();
   return (
     <main className="flex min-h-screen items-center justify-center p-6 text-center">
-      <div className="fixed right-4 top-4">
+      <div className="fixed right-4 top-4 z-20">
         <LanguageSelector />
       </div>
       <div className="max-w-md">

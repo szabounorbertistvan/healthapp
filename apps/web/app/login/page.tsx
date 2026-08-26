@@ -35,7 +35,7 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="fixed right-4 top-4">
+      <div className="fixed right-4 top-4 z-20">
         <LanguageSelector />
       </div>
       <div className="w-full max-w-sm">
