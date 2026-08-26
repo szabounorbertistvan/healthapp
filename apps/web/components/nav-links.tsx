@@ -1,22 +1,25 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "@/lib/i18n/client";
+import type { Dictionary } from "@/lib/i18n";
 
-const items = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/clients", label: "Clients" },
-  { href: "/programs", label: "Programs" },
-  { href: "/library", label: "Library" },
-  { href: "/nutrition", label: "Nutrition" },
-  { href: "/check-ins", label: "Check-ins" },
-  { href: "/messages", label: "Messages" },
-  { href: "/settings", label: "Settings" },
+const items: { href: string; key: keyof Dictionary["common"]["nav"] }[] = [
+  { href: "/dashboard", key: "dashboard" },
+  { href: "/clients", key: "clients" },
+  { href: "/programs", key: "programs" },
+  { href: "/library", key: "library" },
+  { href: "/nutrition", key: "nutrition" },
+  { href: "/check-ins", key: "checkIns" },
+  { href: "/messages", key: "messages" },
+  { href: "/settings", key: "settings" },
 ];
 
-const adminItem = { href: "/admin", label: "Admin" };
+const adminItem = { href: "/admin", key: "admin" as const };
 
 export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
+  const { t } = useI18n();
   const visible = isAdmin ? [...items, adminItem] : items;
   return (
     <nav className="flex flex-col gap-1">
@@ -32,7 +35,7 @@ export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
                 : "text-ink-soft hover:bg-bg"
             }`}
           >
-            {item.label}
+            {t.common.nav[item.key]}
           </Link>
         );
       })}

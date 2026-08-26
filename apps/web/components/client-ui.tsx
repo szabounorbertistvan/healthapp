@@ -1,5 +1,8 @@
+"use client";
 import type { Macros } from "@buddygym/shared";
 import { Card } from "./ui";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n";
 
 /** A macro against its target. Over-target fills to 100% and turns amber. */
 export function MacroBar({
@@ -45,24 +48,25 @@ export function MacroPanel({
   target: Macros;
   title?: string;
 }) {
+  const { t } = useI18n();
   const remaining = Math.max(0, Math.round(target.kcal - totals.kcal));
   return (
     <Card>
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-          {title ?? "Today"}
+          {title ?? t.common.macros.todayTitle}
         </p>
         {target.kcal > 0 ? (
           <p className="text-xs text-ink-faint">
-            <b className="tabular-nums text-ink">{remaining}</b> kcal left
+            <b className="tabular-nums text-ink">{remaining}</b> {t.common.macros.kcalLeft}
           </p>
         ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <MacroBar label="Calories" value={totals.kcal} target={target.kcal} unit=" kcal" />
-        <MacroBar label="Protein" value={totals.protein} target={target.protein} />
-        <MacroBar label="Carbs" value={totals.carbs} target={target.carbs} />
-        <MacroBar label="Fat" value={totals.fat} target={target.fat} />
+        <MacroBar label={t.common.macros.calories} value={totals.kcal} target={target.kcal} unit=" kcal" />
+        <MacroBar label={t.common.macros.protein} value={totals.protein} target={target.protein} />
+        <MacroBar label={t.common.macros.carbs} value={totals.carbs} target={target.carbs} />
+        <MacroBar label={t.common.macros.fat} value={totals.fat} target={target.fat} />
       </div>
     </Card>
   );
@@ -79,8 +83,9 @@ export function Sparkline({
   points: { label: string; value: number }[];
   height?: number;
 }) {
+  const { t } = useI18n();
   if (points.length < 2) {
-    return <p className="text-sm text-ink-faint">Not enough measurements yet to draw a trend.</p>;
+    return <p className="text-sm text-ink-faint">{t.common.charts.notEnoughData}</p>;
   }
   const values = points.map((p) => p.value);
   const min = Math.min(...values);
@@ -105,7 +110,7 @@ export function Sparkline({
         preserveAspectRatio="none"
         className="h-16 w-full"
         role="img"
-        aria-label={`Trend from ${first.value} to ${last.value}`}
+        aria-label={fill(t.common.charts.trendFromTo, { from: first.value, to: last.value })}
       >
         <path d={area} fill="var(--color-accent-soft)" />
         <path
@@ -132,12 +137,13 @@ export function Sparkline({
 
 /** Adherence as a labelled meter — the number plus the reason behind it. */
 export function AdherenceMeter({ overall, reason }: { overall: number; reason: string }) {
+  const { t } = useI18n();
   const pct = Math.round(overall * 100);
   const tone = overall >= 0.8 ? "bg-accent" : overall >= 0.5 ? "bg-warn" : "bg-risk";
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">This week</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.charts.thisWeek}</p>
         <p className="text-2xl font-bold tabular-nums">{pct}%</p>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-bg">

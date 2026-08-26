@@ -2,9 +2,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addMeasurement } from "@/app/client-actions-app";
+import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
 
 export function MeasurementForm() {
+  const { t } = useI18n();
   const router = useRouter();
   const [weight, setWeight] = useState("");
   const [waist, setWaist] = useState("");
@@ -20,12 +22,12 @@ export function MeasurementForm() {
   return (
     <Card>
       <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-        Add a measurement
+        {t.clientWidgets.measurementForm.title}
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
-            weight kg
+            {t.clientWidgets.measurementForm.weightKg}
           </span>
           <input
             inputMode="decimal"
@@ -36,7 +38,7 @@ export function MeasurementForm() {
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
-            waist cm
+            {t.clientWidgets.measurementForm.waistCm}
           </span>
           <input
             inputMode="decimal"
@@ -57,7 +59,7 @@ export function MeasurementForm() {
                 waistCm: parse(waist),
               });
               if (!result.ok) {
-                setError(result.message ?? "Could not save");
+                setError(result.message ?? t.clientWidgets.measurementForm.couldNotSave);
                 return;
               }
               setWeight("");
@@ -68,11 +70,11 @@ export function MeasurementForm() {
           }
           className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
         >
-          Save
+          {t.common.actions.save}
         </button>
       </div>
       {error ? <p className="mt-2 text-sm font-semibold text-risk">{error}</p> : null}
-      {saved ? <p className="mt-2 text-sm text-accent-ink">Saved.</p> : null}
+      {saved ? <p className="mt-2 text-sm text-accent-ink">{t.clientWidgets.measurementForm.saved}</p> : null}
     </Card>
   );
 }

@@ -11,6 +11,8 @@ import {
   updatePlanFoodGrams,
 } from "@/app/nutrition-actions";
 import { Card } from "@/components/ui";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n";
 
 // W6 · Nutrition plan builder. Targets and plan totals stay visible at all
 // times: the coach is composing against a number, and finding out afterwards
@@ -18,6 +20,8 @@ import { Card } from "@/components/ui";
 
 export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const m = t.coachWidgets.nutritionBuilder;
   const [pickerMealId, setPickerMealId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -26,7 +30,7 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
     setError(null);
     startTransition(async () => {
       const result = await action();
-      if (!result.ok) setError(result.message ?? "Something went wrong");
+      if (!result.ok) setError(result.message ?? m.somethingWentWrong);
       router.refresh();
     });
   }
@@ -42,7 +46,7 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
               plan.status === "published" ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint"
             }`}
           >
-            {plan.status}
+            {m.status[plan.status]}
           </span>
           <span className="text-sm text-ink-soft">{plan.client_name}</span>
         </div>
@@ -51,10 +55,10 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
           <button
             onClick={() => run(() => publishNutritionPlan(plan.id))}
             disabled={pending || isEmpty || plan.status === "published"}
-            title={isEmpty ? "Add at least one food first" : undefined}
+            title={isEmpty ? m.publishHint : undefined}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
           >
-            {plan.status === "published" ? "Published" : "Publish to client"}
+            {plan.status === "published" ? m.published : m.publish}
           </button>
         </div>
       </div>
@@ -84,11 +88,12 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
 }
 
 function TargetsCard({ plan }: { plan: NutritionPlanDetail }) {
+  const { t } = useI18n();
   const rows = [
-    { label: "Calories", actual: plan.totals.kcal, target: plan.kcal_target, unit: "kcal" },
-    { label: "Protein", actual: plan.totals.protein, target: plan.protein_target_g, unit: "g" },
-    { label: "Carbs", actual: plan.totals.carbs, target: plan.carbs_target_g, unit: "g" },
-    { label: "Fat", actual: plan.totals.fat, target: plan.fat_target_g, unit: "g" },
+    { label: t.common.macros.calories, actual: plan.totals.kcal, target: plan.kcal_target, unit: "kcal" },
+    { label: t.common.macros.protein, actual: plan.totals.protein, target: plan.protein_target_g, unit: "g" },
+    { label: t.common.macros.carbs, actual: plan.totals.carbs, target: plan.carbs_target_g, unit: "g" },
+    { label: t.common.macros.fat, actual: plan.totals.fat, target: plan.fat_target_g, unit: "g" },
   ];
 
   return (
@@ -116,7 +121,9 @@ function TargetsCard({ plan }: { plan: NutritionPlanDetail }) {
                   onTarget ? "text-accent-ink" : delta > 0 ? "text-warn" : "text-ink-soft"
                 }`}
               >
-                {onTarget ? "on target" : `${delta > 0 ? "+" : ""}${round(delta)} ${row.unit}`}
+                {onTarget
+                  ? t.coachWidgets.nutritionBuilder.onTarget
+                  : `${delta > 0 ? "+" : ""}${round(delta)} ${row.unit}`}
               </p>
             </div>
           );
@@ -143,6 +150,8 @@ function MealCard({
   onRemove: (rowId: string) => void;
   onPick: (food: DemoFood, grams: number) => void;
 }) {
+  const { t } = useI18n();
+  const m = t.coachWidgets.nutritionBuilder;
   return (
     <Card>
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -156,7 +165,7 @@ function MealCard({
           onClick={onToggle}
           className="rounded-lg border border-line px-2 py-1 text-xs font-semibold hover:border-accent hover:text-accent-ink"
         >
-          {open ? "Close foods" : "+ Food"}
+          {open ? m.closeFoods : m.addFood}
         </button>
       </div>
 
@@ -166,7 +175,7 @@ function MealCard({
         <div className="min-w-0 flex-1">
           {meal.foods.length === 0 ? (
             <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-sm text-ink-faint">
-              Nothing planned
+              {m.nothingPlanned}
             </p>
           ) : (
             <ul className="space-y-1">
@@ -185,7 +194,7 @@ function MealCard({
                   <button
                     onClick={() => onRemove(food.id)}
                     disabled={pending}
-                    title="Remove food"
+                    title={m.removeFood}
                     className="rounded px-1.5 text-ink-faint hover:bg-risk-soft hover:text-risk disabled:opacity-50"
                   >
                     ×
@@ -199,7 +208,7 @@ function MealCard({
         {open ? (
           <div className="flex h-[26rem] w-full shrink-0 flex-col rounded-lg border border-line bg-bg p-3 lg:w-80">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              Add to {meal.name}
+              {fill(m.addTo, { name: meal.name })}
             </p>
             <FoodPicker onPick={onPick} />
           </div>
@@ -244,6 +253,8 @@ function GramsInput({
 }
 
 function FoodPicker({ onPick }: { onPick: (food: DemoFood, grams: number) => void }) {
+  const { t } = useI18n();
+  const m = t.coachWidgets.nutritionBuilder;
   const [q, setQ] = useState("");
   const [foods, setFoods] = useState<DemoFood[]>([]);
   const [, startTransition] = useTransition();
@@ -260,7 +271,7 @@ function FoodPicker({ onPick }: { onPick: (food: DemoFood, grams: number) => voi
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search foods…"
+        placeholder={m.searchFoods}
         className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
       />
       <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
@@ -278,18 +289,18 @@ function FoodPicker({ onPick }: { onPick: (food: DemoFood, grams: number) => voi
                 onClick={() => onPick(food, 100)}
                 className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-xs font-semibold hover:border-accent hover:text-accent-ink"
               >
-                Add
+                {t.common.actions.add}
               </button>
             </div>
           </li>
         ))}
         {foods.length === 0 ? (
           <li className="rounded-lg border border-dashed border-line p-4 text-center text-sm text-ink-soft">
-            No match. Live search comes from Open Food Facts once a backend is connected.
+            {m.noMatch}
           </li>
         ) : null}
       </ul>
-      <p className="text-[11px] text-ink-faint">Added at 100 g — adjust in the meal.</p>
+      <p className="text-[11px] text-ink-faint">{m.addedAt100}</p>
     </div>
   );
 }

@@ -1,25 +1,29 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { APP_NAME, APP_INITIAL } from "@/lib/brand";
+import { getLocale } from "@/lib/i18n/server";
+import { LanguageSelector } from "@/components/language-selector";
 
-export const metadata: Metadata = {
-  title: `Terms of Service · ${APP_NAME}`,
-  description: `The terms that apply when you use ${APP_NAME}.`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === "ro") {
+    return {
+      title: `Termeni și condiții · ${APP_NAME}`,
+      description: `Termenii care se aplică atunci când folosiți ${APP_NAME}.`,
+    };
+  }
+  return {
+    title: `Terms of Service · ${APP_NAME}`,
+    description: `The terms that apply when you use ${APP_NAME}.`,
+  };
+}
 
 // NOTE: working draft — have it reviewed by a lawyer before public launch, and
 // fill in the operator identity and governing law below.
-export default function TermsPage() {
-  return (
-    <main className="mx-auto max-w-2xl px-6 pb-24">
-      <header className="flex items-center justify-between py-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-black text-white">{APP_INITIAL}</span>
-          <span className="text-lg font-extrabold tracking-tight">{APP_NAME}</span>
-        </Link>
-        <Link href="/" className="text-sm font-semibold text-accent-ink hover:underline">← Back</Link>
-      </header>
 
+function EnglishContent() {
+  return (
+    <>
       <h1 className="text-3xl font-extrabold tracking-tight">Terms of Service</h1>
       <p className="mt-2 text-sm text-ink-faint">Last updated: 26 August 2026</p>
 
@@ -122,13 +126,148 @@ export default function TermsPage() {
           </p>
         </section>
       </div>
+    </>
+  );
+}
+
+function RomanianContent() {
+  return (
+    <>
+      <h1 className="text-3xl font-extrabold tracking-tight">Termeni și condiții</h1>
+      <p className="mt-2 text-sm text-ink-faint">Ultima actualizare: 26 august 2026</p>
+
+      <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-ink-soft">
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">1. Serviciul</h2>
+          <p>
+            {APP_NAME} este o platformă de antrenament, nutriție și coaching operată de{" "}
+            <b className="text-ink">[numele și adresa operatorului — de completat înainte de lansare]</b>.
+            Prin crearea unui cont, sunteți de acord cu acești termeni.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">2. Nu constituie sfat medical</h2>
+          <p>
+            {APP_NAME} și antrenorii de pe platformă oferă îndrumare în materie de fitness și
+            nutriție, nu îngrijire medicală. Programele, planurile de mese și orice feedback
+            din partea antrenorului nu înlocuiesc sfatul unui medic. Consultați un medic
+            înainte de a începe un program de antrenament sau de nutriție, mai ales dacă aveți
+            o afecțiune medicală, sunteți însărcinată sau aveți sub 18 ani. Vă antrenați pe
+            propriul risc și în limitele proprii.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">3. Antrenori și clienți</h2>
+          <p>
+            Antrenorii de pe {APP_NAME} sunt profesioniști independenți, nu angajații noștri.
+            Relația de coaching — calitatea, prețul și rezultatele acesteia — este între
+            dumneavoastră și antrenorul dumneavoastră. Noi punem la dispoziție instrumentele:
+            programe, planuri, check-in-uri, mesagerie și indicatori de aderență. Oricare
+            dintre părți poate încheia relația de coaching în orice moment, din aplicație;
+            antrenorul pierde apoi accesul la datele noi ale clientului.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">4. Contul dumneavoastră</h2>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>Trebuie să aveți cel puțin 16 ani pentru a crea un cont.</li>
+            <li>Păstrați-vă datele de autentificare numai pentru dumneavoastră; sunteți responsabil de activitatea din contul dumneavoastră.</li>
+            <li>Introduceți datele cu onestitate — antrenorii iau decizii pe baza lor.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">5. Utilizare acceptabilă</h2>
+          <p>
+            Nu utilizați serviciul în mod abuziv: fără hărțuire sau mesaje abuzive, fără
+            încărcarea de conținut pe care nu aveți dreptul să îl distribuiți, fără încercări
+            de a accesa datele altor utilizatori, fără extragere automată de date (scraping)
+            și fără utilizarea platformei în scopuri ilegale. Putem suspenda conturile care
+            încalcă aceste reguli.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">6. Abonamente</h2>
+          <p>
+            Nivelul gratuit rămâne gratuit. Nivelurile plătite (Premium pentru clienți;
+            Starter și Pro pentru antrenori) deblochează funcții suplimentare, așa cum sunt
+            descrise pe pagina de prețuri. Prețurile, condițiile de facturare și de anulare
+            vor fi afișate la momentul achiziției, când abonamentele plătite vor fi lansate.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">7. Conținutul și datele dumneavoastră</h2>
+          <p>
+            Datele dumneavoastră rămân ale dumneavoastră. Le folosim numai pentru a opera
+            serviciul, așa cum este descris în{" "}
+            <Link href="/privacy" className="font-semibold text-accent-ink hover:underline">Politica de confidențialitate</Link>.
+            Le puteți exporta sau vă puteți șterge contul în orice moment, din aplicație.
+            Datele despre alimente provin de la Open Food Facts, sub licența Open Database License.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">8. Răspundere</h2>
+          <p>
+            Serviciul este furnizat „ca atare”. În măsura permisă de lege, nu suntem
+            răspunzători pentru accidentări survenite la antrenament, rezultate ale dietei,
+            deciziile antrenorilor sau pierderi de date aflate în afara controlului nostru.
+            Nimic din acești termeni nu limitează răspunderea care nu poate fi limitată
+            prin lege.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">9. Modificări și încetare</h2>
+          <p>
+            Putem actualiza acești termeni; modificările importante vor fi anunțate în
+            aplicație înainte de a intra în vigoare. Vă puteți închide contul în orice moment.
+            Putem închide conturile care încalcă acești termeni, cu notificare prealabilă
+            acolo unde este rezonabil.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">10. Legea aplicabilă</h2>
+          <p>
+            Acești termeni sunt guvernați de legile din <b className="text-ink">[jurisdicția —
+            de completat înainte de lansare]</b>, fără a afecta protecțiile obligatorii ale
+            consumatorilor din țara dumneavoastră de reședință.
+          </p>
+        </section>
+      </div>
+    </>
+  );
+}
+
+export default async function TermsPage() {
+  const locale = await getLocale();
+  return (
+    <main className="mx-auto max-w-2xl px-6 pb-24">
+      <div className="fixed right-4 top-4"><LanguageSelector /></div>
+      <header className="flex items-center justify-between py-6">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-black text-white">{APP_INITIAL}</span>
+          <span className="text-lg font-extrabold tracking-tight">{APP_NAME}</span>
+        </Link>
+        <Link href="/" className="text-sm font-semibold text-accent-ink hover:underline">
+          {locale === "ro" ? "← Înapoi" : "← Back"}
+        </Link>
+      </header>
+
+      {locale === "ro" ? <RomanianContent /> : <EnglishContent />}
 
       <footer className="mt-16 border-t border-line pt-6 text-center text-xs text-ink-faint">
-        <Link href="/privacy" className="hover:underline">Privacy</Link>
+        <Link href="/privacy" className="hover:underline">{locale === "ro" ? "Confidențialitate" : "Privacy"}</Link>
         {" · "}
-        <Link href="/terms" className="hover:underline">Terms</Link>
+        <Link href="/terms" className="hover:underline">{locale === "ro" ? "Termeni" : "Terms"}</Link>
         {" · "}
-        {APP_NAME} · Food data from Open Food Facts
+        {APP_NAME} · {locale === "ro" ? "Date despre alimente de la Open Food Facts" : "Food data from Open Food Facts"}
       </footer>
     </main>
   );

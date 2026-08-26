@@ -2,18 +2,21 @@ import Link from "next/link";
 import { getMyProgramDays, getMySessions } from "@/lib/client-data";
 import { Card, EmptyState, PageTitle } from "@/components/ui";
 import { timeAgo } from "@/lib/format";
+import { getI18n } from "@/lib/i18n/server";
+import { fill } from "@/lib/i18n";
 
 export default async function WorkoutPage() {
+  const { t, locale } = await getI18n();
   const [days, sessions] = await Promise.all([getMyProgramDays(), getMySessions()]);
 
   return (
     <div>
-      <PageTitle title="Training" />
+      <PageTitle title={t.common.nav.training} />
 
       {days.length === 0 ? (
         <EmptyState
-          title="No program assigned"
-          hint="Your coach builds one in their workspace — it appears here the moment it is published."
+          title={t.clientApp.workout.noProgramTitle}
+          hint={t.clientApp.workout.noProgramHint}
         />
       ) : (
         <>
@@ -28,11 +31,13 @@ export default async function WorkoutPage() {
                     <p className="font-bold">{day.day_name}</p>
                     {day.logged.length > 0 ? (
                       <span className="rounded-md bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
-                        in progress
+                        {t.clientApp.workout.inProgress}
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-xs text-ink-faint">{day.exercises.length} exercises</p>
+                  <p className="mt-1 text-xs text-ink-faint">
+                    {fill(t.clientApp.workout.exercisesCount, { count: day.exercises.length })}
+                  </p>
                   <ul className="mt-3 space-y-1 text-sm text-ink-soft">
                     {day.exercises.map((e) => (
                       <li key={e.id} className="flex justify-between gap-2">
@@ -50,29 +55,29 @@ export default async function WorkoutPage() {
         </>
       )}
 
-      <h2 className="mb-3 mt-8 text-sm font-bold">History</h2>
+      <h2 className="mb-3 mt-8 text-sm font-bold">{t.clientApp.workout.history}</h2>
       {sessions.length === 0 ? (
-        <p className="text-sm text-ink-faint">No completed sessions yet.</p>
+        <p className="text-sm text-ink-faint">{t.clientApp.workout.noSessions}</p>
       ) : (
         <Card className="p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-[11px] uppercase tracking-wider text-ink-faint">
-                <th className="px-4 py-3 font-semibold">Session</th>
-                <th className="px-4 py-3 font-semibold">When</th>
-                <th className="px-4 py-3 text-right font-semibold">Sets</th>
-                <th className="px-4 py-3 text-right font-semibold">Volume</th>
-                <th className="px-4 py-3 text-right font-semibold">PRs</th>
+                <th className="px-4 py-3 font-semibold">{t.clientApp.workout.session}</th>
+                <th className="px-4 py-3 font-semibold">{t.clientApp.workout.when}</th>
+                <th className="px-4 py-3 text-right font-semibold">{t.clientApp.workout.sets}</th>
+                <th className="px-4 py-3 text-right font-semibold">{t.clientApp.workout.volume}</th>
+                <th className="px-4 py-3 text-right font-semibold">{t.clientApp.workout.prs}</th>
               </tr>
             </thead>
             <tbody>
               {sessions.map((s) => (
                 <tr key={s.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-semibold">{s.day_name}</td>
-                  <td className="px-4 py-3 text-ink-soft">{timeAgo(s.at)}</td>
+                  <td className="px-4 py-3 text-ink-soft">{timeAgo(s.at, locale)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{s.sets}</td>
                   <td className="px-4 py-3 text-right tabular-nums">
-                    {s.volume_kg.toLocaleString()} kg
+                    {s.volume_kg.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB")} kg
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {s.prs > 0 ? (

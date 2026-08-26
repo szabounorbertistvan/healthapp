@@ -3,14 +3,17 @@ import { redirect } from "next/navigation";
 import { isDemo } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/data";
 import { NavLinks } from "@/components/nav-links";
+import { LanguageSelector } from "@/components/language-selector";
 import { TIER_LABEL } from "@/lib/entitlements";
 import { APP_NAME, APP_INITIAL } from "@/lib/brand";
+import { getI18n } from "@/lib/i18n/server";
 
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
   if (!profile) redirect("/");
   // the coach web area is for coaches and admins; clients have their own surface
   if (profile.role === "client") redirect("/today");
+  const { t } = await getI18n();
 
   return (
     <div className="flex min-h-screen">
@@ -23,10 +26,11 @@ export default async function CoachLayout({ children }: { children: React.ReactN
           {profile.full_name} · <span className="font-semibold text-accent-ink">{TIER_LABEL[profile.tier]}</span>
         </p>
         <NavLinks isAdmin={profile.role === "admin"} />
-        <div className="mt-auto px-2 pt-6">
+        <div className="mt-auto space-y-3 px-2 pt-6">
+          <LanguageSelector />
           {isDemo ? (
             <p className="rounded-lg bg-warn-soft px-3 py-2 text-[11px] leading-snug text-warn">
-              <b>Demo mode</b> — sample data. Set Supabase env vars in <code>.env.local</code> to go live.
+              <b>{t.common.demoNotice.title}</b> — {t.common.demoNotice.body}
             </p>
           ) : null}
         </div>

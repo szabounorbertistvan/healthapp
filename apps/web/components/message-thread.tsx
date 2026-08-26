@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import type { MessageRow } from "@/lib/types";
 import { sendMessage } from "@/app/actions";
+import { useI18n } from "@/lib/i18n/client";
 
 export function MessageThread({
   conversationId,
@@ -10,6 +11,8 @@ export function MessageThread({
   conversationId: string;
   initialMessages: MessageRow[];
 }) {
+  const { t } = useI18n();
+  const msgs = t.coachWidgets.messageThread;
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
   const [note, setNote] = useState<string | null>(null);
@@ -27,9 +30,9 @@ export function MessageThread({
           { id: `local-${Date.now()}`, mine: true, body, at: new Date().toISOString() },
         ]);
         setDraft("");
-        if (result.demo) setNote("Demo mode — message not persisted.");
+        if (result.demo) setNote(msgs.demoNotPersisted);
       } else {
-        setNote(result.message ?? "Could not send");
+        setNote(result.message ?? msgs.couldNotSend);
       }
     });
   }
@@ -50,7 +53,7 @@ export function MessageThread({
           </div>
         ))}
         {messages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-ink-soft">No messages yet — say hi.</p>
+          <p className="py-8 text-center text-sm text-ink-soft">{msgs.noMessages}</p>
         ) : null}
       </div>
       {note ? <p className="pb-1 text-xs text-ink-faint">{note}</p> : null}
@@ -59,7 +62,7 @@ export function MessageThread({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Message…"
+          placeholder={msgs.placeholder}
           className="flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
         <button
@@ -67,7 +70,7 @@ export function MessageThread({
           disabled={pending || !draft.trim()}
           className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
         >
-          Send
+          {t.common.actions.send}
         </button>
       </div>
     </div>

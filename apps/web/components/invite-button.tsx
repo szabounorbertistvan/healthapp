@@ -1,8 +1,11 @@
 "use client";
 import { useState, useTransition } from "react";
 import { createInvite } from "@/app/actions";
+import { useI18n } from "@/lib/i18n/client";
 
 export function InviteButton({ disabled = false }: { disabled?: boolean }) {
+  const { t } = useI18n();
+  const m = t.coachWidgets.inviteButton;
   const [code, setCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -13,8 +16,8 @@ export function InviteButton({ disabled = false }: { disabled?: boolean }) {
       const result = await createInvite();
       if (result.ok && result.code) setCode(result.code);
       else if (result.message?.includes("CLIENT_LIMIT_REACHED"))
-        setError("Client limit reached — upgrade to add more.");
-      else setError(result.message ?? "Could not create invite");
+        setError(m.limitReachedUpgrade);
+      else setError(result.message ?? m.createError);
     });
   }
 
@@ -27,7 +30,7 @@ export function InviteButton({ disabled = false }: { disabled?: boolean }) {
             className="ml-2 text-xs font-normal underline"
             onClick={() => navigator.clipboard.writeText(code)}
           >
-            copy
+            {m.copy}
           </button>
         </span>
       ) : null}
@@ -35,10 +38,10 @@ export function InviteButton({ disabled = false }: { disabled?: boolean }) {
       <button
         onClick={onClick}
         disabled={pending || disabled}
-        title={disabled ? "Client limit reached for your plan" : undefined}
+        title={disabled ? m.limitReachedTitle : undefined}
         className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? "Generating…" : "Invite client"}
+        {pending ? m.generating : m.inviteClient}
       </button>
     </div>
   );

@@ -10,7 +10,7 @@ import {
   demoClientRows, demoDashboardRows, demoRoster, store,
   type StoredPlan, type StoredProgram,
 } from "./demo-store";
-import { portionMacros, sumMacros } from "@buddygym/shared";
+import { effectiveTier, portionMacros, sumMacros } from "@buddygym/shared";
 import type {
   AdminStats, CheckInRow, ClientRow, ConversationRow, DashboardRow, MessageRow,
   NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
@@ -26,14 +26,19 @@ export async function getProfile(): Promise<Profile | null> {
   if (!auth.user) return null;
   const [{ data: user }, { data: sub }] = await Promise.all([
     supabase.from("users").select("id, full_name, role").eq("id", auth.user.id).single(),
-    supabase.from("subscriptions").select("tier, status").eq("user_id", auth.user.id).maybeSingle(),
+    supabase.from("subscriptions")
+      .select("tier, status, trial_ends_at, stripe_customer_id")
+      .eq("user_id", auth.user.id).maybeSingle(),
   ]);
   if (!user) return null;
+  const role = user.role as Role;
   return {
     id: user.id,
     full_name: user.full_name ?? "Coach",
-    role: user.role as Role,
-    tier: (sub?.status === "active" ? (sub.tier as Tier) : "free"),
+    role,
+    tier: effectiveTier(sub ? { ...sub, tier: sub.tier as Tier } : null, role),
+    trial_ends_at: sub?.trial_ends_at ?? null,
+    has_stripe: Boolean(sub?.stripe_customer_id),
   };
 }
 

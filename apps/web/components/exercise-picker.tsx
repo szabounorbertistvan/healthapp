@@ -2,6 +2,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { exerciseRef, type ExerciseSummary } from "@buddygym/shared";
 import { searchExerciseLibrary } from "@/app/library-actions";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n";
 
 type Props = {
   muscles: string[];
@@ -12,6 +14,8 @@ type Props = {
 };
 
 export function ExercisePicker({ muscles, equipment, onPick, pendingLabel }: Props) {
+  const { t } = useI18n();
+  const m = t.coachWidgets.exercisePicker;
   const [q, setQ] = useState("");
   const [muscle, setMuscle] = useState("");
   const [gear, setGear] = useState("");
@@ -40,13 +44,13 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel }: Pro
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search exercises…"
+        placeholder={m.searchPlaceholder}
         className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
       />
 
       <div className="flex flex-wrap gap-2">
-        <Facet label="All muscles" options={muscles} value={muscle} onChange={setMuscle} />
-        <Facet label="All equipment" options={equipment} value={gear} onChange={setGear} />
+        <Facet label={m.allMuscles} options={muscles} value={muscle} onChange={setMuscle} />
+        <Facet label={m.allEquipment} options={equipment} value={gear} onChange={setGear} />
         {muscle || gear || q ? (
           <button
             onClick={() => {
@@ -56,14 +60,18 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel }: Pro
             }}
             className="rounded-lg px-2 py-1 text-xs text-ink-soft underline"
           >
-            clear
+            {m.clear}
           </button>
         ) : null}
       </div>
 
       <p className="text-xs text-ink-faint">
-        {loading ? "Searching…" : `${total} exercise${total === 1 ? "" : "s"}`}
-        {total > results.length ? ` · showing first ${results.length}` : ""}
+        {loading
+          ? m.searching
+          : fill(total === 1 ? m.exercisesOne : total < 20 ? m.exercisesFew : m.exercisesMany, {
+              n: total,
+            })}
+        {total > results.length ? ` ${fill(m.showingFirst, { n: results.length })}` : ""}
       </p>
 
       <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
@@ -86,7 +94,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel }: Pro
                   onClick={() => onPick(exercise)}
                   className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-xs font-semibold hover:border-accent hover:text-accent-ink"
                 >
-                  {pendingLabel ?? "Add"}
+                  {pendingLabel ?? t.common.actions.add}
                 </button>
               ) : null}
             </div>
@@ -94,7 +102,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel }: Pro
         ))}
         {!loading && results.length === 0 ? (
           <li className="rounded-lg border border-dashed border-line p-4 text-center text-sm text-ink-soft">
-            Nothing matches. Custom exercises land in Sprint 3 too.
+            {m.noMatch}
           </li>
         ) : null}
       </ul>

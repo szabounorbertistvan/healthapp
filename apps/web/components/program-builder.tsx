@@ -13,6 +13,8 @@ import {
 } from "@/app/builder-actions";
 import { ExercisePicker } from "@/components/exercise-picker";
 import { Card } from "@/components/ui";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n";
 
 // W4 · Program builder. The wireframe puts the library in a left rail and the
 // days as columns; here the library opens as a panel next to the day being
@@ -26,6 +28,8 @@ type Props = {
 
 export function ProgramBuilder({ program, muscles, equipment }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
+  const m = t.coachWidgets.programBuilder;
   const [pickerDayId, setPickerDayId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -34,7 +38,7 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
     setError(null);
     startTransition(async () => {
       const result = await action();
-      if (!result.ok) setError(result.message ?? "Something went wrong");
+      if (!result.ok) setError(result.message ?? m.somethingWentWrong);
       router.refresh();
     });
   }
@@ -47,43 +51,49 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
         <div className="flex items-center gap-2">
           <StatusBadge status={program.status} />
           <span className="text-sm text-ink-soft">
-            {program.client_name} · {program.weeks} week{program.weeks === 1 ? "" : "s"} ·{" "}
-            {program.intensity_mode.toUpperCase()}
+            {program.client_name} ·{" "}
+            {fill(
+              program.weeks === 1 ? m.weeksOne : program.weeks < 20 ? m.weeksFew : m.weeksMany,
+              { n: program.weeks },
+            )}{" "}
+            · {program.intensity_mode.toUpperCase()}
           </span>
         </div>
         <div className="flex items-center gap-2">
           {error ? <span className="text-sm text-risk">{error}</span> : null}
           <button
-            onClick={() => run(() => addProgramDay(program.id, `Day ${program.days.length + 1}`))}
+            onClick={() =>
+              run(() =>
+                addProgramDay(program.id, fill(m.dayDefaultName, { n: program.days.length + 1 })),
+              )
+            }
             disabled={pending}
             className="rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:border-accent disabled:opacity-50"
           >
-            + Add day
+            {m.addDay}
           </button>
           <button
             onClick={() => run(() => publishProgram(program.id))}
             disabled={pending || isEmpty || program.status === "published"}
-            title={isEmpty ? "Add at least one exercise first" : undefined}
+            title={isEmpty ? m.publishHint : undefined}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
           >
-            {program.status === "published" ? "Published" : "Publish to client"}
+            {program.status === "published" ? m.published : m.publish}
           </button>
         </div>
       </div>
 
       {program.status !== "published" ? (
         <p className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn">
-          Draft — invisible to {program.client_name} until you publish (spec B1).
+          {fill(m.draftNotice, { name: program.client_name })}
         </p>
       ) : null}
 
       <div className="space-y-4">
         {program.days.length === 0 ? (
           <Card className="py-10 text-center">
-            <p className="font-semibold">No days yet</p>
-            <p className="mt-1 text-sm text-ink-soft">
-              Add a training day, then pull exercises from the library.
-            </p>
+            <p className="font-semibold">{m.noDaysTitle}</p>
+            <p className="mt-1 text-sm text-ink-soft">{m.noDaysBody}</p>
           </Card>
         ) : null}
 
@@ -98,14 +108,14 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
                     onClick={() => setPickerDayId(picking ? null : day.id)}
                     className="rounded-lg border border-line px-2 py-1 font-semibold hover:border-accent hover:text-accent-ink"
                   >
-                    {picking ? "Close library" : "+ Exercise"}
+                    {picking ? m.closeLibrary : m.addExercise}
                   </button>
                   <button
                     onClick={() => run(() => duplicateProgramDay(program.id, day.id))}
                     disabled={pending}
                     className="rounded-lg border border-line px-2 py-1 hover:border-accent disabled:opacity-50"
                   >
-                    Duplicate
+                    {m.duplicate}
                   </button>
                 </div>
               </div>
@@ -117,21 +127,21 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
                 <div className="min-w-0 flex-1">
                   {day.exercises.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-sm text-ink-faint">
-                      No exercises yet
+                      {m.noExercises}
                     </p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[34rem] text-sm">
                         <thead>
                           <tr className="border-b-2 border-line text-left text-[11px] uppercase tracking-wider text-ink-faint">
-                            <th className="py-2 pr-3">Exercise</th>
-                            <th className="py-2 pr-2 w-16">Sets</th>
-                            <th className="py-2 pr-2 w-20">Reps</th>
-                            <th className="py-2 pr-2 w-20">Kg</th>
+                            <th className="py-2 pr-3">{m.colExercise}</th>
+                            <th className="py-2 pr-2 w-16">{m.colSets}</th>
+                            <th className="py-2 pr-2 w-20">{m.colReps}</th>
+                            <th className="py-2 pr-2 w-20">{m.colKg}</th>
                             <th className="py-2 pr-2 w-16">
                               {program.intensity_mode === "rpe" ? "RPE" : "RIR"}
                             </th>
-                            <th className="py-2 pr-2 w-20">Rest s</th>
+                            <th className="py-2 pr-2 w-20">{m.colRest}</th>
                             <th className="py-2 w-8" />
                           </tr>
                         </thead>
@@ -162,7 +172,7 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
                 {picking ? (
                   <div className="flex h-[30rem] w-full shrink-0 flex-col rounded-lg border border-line bg-bg p-3 lg:w-80">
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-                      Add to {day.name}
+                      {fill(m.addTo, { name: day.name })}
                     </p>
                     <ExercisePicker
                       muscles={muscles}
@@ -208,6 +218,7 @@ function ExerciseRow({
   onSave: (values: Values) => void;
   onRemove: () => void;
 }) {
+  const { t } = useI18n();
   // Local state so typing does not fight the server round-trip.
   const [values, setValues] = useState<Values>({
     target_sets: row.sets,
@@ -284,7 +295,7 @@ function ExerciseRow({
         <button
           onClick={onRemove}
           disabled={disabled}
-          title="Remove exercise"
+          title={t.coachWidgets.programBuilder.removeExercise}
           className="rounded px-1.5 py-0.5 text-ink-faint hover:bg-risk-soft hover:text-risk disabled:opacity-50"
         >
           ×
@@ -295,9 +306,12 @@ function ExerciseRow({
 }
 
 function StatusBadge({ status }: { status: ProgramDetail["status"] }) {
+  const { t } = useI18n();
   const styles =
     status === "published" ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint";
   return (
-    <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${styles}`}>{status}</span>
+    <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${styles}`}>
+      {t.coachWidgets.programBuilder.status[status]}
+    </span>
   );
 }

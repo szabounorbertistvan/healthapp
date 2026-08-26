@@ -2,11 +2,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDemoClient } from "@/app/client-actions";
+import { useI18n } from "@/lib/i18n/client";
 
 // Demo-only shortcut. The real path is InviteButton: a client is a person with
 // an account who accepts an invite, not a row a coach types in.
 export function AddClientButton({ disabled = false }: { disabled?: boolean }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const m = t.coachWidgets.addClientButton;
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,9 +25,9 @@ export function AddClientButton({ disabled = false }: { disabled?: boolean }) {
         setOpen(false);
         router.refresh();
       } else if (result.message === "CLIENT_LIMIT_REACHED") {
-        setError("Client limit reached for your plan.");
+        setError(m.limitReached);
       } else {
-        setError(result.message ?? "Could not add the client");
+        setError(result.message ?? m.addError);
       }
     });
   }
@@ -34,10 +37,10 @@ export function AddClientButton({ disabled = false }: { disabled?: boolean }) {
       <button
         onClick={() => setOpen(true)}
         disabled={disabled}
-        title={disabled ? "Client limit reached for your plan" : undefined}
+        title={disabled ? m.limitReachedTitle : undefined}
         className="rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:border-accent disabled:opacity-50"
       >
-        + Add client
+        {m.addClient}
       </button>
     );
   }
@@ -47,7 +50,7 @@ export function AddClientButton({ disabled = false }: { disabled?: boolean }) {
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Client name"
+        placeholder={m.namePlaceholder}
         autoFocus
         className="w-44 rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
       />
@@ -56,7 +59,7 @@ export function AddClientButton({ disabled = false }: { disabled?: boolean }) {
         disabled={pending}
         className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? "Adding…" : "Add"}
+        {pending ? m.adding : t.common.actions.add}
       </button>
       <button
         type="button"
@@ -66,7 +69,7 @@ export function AddClientButton({ disabled = false }: { disabled?: boolean }) {
         }}
         className="text-xs text-ink-soft underline"
       >
-        cancel
+        {m.cancel}
       </button>
       {error ? <span className="text-sm text-risk">{error}</span> : null}
     </form>

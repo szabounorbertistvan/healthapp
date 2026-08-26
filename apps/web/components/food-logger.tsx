@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { portionMacros } from "@buddygym/shared";
 import { searchFoods } from "@/app/nutrition-actions";
 import { logFood } from "@/app/client-actions-app";
+import { fill } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import type { DemoFood } from "@/lib/demo-foods";
 import type { MealSlot } from "@/lib/types";
 import { Card } from "./ui";
@@ -16,6 +18,7 @@ const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
  * the edge function once a backend is connected.
  */
 export function FoodLogger() {
+  const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -41,7 +44,7 @@ export function FoodLogger() {
         onClick={() => setOpen(true)}
         className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
       >
-        Log food
+        {t.clientWidgets.foodLogger.logFood}
       </button>
     );
   }
@@ -55,7 +58,9 @@ export function FoodLogger() {
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Log food</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          {t.clientWidgets.foodLogger.logFood}
+        </p>
         <button
           type="button"
           onClick={() => {
@@ -65,7 +70,7 @@ export function FoodLogger() {
           }}
           className="text-xs font-semibold text-ink-faint hover:text-ink"
         >
-          Close
+          {t.common.actions.close}
         </button>
       </div>
 
@@ -79,7 +84,7 @@ export function FoodLogger() {
               slot === s ? "bg-accent text-white" : "bg-bg text-ink-soft"
             }`}
           >
-            {s}
+            {t.clientWidgets.foodLogger.slots[s]}
           </button>
         ))}
       </div>
@@ -93,13 +98,13 @@ export function FoodLogger() {
               onClick={() => setPicked(null)}
               className="text-xs font-semibold text-ink-faint hover:text-ink"
             >
-              Change
+              {t.clientWidgets.foodLogger.change}
             </button>
           </div>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
-                grams
+                {t.clientWidgets.foodLogger.grams}
               </span>
               <input
                 inputMode="decimal"
@@ -128,7 +133,7 @@ export function FoodLogger() {
                   per100g: picked.per_100g,
                 });
                 if (!result.ok) {
-                  setError(result.message ?? "Could not log that");
+                  setError(result.message ?? t.clientWidgets.foodLogger.couldNotLog);
                   return;
                 }
                 setPicked(null);
@@ -139,7 +144,7 @@ export function FoodLogger() {
             }
             className="mt-3 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
-            Add to {slot}
+            {fill(t.clientWidgets.foodLogger.addTo, { slot: t.clientWidgets.foodLogger.slots[slot] })}
           </button>
         </div>
       ) : (
@@ -148,7 +153,7 @@ export function FoodLogger() {
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search foods…"
+            placeholder={t.clientWidgets.foodLogger.searchPlaceholder}
             className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <ul className="mt-2 max-h-64 divide-y divide-line overflow-y-auto">
@@ -167,7 +172,7 @@ export function FoodLogger() {
               </li>
             ))}
             {results.length === 0 ? (
-              <li className="py-3 text-sm text-ink-faint">No matches.</li>
+              <li className="py-3 text-sm text-ink-faint">{t.clientWidgets.foodLogger.noMatches}</li>
             ) : null}
           </ul>
         </>

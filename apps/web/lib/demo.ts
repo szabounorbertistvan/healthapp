@@ -19,6 +19,8 @@ export const demoProfile: Profile = {
   full_name: "Coach Alex",
   role: "admin",
   tier: "coach_pro",
+  trial_ends_at: null,
+  has_stripe: false,
 };
 
 export const demoAdminStats: AdminStats = {

@@ -2,10 +2,14 @@
 import { useState, useTransition } from "react";
 import type { CheckInRow } from "@/lib/types";
 import { reviewCheckIn } from "@/app/actions";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n";
 
 const metrics = ["sleep", "energy", "stress", "hunger", "recovery"] as const;
 
 export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
+  const { t, locale } = useI18n();
+  const m = t.coachWidgets.checkInReview;
   const [queue, setQueue] = useState(checkIns);
   const [selectedId, setSelectedId] = useState(checkIns[0]?.id ?? null);
   const [feedback, setFeedback] = useState("");
@@ -20,19 +24,19 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
     startTransition(async () => {
       const result = await reviewCheckIn(selected.id, selected.client_id, markOnly ? "" : feedback);
       if (result.ok) {
-        setStatus(result.demo ? "Demo mode — nothing saved." : "Feedback sent, marked reviewed.");
+        setStatus(result.demo ? m.demoNothingSaved : m.feedbackSent);
         const next = queue.filter((c) => c.id !== selected.id);
         setQueue(next);
         setSelectedId(next[0]?.id ?? null);
         setFeedback("");
       } else {
-        setStatus(result.message ?? "Something went wrong");
+        setStatus(result.message ?? m.somethingWentWrong);
       }
     });
   }
 
   if (!selected) {
-    return <p className="text-sm text-ink-soft">All caught up. {status}</p>;
+    return <p className="text-sm text-ink-soft">{m.allCaughtUp} {status}</p>;
   }
 
   return (
@@ -48,7 +52,7 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
           >
             {c.full_name}
             <span className="block text-xs font-normal text-ink-faint">
-              {new Date(c.submitted_at).toLocaleDateString()}
+              {new Date(c.submitted_at).toLocaleDateString(locale)}
             </span>
           </button>
         ))}
@@ -57,37 +61,37 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
       <div className="min-w-0 flex-1 space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-line bg-surface p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">This week</p>
-            <Row label="Weight" value={selected.weight_kg ? `${selected.weight_kg} kg` : "—"} />
-            {metrics.map((m) => (
-              <Row key={m} label={cap(m)} value={selected[m] ?? "—"} />
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.thisWeek}</p>
+            <Row label={m.weight} value={selected.weight_kg ? `${selected.weight_kg} kg` : "—"} />
+            {metrics.map((metric) => (
+              <Row key={metric} label={m.metric[metric]} value={selected[metric] ?? "—"} />
             ))}
           </div>
           <div className="rounded-xl border border-line bg-surface p-4 opacity-70">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Last week</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.lastWeek}</p>
             {selected.previous ? (
               <>
-                <Row label="Weight" value={selected.previous.weight_kg ? `${selected.previous.weight_kg} kg` : "—"} />
-                {metrics.map((m) => (
-                  <Row key={m} label={cap(m)} value={selected.previous?.[m] ?? "—"} />
+                <Row label={m.weight} value={selected.previous.weight_kg ? `${selected.previous.weight_kg} kg` : "—"} />
+                {metrics.map((metric) => (
+                  <Row key={metric} label={m.metric[metric]} value={selected.previous?.[metric] ?? "—"} />
                 ))}
               </>
             ) : (
-              <p className="mt-2 text-sm text-ink-soft">First check-in — nothing to compare yet.</p>
+              <p className="mt-2 text-sm text-ink-soft">{m.firstCheckIn}</p>
             )}
           </div>
         </div>
 
         {selected.note ? (
           <div className="rounded-xl border border-line bg-surface p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Client note</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.clientNote}</p>
             <p className="mt-1 text-sm">&ldquo;{selected.note}&rdquo;</p>
           </div>
         ) : null}
 
         {selected.context ? (
           <div className="rounded-xl border border-line bg-surface p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Week context</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.weekContext}</p>
             <p className="mt-1 text-sm text-ink-soft">{selected.context}</p>
           </div>
         ) : null}
@@ -95,7 +99,7 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
         <textarea
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
-          placeholder={`Feedback for ${selected.full_name}…`}
+          placeholder={fill(m.feedbackPlaceholder, { name: selected.full_name })}
           rows={3}
           className="w-full rounded-xl border border-line bg-surface p-3 text-sm outline-none focus:border-accent"
         />
@@ -105,14 +109,14 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
             disabled={pending || !feedback.trim()}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
           >
-            Send &amp; mark reviewed
+            {m.sendAndMark}
           </button>
           <button
             onClick={() => submit(true)}
             disabled={pending}
             className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink-soft hover:border-ink-faint"
           >
-            Mark reviewed only
+            {m.markOnly}
           </button>
           {status ? <span className="text-sm text-ink-soft">{status}</span> : null}
         </div>
@@ -128,7 +132,4 @@ function Row({ label, value }: { label: string; value: string | number }) {
       <span className="font-semibold tabular-nums">{value}</span>
     </div>
   );
-}
-function cap(s: string) {
-  return s[0].toUpperCase() + s.slice(1);
 }

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { APP_NAME } from "@/lib/brand";
+import { useI18n } from "@/lib/i18n/client";
 
 // Information notice, not a consent wall: the app sets only strictly-necessary
 // cookies (the Supabase auth session), which under GDPR/ePrivacy require notice
@@ -10,6 +11,7 @@ import { APP_NAME } from "@/lib/brand";
 const STORAGE_KEY = "bg-cookie-notice-v1";
 
 export function CookieBanner() {
+  const { t } = useI18n();
   const [visible, setVisible] = useState(false);
 
   // Read localStorage only after mount so server and first client render match.
@@ -36,22 +38,23 @@ export function CookieBanner() {
   return (
     <div
       role="region"
-      aria-label="Cookie notice"
+      aria-label={t.common.cookieBanner.ariaLabel}
       className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]"
     >
       <div className="mx-auto flex max-w-4xl flex-col items-start gap-3 sm:flex-row sm:items-center">
         <p className="flex-1 text-sm text-ink-soft">
-          {APP_NAME} uses only <b className="text-ink">essential cookies</b> — they keep you
-          signed in and make the app work. No analytics, no ads, no tracking.{" "}
+          {APP_NAME} {t.common.cookieBanner.beforeBold}{" "}
+          <b className="text-ink">{t.common.cookieBanner.bold}</b>{" "}
+          {t.common.cookieBanner.afterBold}{" "}
           <Link href="/privacy" className="font-semibold text-accent-ink hover:underline">
-            Privacy policy
+            {t.common.cookieBanner.privacyPolicy}
           </Link>
         </p>
         <button
           onClick={acknowledge}
           className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
         >
-          Got it
+          {t.common.cookieBanner.gotIt}
         </button>
       </div>
     </div>

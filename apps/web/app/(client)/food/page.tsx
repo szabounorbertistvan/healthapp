@@ -2,27 +2,30 @@ import { getMyDayNutrition, getMyPlanMeals } from "@/lib/client-data";
 import { Card, PageTitle } from "@/components/ui";
 import { MacroPanel } from "@/components/client-ui";
 import { FoodLogger } from "@/components/food-logger";
+import { getI18n } from "@/lib/i18n/server";
 import type { MealSlot } from "@/lib/types";
 
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
-const SLOT_LABEL: Record<MealSlot, string> = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  dinner: "Dinner",
-  snack: "Snack",
-};
 
 export default async function FoodPage() {
+  const { t } = await getI18n();
   const [day, planMeals] = await Promise.all([getMyDayNutrition(), getMyPlanMeals()]);
+
+  const slotLabel: Record<MealSlot, string> = {
+    breakfast: t.clientApp.food.breakfast,
+    lunch: t.clientApp.food.lunch,
+    dinner: t.clientApp.food.dinner,
+    snack: t.clientApp.food.snack,
+  };
 
   return (
     <div className="space-y-4">
-      <PageTitle title="Nutrition" />
+      <PageTitle title={t.common.nav.nutrition} />
 
       <MacroPanel
         totals={day.totals}
         target={day.target}
-        title={day.plan_name ?? "Today"}
+        title={day.plan_name ?? t.common.macros.todayTitle}
       />
 
       <FoodLogger />
@@ -34,7 +37,7 @@ export default async function FoodPage() {
         return (
           <Card key={slot}>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              {SLOT_LABEL[slot]}
+              {slotLabel[slot]}
             </p>
 
             {entries.length > 0 ? (
@@ -52,13 +55,13 @@ export default async function FoodPage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-ink-faint">Nothing logged.</p>
+              <p className="text-sm text-ink-faint">{t.clientApp.food.nothingLogged}</p>
             )}
 
             {planned && planned.foods.length > 0 ? (
               <div className="mt-3 border-t border-line pt-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-                  Your coach planned
+                  {t.clientApp.food.coachPlanned}
                 </p>
                 <ul className="mt-1.5 space-y-1 text-sm text-ink-soft">
                   {planned.foods.map((f, i) => (

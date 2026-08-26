@@ -4,6 +4,7 @@ export * from "./adherence";
 export * from "./macros";
 export * from "./prs";
 export * from "./entitlements";
+export * from "./billing";
 export * from "./sync";
 export * from "./exercises";
 export * from "./text";

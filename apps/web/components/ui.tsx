@@ -1,7 +1,9 @@
+"use client";
 import type { Signal } from "@/lib/types";
-import { signalLabel } from "@/lib/format";
+import { useI18n } from "@/lib/i18n/client";
 
 export function SignalBadge({ signal }: { signal: Signal }) {
+  const { t } = useI18n();
   const styles: Record<Signal, string> = {
     on_track: "bg-accent-soft text-accent-ink",
     needs_attention: "bg-warn-soft text-warn",
@@ -9,7 +11,7 @@ export function SignalBadge({ signal }: { signal: Signal }) {
   };
   return (
     <span className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${styles[signal]}`}>
-      {signalLabel[signal]}
+      {t.common.signal[signal]}
     </span>
   );
 }

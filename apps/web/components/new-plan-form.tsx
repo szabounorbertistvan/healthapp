@@ -2,9 +2,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createNutritionPlan } from "@/app/nutrition-actions";
+import { useI18n } from "@/lib/i18n/client";
+import { fill } from "@/lib/i18n";
 
 export function NewPlanForm({ roster }: { roster: { id: string; name: string }[] }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const m = t.coachWidgets.newPlanForm;
   const [name, setName] = useState("");
   const [clientId, setClientId] = useState(roster[0]?.id ?? "");
   const [kcal, setKcal] = useState(1800);
@@ -34,7 +38,7 @@ export function NewPlanForm({ roster }: { roster: { id: string; name: string }[]
         fat,
       });
       if (result.ok && result.id) router.push(`/nutrition/${result.id}`);
-      else setError(result.message ?? "Could not create the plan");
+      else setError(result.message ?? m.createError);
     });
   }
 
@@ -45,18 +49,18 @@ export function NewPlanForm({ roster }: { roster: { id: string; name: string }[]
   return (
     <form onSubmit={submit} className="max-w-md space-y-4">
       <div>
-        <label className={label}>Plan name</label>
+        <label className={label}>{m.planName}</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Andrei · Cut phase"
+          placeholder={m.namePlaceholder}
           className={field}
           autoFocus
         />
       </div>
 
       <div>
-        <label className={label}>Client</label>
+        <label className={label}>{m.client}</label>
         <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={field}>
           {roster.map((client) => (
             <option key={client.id} value={client.id}>
@@ -67,7 +71,7 @@ export function NewPlanForm({ roster }: { roster: { id: string; name: string }[]
       </div>
 
       <div>
-        <label className={label}>Daily calories</label>
+        <label className={label}>{m.dailyCalories}</label>
         <input
           type="number"
           min={500}
@@ -80,22 +84,22 @@ export function NewPlanForm({ roster }: { roster: { id: string; name: string }[]
 
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className={label}>Protein g</label>
+          <label className={label}>{m.proteinG}</label>
           <input type="number" min={0} value={protein} onChange={(e) => setProtein(Number(e.target.value))} className={field} />
         </div>
         <div>
-          <label className={label}>Carbs g</label>
+          <label className={label}>{m.carbsG}</label>
           <input type="number" min={0} value={carbs} onChange={(e) => setCarbs(Number(e.target.value))} className={field} />
         </div>
         <div>
-          <label className={label}>Fat g</label>
+          <label className={label}>{m.fatG}</label>
           <input type="number" min={0} value={fat} onChange={(e) => setFat(Number(e.target.value))} className={field} />
         </div>
       </div>
 
       <p className={`text-xs tabular-nums ${mismatch ? "text-warn" : "text-ink-faint"}`}>
-        Macros add up to {impliedKcal} kcal
-        {mismatch ? " — that is more than 5% away from the calorie target" : ""}
+        {fill(m.macrosAddUp, { kcal: impliedKcal })}
+        {mismatch ? m.macrosMismatch : ""}
       </p>
 
       {error ? <p className="text-sm text-risk">{error}</p> : null}
@@ -105,7 +109,7 @@ export function NewPlanForm({ roster }: { roster: { id: string; name: string }[]
         disabled={pending}
         className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? "Creating…" : "Create draft"}
+        {pending ? m.creating : m.createDraft}
       </button>
     </form>
   );

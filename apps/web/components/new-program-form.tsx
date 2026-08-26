@@ -2,9 +2,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createProgram } from "@/app/builder-actions";
+import { useI18n } from "@/lib/i18n/client";
 
 export function NewProgramForm({ roster }: { roster: { id: string; name: string }[] }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const m = t.coachWidgets.newProgramForm;
   const [name, setName] = useState("");
   const [clientId, setClientId] = useState(roster[0]?.id ?? "");
   const [weeks, setWeeks] = useState(6);
@@ -26,7 +29,7 @@ export function NewProgramForm({ roster }: { roster: { id: string; name: string 
         intensityMode,
       });
       if (result.ok && result.id) router.push(`/programs/${result.id}`);
-      else setError(result.message ?? "Could not create the program");
+      else setError(result.message ?? m.createError);
     });
   }
 
@@ -37,12 +40,12 @@ export function NewProgramForm({ roster }: { roster: { id: string; name: string 
     <form onSubmit={submit} className="max-w-md space-y-4">
       <div>
         <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
-          Program name
+          {m.programName}
         </label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Hypertrophy Block 1"
+          placeholder={m.namePlaceholder}
           className={field}
           autoFocus
         />
@@ -50,7 +53,7 @@ export function NewProgramForm({ roster }: { roster: { id: string; name: string 
 
       <div>
         <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
-          Client
+          {m.client}
         </label>
         <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={field}>
           {roster.map((client) => (
@@ -64,7 +67,7 @@ export function NewProgramForm({ roster }: { roster: { id: string; name: string 
       <div className="flex gap-3">
         <div className="flex-1">
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
-            Weeks
+            {m.weeks}
           </label>
           <input
             type="number"
@@ -77,16 +80,16 @@ export function NewProgramForm({ roster }: { roster: { id: string; name: string 
         </div>
         <div className="flex-1">
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
-            Intensity
+            {m.intensity}
           </label>
           <select
             value={intensityMode}
             onChange={(e) => setIntensityMode(e.target.value as "rir" | "rpe" | "simple")}
             className={field}
           >
-            <option value="rir">RIR — reps in reserve</option>
-            <option value="rpe">RPE — 1 to 10</option>
-            <option value="simple">Simple — easy / moderate / hard</option>
+            <option value="rir">{m.intensityRir}</option>
+            <option value="rpe">{m.intensityRpe}</option>
+            <option value="simple">{m.intensitySimple}</option>
           </select>
         </div>
       </div>
@@ -98,11 +101,9 @@ export function NewProgramForm({ roster }: { roster: { id: string; name: string 
         disabled={pending}
         className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? "Creating…" : "Create draft"}
+        {pending ? m.creating : m.createDraft}
       </button>
-      <p className="text-xs text-ink-faint">
-        Created as a draft. Nothing reaches the client until you publish.
-      </p>
+      <p className="text-xs text-ink-faint">{m.draftNote}</p>
     </form>
   );
 }

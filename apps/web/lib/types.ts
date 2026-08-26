@@ -7,7 +7,11 @@ export type Profile = {
   id: string;
   full_name: string;
   role: Role;
+  /** Effective tier — includes an active 30-day trial, not just paid tiers. */
   tier: Tier;
+  trial_ends_at: string | null;
+  /** True once a Stripe customer exists (shows "Manage billing"). */
+  has_stripe: boolean;
 };
 
 export type AdminStats = {
