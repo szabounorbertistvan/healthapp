@@ -4,9 +4,8 @@
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--workspace=@buddygym/web"],
-      "port": 3000,
-      "autoPort": true
+      "runtimeArgs": ["run", "web"],
+      "port": 3000
     }
   ]
 }

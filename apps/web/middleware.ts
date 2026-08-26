@@ -29,6 +29,8 @@ export async function middleware(request: NextRequest) {
 
   const { data } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
+  // legal pages are public for everyone, signed in or not — no redirects either way
+  if (path.startsWith("/privacy") || path.startsWith("/terms")) return response;
   const isPublic = path === "/" || path.startsWith("/login");
 
   // logged-out users see only the landing page (and login)

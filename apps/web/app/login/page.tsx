@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { isDemo, supabaseBrowser } from "@/lib/supabase/client";
+import { APP_NAME, APP_INITIAL } from "@/lib/brand";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,8 +34,8 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent font-black text-white">B</span>
-          <span className="text-xl font-extrabold tracking-tight">BuddyGym Coach</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent font-black text-white">{APP_INITIAL}</span>
+          <span className="text-xl font-extrabold tracking-tight">{APP_NAME} Coach</span>
         </div>
         <form onSubmit={submit} className="space-y-3 rounded-xl border border-line bg-surface p-5">
           {isDemo ? (

@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/data";
 import { isDemo } from "@/lib/supabase/server";
 import { DEMO_CLIENT_NAME } from "@/lib/demo-client-store";
 import { ClientNav, ClientTabBar } from "@/components/client-nav";
+import { APP_NAME, APP_INITIAL } from "@/lib/brand";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   // Demo mode has no auth, so the shell renders as the fixed demo client.
@@ -21,9 +22,9 @@ export default async function ClientLayout({ children }: { children: React.React
       <aside className="hidden w-52 shrink-0 flex-col border-r border-line bg-surface p-4 sm:flex">
         <Link href="/today" className="mb-2 flex items-center gap-2 px-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-black text-white">
-            B
+            {APP_INITIAL}
           </span>
-          <span className="text-base font-extrabold tracking-tight">BuddyGym</span>
+          <span className="text-base font-extrabold tracking-tight">{APP_NAME}</span>
         </Link>
         <p className="mb-5 px-2 text-xs text-ink-faint">{name}</p>
         <ClientNav />

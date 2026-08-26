@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { isDemo } from "@/lib/supabase/server";
+import { APP_NAME, APP_INITIAL } from "@/lib/brand";
 
 const clientBenefits = [
   { title: "Log a set in 3 taps", body: "Pre-filled targets, automatic rest timer, personal records detected for you — even with no signal at the gym." },
@@ -19,8 +20,8 @@ export default function LandingPage() {
     <main className="mx-auto max-w-4xl px-6 pb-20">
       <header className="flex items-center justify-between py-6">
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-black text-white">B</span>
-          <span className="text-lg font-extrabold tracking-tight">BuddyGym</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-black text-white">{APP_INITIAL}</span>
+          <span className="text-lg font-extrabold tracking-tight">{APP_NAME}</span>
         </div>
         <nav className="flex items-center gap-3">
           <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-semibold text-ink-soft hover:text-ink">
@@ -40,7 +41,7 @@ export default function LandingPage() {
           Your coaching, finally in one app.
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-ink-soft">
-          BuddyGym replaces WhatsApp threads, spreadsheets and three different trackers
+          {APP_NAME} replaces WhatsApp threads, spreadsheets and three different trackers
           with a single flow between you and your coach — or on your own.
         </p>
         <div className="mt-8 flex justify-center gap-3">
@@ -104,7 +105,11 @@ export default function LandingPage() {
       </section>
 
       <footer className="pt-10 text-center text-xs text-ink-faint">
-        BuddyGym · Food data from Open Food Facts
+        <Link href="/privacy" className="hover:underline">Privacy</Link>
+        {" · "}
+        <Link href="/terms" className="hover:underline">Terms</Link>
+        {" · "}
+        {APP_NAME} · Food data from Open Food Facts
       </footer>
     </main>
   );
