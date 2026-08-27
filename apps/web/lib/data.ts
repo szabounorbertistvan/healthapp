@@ -12,8 +12,8 @@ import {
 } from "./demo-store";
 import { effectiveTier, portionMacros, sumMacros } from "@healthapp/shared";
 import type {
-  AdminStats, CheckInRow, ClientRow, ConversationRow, DashboardRow, MessageRow,
-  NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
+  AdminStats, AdminUserRow, CheckInRow, ClientRow, ConversationRow, DashboardRow,
+  MessageRow, NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
 } from "./types";
 import type { Role, Tier } from "./entitlements";
 
@@ -51,7 +51,7 @@ export async function getAdminStats(): Promise<AdminStats> {
       supabase.from("users").select("role"),
       supabase.from("trainer_clients").select("id", { count: "exact", head: true }).eq("status", "active"),
       supabase.from("subscriptions").select("tier").eq("status", "active"),
-      supabase.from("users").select("id, full_name, role, created_at, subscriptions(tier)")
+      supabase.from("users").select(ADMIN_USER_SELECT)
         .order("created_at", { ascending: false }).limit(10),
     ]);
   const roles = roleRows ?? [];
@@ -63,12 +63,61 @@ export async function getAdminStats(): Promise<AdminStats> {
     clients: roles.filter((r) => r.role === "client" || r.role === "both").length,
     active_relationships: rels ?? 0,
     tiers: [...tierCounts.entries()].map(([tier, count]) => ({ tier: tier as Tier, count })),
-    recent_users: (recent ?? []).map((u) => ({
-      id: u.id, full_name: u.full_name ?? "—", role: u.role as Role,
-      tier: ((u.subscriptions as unknown as { tier: string } | null)?.tier ?? "free") as Tier,
-      created_at: u.created_at,
-    })),
+    recent_users: (recent ?? []).map(toAdminUserRow),
   };
+}
+
+/** Shape of the `users` select shared by the admin list and the admin search. */
+const ADMIN_USER_SELECT = "id, full_name, role, created_at, subscriptions(tier)";
+
+type AdminUserSelectRow = {
+  id: string;
+  full_name: string | null;
+  role: string;
+  created_at: string;
+  subscriptions: unknown;
+};
+
+function toAdminUserRow(u: AdminUserSelectRow): AdminUserRow {
+  return {
+    id: u.id,
+    full_name: u.full_name ?? "—",
+    role: u.role as Role,
+    tier: ((u.subscriptions as { tier: string } | null)?.tier ?? "free") as Tier,
+    created_at: u.created_at,
+  };
+}
+
+/**
+ * Admin user lookup by name. `users` has no email column — addresses live in
+ * `auth.users`, which RLS does not expose — so name is all we can match on.
+ *
+ * Visibility is the `users_admin_read` policy, not this function: a non-admin
+ * running the same query sees only themselves. The page still checks the role
+ * so a non-admin gets redirected rather than an oddly empty table.
+ */
+export async function searchUsers(query: string): Promise<AdminUserRow[]> {
+  // % and _ are LIKE wildcards, and , ( ) " break PostgREST's filter parser.
+  // Dropping them keeps the search literal without an escaping dance.
+  const needle = query.replace(/[%_,()"\\]/g, " ").trim();
+  if (!needle) return [];
+
+  if (isDemo) {
+    const lower = needle.toLowerCase();
+    return demoAdminStats.recent_users.filter((u) =>
+      u.full_name.toLowerCase().includes(lower),
+    );
+  }
+
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase
+    .from("users")
+    .select(ADMIN_USER_SELECT)
+    .ilike("full_name", `%${needle}%`)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return (data ?? []).map(toAdminUserRow);
 }
 
 export async function getDashboard(): Promise<DashboardRow[]> {

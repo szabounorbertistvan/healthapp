@@ -14,13 +14,21 @@ export type Profile = {
   has_stripe: boolean;
 };
 
+export type AdminUserRow = {
+  id: string;
+  full_name: string;
+  role: Role;
+  tier: Tier;
+  created_at: string;
+};
+
 export type AdminStats = {
   total_users: number;
   coaches: number;
   clients: number;
   active_relationships: number;
   tiers: { tier: Tier; count: number }[];
-  recent_users: { id: string; full_name: string; role: Role; tier: Tier; created_at: string }[];
+  recent_users: AdminUserRow[];
 };
 
 export type DashboardRow = {
