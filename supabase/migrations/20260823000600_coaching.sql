@@ -1,4 +1,4 @@
--- BuddyGym schema · 06 coaching: conversations, messages, feedback
+-- HealthApp schema · 06 coaching: conversations, messages, feedback
 
 create table public.conversations (
   id uuid primary key default gen_random_uuid(),

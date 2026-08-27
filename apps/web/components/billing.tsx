@@ -1,13 +1,13 @@
 "use client";
 // Billing UI: trial banner, subscribe/manage panel, admin comp control.
-// Prices shown are the MVP defaults from @buddygym/shared — Stripe's checkout
+// Prices shown are the MVP defaults from @healthapp/shared — Stripe's checkout
 // page always displays the real amount, so a dashboard price change can't
 // charge something different from what the user confirms.
 import { useState, useTransition } from "react";
 import {
   ENTITLEMENTS, PLAN_PRICES, TIER_LABEL, trialDaysLeft,
   type PaidTier, type PlanInterval, type Tier,
-} from "@buddygym/shared";
+} from "@healthapp/shared";
 import { adminSetTier, openBillingPortal, startCheckout } from "@/app/billing-actions";
 
 export function TrialBanner({ trialEndsAt, paid }: { trialEndsAt: string | null; paid: boolean }) {

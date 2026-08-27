@@ -1,4 +1,4 @@
--- BuddyGym schema · 02 core: users, trainer_clients, goals
+-- HealthApp schema · 02 core: users, trainer_clients, goals
 
 create table public.users (
   id uuid primary key references auth.users (id) on delete cascade,

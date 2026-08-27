@@ -1,4 +1,4 @@
-# BuddyGym — project guide
+# HealthApp — project guide
 
 Fitness & coaching platform replacing "WhatsApp + Excel + a tracker app". Two
 roles: **coach** (builds programs and nutrition plans, watches adherence) and

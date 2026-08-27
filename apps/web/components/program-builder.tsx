@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { exerciseRef, type ExerciseSummary } from "@buddygym/shared";
+import { exerciseRef, type ExerciseSummary } from "@healthapp/shared";
 import type { ProgramDetail, ProgramExerciseRow } from "@/lib/types";
 import {
   addProgramDay,

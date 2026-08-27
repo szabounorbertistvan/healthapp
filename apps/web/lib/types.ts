@@ -1,4 +1,4 @@
-import type { AdherenceResult, Macros } from "@buddygym/shared";
+import type { AdherenceResult, Macros } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
 
 export type Signal = "on_track" | "needs_attention" | "at_risk";
@@ -120,7 +120,7 @@ export type PlanFoodRow = {
   id: string;
   food_name: string;
   grams: number;
-  /** Computed from per-100g values by @buddygym/shared, never stored twice. */
+  /** Computed from per-100g values by @healthapp/shared, never stored twice. */
   macros: { kcal: number; protein: number; carbs: number; fat: number };
 };
 

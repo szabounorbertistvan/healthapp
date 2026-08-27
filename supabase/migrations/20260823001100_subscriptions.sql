@@ -1,4 +1,4 @@
--- BuddyGym schema · 11 subscriptions & admin access
+-- HealthApp schema · 11 subscriptions & admin access
 -- Entitlements live in ONE table (plan §2: RevenueCat slots in later by writing
 -- here from its webhook). Tier → feature mapping is code (packages/shared and
 -- apps/web/lib/entitlements.ts); the DB stores only who has which tier.

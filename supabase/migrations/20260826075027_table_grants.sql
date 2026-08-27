@@ -1,4 +1,4 @@
--- BuddyGym schema · 13 table privileges
+-- HealthApp schema · 13 table privileges
 --
 -- Fixes a schema-wide gap: migrations 01-12 enable RLS and define 73 policies,
 -- but never GRANT table privileges. Those are two independent layers — a policy

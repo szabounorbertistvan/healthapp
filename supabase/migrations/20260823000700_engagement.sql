@@ -1,4 +1,4 @@
--- BuddyGym schema · 07 engagement: habits, streaks, badges, notifications
+-- HealthApp schema · 07 engagement: habits, streaks, badges, notifications
 
 create table public.habits (
   id uuid primary key default gen_random_uuid(),

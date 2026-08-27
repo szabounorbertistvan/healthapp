@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
-import { exerciseRef, type ExerciseSummary } from "@buddygym/shared";
+import { exerciseRef, type ExerciseSummary } from "@healthapp/shared";
 import { searchExerciseLibrary } from "@/app/library-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";

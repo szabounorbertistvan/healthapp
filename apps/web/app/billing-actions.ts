@@ -9,7 +9,7 @@ import {
   PRICE_LOOKUP_KEYS,
   type PaidTier,
   type PlanInterval,
-} from "@buddygym/shared";
+} from "@healthapp/shared";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import type { ActionResult } from "./actions";
 

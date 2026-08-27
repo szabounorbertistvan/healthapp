@@ -1,4 +1,4 @@
-// BuddyGym · push-dispatch edge function
+// HealthApp · push-dispatch edge function
 // Fan-out from the notifications table to Expo Push (PRODUCT_SPEC §5 internal,
 // §8 notification catalog). Service role only — called by pg_cron, never by an app.
 //

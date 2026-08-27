@@ -1,11 +1,11 @@
-// BuddyGym · food-search edge function
+// HealthApp · food-search edge function
 // Local `foods` cache first, then Open Food Facts (free API). External hits are
 // upserted into `foods` so the cache grows organically (plan §7).
 // GET /functions/v1/food-search?q=chicken&locale=ro
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { portionsFromOff } from "../_shared/portions.ts";
 
-const OFF_USER_AGENT = "BuddyGym/0.1 (relu.plesciuc@sfappworks.com)"; // required by OFF API policy
+const OFF_USER_AGENT = "HealthApp/0.1 (relu.plesciuc@sfappworks.com)"; // required by OFF API policy
 
 type FoodResult = {
   food_id: string | null;

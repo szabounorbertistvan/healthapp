@@ -1,5 +1,5 @@
 "use server";
-import { filterExercises, type ExerciseFilter, type ExerciseSummary } from "@buddygym/shared";
+import { filterExercises, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { exerciseLibrary } from "@/lib/exercise-library";
 

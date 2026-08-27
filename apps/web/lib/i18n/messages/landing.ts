@@ -46,7 +46,7 @@ const en = {
     title: "{app} lives on your phone",
     body: "Workouts, nutrition, check-ins and streaks are in the mobile app for iOS and Android. The web dashboard is your coach's workspace.",
     beta: "The mobile app ships with the private beta — your coach will send you an invite link.",
-    back: "← Back to buddygym.app",
+    back: "← Back to healthapp.app",
   },
 };
 
@@ -97,7 +97,7 @@ const ro: typeof en = {
     title: "{app} trăiește pe telefonul tău",
     body: "Antrenamentele, nutriția, check-in-urile și seriile sunt în aplicația mobilă pentru iOS și Android. Dashboard-ul web este spațiul de lucru al antrenorului tău.",
     beta: "Aplicația mobilă vine odată cu beta privată — antrenorul tău îți va trimite un link de invitație.",
-    back: "← Înapoi la buddygym.app",
+    back: "← Înapoi la healthapp.app",
   },
 };
 

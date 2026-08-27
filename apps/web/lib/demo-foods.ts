@@ -1,4 +1,4 @@
-import { matchesQuery, normalizeForSearch, type Macros } from "@buddygym/shared";
+import { matchesQuery, normalizeForSearch, type Macros } from "@healthapp/shared";
 
 // Demo food table.
 //

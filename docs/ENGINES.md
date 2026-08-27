@@ -1,6 +1,6 @@
 # Engine map
 
-What each part of BuddyGym does, which files hold it, and how finished it is.
+What each part of HealthApp does, which files hold it, and how finished it is.
 Read [../CLAUDE.md](../CLAUDE.md) first for the conventions all of these follow
 (demo/live two-branch actions, `ActionResult`, cookie i18n, RLS).
 

@@ -1,4 +1,4 @@
--- BuddyGym schema · 09 RPCs and engine functions
+-- HealthApp schema · 09 RPCs and engine functions
 
 -- ---------- invites ----------
 create or replace function public.create_invite()

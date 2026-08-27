@@ -1,11 +1,11 @@
-// BuddyGym · barcode-lookup edge function
+// HealthApp · barcode-lookup edge function
 // Cache first, then Open Food Facts product API (free). 404 → client offers
 // search / custom food (spec C3: never a dead end).
 // GET /functions/v1/barcode-lookup?code=5941234567890
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { portionsFromOff } from "../_shared/portions.ts";
 
-const OFF_USER_AGENT = "BuddyGym/0.1 (relu.plesciuc@sfappworks.com)";
+const OFF_USER_AGENT = "HealthApp/0.1 (relu.plesciuc@sfappworks.com)";
 
 Deno.serve(async (req) => {
   // Accepts ?code= (the documented GET form) or {"code":"..."} in a POST body,

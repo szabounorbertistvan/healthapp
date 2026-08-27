@@ -1,5 +1,5 @@
 {
-  "name": "@buddygym/api",
+  "name": "@healthapp/api",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",

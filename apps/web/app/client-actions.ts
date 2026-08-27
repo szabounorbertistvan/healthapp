@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { isDemo } from "@/lib/supabase/server";
 import { newDemoClient, store } from "@/lib/demo-store";
-import { entitlementsFor } from "@buddygym/shared";
+import { entitlementsFor } from "@healthapp/shared";
 import { getProfile } from "@/lib/data";
 import type { ActionResult } from "./actions";
 

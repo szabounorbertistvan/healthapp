@@ -1,5 +1,5 @@
 {
-  "name": "buddygym",
+  "name": "healthapp",
   "private": true,
   "packageManager": "npm@11.13.0",
   "workspaces": [
@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "web": "npm run dev --workspace=@buddygym/web",
+    "web": "npm run dev --workspace=@healthapp/web",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
-    "db:test": "supabase test db"
+    "db:test": "supabase test db",
+    "seed:accounts": "node scripts/seed-accounts.mjs"
   },
   "devDependencies": {
     "supabase": "^2.22.6",

@@ -1,4 +1,4 @@
-// BuddyGym · stripe-webhook edge function
+// HealthApp · stripe-webhook edge function
 // POST /functions/v1/stripe-webhook — called by Stripe, NOT by users
 // (verify_jwt = false in config.toml; authenticity comes from the Stripe
 // signature instead). Writes the subscriptions table with the service role —

@@ -2,7 +2,7 @@
 //
 // Same contract as lib/data.ts: demo mode (no NEXT_PUBLIC_SUPABASE_URL) reads
 // the in-process store, live mode goes through Supabase under RLS. Every
-// number a client sees comes from @buddygym/shared, so the coach looking at the
+// number a client sees comes from @healthapp/shared, so the coach looking at the
 // same week gets the identical figure rather than a second implementation.
 import "server-only";
 import {
@@ -11,7 +11,7 @@ import {
   portionMacros,
   sumMacros,
   type Macros,
-} from "@buddygym/shared";
+} from "@healthapp/shared";
 import { isDemo, supabaseServer } from "./supabase/server";
 import { store } from "./demo-store";
 import { viewingClientId } from "./view-mode";
@@ -506,7 +506,7 @@ export async function getMyCheckInState(): Promise<ClientCheckInState> {
 
 /**
  * One read for the whole Today screen. The adherence figure comes from
- * computeAdherence in @buddygym/shared — the same function the SQL engine
+ * computeAdherence in @healthapp/shared — the same function the SQL engine
  * mirrors — so the client sees the number their coach sees, with the same
  * plain-language reason attached.
  */

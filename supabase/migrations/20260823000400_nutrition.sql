@@ -1,4 +1,4 @@
--- BuddyGym schema · 04 nutrition engine
+-- HealthApp schema · 04 nutrition engine
 
 -- Food cache + customs. External rows (source 'off') are written by the
 -- food-search / barcode-lookup edge functions (service role) on first use, so

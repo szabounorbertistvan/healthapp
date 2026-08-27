@@ -1,4 +1,4 @@
--- BuddyGym schema · 01 extensions, enums, shared triggers
+-- HealthApp schema · 01 extensions, enums, shared triggers
 create extension if not exists pgcrypto;
 
 create type user_role as enum ('client', 'coach', 'both');

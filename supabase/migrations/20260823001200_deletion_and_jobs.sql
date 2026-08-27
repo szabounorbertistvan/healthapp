@@ -1,4 +1,4 @@
--- BuddyGym schema · 12 account deletion + the two missing scheduled jobs
+-- HealthApp schema · 12 account deletion + the two missing scheduled jobs
 --
 -- Closes three gaps against PRODUCT_SPEC §5/§8:
 --   · request_account_deletion() — G2, and a hard App Store review requirement

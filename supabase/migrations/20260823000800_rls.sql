@@ -1,4 +1,4 @@
--- BuddyGym schema · 08 Row Level Security
+-- HealthApp schema · 08 Row Level Security
 -- Direct translation of the permission matrix (PRODUCT_SPEC.md §4).
 -- Principles: client sees only own data; coach sees only active clients via
 -- is_active_coach_of(); ended coach loses access to new data automatically

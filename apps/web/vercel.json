@@ -2,5 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "buildCommand": "next build",
-  "ignoreCommand": "npx turbo-ignore @buddygym/web"
+  "ignoreCommand": "npx turbo-ignore @healthapp/web"
 }

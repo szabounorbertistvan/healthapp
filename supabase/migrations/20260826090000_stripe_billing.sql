@@ -1,4 +1,4 @@
--- BuddyGym schema · 13 Stripe billing
+-- HealthApp schema · 13 Stripe billing
 -- Payments arrive earlier than planned, and with Stripe rather than RevenueCat.
 -- The subscriptions table stays the ONE entitlement source: the stripe-webhook
 -- edge function writes here with the service role, admins write through

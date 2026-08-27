@@ -1,4 +1,4 @@
-// BuddyGym · import-exercises edge function
+// HealthApp · import-exercises edge function
 // Pulls the exercise library from Free Exercise DB (public domain / Unlicense,
 // https://github.com/yuhonas/free-exercise-db) and upserts it into `exercises`
 // as system rows (owner_id null). Idempotent on (source, external_id) — safe to

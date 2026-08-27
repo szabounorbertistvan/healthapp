@@ -1,4 +1,4 @@
--- BuddyGym schema · 03 training engine
+-- HealthApp schema · 03 training engine
 
 -- Exercise library. System rows come from Free Exercise DB (public domain,
 -- https://github.com/yuhonas/free-exercise-db) via the import-exercises edge

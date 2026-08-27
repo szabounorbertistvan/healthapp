@@ -1,5 +1,5 @@
 "use client";
-import type { Macros } from "@buddygym/shared";
+import type { Macros } from "@healthapp/shared";
 import { Card } from "./ui";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";

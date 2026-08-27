@@ -10,7 +10,7 @@
 // client is Maria D., "d1") but nothing else.
 //
 // Lives in the server process: lost on dev-server restart.
-import { estimated1RM, portionMacros, sumMacros, type Macros } from "@buddygym/shared";
+import { estimated1RM, portionMacros, sumMacros, type Macros } from "@healthapp/shared";
 
 /** The demo client. Matches demoDashboard[0] so coach and client agree on who this is. */
 export const DEMO_CLIENT_ID = "d1";
@@ -103,14 +103,14 @@ type ClientStore = {
 const STORE_VERSION = 2;
 
 const globalRef = globalThis as unknown as {
-  __buddygymClientStore?: ClientStore & { version?: number };
+  __healthappClientStore?: ClientStore & { version?: number };
 };
 
 export function clientStore(): ClientStore {
-  if (globalRef.__buddygymClientStore?.version !== STORE_VERSION) {
-    globalRef.__buddygymClientStore = { ...seed(), version: STORE_VERSION };
+  if (globalRef.__healthappClientStore?.version !== STORE_VERSION) {
+    globalRef.__healthappClientStore = { ...seed(), version: STORE_VERSION };
   }
-  return globalRef.__buddygymClientStore;
+  return globalRef.__healthappClientStore;
 }
 
 export function newId(prefix: string): string {

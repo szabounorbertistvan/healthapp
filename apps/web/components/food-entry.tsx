@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { portionMacros } from "@buddygym/shared";
+import { portionMacros } from "@healthapp/shared";
 import { deleteFoodLog, updateFoodLog } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";

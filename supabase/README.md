@@ -1,4 +1,4 @@
-# BuddyGym — Database & Backend
+# HealthApp — Database & Backend
 
 Supabase (Postgres) schema implementing [DEVELOPMENT_PLAN.md](../DEVELOPMENT_PLAN.md) §4 and the
 permission matrix from [PRODUCT_SPEC.md](../PRODUCT_SPEC.md) §4.
@@ -54,6 +54,22 @@ supabase functions deploy food-search barcode-lookup import-exercises
 curl -X POST "https://<ref>.supabase.co/functions/v1/import-exercises" \
      -H "Authorization: Bearer $SERVICE_ROLE_KEY"
 ```
+
+## Test accounts
+
+`npm run seed:accounts` creates one account per role on whatever project
+`apps/web/.env.local` points at — `admin@`, `trainer@` and `client@healthapp.test`,
+password `HealthApp!Dev2026` — and puts the trainer and the client in an active
+relationship. Roles and the relationship are service-role writes (nobody can set
+their own `role`), so the secret key has to be in the environment:
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_... node scripts/seed-accounts.mjs
+```
+
+Re-running resets the passwords instead of duplicating anything; override
+`SEED_PASSWORD` / `SEED_DOMAIN` for different credentials. Tiers are left to
+`handle_new_profile()`, which stamps the 30-day trial.
 
 ## Design notes (why it looks like this)
 

@@ -1,5 +1,5 @@
 "use client";
-import { portionMacros } from "@buddygym/shared";
+import { portionMacros } from "@healthapp/shared";
 import { portionsFor, type DemoFood } from "@/lib/demo-foods";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";

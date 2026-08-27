@@ -1,4 +1,4 @@
-// BuddyGym · sync-ingest edge function
+// HealthApp · sync-ingest edge function
 // Flushes the mobile outbox (PRODUCT_SPEC §5, offline rules §6).
 // POST /functions/v1/sync-ingest  — user JWT, max 200 items per batch.
 //

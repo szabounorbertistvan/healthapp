@@ -10,7 +10,7 @@ import {
   demoClientRows, demoDashboardRows, demoRoster, store,
   type StoredPlan, type StoredProgram,
 } from "./demo-store";
-import { effectiveTier, portionMacros, sumMacros } from "@buddygym/shared";
+import { effectiveTier, portionMacros, sumMacros } from "@healthapp/shared";
 import type {
   AdminStats, CheckInRow, ClientRow, ConversationRow, DashboardRow, MessageRow,
   NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,

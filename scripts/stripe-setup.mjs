@@ -1,4 +1,4 @@
-// One-time Stripe bootstrap: creates the BuddyGym products and prices.
+// One-time Stripe bootstrap: creates the HealthApp products and prices.
 // Idempotent — reruns skip prices whose lookup_key already exists.
 //
 //   STRIPE_SECRET_KEY=sk_test_... node scripts/stripe-setup.mjs
@@ -21,14 +21,14 @@ const stripe = new Stripe(key);
 const CURRENCY = "eur";
 const PLANS = [
   {
-    product: { name: "BuddyGym Premium", metadata: { tier: "premium" } },
+    product: { name: "HealthApp Premium", metadata: { tier: "premium" } },
     prices: [
       { lookup_key: "premium_monthly", unit_amount: 1000, interval: "month" },
       { lookup_key: "premium_annual", unit_amount: 10200, interval: "year" },
     ],
   },
   {
-    product: { name: "BuddyGym Coach Pro", metadata: { tier: "coach_pro" } },
+    product: { name: "HealthApp Coach Pro", metadata: { tier: "coach_pro" } },
     prices: [
       { lookup_key: "coach_pro_monthly", unit_amount: 1000, interval: "month" },
       { lookup_key: "coach_pro_annual", unit_amount: 10200, interval: "year" },

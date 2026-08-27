@@ -6,7 +6,7 @@
 // a flaky connection can never duplicate a row (supabase/README.md, offline
 // idempotency). Demo mode writes to the in-process store instead.
 import { revalidatePath } from "next/cache";
-import { isPersonalRecord, portionMacros, type Macros } from "@buddygym/shared";
+import { isPersonalRecord, portionMacros, type Macros } from "@healthapp/shared";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { viewingClientId } from "@/lib/view-mode";
 import {

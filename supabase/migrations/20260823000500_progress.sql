@@ -1,4 +1,4 @@
--- BuddyGym schema · 05 progress engine
+-- HealthApp schema · 05 progress engine
 
 create table public.measurements (
   id uuid primary key default gen_random_uuid(),

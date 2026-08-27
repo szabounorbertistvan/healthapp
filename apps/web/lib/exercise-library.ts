@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import type { ExerciseSummary } from "@buddygym/shared";
+import type { ExerciseSummary } from "@healthapp/shared";
 
 // Server-only. The seed is the same 873 public-domain rows that
 // supabase/functions/import-exercises writes into the `exercises` table, so the
