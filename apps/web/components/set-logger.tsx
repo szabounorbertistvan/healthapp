@@ -74,6 +74,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
                   dayId: day.day_id,
                   dayName: day.day_name,
                   exerciseName: exercise.exercise,
+                  exerciseId: exercise.exercise_id ?? null,
+                  programExerciseId: exercise.id,
                   setIndex: done + 1,
                   weightKg: weight,
                   reps,

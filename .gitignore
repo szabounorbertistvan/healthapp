@@ -45,3 +45,8 @@ WIREFRAMES.pdf
 # downloaded Supabase env files
 env.download
 *.env.download
+
+# vercel
+.vercel
+.env*
+!.env.example

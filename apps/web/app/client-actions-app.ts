@@ -31,6 +31,10 @@ export async function logSet(input: {
   dayId: string;
   dayName: string;
   exerciseName: string;
+  /** exercises.id — required live, absent in demo where exercises are names. */
+  exerciseId?: string | null;
+  /** program_exercises.id, so a set can be traced back to what was prescribed. */
+  programExerciseId?: string | null;
   setIndex: number;
   weightKg: number;
   reps: number;
@@ -82,13 +86,23 @@ export async function logSet(input: {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: "Not signed in" };
 
+  if (!input.exerciseId) {
+    // logged_sets.exercise_id is NOT NULL and there is no name lookup here on
+    // purpose: guessing an exercise by name would silently log against the
+    // wrong row. The program screens carry the id through instead.
+    return { ok: false, message: "This exercise is missing its library link" };
+  }
+
+  // client_generated_id is a uuid column, and it is what makes a retry safe.
+  // Deriving it from the day and date keeps one session per day per program
+  // day however many times this runs.
   const { data: session, error: sessionError } = await supabase
     .from("logged_sessions")
     .upsert(
       {
-        client_id: auth.user.id,
+        user_id: auth.user.id,
         program_day_id: input.dayId,
-        client_generated_id: `${auth.user.id}:${input.dayId}:${isoDay()}`,
+        client_generated_id: uuidFrom(`${auth.user.id}:${input.dayId}:${isoDay()}`),
         started_at: new Date().toISOString(),
       },
       { onConflict: "client_generated_id" },
@@ -99,11 +113,15 @@ export async function logSet(input: {
 
   const { error } = await supabase.from("logged_sets").insert({
     session_id: session.id,
+    user_id: auth.user.id,
+    exercise_id: input.exerciseId,
+    program_exercise_id: input.programExerciseId ?? null,
     set_index: input.setIndex,
     weight_kg: input.weightKg,
     reps: input.reps,
     rpe: input.rpe,
-    client_generated_id: `${session.id}:${input.exerciseName}:${input.setIndex}`,
+    client_generated_id: uuidFrom(`${session.id}:${input.exerciseId}:${input.setIndex}`),
+    client_ts: new Date().toISOString(),
   });
   if (error) return { ok: false, message: error.message };
 
@@ -131,7 +149,7 @@ export async function finishWorkout(dayId: string): Promise<ActionResult> {
   const { error } = await supabase
     .from("logged_sessions")
     .update({ completed_at: new Date().toISOString() })
-    .eq("client_id", auth.user.id)
+    .eq("user_id", auth.user.id)
     .eq("program_day_id", dayId)
     .is("completed_at", null);
   if (error) return { ok: false, message: error.message };
@@ -282,18 +300,21 @@ export async function toggleHabit(habitId: string, day = isoDay()): Promise<Acti
     return { ok: true, demo: true };
   }
   const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, message: "Not signed in" };
   const { data: existing } = await supabase
     .from("habit_logs")
     .select("id")
     .eq("habit_id", habitId)
-    .eq("done_on", day)
+    .eq("date", day)
     .maybeSingle();
   const { error } = existing
     ? await supabase.from("habit_logs").delete().eq("id", existing.id)
     : await supabase.from("habit_logs").insert({
         habit_id: habitId,
-        done_on: day,
-        client_generated_id: `${habitId}:${day}`,
+        user_id: auth.user.id,
+        date: day,
+        client_generated_id: uuidFrom(`${habitId}:${day}`),
       });
   if (error) return { ok: false, message: error.message };
   revalidatePath("/today");
@@ -320,10 +341,16 @@ export async function addHabit(name: string, targetPerWeek: number): Promise<Act
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: "Not signed in" };
+  // No target_per_week column: scheduling is `weekdays int[]` with 0=Sun. A
+  // target of n means the first n days of the week, which is the closest this
+  // simple form can express — a real weekday picker is the proper fix.
+  const weekdays = Array.from({ length: target }, (_, i) => i);
   const { error } = await supabase.from("habits").insert({
-    client_id: auth.user.id,
+    user_id: auth.user.id,
+    created_by: auth.user.id,
     name: name.trim(),
-    target_per_week: target,
+    weekdays,
+    active: true,
   });
   if (error) return { ok: false, message: error.message };
   revalidatePath("/habits");
@@ -364,14 +391,27 @@ export async function addMeasurement(input: {
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: "Not signed in" };
+  // Waist lives inside the circumferences jsonb. Read the existing bag first so
+  // a weight-only entry cannot wipe a chest or hip measurement taken earlier.
+  const { data: existing } = await supabase
+    .from("measurements")
+    .select("circumferences")
+    .eq("user_id", auth.user.id)
+    .eq("date", takenOn)
+    .maybeSingle();
+  const circumferences: Record<string, number> = {
+    ...((existing?.circumferences as Record<string, number> | null) ?? {}),
+  };
+  if (input.waistCm !== null) circumferences.waist = input.waistCm;
+
   const { error } = await supabase.from("measurements").upsert(
     {
-      client_id: auth.user.id,
-      taken_on: takenOn,
+      user_id: auth.user.id,
+      date: takenOn,
       weight_kg: input.weightKg,
-      waist_cm: input.waistCm,
+      circumferences,
     },
-    { onConflict: "client_id,taken_on" },
+    { onConflict: "user_id,date" },
   );
   if (error) return { ok: false, message: error.message };
   revalidatePath("/progress");
@@ -422,7 +462,7 @@ export async function submitCheckIn(input: {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: "Not signed in" };
   const { error } = await supabase.from("check_ins").insert({
-    client_id: auth.user.id,
+    user_id: auth.user.id,
     week_start: weekStart,
     weight_kg: input.weightKg,
     sleep: input.sleep,
@@ -437,4 +477,37 @@ export async function submitCheckIn(input: {
   revalidatePath("/check-in");
   revalidatePath("/today");
   return { ok: true };
+}
+
+/**
+ * A stable uuid derived from a natural key.
+ *
+ * client_generated_id is a uuid column with a unique constraint, and it is the
+ * whole retry-safety story: the same logical write must always produce the same
+ * id. Random uuids would defeat that, so this hashes the key into a v5-shaped
+ * value. Not cryptographic — it only needs to be deterministic and spread out.
+ */
+function uuidFrom(key: string): string {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < key.length; i++) {
+    const c = key.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ (c + i), 0x85ebca6b) >>> 0;
+  }
+  const block = (seed: number, n: number) => {
+    let out = "";
+    let s = seed >>> 0;
+    while (out.length < n) {
+      s = Math.imul(s ^ (s >>> 15), 0x2545f491) >>> 0;
+      out += s.toString(16).padStart(8, "0");
+    }
+    return out.slice(0, n);
+  };
+  const a = block(h1, 8);
+  const b = block(h1 ^ h2, 4);
+  const c = `5${block(h2, 3)}`; // version 5 nibble
+  const d = ((parseInt(block(h2 ^ 0x9e3779b9, 1), 16) & 0x3) | 0x8).toString(16) + block(h1 ^ 0x5bf03635, 3);
+  const e = block(h2 ^ h1, 12);
+  return `${a}-${b}-${c}-${d}-${e}`;
 }
