@@ -109,7 +109,7 @@ export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
     .from("programs")
     .select(`id, name, intensity_mode,
       program_days(id, name, week_index, day_index,
-        program_exercises(id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds,
+        program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds,
           exercise:exercises(name_en, name_ro)))`)
     .eq("client_id", auth.user.id)
     .eq("status", "published")
@@ -119,7 +119,7 @@ export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
   if (error || !data) return [];
 
   type ExJoin = {
-    id: string; position: number; target_sets: number; target_reps: string;
+    id: string; exercise_id: string; position: number; target_sets: number; target_reps: string;
     target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null;
     exercise: { name_en: string; name_ro: string | null } | null;
   };
@@ -138,6 +138,7 @@ export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
         .sort((a, b) => a.position - b.position)
         .map((e) => ({
           id: e.id,
+          exercise_id: e.exercise_id,
           exercise: e.exercise?.name_ro ?? e.exercise?.name_en ?? "—",
           sets: e.target_sets,
           reps: e.target_reps,
@@ -204,7 +205,7 @@ export async function getMySessions(limit = 12): Promise<
   const { data, error } = await supabase
     .from("logged_sessions")
     .select("id, started_at, completed_at, logged_sets(weight_kg, reps, is_pr)")
-    .eq("client_id", auth.user.id)
+    .eq("user_id", auth.user.id)
     .not("completed_at", "is", null)
     .order("completed_at", { ascending: false })
     .limit(limit);
@@ -228,15 +229,16 @@ export async function getMyPrs(): Promise<ClientPrRow[]> {
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];
+  // user_id is denormalized onto logged_sets precisely so this needs no join.
   const { data, error } = await supabase
     .from("logged_sets")
-    .select("weight_kg, reps, logged_at, is_pr, exercise:exercises(name_en, name_ro), session:logged_sessions!inner(client_id)")
-    .eq("session.client_id", auth.user.id)
+    .select("weight_kg, reps, received_at, is_pr, exercise:exercises(name_en, name_ro)")
+    .eq("user_id", auth.user.id)
     .eq("is_pr", true)
-    .order("logged_at", { ascending: false });
+    .order("received_at", { ascending: false });
   if (error) return [];
   type Row = {
-    weight_kg: number | null; reps: number | null; logged_at: string;
+    weight_kg: number | null; reps: number | null; received_at: string;
     exercise: { name_en: string; name_ro: string | null } | null;
   };
   const best = new Map<string, ClientPrRow>();
@@ -244,7 +246,9 @@ export async function getMyPrs(): Promise<ClientPrRow[]> {
     const name = row.exercise?.name_ro ?? row.exercise?.name_en ?? "—";
     const oneRm = estimate(row.weight_kg ?? 0, row.reps ?? 0);
     const current = best.get(name);
-    if (!current || oneRm > current.best) best.set(name, { exercise: name, best: oneRm, at: row.logged_at });
+    if (!current || oneRm > current.best) {
+      best.set(name, { exercise: name, best: oneRm, at: row.received_at });
+    }
   }
   return [...best.values()].sort((a, b) => b.best - a.best);
 }
@@ -418,18 +422,20 @@ export async function getMyHabits(): Promise<ClientHabitRow[]> {
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];
+  // The schema has no target_per_week: a habit carries `weekdays int[]`
+  // (0=Sun), so how often it is scheduled is how many days it names.
   const { data } = await supabase
     .from("habits")
-    .select("id, name, target_per_week, habit_logs(done_on)")
-    .eq("client_id", auth.user.id)
-    .eq("archived", false);
-  type HabitJoin = { id: string; name: string; target_per_week: number; habit_logs: { done_on: string }[] };
+    .select("id, name, weekdays, habit_logs(date)")
+    .eq("user_id", auth.user.id)
+    .eq("active", true);
+  type HabitJoin = { id: string; name: string; weekdays: number[] | null; habit_logs: { date: string }[] };
   return ((data ?? []) as unknown as HabitJoin[]).map((h) => ({
     id: h.id,
     name: h.name,
-    target_per_week: h.target_per_week,
-    done_today: h.habit_logs.some((l) => l.done_on === today),
-    done_this_week: h.habit_logs.filter((l) => l.done_on >= weekStart).length,
+    target_per_week: h.weekdays?.length ?? 7,
+    done_today: h.habit_logs.some((l) => l.date === today),
+    done_this_week: h.habit_logs.filter((l) => l.date >= weekStart).length,
   }));
 }
 
@@ -445,13 +451,26 @@ export async function getMyMeasurements(limit = 12): Promise<ClientMeasurementRo
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];
+  // Waist is not a column: circumferences is a jsonb bag of {waist, chest, ...}
+  // in cm, so the app reads one key out of it rather than a named field.
   const { data } = await supabase
     .from("measurements")
-    .select("id, taken_on, weight_kg, waist_cm")
-    .eq("client_id", auth.user.id)
-    .order("taken_on", { ascending: false })
+    .select("id, date, weight_kg, circumferences")
+    .eq("user_id", auth.user.id)
+    .order("date", { ascending: false })
     .limit(limit);
-  return (data ?? []).reverse();
+  type Row = {
+    id: string; date: string; weight_kg: number | null;
+    circumferences: Record<string, number> | null;
+  };
+  return ((data ?? []) as unknown as Row[])
+    .map((m) => ({
+      id: m.id,
+      taken_on: m.date,
+      weight_kg: m.weight_kg,
+      waist_cm: m.circumferences?.waist ?? null,
+    }))
+    .reverse();
 }
 
 export async function getMyCheckInState(): Promise<ClientCheckInState> {
@@ -482,7 +501,7 @@ export async function getMyCheckInState(): Promise<ClientCheckInState> {
   const { data } = await supabase
     .from("check_ins")
     .select("week_start, weight_kg, note, coach_reviewed_at")
-    .eq("client_id", auth.user.id)
+    .eq("user_id", auth.user.id)
     .order("week_start", { ascending: false })
     .limit(2);
   const rows = data ?? [];

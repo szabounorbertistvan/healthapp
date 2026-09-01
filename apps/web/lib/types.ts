@@ -89,6 +89,12 @@ export type ProgramRow = {
 
 export type ProgramExerciseRow = {
   id: string;
+  /**
+   * The exercises row this targets. logged_sets.exercise_id is NOT NULL, so
+   * the client app has to carry it from the program through to the log.
+   * Absent in demo mode, where exercises are plain names.
+   */
+  exercise_id?: string | null;
   exercise: string;
   sets: number;
   reps: string;
