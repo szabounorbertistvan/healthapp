@@ -2,5 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "buildCommand": "next build",
-  "ignoreCommand": "npx turbo-ignore @healthapp/web"
+  "ignoreCommand": "npx turbo-ignore @healthapp/web",
+  "regions": ["fra1"],
+  "github": {
+    "silent": true
+  }
 }
