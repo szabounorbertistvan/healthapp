@@ -3,7 +3,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { finishWorkout, logSet } from "@/app/client-actions-app";
 import { Card } from "./ui";
-import type { ClientWorkoutDay } from "@/lib/types";
+import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
 
 /**
  * Log a set in three taps: the fields arrive pre-filled from the coach target,
@@ -16,11 +16,24 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
   const [error, setError] = useState<string | null>(null);
   const [pr, setPr] = useState<string | null>(null);
 
-  const doneByExercise = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const s of logged) map.set(s.exercise, (map.get(s.exercise) ?? 0) + 1);
-    return map;
-  }, [logged]);
+  // Grouped by the prescribed row, not the exercise name: a day may program the
+  // same lift twice (heavy, then a back-off block) and each block owns its own
+  // count and set numbering. Rows with no link — demo history, sets logged
+  // before program_exercise_id was carried through — fall back to the name.
+  const setsFor = useMemo(() => {
+    const byBlock = new Map<string, LoggedSetRow[]>();
+    for (const exercise of day.exercises) {
+      byBlock.set(
+        exercise.id,
+        logged.filter((s) =>
+          s.program_exercise_id
+            ? s.program_exercise_id === exercise.id
+            : s.exercise === exercise.exercise,
+        ),
+      );
+    }
+    return byBlock;
+  }, [logged, day.exercises]);
 
   const totalTarget = day.exercises.reduce((sum, e) => sum + e.sets, 0);
 
@@ -53,7 +66,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
       ) : null}
 
       {day.exercises.map((exercise) => {
-        const done = doneByExercise.get(exercise.exercise) ?? 0;
+        const blockSets = setsFor.get(exercise.id) ?? [];
+        const done = blockSets.length;
         return (
           <ExerciseBlock
             key={exercise.id}
@@ -63,8 +77,9 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
             targetWeight={exercise.weight_kg}
             targetRpe={exercise.rpe_value}
             rest={exercise.rest}
+            intensityMode={day.intensity_mode}
             done={done}
-            sets={logged.filter((l) => l.exercise === exercise.exercise)}
+            sets={blockSets}
             pending={pending}
             onLog={(weight, reps, rpe) =>
               startTransition(async () => {
@@ -89,6 +104,7 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
                   ...prev,
                   {
                     id: `tmp_${prev.length}`,
+                    program_exercise_id: exercise.id,
                     exercise: exercise.exercise,
                     set_index: done + 1,
                     weight_kg: weight,
@@ -125,7 +141,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
 }
 
 function ExerciseBlock({
-  name, targetSets, targetReps, targetWeight, targetRpe, rest, done, sets, pending, onLog,
+  name, targetSets, targetReps, targetWeight, targetRpe, rest, intensityMode,
+  done, sets, pending, onLog,
 }: {
   name: string;
   targetSets: number;
@@ -133,14 +150,22 @@ function ExerciseBlock({
   targetWeight: number | null;
   targetRpe: number | null;
   rest: string;
+  intensityMode: "rpe" | "rir" | "simple";
   done: number;
   sets: { id: string; set_index: number; weight_kg: number; reps: number; is_pr: boolean }[];
   pending: boolean;
   onLog: (weight: number, reps: number, rpe: number | null) => void;
 }) {
+  // program_exercises.target_rpe and logged_sets.rpe are both RPE, constrained
+  // to 1..10. When the coach set the program to RIR the field shows and takes
+  // reps-in-reserve — RIR 0 is a normal answer, RPE 0 is not — and converts on
+  // the way in and out.
+  const asRir = intensityMode === "rir";
   const [weight, setWeight] = useState(targetWeight?.toString() ?? "");
   const [reps, setReps] = useState(parseInt(targetReps, 10) ? String(parseInt(targetReps, 10)) : "");
-  const [rpe, setRpe] = useState(targetRpe?.toString() ?? "");
+  const [effort, setEffort] = useState(
+    targetRpe === null ? "" : String(asRir ? Math.max(0, 10 - targetRpe) : targetRpe),
+  );
   const complete = done >= targetSets;
 
   return (
@@ -181,13 +206,11 @@ function ExerciseBlock({
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <Field label="kg" value={weight} onChange={setWeight} />
         <Field label="reps" value={reps} onChange={setReps} />
-        <Field label="RIR" value={rpe} onChange={setRpe} />
+        <Field label={asRir ? "RIR" : "RPE"} value={effort} onChange={setEffort} />
         <button
           type="button"
           disabled={pending}
-          onClick={() =>
-            onLog(parseFloat(weight), parseInt(reps, 10), rpe === "" ? null : parseFloat(rpe))
-          }
+          onClick={() => onLog(parseFloat(weight), parseInt(reps, 10), toRpe(effort, asRir))}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
         >
           Log set
@@ -195,6 +218,15 @@ function ExerciseBlock({
       </div>
     </Card>
   );
+}
+
+/** The effort field as logged_sets.rpe wants it: 1..10, or null when blank. */
+function toRpe(value: string, asRir: boolean): number | null {
+  if (value.trim() === "") return null;
+  const parsed = parseFloat(value);
+  if (!Number.isFinite(parsed)) return null;
+  const rpe = asRir ? 10 - parsed : parsed;
+  return Math.min(Math.max(rpe, 1), 10);
 }
 
 function Field({

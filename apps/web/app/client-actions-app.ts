@@ -6,8 +6,9 @@
 // a flaky connection can never duplicate a row (supabase/README.md, offline
 // idempotency). Demo mode writes to the in-process store instead.
 import { revalidatePath } from "next/cache";
-import { isPersonalRecord, portionMacros, type Macros } from "@buddygym/shared";
+import { estimated1RM, isPersonalRecord, portionMacros, type Macros } from "@buddygym/shared";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
 import { viewingClientId } from "@/lib/view-mode";
 import {
 
@@ -69,6 +70,7 @@ export async function logSet(input: {
     cs.sets.push({
       id: newId("lst"),
       session_id: session.id,
+      program_exercise_id: input.programExerciseId ?? null,
       exercise_name: input.exerciseName,
       set_index: input.setIndex,
       weight_kg: input.weightKg,
@@ -96,23 +98,31 @@ export async function logSet(input: {
   // client_generated_id is a uuid column, and it is what makes a retry safe.
   // Deriving it from the day and date keeps one session per day per program
   // day however many times this runs.
-  const { data: session, error: sessionError } = await supabase
-    .from("logged_sessions")
-    .upsert(
-      {
-        user_id: auth.user.id,
-        program_day_id: input.dayId,
-        client_generated_id: uuidFrom(`${auth.user.id}:${input.dayId}:${isoDay()}`),
-        started_at: new Date().toISOString(),
-      },
-      { onConflict: "client_generated_id" },
-    )
-    .select("id")
-    .single();
-  if (sessionError) return { ok: false, message: sessionError.message };
+  const sessionKey = sessionKeyFor(auth.user.id, input.dayId, isoDay());
+  const sessionId = await openSession(supabase, auth.user.id, input.dayId, sessionKey);
+  if (typeof sessionId !== "string") return sessionId;
+
+  // The same PR check the demo path and the mobile app run, against the best
+  // estimated 1RM already on record for this lift. Bounded by the
+  // (user_id, exercise_id, received_at) index rather than reading a lifetime.
+  const { data: history } = await supabase
+    .from("logged_sets")
+    .select("weight_kg, reps")
+    .eq("user_id", auth.user.id)
+    .eq("exercise_id", input.exerciseId)
+    .order("received_at", { ascending: false })
+    .limit(200);
+  const best = (history ?? []).reduce(
+    (max, s) => Math.max(max, estimated1RM(s.weight_kg ?? 0, s.reps ?? 0)),
+    0,
+  );
+  const isPr = isPersonalRecord(
+    { weight: input.weightKg, reps: input.reps },
+    best > 0 ? best : null,
+  );
 
   const { error } = await supabase.from("logged_sets").insert({
-    session_id: session.id,
+    session_id: sessionId,
     user_id: auth.user.id,
     exercise_id: input.exerciseId,
     program_exercise_id: input.programExerciseId ?? null,
@@ -120,14 +130,71 @@ export async function logSet(input: {
     weight_kg: input.weightKg,
     reps: input.reps,
     rpe: input.rpe,
-    client_generated_id: uuidFrom(`${session.id}:${input.exerciseId}:${input.setIndex}`),
+    is_pr: isPr,
+    // Keyed on the prescribed row, not the library exercise: a day may program
+    // the same lift twice (heavy, then a back-off block) and each keeps its own
+    // set numbering.
+    client_generated_id: uuidFrom(
+      `${sessionId}:${input.programExerciseId ?? input.exerciseId}:${input.setIndex}`,
+    ),
     client_ts: new Date().toISOString(),
   });
   if (error) return { ok: false, message: error.message };
 
   revalidatePath("/today");
   revalidatePath(`/workout/${input.dayId}`);
-  return { ok: true };
+  return { ok: true, is_pr: isPr, estimated_1rm: estimated1RM(input.weightKg, input.reps) };
+}
+
+/**
+ * Today's session for this program day, creating it only if it does not exist.
+ * An upsert would restamp `started_at` on every set, which is what the session
+ * list and every "how long did that take" reading are ordered by. Returns the
+ * id, or an ActionResult to hand straight back to the caller.
+ */
+async function openSession(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  userId: string,
+  dayId: string,
+  sessionKey: string,
+): Promise<string | ActionResult> {
+  const { data: existing } = await supabase
+    .from("logged_sessions")
+    .select("id, completed_at")
+    .eq("client_generated_id", sessionKey)
+    .maybeSingle();
+
+  if (existing) {
+    // Logging again after "Finish workout" reopens the session rather than
+    // filing new sets under one already marked complete.
+    if (existing.completed_at !== null) {
+      await supabase
+        .from("logged_sessions")
+        .update({ completed_at: null })
+        .eq("id", existing.id);
+    }
+    return existing.id as string;
+  }
+
+  const { data: created, error } = await supabase
+    .from("logged_sessions")
+    .insert({
+      user_id: userId,
+      program_day_id: dayId,
+      client_generated_id: sessionKey,
+      started_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+  if (!error) return created.id as string;
+
+  // A concurrent first set won the insert — adopt the row it created.
+  const { data: raced } = await supabase
+    .from("logged_sessions")
+    .select("id")
+    .eq("client_generated_id", sessionKey)
+    .maybeSingle();
+  return raced ? (raced.id as string) : { ok: false, message: error.message };
 }
 
 export async function finishWorkout(dayId: string): Promise<ActionResult> {
@@ -163,6 +230,8 @@ export async function logFood(input: {
   foodName: string;
   grams: number;
   per100g: Macros;
+  /** foods.id, so a later portion edit can re-cost from the unrounded basis. */
+  foodId?: string | null;
   day?: string;
 }): Promise<ActionResult> {
   if (!input.foodName.trim()) return { ok: false, message: "Pick a food" };
@@ -198,6 +267,7 @@ export async function logFood(input: {
     user_id: auth.user.id,
     date: day,
     slot: input.slot,
+    food_id: asUuid(input.foodId),
     food_name: input.foodName,
     grams: input.grams,
     kcal: macros.kcal,
@@ -216,7 +286,10 @@ export async function logFood(input: {
 /**
  * Correct a portion that was logged wrong. Macros are re-derived from the
  * per-100g basis rather than scaled from the stored snapshot, so repeated
- * edits cannot accumulate rounding drift.
+ * edits cannot accumulate rounding drift. The basis comes from the linked
+ * `foods` row where there is one; recovering it from the snapshot is only the
+ * fallback, because that snapshot is rounded (kcal to a whole number, macros to
+ * 0.1 g) and a small portion divides that error back up by 100/grams.
  */
 export async function updateFoodLog(id: string, grams: number): Promise<ActionResult> {
   if (!Number.isFinite(grams) || grams <= 0) {
@@ -237,21 +310,40 @@ export async function updateFoodLog(id: string, grams: number): Promise<ActionRe
   }
 
   const supabase = await supabaseServer();
-  // The row stores only the portion snapshot, so recover the per-100g basis
-  // from it before re-costing. Exact for any grams > 0.
   const { data: row, error: readError } = await supabase
     .from("food_logs")
-    .select("grams, kcal, protein_g, carbs_g, fat_g")
+    .select("grams, kcal, protein_g, carbs_g, fat_g, food_id")
     .eq("id", id)
     .single();
   if (readError) return { ok: false, message: readError.message };
-  const factor = 100 / row.grams;
-  const per100g: Macros = {
-    kcal: row.kcal * factor,
-    protein: row.protein_g * factor,
-    carbs: row.carbs_g * factor,
-    fat: row.fat_g * factor,
-  };
+
+  let per100g: Macros | null = null;
+  if (row.food_id) {
+    const { data: food } = await supabase
+      .from("foods")
+      .select("kcal_100g, protein_100g, carbs_100g, fat_100g")
+      .eq("id", row.food_id)
+      .maybeSingle();
+    if (food) {
+      per100g = {
+        kcal: Number(food.kcal_100g),
+        protein: Number(food.protein_100g),
+        carbs: Number(food.carbs_100g),
+        fat: Number(food.fat_100g),
+      };
+    }
+  }
+  if (!per100g) {
+    // Older rows (and custom entries) carry no food link — scale the snapshot
+    // and accept the rounding it was already stored with.
+    const factor = 100 / row.grams;
+    per100g = {
+      kcal: row.kcal * factor,
+      protein: row.protein_g * factor,
+      carbs: row.carbs_g * factor,
+      fat: row.fat_g * factor,
+    };
+  }
   const macros = portionMacros(per100g, grams);
 
   const { error } = await supabase
@@ -391,11 +483,13 @@ export async function addMeasurement(input: {
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: "Not signed in" };
-  // Waist lives inside the circumferences jsonb. Read the existing bag first so
-  // a weight-only entry cannot wipe a chest or hip measurement taken earlier.
+  // The upsert replaces the whole row, so read what is already there first.
+  // Waist lives inside the circumferences jsonb, and weight_kg is a plain
+  // column — both have to be carried forward, or a waist-only entry in the
+  // evening blanks the morning's weigh-in (and vice versa).
   const { data: existing } = await supabase
     .from("measurements")
-    .select("circumferences")
+    .select("weight_kg, circumferences")
     .eq("user_id", auth.user.id)
     .eq("date", takenOn)
     .maybeSingle();
@@ -408,7 +502,7 @@ export async function addMeasurement(input: {
     {
       user_id: auth.user.id,
       date: takenOn,
-      weight_kg: input.weightKg,
+      weight_kg: input.weightKg ?? existing?.weight_kg ?? null,
       circumferences,
     },
     { onConflict: "user_id,date" },
@@ -461,6 +555,16 @@ export async function submitCheckIn(input: {
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: "Not signed in" };
+  // check_ins is unique on (user_id, week_start). Say so in words rather than
+  // letting the constraint violation reach the form, and mirror the demo guard.
+  const { data: already } = await supabase
+    .from("check_ins")
+    .select("id")
+    .eq("user_id", auth.user.id)
+    .eq("week_start", weekStart)
+    .maybeSingle();
+  if (already) return { ok: false, message: "This week is already checked in" };
+
   const { error } = await supabase.from("check_ins").insert({
     user_id: auth.user.id,
     week_start: weekStart,
@@ -473,41 +577,22 @@ export async function submitCheckIn(input: {
     note: input.note.trim() || null,
     submitted_at: new Date().toISOString(),
   });
-  if (error) return { ok: false, message: error.message };
+  // A double tap can still race past the check above; 23505 means the same thing.
+  if (error) {
+    return {
+      ok: false,
+      message: error.code === "23505" ? "This week is already checked in" : error.message,
+    };
+  }
   revalidatePath("/check-in");
   revalidatePath("/today");
   return { ok: true };
 }
 
-/**
- * A stable uuid derived from a natural key.
- *
- * client_generated_id is a uuid column with a unique constraint, and it is the
- * whole retry-safety story: the same logical write must always produce the same
- * id. Random uuids would defeat that, so this hashes the key into a v5-shaped
- * value. Not cryptographic — it only needs to be deterministic and spread out.
- */
-function uuidFrom(key: string): string {
-  let h1 = 0x811c9dc5;
-  let h2 = 0x01000193;
-  for (let i = 0; i < key.length; i++) {
-    const c = key.charCodeAt(i);
-    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
-    h2 = Math.imul(h2 ^ (c + i), 0x85ebca6b) >>> 0;
-  }
-  const block = (seed: number, n: number) => {
-    let out = "";
-    let s = seed >>> 0;
-    while (out.length < n) {
-      s = Math.imul(s ^ (s >>> 15), 0x2545f491) >>> 0;
-      out += s.toString(16).padStart(8, "0");
-    }
-    return out.slice(0, n);
-  };
-  const a = block(h1, 8);
-  const b = block(h1 ^ h2, 4);
-  const c = `5${block(h2, 3)}`; // version 5 nibble
-  const d = ((parseInt(block(h2 ^ 0x9e3779b9, 1), 16) & 0x3) | 0x8).toString(16) + block(h1 ^ 0x5bf03635, 3);
-  const e = block(h2 ^ h1, 12);
-  return `${a}-${b}-${c}-${d}-${e}`;
+/** PostgREST wants null, not a demo-store id or a barcode, in a uuid column. */
+function asUuid(value: string | null | undefined): string | null {
+  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : null;
 }
+

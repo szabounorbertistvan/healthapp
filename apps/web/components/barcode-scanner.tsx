@@ -55,20 +55,30 @@ export function BarcodeScanner({
     streamRef.current = null;
   }, []);
 
+  // Held in a ref so `accept` — and therefore the camera effect below — keeps a
+  // stable identity. FoodLogger passes an inline arrow, so depending on the prop
+  // directly would tear down and re-acquire the stream on every parent render,
+  // including the one that fires the moment a code is handed over.
+  const onCodeRef = useRef(onCode);
+  useEffect(() => {
+    onCodeRef.current = onCode;
+  }, [onCode]);
+
   const accept = useCallback(
     (code: string) => {
       if (doneRef.current) return;
       doneRef.current = true;
       stop();
-      onCode(code);
+      onCodeRef.current(code);
     },
-    [onCode, stop],
+    [stop],
   );
 
   useEffect(() => {
     let cancelled = false;
 
     async function start() {
+      if (doneRef.current) return; // a code was already accepted
       if (!navigator.mediaDevices?.getUserMedia) {
         setStatus("no-camera");
         return;

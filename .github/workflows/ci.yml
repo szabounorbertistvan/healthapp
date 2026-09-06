@@ -24,6 +24,21 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  functions:
+    name: Edge functions (deno check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      # supabase/functions is not an npm workspace, so `npm run typecheck` never
+      # reaches it, and these are Deno modules importing jsr: specifiers that tsc
+      # cannot resolve either — until this job they were checked by nothing.
+      # --node-modules-dir=auto stops Deno resolving their npm dependencies out
+      # of the repo root's node_modules, which does not carry them.
+      - run: deno check --node-modules-dir=auto supabase/functions/
+
   database:
     name: RLS policies (pgTAP)
     runs-on: ubuntu-latest

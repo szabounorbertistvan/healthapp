@@ -11,6 +11,8 @@ import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const BATCH = 100;
+/** Ceiling on rows read per run while paging past quiet-hours deferrals. */
+const MAX_SCAN = 1000;
 
 /** Delivered even during quiet hours — the user asked for these or they are time-critical. */
 const CRITICAL = new Set(["new_message", "new_feedback", "plan_updated", "checkin_submitted", "client_at_risk"]);
@@ -39,45 +41,63 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
 
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("id, user_id, category, title, body, payload, users(push_token, timezone, notification_prefs)")
-    .is("sent_at", null)
-    .order("created_at", { ascending: true })
-    .limit(BATCH);
-
-  if (error) return json({ error: error.message }, 500);
-
-  const pending = (data ?? []) as unknown as NotificationRow[];
   const messages: { to: string; title: string; body: string; data: unknown }[] = [];
   const pushed: string[] = [];
   const skipped: string[] = [];
+  let deferred = 0;
+  let scanned = 0;
 
-  for (const row of pending) {
-    const user = row.users;
-    if (!user?.push_token) {
-      skipped.push(row.id); // no device registered — the row stays as in-app history
-      continue;
-    }
-    if (user.notification_prefs?.[row.category] === false) {
-      skipped.push(row.id);
-      continue;
-    }
-    if (!CRITICAL.has(row.category) && inQuietHours(user.timezone)) {
-      continue; // left unsent on purpose; the next run picks it up after 08:00
-    }
-    if (ENGAGEMENT.has(row.category) && (await engagementSentToday(supabase, row.user_id)) >= MAX_ENGAGEMENT_PER_DAY) {
-      skipped.push(row.id);
-      continue;
-    }
+  // Quiet-hours rows are left unsent and unmarked, so they stay at the head of
+  // the created_at ordering. Reading a single page would let a night's backlog
+  // of engagement notifications starve the critical ones queued behind them, so
+  // page past what is deferred until a batch of deliverable messages is filled.
+  let offset = 0;
+  while (messages.length + skipped.length < BATCH && offset < MAX_SCAN) {
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("id, user_id, category, title, body, payload, users(push_token, timezone, notification_prefs)")
+      .is("sent_at", null)
+      .order("created_at", { ascending: true })
+      .range(offset, offset + BATCH - 1);
 
-    messages.push({
-      to: user.push_token,
-      title: row.title,
-      body: row.body ?? "",
-      data: { category: row.category, ...row.payload }, // every push deep-links (§8)
-    });
-    pushed.push(row.id);
+    if (error) return json({ error: error.message }, 500);
+
+    const page = (data ?? []) as unknown as NotificationRow[];
+    if (page.length === 0) break;
+    offset += page.length;
+    scanned += page.length;
+
+    for (const row of page) {
+      const user = row.users;
+      if (!user?.push_token) {
+        skipped.push(row.id); // no device registered — the row stays as in-app history
+        continue;
+      }
+      if (user.notification_prefs?.[row.category] === false) {
+        skipped.push(row.id);
+        continue;
+      }
+      if (!CRITICAL.has(row.category) && inQuietHours(user.timezone)) {
+        deferred++;
+        continue; // left unsent on purpose; the next run picks it up after 08:00
+      }
+      if (
+        ENGAGEMENT.has(row.category) &&
+        (await engagementSentToday(supabase, row.user_id, user.timezone)) >= MAX_ENGAGEMENT_PER_DAY
+      ) {
+        skipped.push(row.id);
+        continue;
+      }
+
+      messages.push({
+        to: user.push_token,
+        title: row.title,
+        body: row.body ?? "",
+        data: { category: row.category, ...row.payload }, // every push deep-links (§8)
+      });
+      pushed.push(row.id);
+      if (messages.length >= BATCH) break; // Expo caps one request at 100
+    }
   }
 
   if (messages.length > 0) {
@@ -98,7 +118,7 @@ Deno.serve(async (req) => {
     await supabase.from("notifications").update({ sent_at: new Date().toISOString() }).in("id", toMark);
   }
 
-  return json({ pushed: pushed.length, skipped: skipped.length, deferred: pending.length - toMark.length });
+  return json({ pushed: pushed.length, skipped: skipped.length, deferred, scanned });
 });
 
 function inQuietHours(timezone: string): boolean {
@@ -109,9 +129,32 @@ function inQuietHours(timezone: string): boolean {
   return hour >= QUIET_FROM || hour < QUIET_UNTIL;
 }
 
-async function engagementSentToday(supabase: SupabaseClient, userId: string): Promise<number> {
-  const since = new Date();
-  since.setHours(0, 0, 0, 0);
+/**
+ * The instant the user's own day began, by subtracting the wall-clock time that
+ * has elapsed there today. "Two a day" has to mean their day — the same clock
+ * quiet hours and the cron jobs are read against — not the runtime's UTC one.
+ */
+function startOfLocalDay(timezone: string): Date {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone || "Europe/Bucharest",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(now);
+  const at = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const hour = at("hour") % 24; // some ICU builds render midnight as 24
+  const elapsedMs = ((hour * 60 + at("minute")) * 60 + at("second")) * 1000;
+  return new Date(now.getTime() - elapsedMs);
+}
+
+async function engagementSentToday(
+  supabase: SupabaseClient,
+  userId: string,
+  timezone: string,
+): Promise<number> {
+  const since = startOfLocalDay(timezone);
   const { count } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })

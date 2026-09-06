@@ -13,6 +13,7 @@ import {
   type Macros,
 } from "@buddygym/shared";
 import { isDemo, supabaseServer } from "./supabase/server";
+import { sessionKeyFor } from "./stable-id";
 import { store } from "./demo-store";
 import { viewingClientId } from "./view-mode";
 import { demoConversations, demoMessages } from "./demo";
@@ -125,10 +126,25 @@ export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
   };
   type DayJoin = { id: string; name: string; day_index: number; program_exercises: ExJoin[] };
 
-  const days = (data.program_days as unknown as DayJoin[]) ?? [];
-  return days
-    .sort((a, b) => a.day_index - b.day_index)
-    .map((day) => ({
+  const days = ((data.program_days as unknown as DayJoin[]) ?? []).sort(
+    (a, b) => a.day_index - b.day_index,
+  );
+
+  // What is already logged today, addressed by the same deterministic key the
+  // writer derives. Without this the set logger restarts its numbering at 1
+  // after every reload, and logSet's client_generated_id collides with the set
+  // that is already there.
+  const today = isoDay();
+  const sessions = await sessionsForDays(
+    supabase,
+    auth.user.id,
+    days.map((d) => d.id),
+    today,
+  );
+
+  return days.map((day) => {
+    const session = sessions.get(day.id);
+    return {
       day_id: day.id,
       day_name: day.name,
       program_id: data.id,
@@ -149,10 +165,69 @@ export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
           rpe_value: e.target_rpe,
           rest_seconds: e.rest_seconds,
         })),
-      logged: [],
-      session_id: null,
-      completed: false,
-    }));
+      logged: session?.logged ?? [],
+      session_id: session?.id ?? null,
+      completed: session?.completed ?? false,
+    };
+  });
+}
+
+type TodaySession = { id: string; completed: boolean; logged: LoggedSetRow[] };
+
+/** Today's session and its sets, per program day, keyed by program_day_id. */
+async function sessionsForDays(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  userId: string,
+  dayIds: string[],
+  isoDate: string,
+): Promise<Map<string, TodaySession>> {
+  const byDay = new Map<string, TodaySession>();
+  if (dayIds.length === 0) return byDay;
+
+  const { data } = await supabase
+    .from("logged_sessions")
+    .select(
+      `id, program_day_id, completed_at,
+       logged_sets(id, program_exercise_id, set_index, weight_kg, reps, rpe, is_pr, received_at,
+         exercise:exercises(name_en, name_ro))`,
+    )
+    .in(
+      "client_generated_id",
+      dayIds.map((dayId) => sessionKeyFor(userId, dayId, isoDate)),
+    );
+
+  type SetJoin = {
+    id: string; program_exercise_id: string | null; set_index: number;
+    weight_kg: number | null; reps: number | null; rpe: number | null;
+    is_pr: boolean | null; received_at: string;
+    exercise: { name_en: string; name_ro: string | null } | null;
+  };
+  type SessionJoin = {
+    id: string; program_day_id: string | null; completed_at: string | null;
+    logged_sets: SetJoin[];
+  };
+
+  for (const session of (data ?? []) as unknown as SessionJoin[]) {
+    if (!session.program_day_id) continue;
+    byDay.set(session.program_day_id, {
+      id: session.id,
+      completed: session.completed_at !== null,
+      logged: (session.logged_sets ?? [])
+        .sort((a, b) => a.set_index - b.set_index)
+        .map((s) => ({
+          id: s.id,
+          program_exercise_id: s.program_exercise_id,
+          exercise: s.exercise?.name_ro ?? s.exercise?.name_en ?? "—",
+          set_index: s.set_index,
+          weight_kg: s.weight_kg ?? 0,
+          reps: s.reps ?? 0,
+          rpe: s.rpe,
+          is_pr: Boolean(s.is_pr),
+          at: s.received_at,
+        })),
+    });
+  }
+  return byDay;
 }
 
 export async function getWorkoutDay(dayId: string): Promise<ClientWorkoutDay | null> {
@@ -166,6 +241,7 @@ function setsForSession(sessionId: string): LoggedSetRow[] {
     .sort((a, b) => a.set_index - b.set_index)
     .map((s) => ({
       id: s.id,
+      program_exercise_id: s.program_exercise_id,
       exercise: s.exercise_name,
       set_index: s.set_index,
       weight_kg: s.weight_kg,
@@ -542,37 +618,31 @@ export async function getToday(): Promise<ClientToday | null> {
 
   const weekStart = mondayOf(0);
   const plannedSessions = days.length;
-  const completedSessions = isDemo ? sessionsSince(clientId, weekStart).length : 0;
-  const daysLogged = isDemo ? daysLoggedWithin(clientId, 7) : 0;
 
-  const weekKcal: { kcal: number }[] = [];
-  if (isDemo) {
-    for (let i = 0; i < 7; i++) {
-      const totals = totalsOn(clientId, daysAgoIso(i));
-      if (totals.kcal > 0) weekKcal.push({ kcal: totals.kcal });
-    }
-  }
+  // The four inputs adherence turns on. They used to be demo-only, which left
+  // every live client reading 0 workouts, 0 food days and 99 inactive days —
+  // permanently "at_risk" no matter what they had logged.
+  const activity = isDemo ? demoActivity(clientId, weekStart) : await liveActivity(weekStart);
 
   const habitTicks = habits.reduce((sum, h) => sum + h.done_this_week, 0);
   const habitScheduled = habits.reduce((sum, h) => sum + h.target_per_week, 0);
-  const lastActivity = isDemo ? lastActivityAt(clientId) : null;
 
   const adherence = computeAdherence({
     plannedSessions,
-    completedSessions,
-    daysLogged,
-    macroScore: macroScore(weekKcal, nutrition.target.kcal),
+    completedSessions: activity.completedSessions,
+    daysLogged: activity.daysLogged,
+    macroScore: macroScore(activity.weekKcal, nutrition.target.kcal),
     habitTicks,
     habitScheduled,
     checkinSubmitted: checkIn.submitted,
-    inactiveDays: daysSince(lastActivity),
+    inactiveDays: daysSince(activity.lastActivity),
   });
 
   // Next workout = the first day with nothing logged this week.
-  const doneNames = new Set(
-    isDemo ? sessionsSince(clientId, weekStart).map((s) => s.day_name) : [],
-  );
-  const next = days.find((d) => !doneNames.has(d.day_name)) ?? days[0] ?? null;
+  const next =
+    days.find((d) => !activity.doneDays.has(d.day_id) && !activity.doneDays.has(d.day_name)) ??
+    days[0] ??
+    null;
 
   return {
     client_id: clientId,
@@ -580,29 +650,142 @@ export async function getToday(): Promise<ClientToday | null> {
       ? (store().clients.find((c) => c.client_id === clientId)?.full_name ?? DEMO_CLIENT_NAME)
       : "You",
     adherence,
-    streak_days: currentStreak(clientId),
+    streak_days: activity.streak,
     next_workout: next,
-    sessions_done: completedSessions,
+    sessions_done: activity.completedSessions,
     sessions_planned: plannedSessions,
     nutrition,
     habits,
     check_in: checkIn,
-    last_activity: lastActivity,
+    last_activity: activity.lastActivity,
     unread_from_coach: 0,
   };
 }
 
+/** Everything the adherence engine and the Today header need about the week. */
+type Activity = {
+  completedSessions: number;
+  daysLogged: number;
+  weekKcal: { kcal: number }[];
+  lastActivity: string | null;
+  /** Program days already trained this week — by id live, by name in demo. */
+  doneDays: Set<string>;
+  streak: number;
+};
+
+function demoActivity(clientId: string, weekStart: string): Activity {
+  const weekKcal: { kcal: number }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const totals = totalsOn(clientId, daysAgoIso(i));
+    if (totals.kcal > 0) weekKcal.push({ kcal: totals.kcal });
+  }
+  const activeDays = new Set<string>();
+  for (const f of clientStore().foodLogs) if (f.client_id === clientId) activeDays.add(f.logged_on);
+  const habitIds = new Set(
+    clientStore().habits.filter((h) => h.client_id === clientId).map((h) => h.id),
+  );
+  for (const h of clientStore().habitLogs) if (habitIds.has(h.habit_id)) activeDays.add(h.done_on);
+  for (const s of clientStore().sessions) {
+    if (s.client_id === clientId) activeDays.add(s.started_at.slice(0, 10));
+  }
+
+  return {
+    completedSessions: sessionsSince(clientId, weekStart).length,
+    daysLogged: daysLoggedWithin(clientId, 7),
+    weekKcal,
+    lastActivity: lastActivityAt(clientId),
+    doneDays: new Set(sessionsSince(clientId, weekStart).map((s) => s.day_name)),
+    streak: streakFrom(activeDays),
+  };
+}
+
+async function liveActivity(weekStart: string): Promise<Activity> {
+  const empty: Activity = {
+    completedSessions: 0,
+    daysLogged: 0,
+    weekKcal: [],
+    lastActivity: null,
+    doneDays: new Set<string>(),
+    streak: 0,
+  };
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return empty;
+
+  // 60 days is what the streak walk needs; the week figures are a filter over
+  // the same rows rather than four more round trips.
+  const since = daysAgoIso(59);
+  const [sessions, foods, habitLogs, lastSet] = await Promise.all([
+    supabase
+      .from("logged_sessions")
+      .select("program_day_id, completed_at, started_at")
+      .eq("user_id", auth.user.id)
+      .gte("started_at", `${since}T00:00:00`),
+    supabase
+      .from("food_logs")
+      .select("date, kcal, received_at")
+      .eq("user_id", auth.user.id)
+      .gte("date", since),
+    supabase
+      .from("habit_logs")
+      .select("date, received_at")
+      .eq("user_id", auth.user.id)
+      .gte("date", since),
+    supabase
+      .from("logged_sets")
+      .select("received_at")
+      .eq("user_id", auth.user.id)
+      .order("received_at", { ascending: false })
+      .limit(1),
+  ]);
+
+  type SessionRow = { program_day_id: string | null; completed_at: string | null; started_at: string };
+  type FoodRow = { date: string; kcal: number; received_at: string };
+  type HabitRow = { date: string; received_at: string };
+
+  const sessionRows = (sessions.data ?? []) as unknown as SessionRow[];
+  const foodRows = (foods.data ?? []) as unknown as FoodRow[];
+  const habitRows = (habitLogs.data ?? []) as unknown as HabitRow[];
+
+  const done = sessionRows.filter(
+    (s) => s.completed_at !== null && s.completed_at >= weekStart,
+  );
+
+  // kcal per day over the last 7, days with nothing logged left out — the same
+  // shape macroScore() gets in demo mode.
+  const weekFrom = daysAgoIso(6);
+  const kcalByDay = new Map<string, number>();
+  for (const f of foodRows) {
+    if (f.date < weekFrom) continue;
+    kcalByDay.set(f.date, (kcalByDay.get(f.date) ?? 0) + Number(f.kcal ?? 0));
+  }
+
+  const activeDays = new Set<string>();
+  for (const f of foodRows) activeDays.add(f.date);
+  for (const h of habitRows) activeDays.add(h.date);
+  for (const s of sessionRows) activeDays.add(s.started_at.slice(0, 10));
+
+  const stamps = [
+    ...foodRows.map((f) => f.received_at),
+    ...habitRows.map((h) => h.received_at),
+    ...((lastSet.data ?? []) as { received_at: string }[]).map((s) => s.received_at),
+  ].filter(Boolean);
+
+  return {
+    completedSessions: done.length,
+    daysLogged: [...kcalByDay.keys()].length,
+    weekKcal: [...kcalByDay.values()].filter((kcal) => kcal > 0).map((kcal) => ({ kcal })),
+    lastActivity: stamps.length > 0 ? (stamps.sort().at(-1) ?? null) : null,
+    doneDays: new Set(done.map((s) => s.program_day_id).filter((id): id is string => id !== null)),
+    streak: streakFrom(activeDays),
+  };
+}
+
 /** Consecutive days ending today (or yesterday) with any logged activity. */
-function currentStreak(clientId: string): number {
-  if (!isDemo) return 0;
+function streakFrom(activeDays: ReadonlySet<string>): number {
   let streak = 0;
   for (let i = 0; i < 60; i++) {
-    const day = daysAgoIso(i);
-    const active =
-      foodLogsOn(clientId, day).length > 0 ||
-      clientStore().habitLogs.some((h) => h.done_on === day) ||
-      clientStore().sessions.some((s) => s.client_id === clientId && s.started_at.slice(0, 10) === day);
-    if (active) {
+    if (activeDays.has(daysAgoIso(i))) {
       streak++;
     } else if (i > 0) {
       break;

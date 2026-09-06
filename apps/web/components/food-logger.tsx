@@ -174,6 +174,9 @@ export function FoodLogger() {
                   foodName: picked.name_ro || picked.name_en,
                   grams: gramsNum,
                   per100g: picked.per_100g,
+                  // Links the log to its foods row so a later portion edit
+                  // re-costs from the unrounded per-100g basis.
+                  foodId: picked.id,
                 });
                 if (!result.ok) {
                   setError(result.message ?? "Could not log that");
