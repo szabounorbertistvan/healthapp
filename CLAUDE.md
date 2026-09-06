@@ -24,8 +24,11 @@ npm run web
 | `npm run db:start` / `db:reset` | Local Supabase stack |
 | `npm run db:test` | pgTAP RLS tests in `supabase/tests/` |
 
-CI (`.github/workflows/ci.yml`) runs typecheck + test + build, plus a separate
-job that applies every migration to a throwaway stack and runs the RLS tests.
+CI (`.github/workflows/ci.yml`) runs typecheck + test + build, a `deno check` over
+`supabase/functions/` (the edge functions are Deno modules that `tsc` never sees —
+run it locally with `npx -y deno@2 check --node-modules-dir=auto supabase/functions/`),
+plus a separate job that applies every migration to a throwaway stack and runs the
+RLS tests.
 
 ## Layout
 

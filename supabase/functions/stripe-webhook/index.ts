@@ -12,12 +12,14 @@
 // (metadata.user_id, set by the checkout server action) with the customer id
 // as fallback. The price → tier mapping is the lookup_key convention from
 // packages/shared/src/billing.ts (premium_monthly, coach_pro_annual, ...).
-import Stripe from "npm:stripe@17";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+// Pinned to the same release apps/web uses (package.json "stripe": "^17.7.0")
+// and, like apps/web/app/billing-actions.ts, left on the SDK's own default API
+// version: the `apiVersion` option is typed as that one literal, so hardcoding
+// a date here breaks `deno check` every time the SDK moves.
+import Stripe from "npm:stripe@17.7.0";
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
-  apiVersion: "2024-06-20",
-});
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "");
 
 // keep in sync with packages/shared/src/billing.ts (edge functions don't
 // share the npm workspace build)
@@ -114,8 +116,11 @@ Deno.serve(async (req) => {
   return json({ received: true });
 });
 
+// `SupabaseClient` (not `ReturnType<typeof createClient>`) — the latter
+// collapses the generics to their `never` defaults and every `.update()` stops
+// type-checking. Same pattern as push-dispatch and sync-ingest.
 async function applySubscription(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   sub: Stripe.Subscription,
   clientReferenceId: string | null,
 ) {
