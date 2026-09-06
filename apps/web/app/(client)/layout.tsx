@@ -8,6 +8,7 @@ import { APP_NAME, APP_INITIAL } from "@/lib/brand";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { viewableClients } from "@/app/view-actions";
 import { viewingClientId } from "@/lib/view-mode";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   // Demo mode has no auth, so the shell renders as the fixed demo client.
@@ -47,9 +48,19 @@ export default async function ClientLayout({ children }: { children: React.React
               <b>Demo mode</b> — sample data. Set Supabase env vars in <code>.env.local</code> to go live.
             </p>
           ) : null}
+          <SignOutButton />
         </div>
       </aside>
-      <main className="min-w-0 flex-1 p-5 pb-20 sm:p-8 sm:pb-8">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* The sidebar is desktop-only and the tab bar has no room to spare, so
+            the phone gets its own slim header. Without it a client on the
+            surface they actually use could never sign out. */}
+        <header className="flex items-center justify-between border-b border-line bg-surface px-5 py-3 sm:hidden">
+          <span className="truncate text-sm font-bold tracking-tight">{name}</span>
+          <SignOutButton className="shrink-0 text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50" />
+        </header>
+        <main className="flex-1 p-5 pb-20 sm:p-8 sm:pb-8">{children}</main>
+      </div>
       <ClientTabBar />
     </div>
   );
