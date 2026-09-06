@@ -182,6 +182,11 @@ export type MealSlot = "breakfast" | "lunch" | "dinner" | "snack";
 
 export type LoggedSetRow = {
   id: string;
+  /**
+   * program_exercises.id this set answers. Null for history that predates the
+   * link (and for demo seed rows), which is why readers fall back to the name.
+   */
+  program_exercise_id: string | null;
   exercise: string;
   set_index: number;
   weight_kg: number;

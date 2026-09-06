@@ -10,6 +10,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { viewableClients } from "@/app/view-actions";
 import { viewingClientId } from "@/lib/view-mode";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   // Demo mode has no auth, so the shell renders as the fixed demo client.
@@ -51,12 +52,22 @@ export default async function ClientLayout({ children }: { children: React.React
               <b>{t.common.demoNotice.title}</b> — {t.common.demoNotice.body}
             </p>
           ) : null}
+          <SignOutButton />
         </div>
       </aside>
-      <main className="min-w-0 flex-1 p-5 pb-20 sm:p-8 sm:pb-8">{children}</main>
-      {/* The sidebar (and its selector) is hidden on phones — float one instead. */}
-      <div className="fixed right-3 top-3 z-20 sm:hidden">
-        <LanguageSelector />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* The sidebar (with its language selector and sign-out) is desktop-only
+            and the tab bar has no room to spare, so the phone gets its own slim
+            header carrying both. Without it a client on the surface they
+            actually use could never switch language or sign out. */}
+        <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-5 py-3 sm:hidden">
+          <span className="truncate text-sm font-bold tracking-tight">{name}</span>
+          <div className="flex shrink-0 items-center gap-3">
+            <LanguageSelector />
+            <SignOutButton className="text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50" />
+          </div>
+        </header>
+        <main className="flex-1 p-5 pb-20 sm:p-8 sm:pb-8">{children}</main>
       </div>
       <ClientTabBar />
     </div>

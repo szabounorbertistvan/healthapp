@@ -3,13 +3,18 @@ import { cookies } from "next/headers";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
-export const isDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL;
+// Same trim as the browser client — a stray BOM in the deployment's environment
+// breaks header construction here too. See lib/supabase/client.ts.
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+
+export const isDemo = !url;
 
 export async function supabaseServer() {
   const cookieStore = await cookies();
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {

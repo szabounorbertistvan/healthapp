@@ -3,14 +3,20 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
+// Trimmed for the same reason as lib/supabase/client.ts: these become header
+// values, which may only hold ISO-8859-1, and a BOM pasted into the deployment
+// environment would make every call from here fail.
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+
 export async function middleware(request: NextRequest) {
   // Demo mode: no backend, no auth gate
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return NextResponse.next();
+  if (!url) return NextResponse.next();
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {

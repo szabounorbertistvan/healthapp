@@ -66,7 +66,10 @@ begin
     join public.streaks s on s.user_id = u.id and s.type = 'overall' and s.current > 0
     where u.role in ('client', 'both')
       and extract(hour from (now() at time zone u.timezone)) = 19
-      -- nothing logged today: the streak really is at risk
+      -- nothing logged today: the streak really is at risk. "Activity" here is
+      -- the same three things lastActivityAt() counts in the app — a set, a
+      -- food log or a habit tick — so a client who only logs meals is not told
+      -- their streak is ending.
       and not exists (select 1 from public.habit_logs hl
                       where hl.user_id = u.id
                         and hl.date = (now() at time zone u.timezone)::date)
@@ -74,6 +77,9 @@ begin
                       where ls.user_id = u.id
                         and (ls.received_at at time zone u.timezone)::date
                             = (now() at time zone u.timezone)::date)
+      and not exists (select 1 from public.food_logs fl
+                      where fl.user_id = u.id
+                        and fl.date = (now() at time zone u.timezone)::date)
       -- max one a day (§8)
       and not exists (select 1 from public.notifications n
                       where n.user_id = u.id and n.category = 'streak_at_risk'

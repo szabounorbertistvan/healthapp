@@ -21,6 +21,8 @@ export type MealSlot = "breakfast" | "lunch" | "dinner" | "snack";
 export type StoredLoggedSet = {
   id: string;
   session_id: string;
+  /** program_exercises.id — a day may prescribe the same lift more than once. */
+  program_exercise_id: string | null;
   exercise_name: string;
   set_index: number;
   weight_kg: number;
@@ -100,7 +102,7 @@ type ClientStore = {
 
 // Bump whenever ClientStore changes shape — a store carried across a hot reload
 // that is missing a new field would crash every reader.
-const STORE_VERSION = 2;
+const STORE_VERSION = 3;
 
 const globalRef = globalThis as unknown as {
   __healthappClientStore?: ClientStore & { version?: number };
@@ -275,6 +277,7 @@ function seed(): ClientStore {
         sets.push({
           id: newId("lst"),
           session_id: sessionId,
+          program_exercise_id: null, // history, not tied to a live program row
           exercise_name: ex.name,
           set_index: i + 1,
           weight_kg: weight,

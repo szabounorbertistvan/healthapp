@@ -13,6 +13,7 @@ const en = {
     kg: "kg",
     reps: "reps",
     rir: "RIR",
+    rpe: "RPE",
     logSet: "Log set",
   },
   foodLogger: {
@@ -110,6 +111,7 @@ const ro: typeof en = {
     kg: "kg",
     reps: "repetări",
     rir: "RIR",
+    rpe: "RPE",
     logSet: "Înregistrează setul",
   },
   foodLogger: {

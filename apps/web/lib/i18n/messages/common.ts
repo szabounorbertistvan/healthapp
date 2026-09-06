@@ -25,6 +25,10 @@ const en = {
     title: "Demo mode",
     body: "sample data. Set Supabase env vars in .env.local to go live.",
   },
+  signOut: {
+    action: "Sign out",
+    pending: "Signing out…",
+  },
   viewSwitcher: {
     viewingAs: "Viewing as",
     coach: "Coach",
@@ -112,6 +116,10 @@ const ro: typeof en = {
   demoNotice: {
     title: "Mod demo",
     body: "date de exemplu. Setează variabilele Supabase în .env.local pentru a trece live.",
+  },
+  signOut: {
+    action: "Deconectare",
+    pending: "Se deconectează…",
   },
   viewSwitcher: {
     viewingAs: "Vizualizezi ca",

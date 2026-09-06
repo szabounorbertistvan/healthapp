@@ -25,32 +25,29 @@ comment on column public.foods.portions is
 -- an edge function parsing third-party free text, so the constraint is the only
 -- thing standing between a bad upstream value and the client UI.
 --
--- The rules have to walk the array, and Postgres rejects a subquery inside a
--- CHECK (SQLSTATE 0A000: "cannot use subquery in check constraint"), so they
--- live in an immutable function that the constraint calls. CASE rather than
--- AND because only CASE guarantees evaluation order: jsonb_array_length()
--- raises on a non-array, so it must not run until the type is known good.
-create or replace function public.portions_shape_ok(p jsonb)
-returns boolean language sql immutable parallel safe as $$
-  select case
-    when jsonb_typeof(p) <> 'array' then false
-    when jsonb_array_length(p) > 8  then false
-    else not exists (
-      select 1
-      from jsonb_array_elements(p) as e
-      where jsonb_typeof(e) <> 'object'
-         or e->>'label' is null
-         or length(e->>'label') between 1 and 16 is not true
-         or jsonb_typeof(e->'grams') <> 'number'
-         or (e->>'grams')::numeric <= 0
-         or (e->>'grams')::numeric > 2000
-         or coalesce(e->>'origin', '') not in ('curated', 'imported')
-    )
-  end;
+-- The per-element rules live in a function because a CHECK expression may not
+-- contain a subquery, and jsonb_array_elements() is only usable in FROM. The
+-- function is IMMUTABLE (it reads nothing but its argument), which is what a
+-- constraint requires.
+create or replace function public.is_valid_food_portions(p_portions jsonb)
+returns boolean language sql immutable set search_path = public as $$
+  select jsonb_typeof(p_portions) = 'array'
+     and jsonb_array_length(p_portions) <= 8
+     and not exists (
+       select 1
+       from jsonb_array_elements(p_portions) as p
+       where jsonb_typeof(p) <> 'object'
+          or p->>'label' is null
+          or length(p->>'label') between 1 and 16 is not true
+          or jsonb_typeof(p->'grams') <> 'number'
+          or (p->>'grams')::numeric <= 0
+          or (p->>'grams')::numeric > 2000
+          or coalesce(p->>'origin', '') not in ('curated', 'imported')
+     );
 $$;
 
 alter table public.foods
-  add constraint foods_portions_shape check (public.portions_shape_ok(portions));
+  add constraint foods_portions_shape check (public.is_valid_food_portions(portions));
 
 -- Curated ranges for the generic staples the demo table already ships, matched
 -- by name because these rows have no barcode. Only touches foods that exist;

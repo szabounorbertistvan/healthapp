@@ -89,7 +89,13 @@ Deno.serve(async (req) => {
 
   const results: Result[] = [];
   for (const item of ordered) {
-    results.push(await applyItem(supabase, userId, item));
+    // One malformed item must never cost the other 199 their flush: every
+    // failure is reported per item, not as a 500 for the whole batch.
+    try {
+      results.push(await applyItem(supabase, userId, item));
+    } catch (e) {
+      results.push(fail(item, e instanceof Error ? e.message : "unexpected_error"));
+    }
   }
 
   return json({ results });
@@ -100,7 +106,11 @@ async function applyItem(
   userId: string,
   item: OutboxItem,
 ): Promise<Result> {
-  const spec = TABLES[item.entity];
+  // hasOwnProperty, not a bare index: "constructor" and friends resolve on
+  // Object.prototype and would sail past a truthiness check.
+  const spec = Object.prototype.hasOwnProperty.call(TABLES, item.entity)
+    ? TABLES[item.entity]
+    : undefined;
   if (!spec || item.op !== "upsert") {
     return fail(item, "unsupported_entity");
   }

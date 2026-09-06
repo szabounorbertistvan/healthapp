@@ -9,6 +9,7 @@ import { APP_NAME, APP_INITIAL } from "@/lib/brand";
 import { getI18n } from "@/lib/i18n/server";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { viewableClients } from "@/app/view-actions";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -37,6 +38,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
               <b>{t.common.demoNotice.title}</b> — {t.common.demoNotice.body}
             </p>
           ) : null}
+          <SignOutButton />
         </div>
       </aside>
       <main className="min-w-0 flex-1 p-5 sm:p-8">{children}</main>
