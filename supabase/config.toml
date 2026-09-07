@@ -160,7 +160,8 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# /auth/callback is where emailed links land (emailRedirectTo / redirectTo in the login page)
+additional_redirect_urls = ["https://127.0.0.1:3000", "http://127.0.0.1:3000/**", "http://localhost:3000/**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -243,6 +244,17 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Bilingual (RO + EN) templates. They link to /auth/callback with a token_hash,
+# which the route verifies server-side. The hosted project does not read this
+# file: paste the same HTML into Dashboard → Authentication → Email Templates.
+[auth.email.template.confirmation]
+subject = "Confirmă-ți contul HealthApp · Confirm your HealthApp account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Resetează parola HealthApp · Reset your HealthApp password"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
@@ -319,6 +331,21 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+# Google sign-in. Locally: create an OAuth client in Google Cloud Console with
+# http://127.0.0.1:54321/auth/v1/callback as an authorised redirect URI, put its
+# id/secret in the two env vars below and flip `enabled`. The hosted project is
+# configured in Dashboard → Authentication → Providers → Google instead, with
+# https://<project-ref>.supabase.co/auth/v1/callback as the redirect URI.
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+# Google's id_token nonce does not survive the local stack's redirects.
+skip_nonce_check = true
+email_optional = false
+
 [auth.external.apple]
 enabled = false
 client_id = ""

@@ -22,7 +22,16 @@ first time a real database is attached.
 **Tests cover only domain math.** Vitest is scoped to
 `packages/**/src/**/*.test.ts`. Nothing tests a component, a server action, or a
 route. The one integration-level safety net is the pgTAP RLS suite
-(`supabase/tests/rls_client_isolation.test.sql`) run in CI.
+(`supabase/tests/rls_client_isolation.test.sql`, `signup_role.test.sql`,
+`role_not_self_service.test.sql`) run in CI.
+
+**No Apple sign-in, no onboarding.** Spec C1 promises email + Google + Apple
+and an onboarding flow. Email + password and Google exist (sign-up, repeat
+password, forgot/reset password, coach/client choice). Apple is required by the
+App Store once any social login ships in a native app, and would be one more
+`signInWithOAuth` provider redirecting to the existing `/auth/callback`. After
+sign-up a user lands straight on their home screen with default units, locale
+and check-in day — nothing asks.
 
 ## Nutrition
 

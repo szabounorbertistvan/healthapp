@@ -110,11 +110,32 @@ those are service-role engine tables with no insert policy, and nothing writes t
 
 | | |
 |---|---|
-| Routes | `app/login`, `app/(coach)/settings`, `app/(coach)/admin`, `app/(client)/billing` |
+| Routes | `app/login`, `app/reset-password`, `app/auth/callback` (route handler), `app/(coach)/settings`, `app/(coach)/admin`, `app/(client)/billing` |
 | Writes | [billing-actions.ts](../apps/web/app/billing-actions.ts) — `startCheckout`, `openBillingPortal`, `adminSetTier`; `createInvite` |
 | Tables | `users`, `trainer_clients`, `subscriptions` |
-| Migrations | `..._subscriptions.sql`, `..._admin_role.sql`, `..._stripe_billing.sql` |
+| Migrations | `..._subscriptions.sql`, `..._admin_role.sql`, `..._stripe_billing.sql`, `..._signup_role.sql` |
 | Edge function | `stripe-webhook` |
+| Email templates | `supabase/templates/{confirmation,recovery}.html` — bilingual; wired in `config.toml` locally, pasted by hand into the hosted dashboard |
+
+**Auth is email + password, or Google.** The login page has three modes: sign
+in, create account (full name, coach/client choice, password ≥ 8 + repeat), and
+forgot password; the first two also offer "Continue with Google"
+(`signInWithOAuth`). Email sign-up passes `{ full_name, role }` as user
+metadata; the `handle_new_user` trigger accepts only `coach`/`client` and
+defaults everything else to `client`, so a sign-up request can never mint an
+admin (`supabase/tests/signup_role.test.sql`). Google cannot carry metadata, so
+the choice rides on the callback URL as `?role=` and the callback calls
+`claim_signup_role()`, which only acts on a row created in the last 10 minutes
+(`role_not_self_service.test.sql`). The same migration makes the `users`
+update grant column-level — `role` is not on it, so nobody can PATCH their own
+role over REST. Emailed links and the OAuth return both land on
+`/auth/callback`, which verifies a `token_hash` (our templates) or exchanges a
+PKCE `code` (Supabase's default templates and OAuth) and continues to `next`.
+Supabase's English auth errors are mapped to locale strings in
+`lib/auth-errors.ts`. If the project has email confirmation on, sign-up shows a
+"check your inbox" state instead of redirecting. Google needs the provider
+enabled per project (dashboard for hosted, `config.toml` + env vars locally).
+No Apple, no onboarding — see GAPS.
 
 **Entitlements live in one table.** `subscriptions` stores only who has which tier
 (`free`, `premium`, `coach_free`, `coach_pro`); tier → feature mapping is code in
