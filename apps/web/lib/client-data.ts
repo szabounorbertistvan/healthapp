@@ -183,12 +183,20 @@ async function activeCoachId(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
   userId: string,
 ): Promise<string | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("trainer_clients")
     .select("coach_id")
     .eq("client_id", userId)
     .eq("status", "active")
     .maybeSingle();
+  // A partial unique index guarantees at most one active coach per client, so
+  // this is never a legitimate multi-row case — an error here means the query
+  // genuinely failed. Throwing (rather than falling back to null) keeps that
+  // failure visible instead of silently showing the client their own solo
+  // program in place of their coach's.
+  if (error) {
+    throw new Error(`Failed to look up active coach for client ${userId}: ${error.message}`);
+  }
   return (data?.coach_id as string | undefined) ?? null;
 }
 
@@ -392,7 +400,7 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
   const [{ data: plans }, { data: logs }] = await Promise.all([
     supabase
       .from("nutrition_plans")
-      .select("name, kcal_target, protein_target_g, carbs_target_g, fat_target_g, coach_id, updated_at")
+      .select("id, name, kcal_target, protein_target_g, carbs_target_g, fat_target_g, coach_id, updated_at")
       .eq("client_id", auth.user.id)
       .eq("status", "published"),
     supabase
