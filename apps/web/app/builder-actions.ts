@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { newId, store, type StoredProgram, type StoredProgramDay } from "@/lib/demo-store";
+import { viewingClientId } from "@/lib/view-mode";
 import type { ActionResult } from "./actions";
 
 // Program builder writes (W4, Sprint 3).
@@ -300,4 +301,123 @@ function findDay(programId: string, dayId: string): StoredProgramDay | undefined
 
 function touch(program: StoredProgram): void {
   program.updated_at = new Date().toISOString();
+}
+
+/**
+ * A program the client owns outright: coach_id null, client_id themselves.
+ *
+ * The values are not merely a convention — policy programs_solo_all rejects any
+ * other combination, so a client cannot write a program for someone else even
+ * if this action were called with different arguments.
+ */
+export async function createSoloProgram(input: {
+  name: string;
+  intensityMode: "rpe" | "rir" | "simple";
+}): Promise<ActionResult & { id?: string }> {
+  const name = input.name.trim();
+  if (!name) return { ok: false, message: "Give the program a name" };
+
+  if (isDemo) {
+    const program: StoredProgram = {
+      id: newId("p"),
+      client_id: await viewingClientId(),
+      client_name: "You",
+      name,
+      status: "draft",
+      intensity_mode: input.intensityMode,
+      weeks: 1,
+      updated_at: new Date().toISOString(),
+      days: [],
+    };
+    store().programs.unshift(program);
+    revalidatePath("/workout");
+    return { ok: true, demo: true, id: program.id };
+  }
+
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const { data, error } = await supabase
+    .from("programs")
+    .insert({
+      coach_id: null,
+      client_id: auth.user.id,
+      name,
+      weeks: 1,
+      intensity_mode: input.intensityMode,
+      status: "draft",
+    })
+    .select("id")
+    .single();
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/workout");
+  return { ok: true, id: data.id };
+}
+
+/** Like addProgramDay, but carries the muscle groups the client chose. */
+export async function addSoloProgramDay(
+  programId: string,
+  name: string,
+  muscleGroups: string[],
+): Promise<ActionResult> {
+  const dayName = name.trim() || "New day";
+
+  if (isDemo) {
+    const program = store().programs.find((p) => p.id === programId);
+    if (!program) return { ok: false, message: "Program not found" };
+    program.days.push({
+      id: newId("pd"),
+      week_index: 1,
+      day_index: program.days.length,
+      name: dayName,
+      exercises: [],
+    });
+    touch(program);
+    revalidatePath("/workout/build");
+    return { ok: true, demo: true };
+  }
+
+  const supabase = await supabaseServer();
+  const { count } = await supabase
+    .from("program_days")
+    .select("id", { count: "exact", head: true })
+    .eq("program_id", programId);
+  const { error } = await supabase.from("program_days").insert({
+    program_id: programId,
+    week_index: 1,
+    day_index: count ?? 0,
+    name: dayName,
+    muscle_groups: muscleGroups,
+  });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/workout/build");
+  return { ok: true };
+}
+
+/** The client's own draft-or-published program, if they have started one. */
+export async function getMySoloProgramId(): Promise<string | null> {
+  if (isDemo) {
+    const clientId = await viewingClientId();
+    // Demo's StoredProgram carries no coach_id, so this cannot tell a solo
+    // program apart from one the coach built for the same client — it is
+    // scoped to the viewed client, then picks their most recently updated
+    // program. See task-4-report.md for the residual gap this leaves for the
+    // seeded demo client, who already has a coach-authored program.
+    const mine = store()
+      .programs.filter((p) => p.client_id === clientId)
+      .sort((a, b) => (a.updated_at > b.updated_at ? -1 : 1));
+    return mine[0]?.id ?? null;
+  }
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+  const { data } = await supabase
+    .from("programs")
+    .select("id")
+    .eq("client_id", auth.user.id)
+    .is("coach_id", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.id as string | undefined) ?? null;
 }
