@@ -206,7 +206,7 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
     .from("programs")
     .select(`id, name, status, intensity_mode, weeks,
       client:users!programs_client_id_fkey(full_name),
-      program_days(id, name, week_index, day_index,
+      program_days(id, name, week_index, day_index, muscle_groups,
         program_exercises(id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds,
           exercise:exercises(name_en, name_ro)))`)
     .eq("id", id)
@@ -217,7 +217,7 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
     intensity_mode: data.intensity_mode, week: 1, weeks: data.weeks,
     client_name: (data.client as unknown as { full_name: string })?.full_name ?? "—",
     days: (data.program_days as unknown as {
-      id: string; name: string;
+      id: string; name: string; muscle_groups: string[] | null;
       program_exercises: {
         id: string; position: number; target_sets: number; target_reps: string;
         target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null;
@@ -225,6 +225,7 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
       }[];
     }[]).map((d) => ({
       id: d.id, name: d.name,
+      muscle_groups: d.muscle_groups ?? [],
       exercises: d.program_exercises
         .sort((a, b) => a.position - b.position)
         .map((e) => ({
@@ -327,6 +328,7 @@ function toProgramDetail(program: StoredProgram): ProgramDetail {
     days: program.days.map((day) => ({
       id: day.id,
       name: day.name,
+      muscle_groups: [],
       exercises: [...day.exercises]
         .sort((a, b) => a.position - b.position)
         .map((e) => ({

@@ -107,7 +107,7 @@ export const demoProgramDetail: ProgramDetail = {
   intensity_mode: "rir", week: 2, weeks: 6,
   days: [
     {
-      id: "pd1", name: "Thu · Legs A",
+      id: "pd1", name: "Thu · Legs A", muscle_groups: [],
       exercises: [
         { id: "pe1", exercise: "Barbell Squat", sets: 4, reps: "8", weight: "80 kg", rpe: "2", rest: "90s" , weight_kg: 80, rpe_value: 2, rest_seconds: 90 },
         { id: "pe2", exercise: "Romanian Deadlift", sets: 3, reps: "10", weight: "60 kg", rpe: "2", rest: "90s" , weight_kg: 60, rpe_value: 2, rest_seconds: 90 },
@@ -115,7 +115,7 @@ export const demoProgramDetail: ProgramDetail = {
       ],
     },
     {
-      id: "pd2", name: "Sat · Push B",
+      id: "pd2", name: "Sat · Push B", muscle_groups: [],
       exercises: [
         { id: "pe4", exercise: "Bench Press", sets: 4, reps: "6", weight: "70 kg", rpe: "2", rest: "120s" , weight_kg: 70, rpe_value: 2, rest_seconds: 120 },
         { id: "pe5", exercise: "Overhead Press", sets: 3, reps: "8", weight: "40 kg", rpe: "2", rest: "90s" , weight_kg: 40, rpe_value: 2, rest_seconds: 90 },

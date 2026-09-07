@@ -83,6 +83,20 @@ const en = {
     noCoachTitle: "No coach yet",
     noCoachHint: "Once you accept a coach invite, your conversation appears here.",
   },
+  builder: {
+    title: "Build your program",
+    namePlaceholder: "Program name",
+    intensity: "Effort scale",
+    create: "Create program",
+    addDay: "Add a day",
+    dayNamePlaceholder: "Day name, e.g. Chest and triceps",
+    muscleGroups: "Muscle groups",
+    addExercise: "Add exercise",
+    noDays: "No days yet. Add your first one.",
+    publish: "Publish",
+    published: "Published",
+    publishHint: "Publishing makes it the program you follow on Training.",
+  },
 };
 
 const ro: typeof en = {
@@ -168,6 +182,20 @@ const ro: typeof en = {
   coach: {
     noCoachTitle: "Încă nu ai antrenor",
     noCoachHint: "După ce accepți invitația unui antrenor, conversația voastră apare aici.",
+  },
+  builder: {
+    title: "Construiește-ți programul",
+    namePlaceholder: "Numele programului",
+    intensity: "Scara de efort",
+    create: "Creează programul",
+    addDay: "Adaugă o zi",
+    dayNamePlaceholder: "Numele zilei, ex. Piept și triceps",
+    muscleGroups: "Grupe musculare",
+    addExercise: "Adaugă exercițiu",
+    noDays: "Nicio zi încă. Adaug-o pe prima.",
+    publish: "Publică",
+    published: "Publicat",
+    publishHint: "După publicare devine programul pe care îl urmezi la Antrenament.",
   },
 };
 

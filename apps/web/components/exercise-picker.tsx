@@ -11,13 +11,15 @@ type Props = {
   /** Called with the exercise the coach picked. Omit to browse read-only. */
   onPick?: (exercise: ExerciseSummary) => void;
   pendingLabel?: string;
+  /** Opens the list already filtered — the solo builder passes the day's group. */
+  initialMuscle?: string;
 };
 
-export function ExercisePicker({ muscles, equipment, onPick, pendingLabel }: Props) {
+export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initialMuscle }: Props) {
   const { t } = useI18n();
   const m = t.coachWidgets.exercisePicker;
   const [q, setQ] = useState("");
-  const [muscle, setMuscle] = useState("");
+  const [muscle, setMuscle] = useState(initialMuscle ?? "");
   const [gear, setGear] = useState("");
   const [results, setResults] = useState<ExerciseSummary[]>([]);
   const [total, setTotal] = useState(0);

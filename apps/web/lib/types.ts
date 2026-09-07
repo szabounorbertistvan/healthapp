@@ -116,7 +116,7 @@ export type ProgramDetail = {
   intensity_mode: "rpe" | "rir" | "simple";
   week: number;
   weeks: number;
-  days: { id: string; name: string; exercises: ProgramExerciseRow[] }[];
+  days: { id: string; name: string; muscle_groups: string[]; exercises: ProgramExerciseRow[] }[];
 };
 
 export type NutritionPlanRow = {
