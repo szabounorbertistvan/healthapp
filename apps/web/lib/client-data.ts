@@ -8,9 +8,11 @@ import "server-only";
 import {
   computeAdherence,
   macroScore,
+  pickProgram,
   portionMacros,
   sumMacros,
   type Macros,
+  type SelectableProgram,
 } from "@healthapp/shared";
 import { isDemo, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
@@ -106,18 +108,22 @@ export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("programs")
-    .select(`id, name, intensity_mode,
+    .select(`id, name, intensity_mode, coach_id, updated_at,
       program_days(id, name, week_index, day_index,
         program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds,
           exercise:exercises(name_en, name_ro)))`)
     .eq("client_id", auth.user.id)
-    .eq("status", "published")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !data) return [];
+    .eq("status", "published");
+  if (error || !rows) return [];
+
+  const coachId = await activeCoachId(supabase, auth.user.id);
+  const data = pickProgram(
+    rows as unknown as (SelectableProgram & Record<string, unknown>)[],
+    coachId !== null,
+  ) as { id: string; name: string; intensity_mode: "rpe" | "rir" | "simple"; program_days: unknown } | null;
+  if (!data) return [];
 
   type ExJoin = {
     id: string; exercise_id: string; position: number; target_sets: number; target_reps: string;
@@ -170,6 +176,20 @@ export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
       completed: session?.completed ?? false,
     };
   });
+}
+
+/** The coach currently working with this client, or null when they train alone. */
+async function activeCoachId(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  userId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("trainer_clients")
+    .select("coach_id")
+    .eq("client_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+  return (data?.coach_id as string | undefined) ?? null;
 }
 
 type TodaySession = { id: string; completed: boolean; logged: LoggedSetRow[] };
@@ -369,21 +389,23 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { day, plan_name: null, target: ZERO, totals: ZERO, entries: [] };
-  const [{ data: plan }, { data: logs }] = await Promise.all([
+  const [{ data: plans }, { data: logs }] = await Promise.all([
     supabase
       .from("nutrition_plans")
-      .select("name, kcal_target, protein_target_g, carbs_target_g, fat_target_g")
+      .select("name, kcal_target, protein_target_g, carbs_target_g, fat_target_g, coach_id, updated_at")
       .eq("client_id", auth.user.id)
-      .eq("status", "published")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .eq("status", "published"),
     supabase
       .from("food_logs")
       .select("id, slot, food_name, grams, kcal, protein_g, carbs_g, fat_g")
       .eq("user_id", auth.user.id)
       .eq("date", day),
   ]);
+  const plan = pickProgram(
+    (plans ?? []) as unknown as (SelectableProgram & Record<string, unknown>)[],
+    (await activeCoachId(supabase, auth.user.id)) !== null,
+  ) as { name: string; kcal_target: number; protein_target_g: number;
+         carbs_target_g: number; fat_target_g: number } | null;
   type LogRow = {
     id: string; slot: MealSlot; food_name: string; grams: number;
     kcal: number; protein_g: number; carbs_g: number; fat_g: number;
@@ -437,15 +459,16 @@ export async function getMyPlanMeals(): Promise<
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];
-  const { data } = await supabase
+  const { data: rows } = await supabase
     .from("nutrition_plans")
-    .select(`id, planned_meals(id, slot, name, position,
+    .select(`id, coach_id, updated_at, planned_meals(id, slot, name, position,
       planned_meal_foods(id, grams, food:foods(name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g)))`)
     .eq("client_id", auth.user.id)
-    .eq("status", "published")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("status", "published");
+  const data = pickProgram(
+    (rows ?? []) as unknown as (SelectableProgram & Record<string, unknown>)[],
+    (await activeCoachId(supabase, auth.user.id)) !== null,
+  );
   if (!data) return [];
   type FoodJoin = {
     grams: number;
