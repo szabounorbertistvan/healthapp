@@ -68,9 +68,16 @@ export async function currentClientId(): Promise<string | null> {
 export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
   if (isDemo) {
     const clientId = await viewingClientId();
-    const program = store().programs.find(
+    const s = store();
+    // Same precedence as the live branch below: a client can hold a
+    // coach-built and a self-built program at once, and while their coach
+    // relationship is active the coach's program wins. `client.status` here
+    // is the demo stand-in for trainer_clients.status — see activeCoachId.
+    const hasActiveCoach = s.clients.find((c) => c.client_id === clientId)?.status === "active";
+    const candidates = s.programs.filter(
       (p) => p.client_id === clientId && p.status === "published",
     );
+    const program = pickProgram(candidates, hasActiveCoach);
     if (!program) return [];
     const cs = clientStore();
     return program.days.map((day) => {
