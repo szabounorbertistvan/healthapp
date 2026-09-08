@@ -81,28 +81,39 @@ export const demoFoods: DemoFood[] = [
   f("onion", "Onion", "Ceapă", "veg", 40, 1.1, 9.3, 0.1),
   f("zucchini", "Zucchini", "Dovlecel", "veg", 17, 1.2, 3.1, 0.3),
   f("mixed-salad", "Mixed salad", "Salată mixtă", "veg", 17, 1.4, 2.9, 0.2),
-  f("cabbage", "Cabbage", "Varză", "veg", 25, 1.3, 5.8, 0.1),
-  f("cauliflower", "Cauliflower", "Conopidă", "veg", 25, 1.9, 5, 0.3),
-  f("green-beans", "Green beans", "Fasole verde", "veg", 31, 1.8, 7, 0.2),
-  f("peas", "Peas", "Mazăre", "veg", 81, 5.4, 14, 0.4),
-  f("mushrooms", "Mushrooms", "Ciuperci", "veg", 22, 3.1, 3.3, 0.3),
-  f("beetroot", "Beetroot", "Sfeclă roșie", "veg", 43, 1.6, 10, 0.2),
-  f("aubergine", "Aubergine", "Vinete", "veg", 25, 1, 6, 0.2),
-  f("sweetcorn", "Sweetcorn", "Porumb", "veg", 86, 3.3, 19, 1.4),
-  f("lettuce", "Lettuce", "Salată verde", "veg", 15, 1.4, 2.9, 0.2),
-  f("garlic", "Garlic", "Usturoi", "veg", 149, 6.4, 33, 0.5),
-  f("pear", "Pear", "Pară", "fruit", 57, 0.4, 15, 0.1),
-  f("peach", "Peach", "Piersică", "fruit", 39, 0.9, 9.5, 0.3),
-  f("watermelon", "Watermelon", "Pepene roșu", "fruit", 30, 0.6, 7.6, 0.2),
-  f("cherries", "Cherries", "Cireșe", "fruit", 63, 1.1, 16, 0.2),
-  f("yogurt-plain", "Plain yogurt 3.5%", "Iaurt simplu 3,5%", "dairy", 61, 3.5, 4.7, 3.3),
-  f("cascaval", "Cașcaval cheese", "Cașcaval", "dairy", 350, 25, 2, 27),
-  f("sour-cream", "Sour cream 20%", "Smântână 20%", "dairy", 200, 2.8, 3.4, 20),
-  f("chicken-ham", "Chicken ham", "Șuncă de pui", "protein", 105, 17, 2, 3),
-  f("tofu", "Tofu", "Tofu", "protein", 76, 8, 1.9, 4.8),
-  f("sunflower-seeds", "Sunflower seeds", "Semințe de floarea-soarelui", "fat", 584, 21, 20, 51),
-  f("dark-chocolate", "Dark chocolate 70%", "Ciocolată neagră 70%", "fat", 598, 7.8, 46, 43),
-  f("honey", "Honey", "Miere", "carbs", 304, 0.3, 82, 0),
+  // Added 2026-09-08. Values are USDA FoodData Central, SR Legacy, per 100 g,
+  // rounded to one decimal; the number after each name is the FDC id.
+  //   cabbage 169975 · cauliflower 169986 · green beans 169961 · peas 170419
+  //   mushrooms 169251 · beets 169145 · eggplant 169228 · sweet corn 169998
+  //   lettuce 169249 · garlic 169230 · pear 169118 · peach 169928
+  //   watermelon 167765 · cherries 171719 · yogurt 171284 · gouda 171241
+  //   sour cream 171257 · deli chicken breast 173874 · tofu (firm) 172475
+  //   sunflower kernels 170562 · dark chocolate 70-85% 170273 · honey 169640
+  // Two are proxies: cașcaval has no USDA entry, so it carries "Cheese, gouda"
+  // (the closest semi-hard cheese), and șuncă de pui carries USDA's sliced deli
+  // chicken breast. Brands vary; both are marked as such in the Romanian name.
+  f("cabbage", "Cabbage, raw", "Varză", "veg", 25, 1.3, 5.8, 0.1),
+  f("cauliflower", "Cauliflower, raw", "Conopidă", "veg", 25, 1.9, 5, 0.3),
+  f("green-beans", "Green beans, raw", "Fasole verde", "veg", 31, 1.8, 7, 0.2),
+  f("peas", "Peas, green, raw", "Mazăre verde", "veg", 81, 5.4, 14.4, 0.4),
+  f("mushrooms", "Mushrooms, white, raw", "Ciuperci albe", "veg", 22, 3.1, 3.3, 0.3),
+  f("beetroot", "Beetroot, raw", "Sfeclă roșie", "veg", 43, 1.6, 9.6, 0.2),
+  f("aubergine", "Aubergine, raw", "Vinete", "veg", 25, 1, 5.9, 0.2),
+  f("sweetcorn", "Sweetcorn, raw", "Porumb dulce", "veg", 86, 3.3, 18.7, 1.4),
+  f("lettuce", "Lettuce, green leaf", "Salată verde", "veg", 15, 1.4, 2.9, 0.2),
+  f("garlic", "Garlic, raw", "Usturoi", "veg", 149, 6.4, 33.1, 0.5),
+  f("pear", "Pear, raw", "Pară", "fruit", 57, 0.4, 15.2, 0.1),
+  f("peach", "Peach, raw", "Piersică", "fruit", 39, 0.9, 9.5, 0.3),
+  f("watermelon", "Watermelon, raw", "Pepene roșu", "fruit", 30, 0.6, 7.6, 0.2),
+  f("cherries", "Cherries, sweet, raw", "Cireșe", "fruit", 63, 1.1, 16, 0.2),
+  f("yogurt-plain", "Plain yogurt, whole milk", "Iaurt simplu 3,5%", "dairy", 61, 3.5, 4.7, 3.3),
+  f("cascaval", "Semi-hard cheese (gouda type)", "Cașcaval (tip gouda)", "dairy", 356, 24.9, 2.2, 27.4),
+  f("sour-cream", "Sour cream, cultured", "Smântână 20%", "dairy", 198, 2.4, 4.6, 19.4),
+  f("chicken-ham", "Chicken breast, deli sliced", "Șuncă de pui (piept feliat)", "protein", 98, 17.4, 2.9, 1.9),
+  f("tofu", "Tofu, firm", "Tofu ferm", "protein", 144, 17.3, 2.8, 8.7),
+  f("sunflower-seeds", "Sunflower seeds, kernels", "Semințe de floarea-soarelui", "fat", 584, 20.8, 20, 51.5),
+  f("dark-chocolate", "Dark chocolate 70-85%", "Ciocolată neagră 70%", "fat", 598, 7.8, 45.9, 42.6),
+  f("honey", "Honey", "Miere", "carbs", 304, 0.3, 82.4, 0),
 
   // fats
   f("olive-oil", "Olive oil", "Ulei de măsline", "fat", 884, 0, 0, 100),
