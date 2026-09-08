@@ -55,26 +55,22 @@ Deno.serve(async (req) => {
   // 2) top up from Open Food Facts if the cache is thin
   if (results.length < 10) {
     try {
-      const off = await fetch(
-        "https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&search_simple=1" +
-          `&page_size=15&search_terms=${encodeURIComponent(q)}` +
-          "&fields=code,product_name,brands,nutriments,serving_size,serving_quantity,product_quantity,categories_tags",
-        { headers: { "User-Agent": OFF_USER_AGENT }, signal: AbortSignal.timeout(5000) },
-      );
-      const offData = await off.json();
+      const products = await fetchOffProducts(q);
       const seen = new Set(results.map((r) => r.external?.id));
 
-      for (const p of offData.products ?? []) {
+      for (const p of products) {
         const n = p.nutriments ?? {};
         const kcal = n["energy-kcal_100g"];
-        if (!p.product_name || kcal == null || seen.has(p.code)) continue;
+        const code = p.code == null ? "" : String(p.code);
+        const name = typeof p.product_name === "string" ? p.product_name.trim() : "";
+        if (!name || !code || kcal == null || seen.has(code)) continue;
 
         const row = {
           source: "off",
-          external_id: String(p.code),
-          barcode: String(p.code),
-          name_en: p.product_name,
-          brand: p.brands?.split(",")[0]?.trim() ?? null,
+          external_id: code,
+          barcode: code,
+          name_en: name,
+          brand: firstBrand(p.brands),
           kcal_100g: round2(kcal),
           protein_100g: round2(n.proteins_100g ?? 0),
           carbs_100g: round2(n.carbohydrates_100g ?? 0),
@@ -90,8 +86,8 @@ Deno.serve(async (req) => {
 
         results.push({
           food_id: cached?.id ?? null,
-          external: { source: "off", id: String(p.code) },
-          name: p.product_name,
+          external: { source: "off", id: code },
+          name,
           brand: row.brand,
           per_100g: { kcal: row.kcal_100g, protein: row.protein_100g, carbs: row.carbs_100g, fat: row.fat_100g },
           verified: false,
@@ -105,6 +101,69 @@ Deno.serve(async (req) => {
 
   return json({ results });
 });
+
+// The subset of an Open Food Facts product this function reads. Both search
+// APIs return it, with one difference: `brands` is a comma-joined string from
+// the legacy CGI and an array from Search-a-licious.
+type OffProduct = {
+  code?: unknown;
+  product_name?: unknown;
+  brands?: unknown;
+  nutriments?: Record<string, unknown>;
+  serving_size?: unknown;
+  serving_quantity?: unknown;
+  product_quantity?: unknown;
+  categories_tags?: unknown;
+};
+
+const OFF_FIELDS =
+  "code,product_name,brands,nutriments,serving_size,serving_quantity,product_quantity,categories_tags";
+
+/**
+ * Open Food Facts has two search APIs. Search-a-licious
+ * (search.openfoodfacts.org) is the supported one: sub-second and not
+ * throttled per IP. The legacy CGI `search.pl` answers 503 after a handful of
+ * requests a minute from one address — and every instance of this function
+ * shares one — which is how the food list came to be empty in production. It
+ * stays as a fallback only, for the day the newer service is down.
+ *
+ * Never throws; the caller treats an empty array as "OFF had nothing".
+ */
+async function fetchOffProducts(q: string): Promise<OffProduct[]> {
+  const init = { headers: { "User-Agent": OFF_USER_AGENT }, signal: AbortSignal.timeout(5000) };
+
+  try {
+    const res = await fetch(
+      `https://search.openfoodfacts.org/search?q=${encodeURIComponent(q)}&page_size=15&fields=${OFF_FIELDS}`,
+      init,
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data?.hits) && data.hits.length > 0) return data.hits as OffProduct[];
+    }
+  } catch (_e) {
+    // fall through to the legacy endpoint
+  }
+
+  try {
+    const res = await fetch(
+      "https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&search_simple=1" +
+        `&page_size=15&search_terms=${encodeURIComponent(q)}&fields=${OFF_FIELDS}`,
+      init,
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data?.products) ? (data.products as OffProduct[]) : [];
+  } catch (_e) {
+    return [];
+  }
+}
+
+function firstBrand(brands: unknown): string | null {
+  const first = Array.isArray(brands) ? brands[0] : typeof brands === "string" ? brands.split(",")[0] : null;
+  const clean = typeof first === "string" ? first.trim() : "";
+  return clean || null;
+}
 
 function round2(v: unknown): number {
   return Math.round((Number(v) || 0) * 100) / 100;

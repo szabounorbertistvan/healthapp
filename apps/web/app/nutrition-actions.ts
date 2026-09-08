@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { getLocale } from "@/lib/i18n/server";
 import { newId, store, type StoredPlan } from "@/lib/demo-store";
 import { demoFoods, findDemoFoodByBarcode, searchDemoFoods, type DemoFood } from "@/lib/demo-foods";
 import type { ActionResult } from "./actions";
@@ -14,6 +15,19 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
   if (isDemo) return searchDemoFoods(q).slice(0, 30);
 
   const supabase = await supabaseServer();
+  const term = q.trim();
+
+  // A real search goes through the food-search function, which merges the
+  // local cache with Open Food Facts and writes every hit back into `foods`.
+  // Reading the table directly — what this did before — returns nothing on a
+  // fresh project, because nothing else ever fills the cache. The table read
+  // below stays as the browse-on-open case and the fallback when the function
+  // cannot be reached.
+  if (term.length >= 2) {
+    const remote = await searchFoodsRemote(supabase, term);
+    if (remote) return remote;
+  }
+
   let query = supabase
     .from("foods")
     .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
@@ -39,6 +53,51 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
     // client falls back to its own table when this is empty.
     portions: (row.portions ?? []) as DemoFood["portions"],
   }));
+}
+
+type RemoteFood = {
+  food_id: string | null;
+  name: string;
+  brand: string | null;
+  per_100g: DemoFood["per_100g"];
+};
+
+/**
+ * Ask the food-search function. `null` means the call itself failed (function
+ * not deployed, network, no session) — distinct from an empty result — so the
+ * caller can fall back to the local table instead of showing "no matches".
+ */
+async function searchFoodsRemote(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  term: string,
+): Promise<DemoFood[] | null> {
+  const locale = await getLocale();
+  try {
+    // The deployed function reads its input from the query string, and
+    // invoke() has no query option, so the parameters ride on the name.
+    const params = new URLSearchParams({ q: term, locale });
+    const { data, error } = await supabase.functions.invoke<{ results?: RemoteFood[] }>(
+      `food-search?${params}`,
+      { method: "GET" },
+    );
+    if (error || !Array.isArray(data?.results)) return null;
+    return data.results
+      // A hit that failed to cache has no uuid; plans and logs both key on one.
+      .filter((r): r is RemoteFood & { food_id: string } => Boolean(r.food_id))
+      .map((r) => ({
+        id: r.food_id,
+        name_en: r.name,
+        name_ro: r.name,
+        group: "",
+        brand: r.brand ?? null,
+        per_100g: r.per_100g,
+        // The function does not return servings; the client falls back to its
+        // own portion table for these.
+        portions: [],
+      }));
+  } catch {
+    return null;
+  }
 }
 
 export async function createNutritionPlan(input: {
@@ -250,7 +309,8 @@ export async function lookupBarcode(code: string): Promise<BarcodeResult> {
     const { data, error } = await supabase.functions.invoke("barcode-lookup", {
       body: { code: clean },
     });
-    if (error || !data?.food) return { ok: false, reason: "not_found" };
+    if (error) return { ok: false, reason: reasonFromFunctionError(error) };
+    if (!data?.food) return { ok: false, reason: "not_found" };
     return {
       ok: true,
       food: {
@@ -266,6 +326,20 @@ export async function lookupBarcode(code: string): Promise<BarcodeResult> {
   } catch {
     return { ok: false, reason: "upstream" };
   }
+}
+
+/**
+ * A non-2xx answer arrives as a FunctionsHttpError carrying the Response as
+ * `context`. Only a 404 means the product is unknown. Anything else — 401 when
+ * the session did not reach the function, 503 when Open Food Facts is down, a
+ * relay failure with no status at all — is a problem on our side, and calling
+ * it "not found" would send the person hunting for a product that exists.
+ */
+function reasonFromFunctionError(error: unknown): "invalid" | "not_found" | "upstream" {
+  const status = (error as { context?: { status?: number } } | null)?.context?.status;
+  if (status === 404) return "not_found";
+  if (status === 400) return "invalid";
+  return "upstream";
 }
 
 type FoodRow = {
