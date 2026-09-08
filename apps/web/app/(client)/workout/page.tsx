@@ -14,10 +14,18 @@ export default async function WorkoutPage() {
       <PageTitle title={t.common.nav.training} />
 
       {days.length === 0 ? (
-        <EmptyState
-          title={t.clientApp.workout.noProgramTitle}
-          hint={t.clientApp.workout.noProgramHint}
-        />
+        <>
+          <EmptyState
+            title={t.clientApp.workout.noProgramTitle}
+            hint={t.clientApp.workout.noProgramHint}
+          />
+          <Link
+            href="/workout/build"
+            className="mt-3 inline-block rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white"
+          >
+            {t.clientApp.builder.title}
+          </Link>
+        </>
       ) : (
         <>
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">

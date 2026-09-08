@@ -328,7 +328,7 @@ function toProgramDetail(program: StoredProgram): ProgramDetail {
     days: program.days.map((day) => ({
       id: day.id,
       name: day.name,
-      muscle_groups: [],
+      muscle_groups: day.muscle_groups ?? [],
       exercises: [...day.exercises]
         .sort((a, b) => a.position - b.position)
         .map((e) => ({

@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
-import { newId, store, type StoredProgram, type StoredProgramDay } from "@/lib/demo-store";
+import { DEMO_COACH_ID, newId, store, type StoredProgram, type StoredProgramDay } from "@/lib/demo-store";
 import { viewingClientId } from "@/lib/view-mode";
 import type { ActionResult } from "./actions";
 
@@ -26,6 +26,7 @@ export async function createProgram(input: {
   if (isDemo) {
     const program: StoredProgram = {
       id: newId("p"),
+      coach_id: DEMO_COACH_ID,
       client_id: input.clientId,
       client_name: input.clientName,
       name,
@@ -71,6 +72,7 @@ export async function addProgramDay(programId: string, name: string): Promise<Ac
       week_index: 1,
       day_index: program.days.length,
       name: dayName,
+      muscle_groups: [],
       exercises: [],
     });
     touch(program);
@@ -119,6 +121,11 @@ export async function addProgramExercise(input: {
     });
     touch(program);
     revalidatePath(`/programs/${input.programId}`);
+    // A client using the solo builder can hit this action too (Task 6) —
+    // /workout and /workout/build must see the new exercise without a hard
+    // reload, same as the coach's /programs/[id] does.
+    revalidatePath("/workout/build");
+    revalidatePath("/workout");
     return { ok: true, demo: true };
   }
 
@@ -137,6 +144,8 @@ export async function addProgramExercise(input: {
   });
   if (error) return { ok: false, message: error.message };
   revalidatePath(`/programs/${input.programId}`);
+  revalidatePath("/workout/build");
+  revalidatePath("/workout");
   return { ok: true };
 }
 
@@ -219,6 +228,7 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
       week_index: day.week_index,
       day_index: program.days.length,
       name: `${day.name} (copy)`,
+      muscle_groups: day.muscle_groups,
       exercises: day.exercises.map((e) => ({ ...e, id: newId("pe") })),
     });
     touch(program);
@@ -277,6 +287,10 @@ export async function publishProgram(programId: string): Promise<ActionResult> {
     touch(program);
     revalidatePath(`/programs/${programId}`);
     revalidatePath("/programs");
+    // Same reasoning as addProgramExercise above: the client surface needs to
+    // see the newly published program without a hard reload.
+    revalidatePath("/workout/build");
+    revalidatePath("/workout");
     return { ok: true, demo: true };
   }
 
@@ -288,6 +302,8 @@ export async function publishProgram(programId: string): Promise<ActionResult> {
   if (error) return { ok: false, message: error.message };
   revalidatePath(`/programs/${programId}`);
   revalidatePath("/programs");
+  revalidatePath("/workout/build");
+  revalidatePath("/workout");
   return { ok: true };
 }
 
@@ -320,6 +336,7 @@ export async function createSoloProgram(input: {
   if (isDemo) {
     const program: StoredProgram = {
       id: newId("p"),
+      coach_id: null,
       client_id: await viewingClientId(),
       client_name: "You",
       name,
@@ -370,6 +387,7 @@ export async function addSoloProgramDay(
       week_index: 1,
       day_index: program.days.length,
       name: dayName,
+      muscle_groups: muscleGroups,
       exercises: [],
     });
     touch(program);
@@ -398,13 +416,12 @@ export async function addSoloProgramDay(
 export async function getMySoloProgramId(): Promise<string | null> {
   if (isDemo) {
     const clientId = await viewingClientId();
-    // Demo's StoredProgram carries no coach_id, so this cannot tell a solo
-    // program apart from one the coach built for the same client — it is
-    // scoped to the viewed client, then picks their most recently updated
-    // program. See task-4-report.md for the residual gap this leaves for the
-    // seeded demo client, who already has a coach-authored program.
+    // StoredProgram now carries coach_id (Task 6), so this can tell a solo
+    // program apart from one the coach built for the same client even when
+    // both exist — scoped to the viewed client's solo (coach_id === null)
+    // programs, then the most recently updated one.
     const mine = store()
-      .programs.filter((p) => p.client_id === clientId)
+      .programs.filter((p) => p.client_id === clientId && p.coach_id === null)
       .sort((a, b) => (a.updated_at > b.updated_at ? -1 : 1));
     return mine[0]?.id ?? null;
   }

@@ -30,11 +30,20 @@ export type StoredProgramDay = {
   week_index: number;
   day_index: number;
   name: string;
+  muscle_groups: string[];
   exercises: StoredProgramExercise[];
 };
 
 export type StoredProgram = {
   id: string;
+  /**
+   * null for a program the client built for themselves (programs_solo_all in
+   * SQL requires exactly this combination). Every program in the original
+   * seed is coach-authored, so this is the only signal that lets
+   * getMySoloProgramId and createSoloProgram tell a solo program apart from
+   * one the coach assigned — see task-6-report.md.
+   */
+  coach_id: string | null;
   client_id: string;
   client_name: string;
   name: string;
@@ -44,6 +53,9 @@ export type StoredProgram = {
   updated_at: string;
   days: StoredProgramDay[];
 };
+
+/** Stand-in coach id for the seeded, coach-authored demo programs. */
+export const DEMO_COACH_ID = "coach1";
 
 export type StoredMealFood = {
   id: string;
@@ -85,7 +97,7 @@ type Store = { clients: StoredClient[]; programs: StoredProgram[]; plans: Stored
 // on every file save. The version stamp is what makes that safe: a store kept
 // across a reload that added a field would otherwise be missing it, and every
 // reader would crash on undefined. Bump it whenever Store changes shape.
-const STORE_VERSION = 2;
+const STORE_VERSION = 3;
 
 const globalRef = globalThis as unknown as {
   __healthappDemoStore?: Store & { version?: number };
@@ -159,6 +171,7 @@ function seed(): Store {
     const detail = p.id === demoProgramDetail.id ? demoProgramDetail : null;
     return {
       id: p.id,
+      coach_id: DEMO_COACH_ID,
       client_id: clientIdFor(p.client_name),
       client_name: p.client_name,
       name: p.name,
@@ -171,6 +184,7 @@ function seed(): Store {
         week_index: 1,
         day_index: dayIndex,
         name: d.name,
+        muscle_groups: d.muscle_groups ?? [],
         exercises: d.exercises.map((e, position) => ({
           id: e.id,
           exercise_id: e.exercise,
