@@ -26,8 +26,16 @@ export async function GET(request: NextRequest) {
     : isOAuth ? "/login?error=oauth" : "/login?error=link";
 
   if (isDemo) return NextResponse.redirect(new URL(next, origin));
-  // Supabase reports an expired/used link (or a cancelled OAuth consent) on the redirect itself
-  if (searchParams.get("error")) return NextResponse.redirect(new URL(failure, origin));
+  // Supabase reports an expired/used link (or a cancelled OAuth consent) on the
+  // redirect itself. Every provider-side failure reaches the user as the same
+  // generic `error=oauth`, so the description — the only thing separating a bad
+  // client secret from a refused consent from a provider that is switched off —
+  // is logged here or it is lost.
+  const providerError = searchParams.get("error");
+  if (providerError) {
+    console.error("auth callback rejected by provider", providerError, searchParams.get("error_description") ?? "");
+    return NextResponse.redirect(new URL(failure, origin));
+  }
 
   const supabase = await supabaseServer();
   const tokenHash = searchParams.get("token_hash");
@@ -36,11 +44,15 @@ export async function GET(request: NextRequest) {
 
   if (tokenHash && (type === "signup" || type === "email" || type === "recovery" || type === "invite" || type === "email_change")) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+    if (error) console.error("auth callback verifyOtp failed", error.message);
     return NextResponse.redirect(new URL(error ? failure : next, origin));
   }
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) return NextResponse.redirect(new URL(failure, origin));
+    if (error) {
+      console.error("auth callback code exchange failed", error.message);
+      return NextResponse.redirect(new URL(failure, origin));
+    }
     // Google sign-up: the coach/client choice could not ride along as user
     // metadata, so it comes back here. claim_signup_role only acts on a row
     // created in the last few minutes, so a sign-in link carrying a stale
@@ -52,6 +64,9 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.redirect(new URL(next, origin));
   }
+  // neither link shape: a malformed or truncated callback URL, not a rejected
+  // credential — worth separating, because it looks identical to the user
+  console.error("auth callback had neither token_hash nor code");
   return NextResponse.redirect(new URL(failure, origin));
 }
 
