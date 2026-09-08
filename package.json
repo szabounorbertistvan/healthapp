@@ -16,7 +16,8 @@
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
-    "seed:accounts": "node scripts/seed-accounts.mjs"
+    "seed:accounts": "node scripts/seed-accounts.mjs",
+    "seed:exercises:sql": "node scripts/build-exercise-seed-sql.mjs"
   },
   "devDependencies": {
     "supabase": "^2.22.6",

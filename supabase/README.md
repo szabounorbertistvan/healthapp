@@ -55,6 +55,10 @@ curl -X POST "https://<ref>.supabase.co/functions/v1/import-exercises" \
      -H "Authorization: Bearer $SERVICE_ROLE_KEY"
 ```
 
+No service_role key at hand? `npm run seed:exercises:sql` regenerates
+`supabase/seed/exercises.sql` from `seed/exercises.json`; paste it into the
+dashboard SQL editor instead. Same rows, same upsert, safe to re-run.
+
 ## Test accounts
 
 `npm run seed:accounts` creates one account per role on whatever project
