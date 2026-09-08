@@ -23,7 +23,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
   const [gear, setGear] = useState("");
   const [results, setResults] = useState<ExerciseSummary[]>([]);
   const [total, setTotal] = useState(0);
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
   const [loading, setLoading] = useState(true);
 
   // Debounced: the coach types faster than a round-trip, and the library is
@@ -40,6 +40,16 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
     }, 200);
     return () => clearTimeout(timer);
   }, [q, muscle, gear]);
+
+  // Next page of the same filter, appended. The server orders by name, so the
+  // offset is simply how many rows are already on screen.
+  function loadMore() {
+    startTransition(async () => {
+      const found = await searchExerciseLibrary({ q, muscle, equipment: gear }, results.length);
+      setResults((current) => [...current, ...found.results]);
+      setTotal(found.total);
+    });
+  }
 
   return (
     <div className="flex min-h-0 flex-col gap-3">
@@ -105,6 +115,18 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
         {!loading && results.length === 0 ? (
           <li className="rounded-lg border border-dashed border-line p-4 text-center text-sm text-ink-soft">
             {m.noMatch}
+          </li>
+        ) : null}
+        {!loading && total > results.length ? (
+          <li>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={loadMore}
+              className="w-full rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink-soft hover:border-accent hover:text-accent-ink disabled:opacity-40"
+            >
+              {pending ? m.searching : `${m.loadMore} (${total - results.length})`}
+            </button>
           </li>
         ) : null}
       </ul>

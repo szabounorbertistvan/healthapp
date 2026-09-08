@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { getLocale } from "@/lib/i18n/server";
+import { normalizeForSearch } from "@healthapp/shared";
 import { newId, store, type StoredPlan } from "@/lib/demo-store";
 import { demoFoods, findDemoFoodByBarcode, searchDemoFoods, type DemoFood } from "@/lib/demo-foods";
 import type { ActionResult } from "./actions";
@@ -32,9 +33,12 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
     .from("foods")
     .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
     .limit(30);
-  if (q.trim()) {
-    const safe = q.replace(/[,()%\\]/g, " ").trim();
-    query = query.or(`name_en.ilike.%${safe}%,name_ro.ilike.%${safe}%`);
+  if (term) {
+    // `search_text` is the lower-cased, unaccented name+brand kept by the
+    // database (migration 20260908120000), and the term gets the same
+    // treatment here, so "varza" finds "Varză" and "Paine" finds "Pâine".
+    const safe = normalizeForSearch(term.replace(/[,()%\\]/g, " "));
+    if (safe) query = query.ilike("search_text", `%${safe}%`);
   }
   const { data } = await query;
   return (data ?? []).map((row) => ({

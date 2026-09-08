@@ -53,6 +53,7 @@ const en = {
     exercisesFew: "{n} exercises",
     exercisesMany: "{n} exercises",
     showingFirst: "· showing first {n}",
+    loadMore: "Show more",
     noMatch: "Nothing matches. Custom exercises land in Sprint 3 too.",
   },
   newProgramForm: {
@@ -183,6 +184,7 @@ const ro: typeof en = {
     exercisesFew: "{n} exerciții",
     exercisesMany: "{n} de exerciții",
     showingFirst: "· se afișează primele {n}",
+    loadMore: "Arată mai multe",
     noMatch: "Nimic nu se potrivește. Exercițiile personalizate vin tot în Sprintul 3.",
   },
   newProgramForm: {

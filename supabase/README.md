@@ -59,6 +59,11 @@ No service_role key at hand? `npm run seed:exercises:sql` regenerates
 `supabase/seed/exercises.sql` from `seed/exercises.json`; paste it into the
 dashboard SQL editor instead. Same rows, same upsert, safe to re-run.
 
+Staple foods (chicken breast, rice, varză…) are not in Open Food Facts, which
+only knows packaged products. `npm run seed:foods:sql` writes
+`supabase/seed/foods.sql` from the curated list in `apps/web/lib/demo-foods.ts`;
+run it the same way, after `seed/accounts.sql` (the rows are owned by the admin).
+
 ## Test accounts
 
 `npm run seed:accounts` creates one account per role on whatever project

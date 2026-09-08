@@ -34,12 +34,14 @@ Deno.serve(async (req) => {
   if (authError || !userData.user) return json({ error: "unauthorized" }, 401);
 
   // 1) local cache + customs (customs and verified rank first)
-  // strip PostgREST filter metacharacters from user input
-  const safe = q.replace(/[,()%\\]/g, " ").trim();
+  // `search_text` is the database's lower-cased, unaccented copy of
+  // name + brand (migration 20260908120000); normalise the term the same way
+  // so "varza" finds "Varză". Filter metacharacters are stripped first.
+  const safe = normalize(q.replace(/[,()%\\]/g, " "));
   const { data: local } = await supabase
     .from("foods")
     .select("id, source, external_id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, verified")
-    .or(`name_en.ilike.%${safe}%,name_ro.ilike.%${safe}%,brand.ilike.%${safe}%`)
+    .ilike("search_text", `%${safe}%`)
     .order("verified", { ascending: false })
     .limit(15);
 
@@ -157,6 +159,15 @@ async function fetchOffProducts(q: string): Promise<OffProduct[]> {
   } catch (_e) {
     return [];
   }
+}
+
+/** Same rule as public.search_normalize() and normalizeForSearch in packages/shared. */
+function normalize(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function firstBrand(brands: unknown): string | null {
