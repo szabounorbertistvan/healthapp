@@ -218,6 +218,13 @@ export async function isEmptyAccount(): Promise<boolean> {
     supabase.from("programs").select("id", { count: "exact", head: true }).eq("client_id", auth.user.id),
     supabase.from("nutrition_plans").select("id", { count: "exact", head: true }).eq("client_id", auth.user.id),
   ]);
+  // A failed count is unknown, not zero — treating it as "empty" would bounce a
+  // client with a real program to /welcome on a transient database error.
+  // activeCoachId() already throws for the same reason; be as loud here.
+  const failed = programs.error ?? plans.error;
+  if (failed) {
+    throw new Error(`Failed to check whether account ${auth.user.id} is empty: ${failed.message}`);
+  }
   return coach === null && (programs.count ?? 0) === 0 && (plans.count ?? 0) === 0;
 }
 

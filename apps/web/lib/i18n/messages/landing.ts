@@ -2,7 +2,6 @@
 const en = {
   landing: {
     signIn: "Sign in",
-    getStarted: "Get started",
     tagline: "Training · Nutrition · Progress · Coaching",
     heroTitle: "Your coaching, finally in one app.",
     heroBody:
@@ -88,7 +87,6 @@ const en = {
 const ro: typeof en = {
   landing: {
     signIn: "Autentificare",
-    getStarted: "Începe acum",
     tagline: "Antrenament · Nutriție · Progres · Coaching",
     heroTitle: "Coaching-ul tău, în sfârșit într-o singură aplicație.",
     heroBody:

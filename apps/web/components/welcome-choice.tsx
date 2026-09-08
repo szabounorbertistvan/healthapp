@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { acceptInvite } from "@/app/client-actions";
+import { acceptInvite, chooseSoloTraining } from "@/app/client-actions";
 import { Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -12,6 +12,14 @@ export function WelcomeChoice() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const w = t.clientApp.welcome;
+
+  // accept_invite's business codes → copy; anything unrecognised gets the generic line
+  const inviteError = (code: string | undefined) =>
+    code === "INVALID_CODE" ? w.errInvalidCode
+    : code === "EXPIRED" ? w.errExpired
+    : code === "ALREADY_HAS_COACH" ? w.errAlreadyHasCoach
+    : w.errUnknown;
 
   return (
     <div className="space-y-3">
@@ -34,7 +42,7 @@ export function WelcomeChoice() {
                 startTransition(async () => {
                   setError(null);
                   const r = await acceptInvite(code);
-                  if (!r.ok) setError(r.message ?? "Could not use that code");
+                  if (!r.ok) setError(inviteError(r.code));
                   else router.push("/today");
                 })
               }
@@ -60,8 +68,14 @@ export function WelcomeChoice() {
         <p className="text-sm text-ink-soft">{t.clientApp.welcome.soloBody}</p>
         <button
           type="button"
-          onClick={() => router.push("/workout/build")}
-          className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              await chooseSoloTraining();
+              router.push("/workout/build");
+            })
+          }
+          className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
         >
           {t.clientApp.welcome.startSolo}
         </button>

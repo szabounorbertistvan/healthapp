@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getToday, isEmptyAccount } from "@/lib/client-data";
+import { hasChosenSolo } from "@/lib/onboarding";
 import { Card, EmptyState, PageTitle, SignalBadge } from "@/components/ui";
 import { AdherenceMeter, MacroPanel } from "@/components/client-ui";
 import { HabitTicks } from "@/components/habit-ticks";
@@ -13,8 +14,9 @@ export default async function TodayPage() {
 
   // Nothing to show on Today until the client has a coach or a program of their
   // own, so send a brand-new account to the choice instead of an empty screen.
-  // The moment either path is taken this stops firing.
-  if (await isEmptyAccount()) redirect("/welcome");
+  // The moment either path is taken this stops firing — including picking
+  // "I train on my own" without finishing a program (see chooseSoloTraining).
+  if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
 
   const today = await getToday();
   if (!today) {

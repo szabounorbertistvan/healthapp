@@ -108,6 +108,11 @@ const en = {
     soloBody: "Build your own week from the exercise library and log it as you go.",
     startSolo: "Build my program",
     notFinal: "You can join a coach later from settings — this is not a one-way door.",
+    // accept_invite raises these codes; see packages/api/src/errors.ts
+    errInvalidCode: "That code isn’t valid. Check it with your coach.",
+    errExpired: "That code has expired. Ask your coach for a new one.",
+    errAlreadyHasCoach: "You already have a coach. Leave them in settings first.",
+    errUnknown: "Could not use that code. Please try again.",
   },
 };
 
@@ -220,6 +225,10 @@ const ro: typeof en = {
     soloBody: "Îți construiești săptămâna din biblioteca de exerciții și o loghezi pe măsură.",
     startSolo: "Construiește-mi programul",
     notFinal: "Poți intra la un antrenor mai târziu, din setări — alegerea nu e definitivă.",
+    errInvalidCode: "Codul nu e valid. Verifică-l cu antrenorul tău.",
+    errExpired: "Codul a expirat. Cere-i antrenorului unul nou.",
+    errAlreadyHasCoach: "Ai deja un antrenor. Renunță la el din setări înainte.",
+    errUnknown: "Codul nu a putut fi folosit. Încearcă din nou.",
   },
 };
 

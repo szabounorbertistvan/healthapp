@@ -17,11 +17,8 @@ export default async function LandingPage() {
         </div>
         <nav className="flex items-center gap-3">
           <LanguageSelector />
-          <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-semibold text-ink-soft hover:text-ink">
-            {l.signIn}
-          </Link>
           <Link href="/login" className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
-            {l.getStarted}
+            {l.signIn}
           </Link>
         </nav>
       </header>
@@ -53,45 +50,15 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section className="py-10">
-        <h2 className="mb-5 text-lg font-bold">{l.forYou}</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {l.clientBenefits.map((b) => (
-            <div key={b.title} className="rounded-xl border border-line bg-surface p-5">
-              <p className="font-bold">{b.title}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{b.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="py-10">
-        <h2 className="mb-5 text-lg font-bold">{l.forCoaches}</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {l.coachBenefits.map((b) => (
-            <div key={b.title} className="rounded-xl border border-line bg-surface p-5">
-              <p className="font-bold">{b.title}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{b.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <Benefits title={l.forYou} items={l.clientBenefits} columns={2} />
+      <Benefits title={l.forCoaches} items={l.coachBenefits} columns={3} />
 
       <section className="rounded-2xl border border-line bg-surface p-8 text-center">
         <h2 className="text-xl font-bold">{l.pricingTitle}</h2>
         <div className="mx-auto mt-6 grid max-w-2xl gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-line p-4">
-            <p className="font-bold">{l.pricingFree}</p>
-            <p className="mt-1 text-sm text-ink-soft">{l.pricingFreeBody}</p>
-          </div>
-          <div className="rounded-xl border-2 border-accent p-4">
-            <p className="font-bold text-accent-ink">{l.pricingPremium}</p>
-            <p className="mt-1 text-sm text-ink-soft">{l.pricingPremiumBody}</p>
-          </div>
-          <div className="rounded-xl border border-line p-4">
-            <p className="font-bold">{l.pricingCoach}</p>
-            <p className="mt-1 text-sm text-ink-soft">{l.pricingCoachBody}</p>
-          </div>
+          <PricingTier name={l.pricingFree} body={l.pricingFreeBody} />
+          <PricingTier name={l.pricingPremium} body={l.pricingPremiumBody} highlighted />
+          <PricingTier name={l.pricingCoach} body={l.pricingCoachBody} />
         </div>
         <p className="mt-6 text-xs text-ink-faint">{l.pricingFootnote}</p>
       </section>
@@ -104,5 +71,32 @@ export default async function LandingPage() {
         {APP_NAME} · {t.common.legal.foodData}
       </footer>
     </main>
+  );
+}
+
+function Benefits({
+  title, items, columns,
+}: { title: string; items: readonly { title: string; body: string }[]; columns: 2 | 3 }) {
+  return (
+    <section className="py-10">
+      <h2 className="mb-5 text-lg font-bold">{title}</h2>
+      <div className={`grid gap-4 ${columns === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+        {items.map((b) => (
+          <div key={b.title} className="rounded-xl border border-line bg-surface p-5">
+            <p className="font-bold">{b.title}</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{b.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PricingTier({ name, body, highlighted = false }: { name: string; body: string; highlighted?: boolean }) {
+  return (
+    <div className={`rounded-xl p-4 ${highlighted ? "border-2 border-accent" : "border border-line"}`}>
+      <p className={`font-bold ${highlighted ? "text-accent-ink" : ""}`}>{name}</p>
+      <p className="mt-1 text-sm text-ink-soft">{body}</p>
+    </div>
   );
 }
