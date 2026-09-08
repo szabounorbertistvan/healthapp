@@ -161,7 +161,27 @@ site_url = "http://127.0.0.1:3000"
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # /auth/callback is where emailed links land (emailRedirectTo / redirectTo in the login page)
-additional_redirect_urls = ["https://127.0.0.1:3000", "http://127.0.0.1:3000/**", "http://localhost:3000/**"]
+# and where Google sign-in returns. The login page builds that URL from
+# `window.location.origin` (components/login-form.tsx), so every origin the app is
+# ever served from has to appear here — including Vercel previews, whose hostname
+# changes on each deploy. An origin that is missing is not rejected loudly: GoTrue
+# silently falls back to `site_url`, so the user lands on production with no session
+# on the preview and Google sign-in looks like it did nothing.
+# The hosted project keeps its own copy of this list (Dashboard -> Authentication ->
+# URL Configuration); the two must be kept in step.
+# GoTrue matches these as globs whose separators are `.` and `/`, so a single `*`
+# spans the hyphens in a hostname: "healthapp-*-nisp" covers both the per-branch
+# alias (healthapp-git-voinic-rebranding-nisp) and the per-deploy hash
+# (healthapp-9ega7hmm1-nisp). Verified against /auth/v1/verify, which honours an
+# allowed redirect_to and falls back to site_url for one that is not.
+additional_redirect_urls = [
+  "https://127.0.0.1:3000",
+  "http://127.0.0.1:3000/**",
+  "http://localhost:3000/**",
+  # Vercel: production alias, plus every preview (branch aliases and deploy hashes)
+  "https://healthapp-liart.vercel.app/**",
+  "https://healthapp-*-nisp.vercel.app/**",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
