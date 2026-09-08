@@ -92,7 +92,7 @@ export function CheckInForm() {
               router.refresh();
             })
           }
-          className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
+          className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-40"
         >
           {t.clientWidgets.checkInForm.submit}
         </button>

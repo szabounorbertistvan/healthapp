@@ -1,8 +1,9 @@
+import Link from "next/link";
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isDemo, supabaseBrowser } from "@/lib/supabase/client";
-import { APP_NAME, APP_INITIAL } from "@/lib/brand";
+import { Logo } from "@/components/logo";
 import { useI18n } from "@/lib/i18n/client";
 import { LanguageSelector } from "@/components/language-selector";
 import { authErrorKey } from "@/lib/auth-errors";
@@ -72,10 +73,9 @@ export default function ResetPasswordPage() {
         <LanguageSelector />
       </div>
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent font-black text-white">{APP_INITIAL}</span>
-          <span className="text-xl font-extrabold tracking-tight">{APP_NAME}</span>
-        </div>
+        <Link href="/" className="mb-6 flex items-center justify-center gap-2">
+          <Logo size="md" />
+        </Link>
 
         {ready === null ? (
           <div className="rounded-xl border border-line bg-surface p-5 text-center text-sm text-ink-soft">…</div>
@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
             <p className="text-sm text-ink-soft">{t.login.resetLinkInvalidBody}</p>
             <button
               type="button" onClick={() => router.push("/login")}
-              className="w-full rounded-lg bg-accent py-2 text-sm font-semibold text-white hover:opacity-90"
+              className="w-full rounded-lg bg-accent py-2 text-sm font-semibold text-accent-fg hover:opacity-90"
             >
               {t.login.backToSignIn}
             </button>
@@ -108,7 +108,7 @@ export default function ResetPasswordPage() {
             {updated ? <p className="text-sm text-accent-ink">{t.login.passwordUpdated}</p> : null}
             <button
               type="submit" disabled={busy || updated}
-              className="w-full rounded-lg bg-accent py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg bg-accent py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
             >
               {busy ? "…" : t.login.setNewPassword}
             </button>

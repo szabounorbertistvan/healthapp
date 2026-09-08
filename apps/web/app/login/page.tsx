@@ -1,8 +1,9 @@
+import Link from "next/link";
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isDemo, supabaseBrowser, enabledOAuthProviders } from "@/lib/supabase/client";
-import { APP_NAME, APP_INITIAL } from "@/lib/brand";
+import { Logo } from "@/components/logo";
 import { useI18n } from "@/lib/i18n/client";
 import { LanguageSelector } from "@/components/language-selector";
 import { authErrorKey } from "@/lib/auth-errors";
@@ -160,10 +161,9 @@ export default function LoginPage() {
         <LanguageSelector />
       </div>
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent font-black text-white">{APP_INITIAL}</span>
-          <span className="text-xl font-extrabold tracking-tight">{APP_NAME}</span>
-        </div>
+        <Link href="/" className="mb-6 flex items-center justify-center gap-2">
+          <Logo size="md" />
+        </Link>
 
         {done ? (
           <div className="space-y-3 rounded-xl border border-line bg-surface p-5">
@@ -244,7 +244,7 @@ export default function LoginPage() {
 
             <button
               type="submit" disabled={busy}
-              className="w-full rounded-lg bg-accent py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg bg-accent py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
             >
               {busy ? "…" : submitLabel}
             </button>

@@ -104,7 +104,7 @@ export default async function TodayPage() {
               </ul>
               <Link
                 href={`/workout/${next.day_id}`}
-                className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90"
               >
                 {t.clientApp.today.startWorkout}
               </Link>
@@ -152,7 +152,7 @@ export default async function TodayPage() {
               <p className="text-sm text-ink-soft">{t.clientApp.today.checkInNotSubmitted}</p>
               <Link
                 href="/check-in"
-                className="mt-3 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                className="mt-3 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90"
               >
                 {t.clientApp.today.checkInCta}
               </Link>

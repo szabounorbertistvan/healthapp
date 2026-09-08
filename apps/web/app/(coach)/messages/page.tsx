@@ -24,7 +24,7 @@ export default async function MessagesPage() {
                 <div className="shrink-0 text-right">
                   <p className="text-xs text-ink-faint">{timeAgo(c.last_at, locale)}</p>
                   {c.unread > 0 ? (
-                    <span className="mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-white">
+                    <span className="mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-accent-fg">
                       {c.unread}
                     </span>
                   ) : null}

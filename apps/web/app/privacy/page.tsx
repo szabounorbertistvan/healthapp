@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { APP_NAME, APP_INITIAL } from "@/lib/brand";
+import { APP_NAME } from "@/lib/brand";
+import { Logo } from "@/components/logo";
 import { getLocale } from "@/lib/i18n/server";
 import { LanguageSelector } from "@/components/language-selector";
 
@@ -220,8 +221,7 @@ export default async function PrivacyPage() {
       <div className="fixed right-4 top-4 z-20"><LanguageSelector /></div>
       <header className="flex items-center justify-between py-6">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-black text-white">{APP_INITIAL}</span>
-          <span className="text-lg font-extrabold tracking-tight">{APP_NAME}</span>
+          <Logo size="sm" />
         </Link>
         <Link href="/" className="text-sm font-semibold text-accent-ink hover:underline">
           {locale === "ro" ? "← Înapoi" : "← Back"}

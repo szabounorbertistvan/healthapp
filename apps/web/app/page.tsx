@@ -1,41 +1,50 @@
 import Link from "next/link";
 import { isDemo } from "@/lib/supabase/server";
-import { APP_NAME, APP_INITIAL } from "@/lib/brand";
+import { getProfile } from "@/lib/data";
+import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 import { LanguageSelector } from "@/components/language-selector";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo, LogoMark, Wordmark } from "@/components/logo";
 
 export default async function LandingPage() {
-  const { t } = await getI18n();
+  const [{ t }, profile] = await Promise.all([getI18n(), isDemo ? null : getProfile()]);
   const l = t.landing;
+  // Signed-in visitors (they got here via the logo) get a way back into the app.
+  const appHref = profile ? (profile.role === "client" ? "/today" : "/dashboard") : null;
   return (
-    <main className="mx-auto max-w-4xl px-6 pb-20">
+    <main className="mx-auto max-w-5xl px-6 pb-20">
       <header className="flex items-center justify-between py-6">
-        <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-black text-white">{APP_INITIAL}</span>
-          <span className="text-lg font-extrabold tracking-tight">{APP_NAME}</span>
-        </div>
-        <nav className="flex items-center gap-3">
+        <Link href="/" aria-label={APP_NAME}>
+          <Logo size="sm" />
+        </Link>
+        <nav className="flex items-center gap-2 sm:gap-3">
           <LanguageSelector />
-          <Link href="/login" className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
-            {l.signIn}
+          <ThemeToggle />
+          <Link href={appHref ?? "/login"} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90">
+            {appHref ? l.openApp : l.signIn}
           </Link>
         </nav>
       </header>
 
-      <section className="py-14 text-center">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent-ink">
-          {l.tagline}
+      {/* Hero — the logo lockup as it appears in the brand: mark, wordmark, tagline. */}
+      <section className="py-16 text-center sm:py-24">
+        <LogoMark className="mx-auto h-36 w-36 sm:h-44 sm:w-44" />
+        <Wordmark className="mx-auto mt-8 h-10 sm:h-12" />
+        <p className="mt-3 flex items-center justify-center gap-3 font-display text-xs font-semibold uppercase tracking-[0.28em] text-accent-ink sm:text-sm">
+          <span className="h-px w-8 bg-accent" aria-hidden />
+          {APP_TAGLINE}
+          <span className="h-px w-8 bg-accent" aria-hidden />
         </p>
-        <h1 className="mx-auto max-w-2xl text-balance text-4xl font-extrabold tracking-tight sm:text-5xl">
+
+        <h1 className="mx-auto mt-12 max-w-2xl text-balance font-display text-3xl font-bold tracking-tight sm:text-4xl">
           {l.heroTitle}
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-ink-soft">
-          {fill(l.heroBody, { app: APP_NAME })}
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Link href="/login" className="rounded-xl bg-accent px-6 py-3 font-semibold text-white hover:opacity-90">
-            {l.startFree}
+        <p className="mx-auto mt-4 max-w-xl text-ink-soft">{fill(l.heroBody, { app: APP_NAME })}</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Link href={appHref ?? "/login"} className="rounded-xl bg-accent px-6 py-3 font-semibold text-accent-fg hover:opacity-90">
+            {appHref ? l.openApp : l.startFree}
           </Link>
           {isDemo ? (
             <>
@@ -48,6 +57,17 @@ export default async function LandingPage() {
             </>
           ) : null}
         </div>
+      </section>
+
+      {/* The four pillars from the logo strip: dumbbell · clipboard · bowl · chart. */}
+      <section className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-4">
+        {l.pillars.map((p, i) => (
+          <div key={p.title} className="bg-surface p-6">
+            <span className="text-accent">{PILLAR_ICONS[i]}</span>
+            <p className="mt-4 font-bold">{p.title}</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">{p.body}</p>
+          </div>
+        ))}
       </section>
 
       <Benefits title={l.forYou} items={l.clientBenefits} columns={2} />
@@ -63,16 +83,41 @@ export default async function LandingPage() {
         <p className="mt-6 text-xs text-ink-faint">{l.pricingFootnote}</p>
       </section>
 
-      <footer className="pt-10 text-center text-xs text-ink-faint">
-        <Link href="/privacy" className="hover:underline">{t.common.legal.privacy}</Link>
-        {" · "}
-        <Link href="/terms" className="hover:underline">{t.common.legal.terms}</Link>
-        {" · "}
-        {APP_NAME} · {t.common.legal.foodData}
+      <footer className="flex flex-col items-center gap-3 pt-12 text-center text-xs text-ink-faint">
+        <Logo size="sm" tagline />
+        <p>
+          <Link href="/privacy" className="hover:underline">{t.common.legal.privacy}</Link>
+          {" · "}
+          <Link href="/terms" className="hover:underline">{t.common.legal.terms}</Link>
+          {" · "}
+          {t.common.legal.foodData}
+        </p>
       </footer>
     </main>
   );
 }
+
+const ICON = "h-7 w-7";
+const STROKE = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+const PILLAR_ICONS = [
+  // dumbbell
+  <svg key="dumbbell" viewBox="0 0 24 24" className={ICON} {...STROKE} aria-hidden>
+    <path d="M2 10v4M22 10v4M5 8v8M19 8v8M8 6v12M16 6v12M8 12h8" />
+  </svg>,
+  // clipboard
+  <svg key="clipboard" viewBox="0 0 24 24" className={ICON} {...STROKE} aria-hidden>
+    <rect x="5" y="4" width="14" height="17" rx="2" />
+    <path d="M9 4.5V3h6v1.5M8.5 11l1.5 1.5L13 9.5M8.5 16l1.5 1.5L13 14.5" />
+  </svg>,
+  // bowl with leaf
+  <svg key="bowl" viewBox="0 0 24 24" className={ICON} {...STROKE} aria-hidden>
+    <path d="M3 12h18a9 9 0 0 1-18 0zM8 12c0-3 2-5 5-6 2 2 3 4 1 6" />
+  </svg>,
+  // rising chart
+  <svg key="chart" viewBox="0 0 24 24" className={ICON} {...STROKE} aria-hidden>
+    <path d="M4 20h16M6 17v-4M11 17V9M16 17v-6M4 8l5-3 4 3 7-5M17 3h3v3" />
+  </svg>,
+];
 
 function Benefits({
   title, items, columns,

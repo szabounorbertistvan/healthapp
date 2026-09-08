@@ -5,7 +5,8 @@ import { isDemo } from "@/lib/supabase/server";
 import { DEMO_CLIENT_NAME } from "@/lib/demo-client-store";
 import { ClientNav, ClientTabBar } from "@/components/client-nav";
 import { LanguageSelector } from "@/components/language-selector";
-import { APP_NAME, APP_INITIAL } from "@/lib/brand";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { viewableClients } from "@/app/view-actions";
@@ -34,16 +35,16 @@ export default async function ClientLayout({ children }: { children: React.React
   return (
     <div className="flex min-h-screen">
       <aside className="hidden w-52 shrink-0 flex-col border-r border-line bg-surface p-4 sm:flex">
-        <Link href="/today" className="mb-2 flex items-center gap-2 px-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-black text-white">
-            {APP_INITIAL}
-          </span>
-          <span className="text-base font-extrabold tracking-tight">{APP_NAME}</span>
+        <Link href="/" className="mb-2 flex items-center gap-2 px-2">
+          <Logo size="sm" />
         </Link>
         <p className="mb-5 px-2 text-xs text-ink-faint">{name}</p>
         <ClientNav />
         <div className="mt-auto space-y-3 pt-6">
-          <LanguageSelector />
+          <div className="flex items-center gap-2">
+            <LanguageSelector />
+            <ThemeToggle />
+          </div>
           {isDemo ? (
             <ViewSwitcher surface="client" clients={clients} activeClientId={activeClientId} />
           ) : null}
@@ -63,7 +64,10 @@ export default async function ClientLayout({ children }: { children: React.React
         <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-5 py-3 sm:hidden">
           <span className="truncate text-sm font-bold tracking-tight">{name}</span>
           <div className="flex shrink-0 items-center gap-3">
+            <div className="flex items-center gap-2">
             <LanguageSelector />
+            <ThemeToggle />
+          </div>
             <SignOutButton className="text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50" />
           </div>
         </header>

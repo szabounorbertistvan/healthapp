@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { APP_NAME, APP_INITIAL } from "@/lib/brand";
+import { APP_NAME } from "@/lib/brand";
+import { LogoMark } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 import { LanguageSelector } from "@/components/language-selector";
@@ -13,14 +14,14 @@ export default async function GetTheAppPage() {
         <LanguageSelector />
       </div>
       <div className="max-w-md">
-        <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-lg font-black text-white">{APP_INITIAL}</span>
+        <LogoMark className="mx-auto mb-4 h-16 w-16" />
         <h1 className="text-2xl font-extrabold tracking-tight">{fill(t.getApp.title, { app: APP_NAME })}</h1>
         <p className="mt-3 text-ink-soft">{t.getApp.body}</p>
         <p className="mt-4 rounded-xl border border-line bg-surface p-4 text-sm text-ink-soft">
           {t.getApp.beta}
         </p>
         <Link href="/" className="mt-6 inline-block text-sm font-semibold text-accent-ink hover:underline">
-          {t.getApp.back}
+          {fill(t.getApp.back, { app: APP_NAME })}
         </Link>
       </div>
     </main>

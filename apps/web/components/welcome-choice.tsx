@@ -46,7 +46,7 @@ export function WelcomeChoice() {
                   else router.push("/today");
                 })
               }
-              className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+              className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg disabled:opacity-40"
             >
               {t.clientApp.welcome.useCode}
             </button>
@@ -75,7 +75,7 @@ export function WelcomeChoice() {
               router.push("/workout/build");
             })
           }
-          className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+          className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg disabled:opacity-40"
         >
           {t.clientApp.welcome.startSolo}
         </button>

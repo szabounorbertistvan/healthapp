@@ -85,7 +85,7 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
             type="button"
             disabled={pending || !valid}
             onClick={save}
-            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg disabled:opacity-40"
           >
             {t.common.actions.save}
           </button>

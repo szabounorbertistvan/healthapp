@@ -2,11 +2,17 @@
 const en = {
   landing: {
     signIn: "Sign in",
-    tagline: "Training · Nutrition · Progress · Coaching",
+    openApp: "Open the app",
     heroTitle: "Your coaching, finally in one app.",
     heroBody:
       "{app} replaces WhatsApp threads, spreadsheets and three different trackers with a single flow between you and your coach — or on your own.",
     startFree: "Start free",
+    pillars: [
+      { title: "Train", body: "Programs built by your coach, logged set by set." },
+      { title: "Plan", body: "Weekly check-ins and habits that keep the plan honest." },
+      { title: "Eat", body: "Meal plans, barcode scanning and macros that add up." },
+      { title: "Progress", body: "Weight, strength and adherence on one timeline." },
+    ],
     browseCoachDemo: "Browse the coach demo",
     browseClientDemo: "Browse the client demo",
     forYou: "For you",
@@ -80,18 +86,24 @@ const en = {
     title: "{app} lives on your phone",
     body: "Workouts, nutrition, check-ins and streaks are in the mobile app for iOS and Android. The web dashboard is your coach's workspace.",
     beta: "The mobile app ships with the private beta — your coach will send you an invite link.",
-    back: "← Back to healthapp.app",
+    back: "← Back to {app}",
   },
 };
 
 const ro: typeof en = {
   landing: {
     signIn: "Autentificare",
-    tagline: "Antrenament · Nutriție · Progres · Coaching",
+    openApp: "Deschide aplicația",
     heroTitle: "Coaching-ul tău, în sfârșit într-o singură aplicație.",
     heroBody:
       "{app} înlocuiește conversațiile de WhatsApp, tabelele Excel și trei aplicații diferite de tracking cu un singur flux între tine și antrenorul tău — sau pe cont propriu.",
     startFree: "Începe gratuit",
+    pillars: [
+      { title: "Antrenează", body: "Programe construite de antrenor, logate set cu set." },
+      { title: "Planifică", body: "Check-in-uri săptămânale și obiceiuri care țin planul onest." },
+      { title: "Mănâncă", body: "Planuri de mese, scanare de coduri de bare și macro care se adună." },
+      { title: "Progresează", body: "Greutate, forță și aderență pe o singură cronologie." },
+    ],
     browseCoachDemo: "Vezi demo-ul pentru antrenori",
     browseClientDemo: "Vezi demo-ul pentru clienți",
     forYou: "Pentru tine",
@@ -162,7 +174,7 @@ const ro: typeof en = {
     title: "{app} trăiește pe telefonul tău",
     body: "Antrenamentele, nutriția, check-in-urile și seriile sunt în aplicația mobilă pentru iOS și Android. Dashboard-ul web este spațiul de lucru al antrenorului tău.",
     beta: "Aplicația mobilă vine odată cu beta privată — antrenorul tău îți va trimite un link de invitație.",
-    back: "← Înapoi la healthapp.app",
+    back: "← Înapoi la {app}",
   },
 };
 

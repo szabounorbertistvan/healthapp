@@ -43,7 +43,7 @@ export function SoloProgramBuilder({ program }: { program: ProgramDetail | null 
           type="button"
           disabled={pending || !name.trim()}
           onClick={() => run(() => createSoloProgram({ name, intensityMode: "rir" }))}
-          className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
+          className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-40"
         >
           {t.clientApp.builder.create}
         </button>
@@ -146,7 +146,7 @@ export function SoloProgramBuilder({ program }: { program: ProgramDetail | null 
         type="button"
         disabled={pending || program.status === "published" || program.days.every((d) => d.exercises.length === 0)}
         onClick={() => run(() => publishProgram(program.id))}
-        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
+        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-40"
       >
         {program.status === "published" ? t.clientApp.builder.published : t.clientApp.builder.publish}
       </button>

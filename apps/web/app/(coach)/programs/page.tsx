@@ -13,7 +13,7 @@ export default async function ProgramsPage() {
       <PageTitle title={t.common.nav.programs}>
         <Link
           href="/programs/new"
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90"
         >
           {t.coachApp.programs.newProgram}
         </Link>

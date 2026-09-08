@@ -39,7 +39,7 @@ export function HabitTicks({ habits }: { habits: ClientHabitRow[] }) {
               aria-hidden
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs font-black ${
                 habit.done_today
-                  ? "border-accent bg-accent text-white"
+                  ? "border-accent bg-accent text-accent-fg"
                   : "border-line text-transparent"
               }`}
             >

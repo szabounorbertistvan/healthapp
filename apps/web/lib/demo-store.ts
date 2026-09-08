@@ -100,14 +100,14 @@ type Store = { clients: StoredClient[]; programs: StoredProgram[]; plans: Stored
 const STORE_VERSION = 3;
 
 const globalRef = globalThis as unknown as {
-  __healthappDemoStore?: Store & { version?: number };
+  __voinicDemoStore?: Store & { version?: number };
 };
 
 export function store(): Store {
-  if (globalRef.__healthappDemoStore?.version !== STORE_VERSION) {
-    globalRef.__healthappDemoStore = { ...seed(), version: STORE_VERSION };
+  if (globalRef.__voinicDemoStore?.version !== STORE_VERSION) {
+    globalRef.__voinicDemoStore = { ...seed(), version: STORE_VERSION };
   }
-  return globalRef.__healthappDemoStore;
+  return globalRef.__voinicDemoStore;
 }
 
 export function newId(prefix: string): string {

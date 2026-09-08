@@ -34,7 +34,7 @@ export function ViewSwitcher({
           disabled={pending}
           onClick={() => go("coach")}
           className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold ${
-            surface === "coach" ? "bg-accent text-white" : "bg-bg text-ink-soft hover:text-ink"
+            surface === "coach" ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
           }`}
         >
           {t.common.viewSwitcher.coach}
@@ -44,7 +44,7 @@ export function ViewSwitcher({
           disabled={pending}
           onClick={() => (surface === "client" ? setOpen((v) => !v) : go(`client:${clients[0]?.id}`))}
           className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold ${
-            surface === "client" ? "bg-accent text-white" : "bg-bg text-ink-soft hover:text-ink"
+            surface === "client" ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
           }`}
         >
           {t.common.viewSwitcher.client}

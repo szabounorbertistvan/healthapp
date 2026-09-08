@@ -59,6 +59,11 @@ const en = {
     en: "English",
     ro: "Română",
   },
+  theme: {
+    label: "Theme",
+    dark: "Dark theme",
+    light: "Light theme",
+  },
   actions: {
     save: "Save",
     cancel: "Cancel",
@@ -150,6 +155,11 @@ const ro: typeof en = {
     label: "Limbă",
     en: "English",
     ro: "Română",
+  },
+  theme: {
+    label: "Temă",
+    dark: "Temă întunecată",
+    light: "Temă luminoasă",
   },
   actions: {
     save: "Salvează",

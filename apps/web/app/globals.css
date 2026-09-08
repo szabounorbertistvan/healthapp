@@ -1,41 +1,64 @@
 @import "tailwindcss";
 
+/*
+  Voinic palette — near-black + gold, warm neutrals.
+
+  Dark is the brand and the default for everyone; it does NOT follow the OS
+  preference. Light is an explicit opt-in via the `bg-theme` cookie, which the
+  root layout renders as `data-theme="light"` on <html> (see lib/theme.ts).
+
+  Rules: gold is the brand accent (fills, borders, active states, charts).
+  Text on gold is always dark (`accent-fg`), never white. Small accent text on
+  light backgrounds uses the bronze `accent-ink`, which clears WCAG AA on white.
+  `warn` is deliberately orange so it never reads as "brand gold".
+*/
 @theme {
-  --color-bg: #f4f6f5;
-  --color-surface: #ffffff;
-  --color-ink: #1d2422;
-  --color-ink-soft: #4c5652;
-  --color-ink-faint: #7a847f;
-  --color-line: #dde3df;
-  --color-accent: #0f9d6e;
-  --color-accent-ink: #0b7a56;
-  --color-accent-soft: #e2f3ec;
-  --color-warn: #b97f10;
-  --color-warn-soft: #f7ecd8;
-  --color-risk: #c04545;
-  --color-risk-soft: #f7e2e2;
-  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --color-bg: #0b0b0d;
+  --color-surface: #16171a;
+  --color-ink: #f2efe8;
+  --color-ink-soft: #b9b5ab;
+  --color-ink-faint: #807c73;
+  --color-line: #2a2b30;
+  --color-accent: #d4a938;
+  --color-accent-fg: #0b0b0d;
+  --color-accent-ink: #e6c25a;
+  --color-accent-soft: #2a2312;
+  --color-warn: #e08a3c;
+  --color-warn-soft: #33200f;
+  --color-risk: #e06666;
+  --color-risk-soft: #3a1c1c;
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-exo2), var(--font-inter), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #141917;
-    --color-surface: #1c2320;
-    --color-ink: #e8ece9;
-    --color-ink-soft: #b4bdb7;
-    --color-ink-faint: #828c86;
-    --color-line: #2d3733;
-    --color-accent: #34c48f;
-    --color-accent-ink: #4fd3a1;
-    --color-accent-soft: #1e332b;
-    --color-warn: #d9a441;
-    --color-warn-soft: #33290f;
-    --color-risk: #e07070;
-    --color-risk-soft: #3a1f1f;
-  }
+:root {
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #f7f5f0;
+  --color-surface: #ffffff;
+  --color-ink: #16161a;
+  --color-ink-soft: #4a4944;
+  --color-ink-faint: #7a786f;
+  --color-line: #e4dfd3;
+  --color-accent: #c9a227;
+  --color-accent-fg: #16161a;
+  --color-accent-ink: #7f5c0b;
+  --color-accent-soft: #f6eed6;
+  --color-warn: #c2621a;
+  --color-warn-soft: #f9e7d9;
+  --color-risk: #c04545;
+  --color-risk-soft: #f7e2e2;
 }
 
 body {
   background: var(--color-bg);
   color: var(--color-ink);
+}
+
+/* The wordmark PNG is white lettering from the logo; on the light theme flip it to ink. */
+:root[data-theme="light"] .brand-wordmark {
+  filter: invert(1) brightness(0.1);
 }

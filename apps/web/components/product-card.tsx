@@ -83,7 +83,7 @@ export function ProductCard({
           type="button"
           disabled={busy}
           onClick={onLog}
-          className="mt-4 w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+          className="mt-4 w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg disabled:opacity-40"
         >
           {t.clientWidgets.productCard.logThis}
         </button>

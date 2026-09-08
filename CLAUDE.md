@@ -1,5 +1,11 @@
 # HealthApp — project guide
 
+**Brand: Voinic** ("Coach. Plan. Progress."). `HealthApp` survives only as the repo
+folder and the `@healthapp/*` package scope, which are infra ids. The user-facing
+name comes from `APP_NAME` in `apps/web/lib/brand.ts`; the mark lives in
+`components/logo.tsx` and `app/icon.svg`. Dark is the default theme (gold on
+near-black); light is an opt-in via the `bg-theme` cookie (`lib/theme.ts`).
+
 Fitness & coaching platform replacing "WhatsApp + Excel + a tracker app". Two
 roles: **coach** (builds programs and nutrition plans, watches adherence) and
 **client** (logs workouts and food, checks in). Romanian + English from day one.

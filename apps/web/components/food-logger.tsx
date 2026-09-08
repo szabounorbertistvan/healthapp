@@ -47,7 +47,7 @@ export function FoodLogger() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
+        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg hover:opacity-90"
       >
         {t.clientWidgets.foodLogger.logFood}
       </button>
@@ -100,7 +100,7 @@ export function FoodLogger() {
             type="button"
             onClick={() => setSlot(s)}
             className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize ${
-              slot === s ? "bg-accent text-white" : "bg-bg text-ink-soft"
+              slot === s ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft"
             }`}
           >
             {t.clientWidgets.foodLogger.slots[s]}
@@ -135,11 +135,11 @@ export function FoodLogger() {
                       title={portion.note}
                       onClick={() => setGrams(String(portion.grams))}
                       className={`rounded-md px-2.5 py-1.5 text-xs font-semibold ${
-                        active ? "bg-accent text-white" : "bg-bg text-ink-soft hover:text-ink"
+                        active ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
                       }`}
                     >
                       {portion.label}
-                      <span className={`ml-1 font-normal ${active ? "text-white/80" : "text-ink-faint"}`}>
+                      <span className={`ml-1 font-normal ${active ? "text-accent-fg/70" : "text-ink-faint"}`}>
                         {portion.grams} g
                       </span>
                     </button>
@@ -193,7 +193,7 @@ export function FoodLogger() {
                 router.refresh();
               })
             }
-            className="mt-3 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            className="mt-3 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
           >
             {fill(t.clientWidgets.foodLogger.addTo, { slot: t.clientWidgets.foodLogger.slots[slot] })}
           </button>

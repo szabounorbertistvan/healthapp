@@ -137,7 +137,7 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
             else router.push("/today");
           })
         }
-        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
+        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-40"
       >
         {t.clientWidgets.setLogger.finishWorkout}
       </button>
@@ -199,7 +199,7 @@ function ExerciseBlock({
             <li
               key={s.id}
               className={`rounded-md px-2 py-1 text-xs tabular-nums ${
-                s.is_pr ? "bg-accent text-white" : "bg-bg text-ink-soft"
+                s.is_pr ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft"
               }`}
             >
               {s.weight_kg} kg × {s.reps}
@@ -221,7 +221,7 @@ function ExerciseBlock({
           type="button"
           disabled={pending}
           onClick={() => onLog(parseFloat(weight), parseInt(reps, 10), toRpe(effort, asRir))}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
         >
           {t.clientWidgets.setLogger.logSet}
         </button>

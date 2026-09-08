@@ -270,7 +270,7 @@ export function BarcodeScanner({
           type="button"
           disabled={busy || !/^\d{6,14}$/.test(manual.trim())}
           onClick={submitManual}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
         >
           {t.clientWidgets.barcodeScanner.lookUp}
         </button>

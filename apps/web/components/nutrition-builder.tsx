@@ -56,7 +56,7 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
             onClick={() => run(() => publishNutritionPlan(plan.id))}
             disabled={pending || isEmpty || plan.status === "published"}
             title={isEmpty ? m.publishHint : undefined}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
           >
             {plan.status === "published" ? m.published : m.publish}
           </button>

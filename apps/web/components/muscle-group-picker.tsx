@@ -32,7 +32,7 @@ export function MuscleGroupPicker({
             aria-pressed={on}
             onClick={() => toggle(group)}
             className={`rounded-md px-2.5 py-1.5 text-xs font-semibold capitalize ${
-              on ? "bg-accent text-white" : "bg-bg text-ink-soft hover:text-ink"
+              on ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
             }`}
           >
             {group}

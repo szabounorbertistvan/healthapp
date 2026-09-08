@@ -56,7 +56,7 @@ export function AddHabitForm() {
               router.refresh();
             })
           }
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
         >
           {t.common.actions.add}
         </button>

@@ -107,7 +107,7 @@ export function NewPlanForm({ roster }: { roster: { id: string; name: string }[]
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+        className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
       >
         {pending ? m.creating : m.createDraft}
       </button>

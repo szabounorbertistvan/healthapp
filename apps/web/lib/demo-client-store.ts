@@ -105,14 +105,14 @@ type ClientStore = {
 const STORE_VERSION = 3;
 
 const globalRef = globalThis as unknown as {
-  __healthappClientStore?: ClientStore & { version?: number };
+  __voinicClientStore?: ClientStore & { version?: number };
 };
 
 export function clientStore(): ClientStore {
-  if (globalRef.__healthappClientStore?.version !== STORE_VERSION) {
-    globalRef.__healthappClientStore = { ...seed(), version: STORE_VERSION };
+  if (globalRef.__voinicClientStore?.version !== STORE_VERSION) {
+    globalRef.__voinicClientStore = { ...seed(), version: STORE_VERSION };
   }
-  return globalRef.__healthappClientStore;
+  return globalRef.__voinicClientStore;
 }
 
 export function newId(prefix: string): string {

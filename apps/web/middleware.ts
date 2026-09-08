@@ -42,14 +42,16 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/privacy") || path.startsWith("/terms") ||
     path.startsWith("/auth/") || path.startsWith("/reset-password")
   ) return response;
-  const isPublic = path === "/" || path.startsWith("/login");
+  const isLanding = path === "/";
+  const isLogin = path.startsWith("/login");
 
   // logged-out users see only the landing page (and login)
-  if (!data.user && !isPublic) {
+  if (!data.user && !isLanding && !isLogin) {
     return NextResponse.redirect(new URL("/", request.url));
   }
-  // logged-in users skip the landing/login pages
-  if (data.user && isPublic) {
+  // logged-in users skip the login page. The landing page stays reachable
+  // (the logo links to it); it shows an "open the app" button instead of sign-in.
+  if (data.user && isLogin) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
   return response;

@@ -64,7 +64,7 @@ export default async function AdminPage({
               />
               <button
                 type="submit"
-                className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90"
+                className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg hover:opacity-90"
               >
                 {t.coachApp.admin.searchButton}
               </button>

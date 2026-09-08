@@ -35,7 +35,7 @@ export function LanguageSelector({ className = "" }: { className?: string }) {
           aria-pressed={l === locale}
           title={t.common.language[l]}
           className={`px-2.5 py-1.5 ${
-            l === locale ? "bg-accent text-white" : "bg-surface text-ink-soft hover:text-ink"
+            l === locale ? "bg-accent text-accent-fg" : "bg-surface text-ink-soft hover:text-ink"
           }`}
         >
           {SHORT[l]}
