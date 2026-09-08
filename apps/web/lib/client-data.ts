@@ -207,6 +207,20 @@ async function activeCoachId(
   return (data?.coach_id as string | undefined) ?? null;
 }
 
+/** True when the client has no coach, no program and no nutrition plan yet. */
+export async function isEmptyAccount(): Promise<boolean> {
+  if (isDemo) return false;
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return false;
+  const [coach, programs, plans] = await Promise.all([
+    activeCoachId(supabase, auth.user.id),
+    supabase.from("programs").select("id", { count: "exact", head: true }).eq("client_id", auth.user.id),
+    supabase.from("nutrition_plans").select("id", { count: "exact", head: true }).eq("client_id", auth.user.id),
+  ]);
+  return coach === null && (programs.count ?? 0) === 0 && (plans.count ?? 0) === 0;
+}
+
 type TodaySession = { id: string; completed: boolean; logged: LoggedSetRow[] };
 
 /** Today's session and its sets, per program day, keyed by program_day_id. */

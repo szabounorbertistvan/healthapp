@@ -97,6 +97,18 @@ const en = {
     published: "Published",
     publishHint: "Publishing makes it the program you follow on Training.",
   },
+  welcome: {
+    title: "Welcome",
+    withCoachTitle: "I have a trainer",
+    withCoachBody: "Enter the invite code they gave you and their plans appear here.",
+    haveCode: "I have a code",
+    codePlaceholder: "Invite code",
+    useCode: "Join my coach",
+    soloTitle: "I train on my own",
+    soloBody: "Build your own week from the exercise library and log it as you go.",
+    startSolo: "Build my program",
+    notFinal: "You can join a coach later from settings — this is not a one-way door.",
+  },
 };
 
 const ro: typeof en = {
@@ -196,6 +208,18 @@ const ro: typeof en = {
     publish: "Publică",
     published: "Publicat",
     publishHint: "După publicare devine programul pe care îl urmezi la Antrenament.",
+  },
+  welcome: {
+    title: "Bine ai venit",
+    withCoachTitle: "Am antrenor",
+    withCoachBody: "Introdu codul primit de la el și planurile lui apar aici.",
+    haveCode: "Am un cod",
+    codePlaceholder: "Cod de invitație",
+    useCode: "Conectează-mă",
+    soloTitle: "Mă antrenez singur",
+    soloBody: "Îți construiești săptămâna din biblioteca de exerciții și o loghezi pe măsură.",
+    startSolo: "Construiește-mi programul",
+    notFinal: "Poți intra la un antrenor mai târziu, din setări — alegerea nu e definitivă.",
   },
 };
 

@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo } from "@/lib/supabase/server";
+import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { newDemoClient, store } from "@/lib/demo-store";
 import { entitlementsFor } from "@healthapp/shared";
 import { getProfile } from "@/lib/data";
@@ -36,4 +36,21 @@ export async function addDemoClient(fullName: string): Promise<ActionResult> {
   revalidatePath("/clients");
   revalidatePath("/dashboard");
   return { ok: true, demo: true };
+}
+
+/**
+ * Claim a coach's invite code. The rules — unknown code, expired, already
+ * coached — are enforced by the accept_invite() function in the database, and
+ * its raised codes are already mapped to message keys in @healthapp/api.
+ */
+export async function acceptInvite(code: string): Promise<ActionResult> {
+  const clean = code.trim().toUpperCase();
+  if (!clean) return { ok: false, message: "Enter the code your coach gave you" };
+  if (isDemo) return { ok: true, demo: true };
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc("accept_invite", { p_code: clean });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/today");
+  return { ok: true };
 }
