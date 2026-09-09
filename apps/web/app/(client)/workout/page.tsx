@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getMyProgramDays, getMySessions } from "@/lib/client-data";
+import { getMySoloProgramId } from "@/app/builder-actions";
 import { Card, EmptyState, PageTitle } from "@/components/ui";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
@@ -7,7 +8,17 @@ import { fill } from "@/lib/i18n";
 
 export default async function WorkoutPage() {
   const { t, locale } = await getI18n();
-  const [days, sessions] = await Promise.all([getMyProgramDays(), getMySessions()]);
+  const [days, sessions, soloProgramId] = await Promise.all([
+    getMyProgramDays(),
+    getMySessions(),
+    getMySoloProgramId(),
+  ]);
+
+  // The builder is only a way back for a program the client built themselves.
+  // getMyProgramDays hands back the coach's program whenever the coaching
+  // relationship is active, so comparing ids is what keeps a coached client
+  // from editing the plan they were given.
+  const isMyOwnProgram = days.length > 0 && days[0].program_id === soloProgramId;
 
   return (
     <div>
@@ -59,6 +70,16 @@ export default async function WorkoutPage() {
                 </Card>
               </Link>
             ))}
+
+            {isMyOwnProgram ? (
+              <Link
+                href="/workout/build"
+                className="flex h-full min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed border-line p-4 text-sm font-semibold text-ink-faint transition hover:border-accent hover:text-accent-ink"
+              >
+                <span aria-hidden className="text-lg leading-none">+</span>
+                {t.clientApp.workout.addAnotherDay}
+              </Link>
+            ) : null}
           </div>
         </>
       )}
