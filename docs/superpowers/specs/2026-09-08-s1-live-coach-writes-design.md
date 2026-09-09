@@ -1,6 +1,6 @@
 # S1 — Coach writes, verified against a live database
 
-**Status:** design, awaiting approval
+**Status:** approved 2026-09-09 with one change (see *Decision*); write guard and `day_index` landed the same day
 **Date:** 2026-09-08
 **Subsystem:** 1 of 5 (see the decomposition at the end)
 
@@ -119,7 +119,21 @@ destroy data freely, which is what makes the tests worth writing. Option 3 stays
 open later; nothing in this design depends on which of the two is used, because
 both are reached through the same environment variables.
 
+**Decision (2026-09-09): option 2 for now.** The production project has no real
+clients yet, so it *is* the staging environment, and the seeded test accounts
+(admin / trainer / client) already live there. A second project is deferred
+until the first real client signs up; at that point the integration tests move
+to it unchanged, since they only read connection details from the environment.
+The pgTAP job in CI remains the one place a migration is applied to a clean
+database before it reaches the dashboard.
+
 ### The write guard
+
+*Landed 2026-09-09:* `apps/web/lib/supabase/mutate.ts`, applied to all six
+update/delete sites across the two files, with a unit test on the pure core and
+a translated `common.actions.nothingChanged` message. `day_index` was settled the
+same day as *ordinal within week* (code, demo store and a `comment on column`
+migration agree); the coach's program view now sorts days explicitly.
 
 Supabase's `update` and `delete` accept `{ count: "exact" }`. A small helper
 turns "matched nothing" into a failure:
@@ -198,8 +212,7 @@ Acceptance:
 ## Where this sits
 
 Five independent subsystems remain against the product spec
-(`pdf/PRODUCT_SPEC.pdf` — the `.md` that `CLAUDE.md` and `supabase/README.md`
-still link to no longer exists), in the agreed order:
+(`PRODUCT_SPEC.md` at the repo root), in the agreed order:
 
 1. **S1 — live coach writes** (this document)
 2. S2 — account and privacy: export, deletion, and the missing `(client)/settings`

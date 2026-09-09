@@ -25,8 +25,9 @@ Coach builds program → days → exercises (sets/reps/rest/tempo/notes), can
 duplicate a day, then publishes. Client opens a day, logs sets, finishes the
 session. PRs are computed in `packages/shared/src/prs.ts`.
 
-**Maturity: demo-only.** `builder-actions.ts:10` says outright that the Supabase
-branch has never run live.
+**Maturity: demo-only.** The Supabase branch of `builder-actions.ts` is written
+and RLS-guarded (`lib/supabase/mutate.ts`) but has not been driven end-to-end
+against a live project; see `docs/superpowers/specs/2026-09-08-s1-*`.
 
 ---
 

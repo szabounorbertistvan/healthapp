@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { mutated } from "@/lib/supabase/mutate";
 import { DEMO_COACH_ID, newId, store, type StoredProgram, type StoredProgramDay } from "@/lib/demo-store";
 import { viewingClientId } from "@/lib/view-mode";
 import type { ActionResult } from "./actions";
@@ -8,9 +9,16 @@ import type { ActionResult } from "./actions";
 // Program builder writes (W4, Sprint 3).
 //
 // Two branches, same as lib/data.ts: the demo store when no backend is
-// configured, Supabase otherwise. The Supabase branch has never run against a
-// live database — there is no Docker on the dev machine yet — so treat it as
-// written-to-schema, not verified.
+// configured, Supabase otherwise.
+//
+// Status of the Supabase branch (docs/superpowers/specs/2026-09-08-s1-*):
+// written to the schema and reviewed against the RLS policies, not yet driven
+// end-to-end against a live project. Every update/delete goes through
+// `mutated()` so an RLS-filtered write cannot report success.
+//
+// day_index is the 0-based ordinal of a day *within its week*, which is what
+// the unique key (program_id, week_index, day_index) assumes. The demo store
+// mirrors it.
 
 export async function createProgram(input: {
   name: string;
@@ -70,7 +78,7 @@ export async function addProgramDay(programId: string, name: string): Promise<Ac
     program.days.push({
       id: newId("pd"),
       week_index: 1,
-      day_index: program.days.length,
+      day_index: program.days.filter((d) => d.week_index === 1).length,
       name: dayName,
       muscle_groups: [],
       exercises: [],
@@ -84,7 +92,8 @@ export async function addProgramDay(programId: string, name: string): Promise<Ac
   const { count } = await supabase
     .from("program_days")
     .select("id", { count: "exact", head: true })
-    .eq("program_id", programId);
+    .eq("program_id", programId)
+    .eq("week_index", 1);
   const { error } = await supabase.from("program_days").insert({
     program_id: programId,
     week_index: 1,
@@ -177,17 +186,22 @@ export async function updateProgramExercise(input: {
   }
 
   const supabase = await supabaseServer();
-  const { error } = await supabase
-    .from("program_exercises")
-    .update({
-      target_sets: input.target_sets,
-      target_reps: input.target_reps,
-      target_weight_kg: input.target_weight_kg,
-      target_rpe: input.target_rpe,
-      rest_seconds: input.rest_seconds,
-    })
-    .eq("id", input.exerciseRowId);
-  if (error) return { ok: false, message: error.message };
+  const failed = await mutated(
+    await supabase
+      .from("program_exercises")
+      .update(
+        {
+          target_sets: input.target_sets,
+          target_reps: input.target_reps,
+          target_weight_kg: input.target_weight_kg,
+          target_rpe: input.target_rpe,
+          rest_seconds: input.rest_seconds,
+        },
+        { count: "exact" },
+      )
+      .eq("id", input.exerciseRowId),
+  );
+  if (failed) return failed;
   revalidatePath(`/programs/${input.programId}`);
   return { ok: true };
 }
@@ -211,8 +225,10 @@ export async function removeProgramExercise(
   }
 
   const supabase = await supabaseServer();
-  const { error } = await supabase.from("program_exercises").delete().eq("id", exerciseRowId);
-  if (error) return { ok: false, message: error.message };
+  const failed = await mutated(
+    await supabase.from("program_exercises").delete({ count: "exact" }).eq("id", exerciseRowId),
+  );
+  if (failed) return failed;
   revalidatePath(`/programs/${programId}`);
   return { ok: true };
 }
@@ -226,7 +242,7 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
     program.days.push({
       id: newId("pd"),
       week_index: day.week_index,
-      day_index: program.days.length,
+      day_index: program.days.filter((d) => d.week_index === day.week_index).length,
       name: `${day.name} (copy)`,
       muscle_groups: day.muscle_groups,
       exercises: day.exercises.map((e) => ({ ...e, id: newId("pe") })),
@@ -249,7 +265,8 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
   const { count } = await supabase
     .from("program_days")
     .select("id", { count: "exact", head: true })
-    .eq("program_id", programId);
+    .eq("program_id", programId)
+    .eq("week_index", source.week_index);
   const { data: created, error: writeError } = await supabase
     .from("program_days")
     .insert({
@@ -295,11 +312,13 @@ export async function publishProgram(programId: string): Promise<ActionResult> {
   }
 
   const supabase = await supabaseServer();
-  const { error } = await supabase
-    .from("programs")
-    .update({ status: "published" })
-    .eq("id", programId);
-  if (error) return { ok: false, message: error.message };
+  const failed = await mutated(
+    await supabase
+      .from("programs")
+      .update({ status: "published" }, { count: "exact" })
+      .eq("id", programId),
+  );
+  if (failed) return failed;
   revalidatePath(`/programs/${programId}`);
   revalidatePath("/programs");
   revalidatePath("/workout/build");
@@ -385,7 +404,7 @@ export async function addSoloProgramDay(
     program.days.push({
       id: newId("pd"),
       week_index: 1,
-      day_index: program.days.length,
+      day_index: program.days.filter((d) => d.week_index === 1).length,
       name: dayName,
       muscle_groups: muscleGroups,
       exercises: [],
@@ -399,7 +418,8 @@ export async function addSoloProgramDay(
   const { count } = await supabase
     .from("program_days")
     .select("id", { count: "exact", head: true })
-    .eq("program_id", programId);
+    .eq("program_id", programId)
+    .eq("week_index", 1);
   const { error } = await supabase.from("program_days").insert({
     program_id: programId,
     week_index: 1,

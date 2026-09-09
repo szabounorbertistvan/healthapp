@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
 import { normalizeForSearch } from "@healthapp/shared";
 import { newId, store, type StoredPlan } from "@/lib/demo-store";
@@ -9,8 +10,10 @@ import type { ActionResult } from "./actions";
 
 // Nutrition plan builder writes (W6, Sprint 6).
 //
-// Same two-branch shape as the program builder. The Supabase branch is written
-// to the schema but has not run against a live database yet.
+// Same two-branch shape as the program builder, and the same status: written to
+// the schema, not yet driven end-to-end against a live project. Every
+// update/delete goes through `mutated()` so an RLS-filtered write cannot report
+// success. See docs/superpowers/specs/2026-09-08-s1-*.
 
 export async function searchFoods(q: string): Promise<DemoFood[]> {
   if (isDemo) return searchDemoFoods(q).slice(0, 30);
@@ -226,8 +229,10 @@ export async function updatePlanFoodGrams(
   }
 
   const supabase = await supabaseServer();
-  const { error } = await supabase.from("planned_meal_foods").update({ grams }).eq("id", rowId);
-  if (error) return { ok: false, message: error.message };
+  const failed = await mutated(
+    await supabase.from("planned_meal_foods").update({ grams }, { count: "exact" }).eq("id", rowId),
+  );
+  if (failed) return failed;
   revalidatePath(`/nutrition/${planId}`);
   return { ok: true };
 }
@@ -244,8 +249,10 @@ export async function removePlanFood(planId: string, rowId: string): Promise<Act
   }
 
   const supabase = await supabaseServer();
-  const { error } = await supabase.from("planned_meal_foods").delete().eq("id", rowId);
-  if (error) return { ok: false, message: error.message };
+  const failed = await mutated(
+    await supabase.from("planned_meal_foods").delete({ count: "exact" }).eq("id", rowId),
+  );
+  if (failed) return failed;
   revalidatePath(`/nutrition/${planId}`);
   return { ok: true };
 }
@@ -264,11 +271,13 @@ export async function publishNutritionPlan(planId: string): Promise<ActionResult
   }
 
   const supabase = await supabaseServer();
-  const { error } = await supabase
-    .from("nutrition_plans")
-    .update({ status: "published" })
-    .eq("id", planId);
-  if (error) return { ok: false, message: error.message };
+  const failed = await mutated(
+    await supabase
+      .from("nutrition_plans")
+      .update({ status: "published" }, { count: "exact" })
+      .eq("id", planId),
+  );
+  if (failed) return failed;
   revalidatePath(`/nutrition/${planId}`);
   revalidatePath("/nutrition");
   return { ok: true };

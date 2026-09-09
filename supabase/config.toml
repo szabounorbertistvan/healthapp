@@ -85,7 +85,8 @@ allowed_cidrs_v6 = ["::/0"]
 # enabled = true
 
 [realtime]
-enabled = true
+# Nothing in apps/web subscribes to channels or postgres_changes yet.
+enabled = false
 # Bind realtime via either IPv4 or IPv6. (default: IPv4)
 # ip_version = "IPv6"
 # The maximum length in bytes of HTTP request headers. (default: 4096)
@@ -113,7 +114,8 @@ port = 54324
 # sender_name = "Admin"
 
 [storage]
-enabled = true
+# progress_photos.storage_path exists, but no code uploads or reads files yet. Turn on when photo upload lands.
+enabled = false
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
@@ -433,7 +435,8 @@ deno_version = 2
 # secret_key = "env(SECRET_VALUE)"
 
 [analytics]
-enabled = true
+# Local log collection only; pure startup cost.
+enabled = false
 port = 54327
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"

@@ -217,13 +217,16 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
     intensity_mode: data.intensity_mode, week: 1, weeks: data.weeks,
     client_name: (data.client as unknown as { full_name: string })?.full_name ?? "—",
     days: (data.program_days as unknown as {
-      id: string; name: string; muscle_groups: string[] | null;
+      id: string; name: string; week_index: number; day_index: number; muscle_groups: string[] | null;
       program_exercises: {
         id: string; position: number; target_sets: number; target_reps: string;
         target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null;
         exercise: { name_en: string; name_ro: string | null };
       }[];
-    }[]).map((d) => ({
+    }[])
+      // PostgREST returns embedded rows in no guaranteed order.
+      .sort((a, b) => a.week_index - b.week_index || a.day_index - b.day_index)
+      .map((d) => ({
       id: d.id, name: d.name,
       muscle_groups: d.muscle_groups ?? [],
       exercises: d.program_exercises

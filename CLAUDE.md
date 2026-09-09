@@ -70,9 +70,12 @@ const supabase = await supabaseServer();  // live branch
 ```
 
 If you add a read or a write, you must write both branches or you break the demo.
-Note the honesty markers in the code: the Supabase branches of
-`builder-actions.ts` and `nutrition-actions.ts` **have never run against a live
-database**. Treat them as unverified.
+The Supabase branches of `builder-actions.ts` and `nutrition-actions.ts` are
+written to the schema and reviewed against RLS but **have not yet been driven
+end-to-end against a live project**; treat them as unverified until someone
+has. Every `update`/`delete` in them goes through `lib/supabase/mutate.ts`
+(`mutated()`): PostgREST answers an RLS-filtered write with success and zero
+rows, and the guard turns that into an error. New coach writes must use it.
 
 **2. Server components read, server actions write.** Reads live in
 [lib/data.ts](apps/web/lib/data.ts) (coach surfaces) and

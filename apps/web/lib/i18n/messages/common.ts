@@ -78,6 +78,7 @@ const en = {
     done: "Done",
     saving: "Saving…",
     loading: "Loading…",
+    nothingChanged: "Nothing was saved. This item is no longer available to you; refresh and try again.",
   },
   macros: {
     calories: "Calories",
@@ -175,6 +176,7 @@ const ro: typeof en = {
     done: "Gata",
     saving: "Se salvează…",
     loading: "Se încarcă…",
+    nothingChanged: "Nu s-a salvat nimic. Elementul nu îți mai este disponibil; reîncarcă pagina și încearcă din nou.",
   },
   macros: {
     calories: "Calorii",

@@ -47,9 +47,15 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      # Applies every migration to a throwaway local stack, then runs
+      # Applies every migration to a throwaway Postgres, then runs
       # supabase/tests/*.sql. A red job here means a permission leak.
-      - run: supabase start
+      # pgTAP only needs the database container: migrations reference
+      # auth.users, which ships in the Postgres image, not in GoTrue. Every
+      # other service is skipped so the job is not waiting on a dozen
+      # containers to become healthy before a single test can run.
+      - run: >
+          supabase start -x
+          gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
       - run: supabase test db
       - if: always()
         run: supabase stop --no-backup
