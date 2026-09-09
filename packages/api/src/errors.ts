@@ -19,15 +19,17 @@ export function rpcErrorCode(error: { message: string } | null): RpcErrorCode | 
   return RPC_ERRORS.find((code) => error.message.includes(code)) ?? "UNKNOWN";
 }
 
-const MESSAGE_KEYS: Record<RpcErrorCode, string> = {
-  INVALID_CODE: "errors.invite.invalidCode",
-  EXPIRED: "errors.invite.expired",
-  ALREADY_HAS_COACH: "errors.invite.alreadyHasCoach",
-  CLIENT_LIMIT_REACHED: "errors.invite.clientLimitReached",
-  UNKNOWN: "errors.unknown",
-};
+/**
+ * Copy for every business rule, supplied by the caller already localized.
+ *
+ * A `Record` rather than a lookup by key path: this repo's i18n is a typed
+ * nested dictionary, not i18next, so there is nothing to resolve a dotted key
+ * against. Keying on the union instead means a new entry in RPC_ERRORS breaks
+ * the build at every screen that has not written copy for it.
+ */
+export type InviteCopy = Record<RpcErrorCode, string>;
 
-/** i18next key for the code — RO/EN copy lives in the locale files, not here. */
-export function messageKeyFor(code: RpcErrorCode): string {
-  return MESSAGE_KEYS[code];
+/** Pick the line for a raised code; a failure without one gets the generic line. */
+export function inviteMessage(copy: InviteCopy, code: RpcErrorCode | null | undefined): string {
+  return copy[code ?? "UNKNOWN"];
 }
