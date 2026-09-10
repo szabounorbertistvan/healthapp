@@ -38,27 +38,35 @@ export function ClientNav() {
   );
 }
 
-/** Phone-width tab bar — the client surface is thumb-first, unlike the coach desk. */
+/** Phone-width tab bar — the client surface is thumb-first, unlike the coach desk.
+ *  A floating box rather than a flush strip: the old bar was ~40px tall, under
+ *  the 44px a thumb needs. Targets grew ~25% on the vertical axis only — the
+ *  five labels share 375px on a phone and "Antrenament" already spends most of
+ *  its cell, so width has none to give. Active wears the same accent pill as
+ *  ClientNav above, so sidebar and tab bar read as one nav. */
 export function ClientTabBar() {
   const pathname = usePathname();
   const { t } = useI18n();
   const tabs = items.slice(0, 5);
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-line bg-surface sm:hidden">
-      {tabs.map((item) => {
-        const active = pathname.startsWith(item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`flex-1 py-3 text-center text-[11px] font-semibold ${
-              active ? "text-accent-ink" : "text-ink-faint"
-            }`}
-          >
-            {t.common.nav[item.key]}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-10 px-2 pb-2 sm:hidden">
+      <nav className="pointer-events-auto flex gap-0.5 rounded-2xl border border-line bg-surface p-1 shadow-lg">
+        {tabs.map((item) => {
+          const active = pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className={`flex min-h-[50px] flex-1 items-center justify-center rounded-xl px-0.5 text-center text-[11px] font-semibold leading-tight ${
+                active ? "bg-accent-soft text-accent-ink" : "text-ink-faint"
+              }`}
+            >
+              {t.common.nav[item.key]}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

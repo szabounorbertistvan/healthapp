@@ -74,7 +74,7 @@ export default async function ClientLayout({ children }: { children: React.React
             <SignOutButton className="text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50" />
           </div>
         </header>
-        <main className="flex-1 p-5 pb-20 sm:p-8 sm:pb-8">{children}</main>
+        <main className="flex-1 p-5 pb-28 sm:p-8 sm:pb-8">{children}</main>
       </div>
       <ClientTabBar />
     </div>
