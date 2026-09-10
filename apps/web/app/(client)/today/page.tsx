@@ -103,7 +103,7 @@ export default async function TodayPage() {
                 ) : null}
               </ul>
               <Link
-                href={`/workout/${next.day_id}`}
+                href={`/workout/${next.day_id}/log`}
                 className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90"
               >
                 {t.clientApp.today.startWorkout}

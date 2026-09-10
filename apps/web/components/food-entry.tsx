@@ -107,56 +107,67 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
   }
 
   return (
-    <li className={`group flex items-baseline justify-between gap-3 py-1.5 text-sm ${pending ? "opacity-60" : ""}`}>
-      <span className="min-w-0 truncate">
-        {entry.food_name}
-        <span className="ml-1 text-xs text-ink-faint">{entry.grams} g</span>
-      </span>
-      <span className="flex shrink-0 items-baseline gap-2">
-        <span className="tabular-nums text-ink-faint">
-          <b className="text-ink">{entry.macros.kcal}</b> kcal · P{entry.macros.protein}
+    <li className={`py-2 text-sm ${pending ? "opacity-60" : ""}`}>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="min-w-0 truncate font-medium">{entry.food_name}</span>
+        <span className="shrink-0 tabular-nums">
+          <b>{entry.macros.kcal}</b>
+          <span className="ml-1 text-xs text-ink-faint">kcal</span>
         </span>
-        {confirming ? (
-          <>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={remove}
-              className="rounded-md bg-risk px-2 py-0.5 text-xs font-semibold text-white"
-            >
-              {t.common.actions.delete}
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setConfirming(false)}
-              className="text-xs font-semibold text-ink-faint hover:text-ink"
-            >
-              {t.clientWidgets.foodEntry.keep}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="text-xs font-semibold text-ink-faint hover:text-accent-ink"
-              aria-label={fill(t.clientWidgets.foodEntry.editAria, { name: entry.food_name })}
-            >
-              {t.common.actions.edit}
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirming(true)}
-              className="text-xs font-semibold text-ink-faint hover:text-risk"
-              aria-label={fill(t.clientWidgets.foodEntry.removeAria, { name: entry.food_name })}
-            >
-              ✕
-            </button>
-          </>
-        )}
-      </span>
-      {error ? <p className="text-xs font-semibold text-risk">{error}</p> : null}
+      </div>
+      <div className="mt-0.5 flex items-center justify-between gap-3 text-xs text-ink-faint">
+        <span className="tabular-nums">
+          {entry.grams} g · {initial(t.common.macros.protein)} {entry.macros.protein} ·{" "}
+          {initial(t.common.macros.carbs)} {entry.macros.carbs} · {initial(t.common.macros.fat)} {entry.macros.fat}
+        </span>
+        <span className="flex shrink-0 items-center gap-3">
+          {confirming ? (
+            <>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={remove}
+                className="rounded-md bg-risk px-2 py-0.5 font-semibold text-white"
+              >
+                {t.common.actions.delete}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setConfirming(false)}
+                className="font-semibold text-ink-faint hover:text-ink"
+              >
+                {t.clientWidgets.foodEntry.keep}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="font-semibold text-ink-faint hover:text-accent-ink"
+                aria-label={fill(t.clientWidgets.foodEntry.editAria, { name: entry.food_name })}
+              >
+                {t.common.actions.edit}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(true)}
+                className="font-semibold text-ink-faint hover:text-risk"
+                aria-label={fill(t.clientWidgets.foodEntry.removeAria, { name: entry.food_name })}
+              >
+                ✕
+              </button>
+            </>
+          )}
+        </span>
+      </div>
+      {error ? <p className="mt-1 text-xs font-semibold text-risk">{error}</p> : null}
     </li>
   );
+}
+
+/** "P", "C", "F" in English; "P", "C", "G" in Romanian — from the same dictionary as the bars. */
+function initial(label: string): string {
+  return label.charAt(0).toUpperCase();
 }

@@ -3,8 +3,10 @@
 **Brand: Voinic** ("Coach. Plan. Progress."). `HealthApp` survives only as the repo
 folder and the `@healthapp/*` package scope, which are infra ids. The user-facing
 name comes from `APP_NAME` in `apps/web/lib/brand.ts`; the mark lives in
-`components/logo.tsx` and `app/icon.svg`. Dark is the default theme (gold on
-near-black); light is an opt-in via the `bg-theme` cookie (`lib/theme.ts`).
+`components/logo.tsx` and `app/icon.svg`. Dark is the brand look (gold on
+near-black). The theme **follows the device by default** (`prefers-color-scheme`
+in `app/globals.css`); the `bg-theme` cookie (`lib/theme.ts`) holds an explicit
+`dark` / `light` override, cycled by `components/theme-toggle.tsx`.
 
 Fitness & coaching platform replacing "WhatsApp + Excel + a tracker app". Two
 roles: **coach** (builds programs and nutrition plans, watches adherence) and
@@ -52,9 +54,12 @@ written. Every "client app" screen today is a web route under
 `apps/web/app/(client)/`.
 
 Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
-check-ins, messages, settings, admin. `(client)` = today, workout, food, habits,
-progress, check-in, coach, billing. Ungrouped: landing `page.tsx`, login,
-privacy, terms, get-the-app.
+check-ins, messages, settings, admin. `(client)` = today, workout (list of every
+published program → `workout/[dayId]` day overview + per-day history →
+`workout/[dayId]/log` set logger), workout/build, food, habits, progress,
+check-in, coach, billing. Ungrouped: landing `page.tsx`, login, complete-profile
+(username / sex / age for accounts that signed up without them — both layouts
+redirect there while `users.username` is null), privacy, terms, get-the-app.
 
 ## The five conventions that matter
 
@@ -132,6 +137,19 @@ third-party text writes it.
   be admin impersonation of health data.
 - Barcode scanning uses `@zxing/browser` in [components/barcode-scanner.tsx](apps/web/components/barcode-scanner.tsx);
   a miss must always fall through to search, never dead-end.
+- Who is signed in is shown by `displayName()` in `lib/data.ts` — the username,
+  never the email (`users.full_name` falls back to the email in the sign-up
+  trigger). Sign-up asks for full name, username, sex and age; they travel as
+  user metadata into `handle_new_user` (migration `20260910100000`).
+- `logged_sets.rpe` is the felt intensity 1..10 from the slider; `rir` is what
+  the client typed in an RIR program; `notes` is the per-set comment. In a
+  program, `program_exercises.target_rpe` holds whatever the coach typed under
+  the program's own scale (RIR for RIR programs) — the builder writes it raw.
+- To run the app in demo mode on this box while `.env.local` points at the live
+  project, drop a temporary `apps/web/.env.development.local` with empty
+  `NEXT_PUBLIC_SUPABASE_URL=` / `NEXT_PUBLIC_SUPABASE_ANON_KEY=` (it outranks
+  `.env.local`; gitignored) and delete it afterwards. Setting the variable to
+  an empty string from PowerShell does not work — PowerShell deletes it.
 
 ## Deeper notes
 

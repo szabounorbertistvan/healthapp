@@ -458,3 +458,44 @@ export async function getMySoloProgramId(): Promise<string | null> {
     .maybeSingle();
   return (data?.id as string | undefined) ?? null;
 }
+
+/**
+ * Delete a training day and everything prescribed in it. The client reaches
+ * this by swiping a day away on Training or in their builder and confirming.
+ * program_exercises cascade in SQL; in demo the day simply leaves the array. day_index is re-packed so the (program, week, index)
+ * key stays dense for the next addProgramDay.
+ */
+export async function removeProgramDay(programId: string, dayId: string): Promise<ActionResult> {
+  if (isDemo) {
+    const program = find(programId);
+    if (!program) return { ok: false, message: "Program not found" };
+    const before = program.days.length;
+    program.days = program.days.filter((d) => d.id !== dayId);
+    if (program.days.length === before) return { ok: false, message: "Day not found" };
+    const perWeek = new Map<number, number>();
+    for (const day of program.days) {
+      const next = perWeek.get(day.week_index) ?? 0;
+      day.day_index = next;
+      perWeek.set(day.week_index, next + 1);
+    }
+    touch(program);
+    revalidatePath(`/programs/${programId}`);
+    revalidatePath("/workout/build");
+    revalidatePath("/workout");
+    return { ok: true, demo: true };
+  }
+
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase
+      .from("program_days")
+      .delete({ count: "exact" })
+      .eq("id", dayId)
+      .eq("program_id", programId),
+  );
+  if (failed) return failed;
+  revalidatePath(`/programs/${programId}`);
+  revalidatePath("/workout/build");
+  revalidatePath("/workout");
+  return { ok: true };
+}

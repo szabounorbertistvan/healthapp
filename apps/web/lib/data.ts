@@ -25,7 +25,7 @@ export async function getProfile(): Promise<Profile | null> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return null;
   const [{ data: user }, { data: sub }] = await Promise.all([
-    supabase.from("users").select("id, full_name, role").eq("id", auth.user.id).single(),
+    supabase.from("users").select("id, full_name, username, sex, birth_year, role").eq("id", auth.user.id).single(),
     supabase.from("subscriptions")
       .select("tier, status, trial_ends_at, stripe_customer_id")
       .eq("user_id", auth.user.id).maybeSingle(),
@@ -35,11 +35,34 @@ export async function getProfile(): Promise<Profile | null> {
   return {
     id: user.id,
     full_name: user.full_name ?? "Coach",
+    username: (user.username as string | null) ?? null,
+    sex: (user.sex as Profile["sex"]) ?? null,
+    birth_year: (user.birth_year as number | null) ?? null,
     role,
     tier: effectiveTier(sub ? { ...sub, tier: sub.tier as Tier } : null, role),
     trial_ends_at: sub?.trial_ends_at ?? null,
     has_stripe: Boolean(sub?.stripe_customer_id),
   };
+}
+
+/**
+ * What the shell shows for the signed-in person: their username, else the
+ * first word of their name. `full_name` falls back to the email address in the
+ * sign-up trigger, so an email-shaped name is cut at the @ — an address must
+ * never be what greets someone.
+ */
+export function displayName(profile: Pick<Profile, "username" | "full_name"> | null): string {
+  if (!profile) return "";
+  if (profile.username) return profile.username;
+  const name = profile.full_name.trim();
+  if (name.includes("@")) return name.split("@")[0];
+  return name.split(/\s+/)[0] || name;
+}
+
+/** Age in whole years from a birth year, or null when unknown. */
+export function ageFrom(birthYear: number | null): number | null {
+  if (!birthYear) return null;
+  return new Date().getFullYear() - birthYear;
 }
 
 export async function getAdminStats(): Promise<AdminStats> {

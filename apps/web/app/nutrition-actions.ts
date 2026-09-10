@@ -4,7 +4,7 @@ import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
 import { normalizeForSearch } from "@healthapp/shared";
-import { newId, store, type StoredPlan } from "@/lib/demo-store";
+import { DEMO_COACH_ID, newId, store, type StoredPlan } from "@/lib/demo-store";
 import { demoFoods, findDemoFoodByBarcode, searchDemoFoods, type DemoFood } from "@/lib/demo-foods";
 import type { ActionResult } from "./actions";
 
@@ -125,7 +125,9 @@ export async function createNutritionPlan(input: {
   if (isDemo) {
     const plan: StoredPlan = {
       id: newId("n"),
+      coach_id: DEMO_COACH_ID,
       client_id: input.clientId,
+      updated_at: new Date().toISOString(),
       client_name: input.clientName,
       name,
       status: "draft",

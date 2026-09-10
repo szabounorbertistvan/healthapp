@@ -1,30 +1,30 @@
 import Link from "next/link";
-import { getMyProgramDays, getMySessions } from "@/lib/client-data";
-import { getMySoloProgramId } from "@/app/builder-actions";
+import { getMyProgramGroups, getMySessions } from "@/lib/client-data";
 import { Card, EmptyState, PageTitle } from "@/components/ui";
+import { WorkoutDayList } from "@/components/workout-day-list";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
-import { fill } from "@/lib/i18n";
 
 export default async function WorkoutPage() {
   const { t, locale } = await getI18n();
-  const [days, sessions, soloProgramId] = await Promise.all([
-    getMyProgramDays(),
-    getMySessions(),
-    getMySoloProgramId(),
-  ]);
+  const [groups, sessions] = await Promise.all([getMyProgramGroups(), getMySessions()]);
 
-  // The builder is only a way back for a program the client built themselves.
-  // getMyProgramDays hands back the coach's program whenever the coaching
-  // relationship is active, so comparing ids is what keeps a coached client
-  // from editing the plan they were given.
-  const isMyOwnProgram = days.length > 0 && days[0].program_id === soloProgramId;
+  // Every published program the client holds is listed — the coach's and their
+  // own — so nothing they built disappears when a coach's program arrives.
+  // The builder link appears when there is no program of their own yet.
+  const hasOwn = groups.some((g) => g.is_own);
 
   return (
     <div>
-      <PageTitle title={t.common.nav.training} />
+      <PageTitle title={t.common.nav.training}>
+        {groups.length > 0 && !hasOwn ? (
+          <Link href="/workout/build" className="text-xs font-semibold text-accent-ink hover:underline">
+            {t.clientApp.builder.title}
+          </Link>
+        ) : null}
+      </PageTitle>
 
-      {days.length === 0 ? (
+      {groups.length === 0 ? (
         <>
           <EmptyState
             title={t.clientApp.workout.noProgramTitle}
@@ -38,50 +38,7 @@ export default async function WorkoutPage() {
           </Link>
         </>
       ) : (
-        <>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-            {days[0].program_name}
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {days.map((day) => (
-              <Link key={day.day_id} href={`/workout/${day.day_id}`}>
-                <Card className="h-full transition hover:border-accent">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-bold">{day.day_name}</p>
-                    {day.logged.length > 0 ? (
-                      <span className="rounded-md bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
-                        {t.clientApp.workout.inProgress}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-xs text-ink-faint">
-                    {fill(t.clientApp.workout.exercisesCount, { count: day.exercises.length })}
-                  </p>
-                  <ul className="mt-3 space-y-1 text-sm text-ink-soft">
-                    {day.exercises.map((e) => (
-                      <li key={e.id} className="flex justify-between gap-2">
-                        <span className="truncate">{e.exercise}</span>
-                        <span className="shrink-0 tabular-nums text-ink-faint">
-                          {e.sets}×{e.reps}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              </Link>
-            ))}
-
-            {isMyOwnProgram ? (
-              <Link
-                href="/workout/build"
-                className="flex h-full min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed border-line p-4 text-sm font-semibold text-ink-faint transition hover:border-accent hover:text-accent-ink"
-              >
-                <span aria-hidden className="text-lg leading-none">+</span>
-                {t.clientApp.workout.addAnotherDay}
-              </Link>
-            ) : null}
-          </div>
-        </>
+        <WorkoutDayList groups={groups} />
       )}
 
       <h2 className="mb-3 mt-8 text-sm font-bold">{t.clientApp.workout.history}</h2>
@@ -102,7 +59,15 @@ export default async function WorkoutPage() {
             <tbody>
               {sessions.map((s) => (
                 <tr key={s.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-semibold">{s.day_name}</td>
+                  <td className="px-4 py-3 font-semibold">
+                    {s.day_id ? (
+                      <Link href={`/workout/${s.day_id}`} className="hover:text-accent-ink">
+                        {s.day_name}
+                      </Link>
+                    ) : (
+                      s.day_name
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-ink-soft">{timeAgo(s.at, locale)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{s.sets}</td>
                   <td className="px-4 py-3 text-right tabular-nums">

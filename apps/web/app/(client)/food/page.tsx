@@ -1,16 +1,35 @@
-import { getMyDayNutrition, getMyPlanMeals } from "@/lib/client-data";
-import { Card, PageTitle } from "@/components/ui";
-import { MacroPanel } from "@/components/client-ui";
-import { FoodLogger } from "@/components/food-logger";
+import { getMyDayNutrition, getMyFoodDays, getMyPlanMeals } from "@/lib/client-data";
+import { isoDay } from "@/lib/demo-client-store";
+import { validDay, weekDaysOf } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
-import { FoodEntry } from "@/components/food-entry";
+import { WeekStrip } from "@/components/week-strip";
+import { NutritionSummary } from "@/components/nutrition-summary";
+import { MealCard } from "@/components/meal-card";
 import type { MealSlot } from "@/lib/types";
 
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
 
-export default async function FoodPage() {
+/**
+ * The food diary for one day. `?day=yyyy-mm-dd` picks the day (today when
+ * absent or malformed), so the week strip is plain links and back/forward
+ * work. Layout follows eat&track: week strip → goal/consumed/left ring →
+ * macros → one card per meal with "add foods" inside it.
+ */
+export default async function FoodPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ day?: string }>;
+}) {
   const { t } = await getI18n();
-  const [day, planMeals] = await Promise.all([getMyDayNutrition(), getMyPlanMeals()]);
+  const today = isoDay();
+  const day = validDay((await searchParams).day) ?? today;
+  const week = weekDaysOf(day);
+
+  const [nutrition, planMeals, loggedDays] = await Promise.all([
+    getMyDayNutrition(day),
+    getMyPlanMeals(),
+    getMyFoodDays(week[0], week[6]),
+  ]);
 
   const slotLabel: Record<MealSlot, string> = {
     breakfast: t.clientApp.food.breakfast,
@@ -20,57 +39,32 @@ export default async function FoodPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <PageTitle title={t.common.nav.nutrition} />
+    <div className="mx-auto max-w-5xl space-y-4">
+      <WeekStrip selected={day} today={today} loggedDays={loggedDays} />
 
-      <MacroPanel
-        totals={day.totals}
-        target={day.target}
-        title={day.plan_name ?? t.common.macros.todayTitle}
-      />
-
-      <FoodLogger />
-
-      {SLOTS.map((slot) => {
-        const entries = day.entries.filter((e) => e.slot === slot);
-        const planned = planMeals.find((m) => m.slot === slot);
-        if (entries.length === 0 && !planned) return null;
-        return (
-          <Card key={slot}>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              {slotLabel[slot]}
-            </p>
-
-            {entries.length > 0 ? (
-              <ul className="divide-y divide-line">
-                {entries.map((e) => (
-                  <FoodEntry key={e.id} entry={e} />
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-ink-faint">{t.clientApp.food.nothingLogged}</p>
-            )}
-
-            {planned && planned.foods.length > 0 ? (
-              <div className="mt-3 border-t border-line pt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-                  {t.clientApp.food.coachPlanned}
-                </p>
-                <ul className="mt-1.5 space-y-1 text-sm text-ink-soft">
-                  {planned.foods.map((f, i) => (
-                    <li key={`${f.name}-${i}`} className="flex justify-between gap-3">
-                      <span className="truncate">{f.name}</span>
-                      <span className="shrink-0 tabular-nums text-ink-faint">
-                        {f.grams} g · {f.macros.kcal} kcal
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </Card>
-        );
-      })}
+      {/* Phone: summary then meals. Desktop: summary pinned left, meals right. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
+        <div className="lg:sticky lg:top-6">
+          <NutritionSummary
+            totals={nutrition.totals}
+            target={nutrition.target}
+            planOwner={nutrition.plan_owner}
+            planName={nutrition.plan_name}
+          />
+        </div>
+        <div className="space-y-4">
+          {SLOTS.map((slot) => (
+            <MealCard
+              key={slot}
+              slot={slot}
+              label={slotLabel[slot]}
+              day={day}
+              entries={nutrition.entries.filter((e) => e.slot === slot)}
+              planned={planMeals.find((m) => m.slot === slot)?.foods ?? null}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

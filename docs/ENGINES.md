@@ -15,15 +15,22 @@ wired, **missing** = spec'd but not written.
 | | |
 |---|---|
 | Coach | `app/(coach)/programs`, `programs/new`, `programs/[id]` |
-| Client | `app/(client)/workout`, `workout/[dayId]` |
-| Writes | [app/builder-actions.ts](../apps/web/app/builder-actions.ts), `logSet` / `finishWorkout` in [client-actions-app.ts](../apps/web/app/client-actions-app.ts) |
-| Reads | `getPrograms` / `getProgram` (data.ts), `getMyProgramDays` / `getWorkoutDay` / `getMySessions` / `getMyPrs` (client-data.ts) |
-| Tables | `programs → program_days → program_exercises`; `logged_sessions → logged_sets` |
-| Components | `program-builder.tsx`, `exercise-picker.tsx`, `set-logger.tsx` |
+| Client | `app/(client)/workout` (every published program, coach's and own), `workout/[dayId]` (day overview + that day's history), `workout/[dayId]/log` (set logger), `workout/build` (solo builder) |
+| Writes | [app/builder-actions.ts](../apps/web/app/builder-actions.ts) (incl. `removeProgramDay`), `createCustomExercise` in [library-actions.ts](../apps/web/app/library-actions.ts), `logSet` / `finishWorkout` in [client-actions-app.ts](../apps/web/app/client-actions-app.ts) |
+| Reads | `getPrograms` / `getProgram` (data.ts), `getMyProgramGroups` / `getMyProgramDays` / `getWorkoutDay` / `getWorkoutDayHistory` / `getMySessions` / `getMyPrs` (client-data.ts) |
+| Tables | `programs → program_days → program_exercises`; `logged_sessions → logged_sets` (`rpe` = felt intensity 1..10, `rir` = reps in reserve as typed, `notes` = per-set comment) |
+| Components | `program-builder.tsx`, `exercise-picker.tsx` + `new-exercise-form.tsx`, `workout-day-list.tsx` + `swipe-to-delete.tsx`, `workout-history.tsx`, `set-logger.tsx` |
 
 Coach builds program → days → exercises (sets/reps/rest/tempo/notes), can
-duplicate a day, then publishes. Client opens a day, logs sets, finishes the
-session. PRs are computed in `packages/shared/src/prs.ts`.
+duplicate a day, then publishes. Training lists every published program the
+client holds (coach's first, then their own; `pickProgram` still decides which
+one Today and adherence follow). Tapping a day opens its overview and the
+history of past sessions of that day, set by set; "Start workout" goes to the
+logger, where each set takes kg / reps / RIR, a 1–10 intensity slider and a
+note. A day in the client's own program can be swiped left (or trashed with the
+mouse) and deleted after confirmation. Anyone can create a custom exercise from
+the picker (`exercises.owner_id` set, `source = 'custom'`). PRs are computed in
+`packages/shared/src/prs.ts`.
 
 **Maturity: demo-only.** The Supabase branch of `builder-actions.ts` is written
 and RLS-guarded (`lib/supabase/mutate.ts`) but has not been driven end-to-end
@@ -38,9 +45,9 @@ against a live project; see `docs/superpowers/specs/2026-09-08-s1-*`.
 | Coach | `app/(coach)/nutrition`, `nutrition/new`, `nutrition/[id]` |
 | Client | `app/(client)/food` |
 | Writes | [app/nutrition-actions.ts](../apps/web/app/nutrition-actions.ts) (coach side), `logFood` / `updateFoodLog` / `deleteFoodLog` (client side) |
-| Reads | `getNutritionPlans` / `getNutritionPlan`, `getMyDayNutrition` / `getMyPlanMeals` |
+| Reads | `getNutritionPlans` / `getNutritionPlan`, `getMyDayNutrition` / `getMyPlanMeals` / `getMyFoodDays` |
 | Tables | `foods`, `nutrition_plans → planned_meals → planned_meal_foods`, `food_logs` |
-| Components | `nutrition-builder.tsx`, `new-plan-form.tsx`, `food-logger.tsx`, `food-entry.tsx`, `barcode-scanner.tsx` |
+| Components | `nutrition-builder.tsx`, `new-plan-form.tsx`; client diary: `week-strip.tsx`, `nutrition-summary.tsx`, `meal-card.tsx`, `food-logger.tsx`, `food-entry.tsx`, `barcode-scanner.tsx` |
 | Edge functions | `food-search`, `barcode-lookup` (+ `_shared/portions.ts`) |
 
 **How a plan actually works.** The coach picks a client, names the plan, and sets
@@ -101,8 +108,10 @@ Plain threaded messaging — no realtime subscription yet, reads are server-rend
 ## Engagement
 
 `app/(client)/habits`. `addHabit` / `toggleHabit`; `getMyHabits`. Tables `habits`,
-`habit_logs`, `streaks`, `badges`, `user_badges`. Components `add-habit-form.tsx`,
-`habit-ticks.tsx`. Streaks and badges have tables and RLS but no award logic —
+`habit_logs`, `streaks`, `badges`, `user_badges`. Components `add-habit-form.tsx`
+(seven suggested habits from `lib/habit-suggestions.ts`, each with a "what" and
+"why" in both languages before it is added), `habit-ticks.tsx` (an ⓘ on habits
+that match a suggestion by name unfolds the same text). Streaks and badges have tables and RLS but no award logic —
 those are service-role engine tables with no insert policy, and nothing writes them.
 
 ---
@@ -119,8 +128,10 @@ those are service-role engine tables with no insert policy, and nothing writes t
 | Email templates | `supabase/templates/{confirmation,recovery}.html` — bilingual; wired in `config.toml` locally, pasted by hand into the hosted dashboard |
 
 **Auth is email + password, or Google.** The login page has three modes: sign
-in, create account (full name, coach/client choice, password ≥ 8 + repeat), and
-forgot password; the first two also offer "Continue with Google"
+in, create account (full name, username, sex, age, coach/client choice,
+password ≥ 8 + repeat — username / sex / birth year land in `users` through the
+trigger, migration `20260910100000`; accounts without a username are sent to
+`app/complete-profile`), and forgot password; the first two also offer "Continue with Google"
 (`signInWithOAuth`). Email sign-up passes `{ full_name, role }` as user
 metadata; the `handle_new_user` trigger accepts only `coach`/`client` and
 defaults everything else to `client`, so a sign-up request can never mint an

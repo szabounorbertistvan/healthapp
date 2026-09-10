@@ -17,6 +17,9 @@ import type {
 export const demoProfile: Profile = {
   id: "demo-coach",
   full_name: "Coach Alex",
+  username: "coach_alex",
+  sex: "male",
+  birth_year: 1988,
   role: "admin",
   tier: "coach_pro",
   trial_ends_at: null,

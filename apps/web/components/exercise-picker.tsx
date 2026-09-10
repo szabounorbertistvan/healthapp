@@ -4,6 +4,7 @@ import { exerciseRef, type ExerciseSummary } from "@healthapp/shared";
 import { searchExerciseLibrary } from "@/app/library-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";
+import { NewExerciseForm } from "./new-exercise-form";
 
 type Props = {
   muscles: string[];
@@ -25,6 +26,8 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
   const [total, setTotal] = useState(0);
   const [pending, startTransition] = useTransition();
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState<string | null>(null);
 
   // Debounced: the coach types faster than a round-trip, and the library is
   // 873 rows on the server rather than in this bundle.
@@ -51,14 +54,54 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
     });
   }
 
+  // A freshly created exercise goes to the top of the list and, when the picker
+  // is attached to a day, straight into that day — one motion, not two.
+  function onCreated(exercise: ExerciseSummary) {
+    setCreating(false);
+    setResults((current) => [exercise, ...current]);
+    setTotal((n) => n + 1);
+    setCreated(exercise.name_en);
+    onPick?.(exercise);
+  }
+
   return (
     <div className="flex min-h-0 flex-col gap-3">
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder={m.searchPlaceholder}
-        className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
-      />
+      <div className="flex gap-2">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={m.searchPlaceholder}
+          className="min-w-0 flex-1 rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+        <button
+          type="button"
+          onClick={() => setCreating((v) => !v)}
+          aria-expanded={creating}
+          className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold ${
+            creating ? "border-accent text-accent-ink" : "border-line hover:border-accent"
+          }`}
+        >
+          + {m.createExercise}
+        </button>
+      </div>
+
+      {creating ? (
+        <NewExerciseForm
+          muscles={muscles}
+          equipment={equipment}
+          initialName={q}
+          initialMuscle={muscle}
+          canAdd={Boolean(onPick)}
+          onCreated={onCreated}
+          onCancel={() => setCreating(false)}
+        />
+      ) : null}
+
+      {created ? (
+        <p className="rounded-lg bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-ink">
+          {created} — {t.coachWidgets.newExerciseForm.created}
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <Facet label={m.allMuscles} options={muscles} value={muscle} onChange={setMuscle} />
@@ -89,7 +132,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
       <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {results.map((exercise) => (
           <li
-            key={exercise.external_id}
+            key={exerciseRef(exercise)}
             className="rounded-lg border border-line bg-bg p-2.5"
           >
             <div className="flex items-start justify-between gap-3">
@@ -115,6 +158,15 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
         {!loading && results.length === 0 ? (
           <li className="rounded-lg border border-dashed border-line p-4 text-center text-sm text-ink-soft">
             {m.noMatch}
+            {!creating ? (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="mt-2 block w-full rounded-lg border border-line px-3 py-2 text-xs font-semibold hover:border-accent hover:text-accent-ink"
+              >
+                + {m.createExercise}
+              </button>
+            ) : null}
           </li>
         ) : null}
         {!loading && total > results.length ? (

@@ -3,9 +3,19 @@ import type { Role, Tier } from "./entitlements";
 
 export type Signal = "on_track" | "needs_attention" | "at_risk";
 
+export type Sex = "male" | "female" | "other";
+
 export type Profile = {
   id: string;
   full_name: string;
+  /**
+   * What the app shows for "who is signed in" — never the email. Null only for
+   * accounts created before the field existed or through Google, which cannot
+   * carry sign-up metadata; both are sent to /complete-profile.
+   */
+  username: string | null;
+  sex: Sex | null;
+  birth_year: number | null;
   role: Role;
   /** Effective tier — includes an active 30-day trial, not just paid tiers. */
   tier: Tier;
@@ -191,7 +201,12 @@ export type LoggedSetRow = {
   set_index: number;
   weight_kg: number;
   reps: number;
+  /** Felt intensity 1..10 (the slider). */
   rpe: number | null;
+  /** Reps in reserve as typed, RIR-mode programs only. */
+  rir: number | null;
+  /** Free-text comment about this set. */
+  notes: string | null;
   is_pr: boolean;
   at: string;
 };
@@ -202,11 +217,36 @@ export type ClientWorkoutDay = {
   day_name: string;
   program_id: string;
   program_name: string;
+  /** True when the client built this program themselves (coach_id null). */
+  is_own: boolean;
   intensity_mode: "rpe" | "rir" | "simple";
   exercises: ProgramExerciseRow[];
   logged: LoggedSetRow[];
   session_id: string | null;
   completed: boolean;
+};
+
+/** A published program with its days — Training lists every one the client holds. */
+export type ClientProgramGroup = {
+  program_id: string;
+  program_name: string;
+  is_own: boolean;
+  /** True for the one program Today and adherence follow (pickProgram). */
+  followed: boolean;
+  days: ClientWorkoutDay[];
+};
+
+/** One past session of a training day, with every set grouped under its exercise. */
+export type WorkoutHistorySession = {
+  id: string;
+  at: string;
+  sets: number;
+  volume_kg: number;
+  prs: number;
+  exercises: {
+    name: string;
+    sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">[];
+  }[];
 };
 
 export type ClientFoodEntry = {
@@ -220,6 +260,8 @@ export type ClientFoodEntry = {
 export type ClientDayNutrition = {
   day: string;
   plan_name: string | null;
+  /** Who set today's targets: the coach's published plan, the client's own, or nobody. */
+  plan_owner: "coach" | "self" | null;
   target: Macros;
   totals: Macros;
   entries: ClientFoodEntry[];

@@ -17,6 +17,7 @@ import {
 import { isDemo, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
 import { store } from "./demo-store";
+import { displayName, getProfile } from "./data";
 import { viewingClientId } from "./view-mode";
 import { demoConversations, demoMessages } from "./demo";
 import {
@@ -40,11 +41,13 @@ import type {
   ClientHabitRow,
   ClientMeasurementRow,
   ClientPrRow,
+  ClientProgramGroup,
   ClientToday,
   ClientWorkoutDay,
   LoggedSetRow,
   MealSlot,
   MessageRow,
+  WorkoutHistorySession,
 } from "./types";
 
 export { isDemo };
@@ -64,52 +67,70 @@ export async function currentClientId(): Promise<string | null> {
 
 // ---------- training ----------
 
-/** The published program assigned to this client, if any. */
-export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
+/** Coach-built programs first, then the client's own; newest first within each. */
+function sortPrograms<T extends { coach_id: string | null; updated_at: string }>(list: readonly T[]): T[] {
+  return [...list].sort((a, b) => {
+    const aOwn = a.coach_id === null ? 1 : 0;
+    const bOwn = b.coach_id === null ? 1 : 0;
+    if (aOwn !== bOwn) return aOwn - bOwn;
+    return b.updated_at.localeCompare(a.updated_at);
+  });
+}
+
+/**
+ * Every published program this client holds — the one their coach assigned and
+ * the one they built themselves, when both exist — with today's logged sets
+ * attached to each day. Training lists all of them; `followed` marks the single
+ * program Today and adherence read (pickProgram: the coach's while a coach is
+ * active, otherwise the client's own).
+ */
+export async function getMyProgramGroups(): Promise<ClientProgramGroup[]> {
   if (isDemo) {
     const clientId = await viewingClientId();
     const s = store();
-    // Same precedence as the live branch below: a client can hold a
-    // coach-built and a self-built program at once, and while their coach
-    // relationship is active the coach's program wins. `client.status` here
-    // is the demo stand-in for trainer_clients.status — see activeCoachId.
+    // `client.status` is the demo stand-in for trainer_clients.status — see activeCoachId.
     const hasActiveCoach = s.clients.find((c) => c.client_id === clientId)?.status === "active";
     const candidates = s.programs.filter(
       (p) => p.client_id === clientId && p.status === "published",
     );
-    const program = pickProgram(candidates, hasActiveCoach);
-    if (!program) return [];
+    const followed = pickProgram(candidates, hasActiveCoach);
     const cs = clientStore();
-    return program.days.map((day) => {
-      const session = cs.sessions.find(
-        (s) => s.client_id === clientId && s.program_day_id === day.id && s.completed_at === null,
-      );
-      const logged = session ? setsForSession(session.id) : [];
-      return {
-        day_id: day.id,
-        day_name: day.name,
-        program_id: program.id,
-        program_name: program.name,
-        intensity_mode: program.intensity_mode,
-        exercises: [...day.exercises]
-          .sort((a, b) => a.position - b.position)
-          .map((e) => ({
-            id: e.id,
-            exercise: e.exercise_name,
-            sets: e.target_sets,
-            reps: e.target_reps,
-            weight: e.target_weight_kg ? `${e.target_weight_kg} kg` : "—",
-            rpe: e.target_rpe?.toString() ?? "—",
-            rest: e.rest_seconds ? `${e.rest_seconds}s` : "—",
-            weight_kg: e.target_weight_kg,
-            rpe_value: e.target_rpe,
-            rest_seconds: e.rest_seconds,
-          })),
-        logged,
-        session_id: session?.id ?? null,
-        completed: false,
-      };
-    });
+    return sortPrograms(candidates).map((program) => ({
+      program_id: program.id,
+      program_name: program.name,
+      is_own: program.coach_id === null,
+      followed: program.id === followed?.id,
+      days: program.days.map((day) => {
+        const session = cs.sessions.find(
+          (x) => x.client_id === clientId && x.program_day_id === day.id && x.completed_at === null,
+        );
+        return {
+          day_id: day.id,
+          day_name: day.name,
+          program_id: program.id,
+          program_name: program.name,
+          is_own: program.coach_id === null,
+          intensity_mode: program.intensity_mode,
+          exercises: [...day.exercises]
+            .sort((a, b) => a.position - b.position)
+            .map((e) => ({
+              id: e.id,
+              exercise: e.exercise_name,
+              sets: e.target_sets,
+              reps: e.target_reps,
+              weight: e.target_weight_kg ? `${e.target_weight_kg} kg` : "—",
+              rpe: e.target_rpe?.toString() ?? "—",
+              rest: e.rest_seconds ? `${e.rest_seconds}s` : "—",
+              weight_kg: e.target_weight_kg,
+              rpe_value: e.target_rpe,
+              rest_seconds: e.rest_seconds,
+            })),
+          logged: session ? setsForSession(session.id) : [],
+          session_id: session?.id ?? null,
+          completed: false,
+        };
+      }),
+    }));
   }
 
   const supabase = await supabaseServer();
@@ -125,64 +146,76 @@ export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
     .eq("status", "published");
   if (error || !rows) return [];
 
-  const coachId = await activeCoachId(supabase, auth.user.id);
-  const data = pickProgram(
-    rows as unknown as (SelectableProgram & Record<string, unknown>)[],
-    coachId !== null,
-  ) as { id: string; name: string; intensity_mode: "rpe" | "rir" | "simple"; program_days: unknown } | null;
-  if (!data) return [];
-
   type ExJoin = {
     id: string; exercise_id: string; position: number; target_sets: number; target_reps: string;
     target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null;
     exercise: { name_en: string; name_ro: string | null } | null;
   };
   type DayJoin = { id: string; name: string; day_index: number; program_exercises: ExJoin[] };
+  type ProgramJoin = SelectableProgram & {
+    name: string; intensity_mode: "rpe" | "rir" | "simple"; program_days: DayJoin[] | null;
+  };
 
-  const days = ((data.program_days as unknown as DayJoin[]) ?? []).sort(
-    (a, b) => a.day_index - b.day_index,
-  );
+  const programs = rows as unknown as ProgramJoin[];
+  const coachId = await activeCoachId(supabase, auth.user.id);
+  const followed = pickProgram(programs, coachId !== null);
 
   // What is already logged today, addressed by the same deterministic key the
   // writer derives. Without this the set logger restarts its numbering at 1
   // after every reload, and logSet's client_generated_id collides with the set
   // that is already there.
   const today = isoDay();
-  const sessions = await sessionsForDays(
-    supabase,
-    auth.user.id,
-    days.map((d) => d.id),
-    today,
-  );
+  const allDayIds = programs.flatMap((p) => (p.program_days ?? []).map((d) => d.id));
+  const sessions = await sessionsForDays(supabase, auth.user.id, allDayIds, today);
 
-  return days.map((day) => {
-    const session = sessions.get(day.id);
+  return sortPrograms(programs).map((program) => {
+    const days = [...(program.program_days ?? [])].sort((a, b) => a.day_index - b.day_index);
     return {
-      day_id: day.id,
-      day_name: day.name,
-      program_id: data.id,
-      program_name: data.name,
-      intensity_mode: data.intensity_mode,
-      exercises: day.program_exercises
-        .sort((a, b) => a.position - b.position)
-        .map((e) => ({
-          id: e.id,
-          exercise_id: e.exercise_id,
-          exercise: e.exercise?.name_ro ?? e.exercise?.name_en ?? "—",
-          sets: e.target_sets,
-          reps: e.target_reps,
-          weight: e.target_weight_kg ? `${e.target_weight_kg} kg` : "—",
-          rpe: e.target_rpe?.toString() ?? "—",
-          rest: e.rest_seconds ? `${e.rest_seconds}s` : "—",
-          weight_kg: e.target_weight_kg,
-          rpe_value: e.target_rpe,
-          rest_seconds: e.rest_seconds,
-        })),
-      logged: session?.logged ?? [],
-      session_id: session?.id ?? null,
-      completed: session?.completed ?? false,
+      program_id: program.id,
+      program_name: program.name,
+      is_own: program.coach_id === null,
+      followed: program.id === followed?.id,
+      days: days.map((day) => {
+        const session = sessions.get(day.id);
+        return {
+          day_id: day.id,
+          day_name: day.name,
+          program_id: program.id,
+          program_name: program.name,
+          is_own: program.coach_id === null,
+          intensity_mode: program.intensity_mode,
+          exercises: [...day.program_exercises]
+            .sort((a, b) => a.position - b.position)
+            .map((e) => ({
+              id: e.id,
+              exercise_id: e.exercise_id,
+              exercise: e.exercise?.name_ro ?? e.exercise?.name_en ?? "—",
+              sets: e.target_sets,
+              reps: e.target_reps,
+              weight: e.target_weight_kg ? `${e.target_weight_kg} kg` : "—",
+              rpe: e.target_rpe?.toString() ?? "—",
+              rest: e.rest_seconds ? `${e.rest_seconds}s` : "—",
+              weight_kg: e.target_weight_kg,
+              rpe_value: e.target_rpe,
+              rest_seconds: e.rest_seconds,
+            })),
+          logged: session?.logged ?? [],
+          session_id: session?.id ?? null,
+          completed: session?.completed ?? false,
+        };
+      }),
     };
   });
+}
+
+/**
+ * The days of the program the client follows — the coach's while a coach is
+ * active, otherwise their own. This is what Today and the adherence engine
+ * count as planned sessions.
+ */
+export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
+  const groups = await getMyProgramGroups();
+  return groups.find((g) => g.followed)?.days ?? [];
 }
 
 /** The coach currently working with this client, or null when they train alone. */
@@ -230,6 +263,33 @@ export async function isEmptyAccount(): Promise<boolean> {
 
 type TodaySession = { id: string; completed: boolean; logged: LoggedSetRow[] };
 
+/** The columns a logged set is read with, live. */
+const LOGGED_SET_SELECT =
+  "id, program_exercise_id, set_index, weight_kg, reps, rpe, rir, notes, is_pr, received_at, exercise:exercises(name_en, name_ro)";
+
+type SetJoin = {
+  id: string; program_exercise_id: string | null; set_index: number;
+  weight_kg: number | null; reps: number | null; rpe: number | null; rir: number | null;
+  notes: string | null; is_pr: boolean | null; received_at: string;
+  exercise: { name_en: string; name_ro: string | null } | null;
+};
+
+function toLoggedSetRow(s: SetJoin): LoggedSetRow {
+  return {
+    id: s.id,
+    program_exercise_id: s.program_exercise_id,
+    exercise: s.exercise?.name_ro ?? s.exercise?.name_en ?? "—",
+    set_index: s.set_index,
+    weight_kg: s.weight_kg ?? 0,
+    reps: s.reps ?? 0,
+    rpe: s.rpe,
+    rir: s.rir,
+    notes: s.notes,
+    is_pr: Boolean(s.is_pr),
+    at: s.received_at,
+  };
+}
+
 /** Today's session and its sets, per program day, keyed by program_day_id. */
 async function sessionsForDays(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
@@ -242,22 +302,12 @@ async function sessionsForDays(
 
   const { data } = await supabase
     .from("logged_sessions")
-    .select(
-      `id, program_day_id, completed_at,
-       logged_sets(id, program_exercise_id, set_index, weight_kg, reps, rpe, is_pr, received_at,
-         exercise:exercises(name_en, name_ro))`,
-    )
+    .select(`id, program_day_id, completed_at, logged_sets(${LOGGED_SET_SELECT})`)
     .in(
       "client_generated_id",
       dayIds.map((dayId) => sessionKeyFor(userId, dayId, isoDate)),
     );
 
-  type SetJoin = {
-    id: string; program_exercise_id: string | null; set_index: number;
-    weight_kg: number | null; reps: number | null; rpe: number | null;
-    is_pr: boolean | null; received_at: string;
-    exercise: { name_en: string; name_ro: string | null } | null;
-  };
   type SessionJoin = {
     id: string; program_day_id: string | null; completed_at: string | null;
     logged_sets: SetJoin[];
@@ -270,25 +320,16 @@ async function sessionsForDays(
       completed: session.completed_at !== null,
       logged: (session.logged_sets ?? [])
         .sort((a, b) => a.set_index - b.set_index)
-        .map((s) => ({
-          id: s.id,
-          program_exercise_id: s.program_exercise_id,
-          exercise: s.exercise?.name_ro ?? s.exercise?.name_en ?? "—",
-          set_index: s.set_index,
-          weight_kg: s.weight_kg ?? 0,
-          reps: s.reps ?? 0,
-          rpe: s.rpe,
-          is_pr: Boolean(s.is_pr),
-          at: s.received_at,
-        })),
+        .map(toLoggedSetRow),
     });
   }
   return byDay;
 }
 
+/** One training day from any of the client's published programs. */
 export async function getWorkoutDay(dayId: string): Promise<ClientWorkoutDay | null> {
-  const days = await getMyProgramDays();
-  return days.find((d) => d.day_id === dayId) ?? null;
+  const groups = await getMyProgramGroups();
+  return groups.flatMap((g) => g.days).find((d) => d.day_id === dayId) ?? null;
 }
 
 function setsForSession(sessionId: string): LoggedSetRow[] {
@@ -303,14 +344,81 @@ function setsForSession(sessionId: string): LoggedSetRow[] {
       weight_kg: s.weight_kg,
       reps: s.reps,
       rpe: s.rpe,
+      rir: s.rir,
+      notes: s.notes,
       is_pr: s.is_pr,
       at: s.logged_at,
     }));
 }
 
+/** Group a session's sets under the exercise they belong to, in the order performed. */
+function groupByExercise(sets: LoggedSetRow[]): WorkoutHistorySession["exercises"] {
+  const order: string[] = [];
+  const byName = new Map<string, WorkoutHistorySession["exercises"][number]["sets"]>();
+  const sorted = [...sets].sort((a, b) => a.at.localeCompare(b.at) || a.set_index - b.set_index);
+  for (const s of sorted) {
+    let bucket = byName.get(s.exercise);
+    if (!bucket) {
+      bucket = [];
+      byName.set(s.exercise, bucket);
+      order.push(s.exercise);
+    }
+    bucket.push({
+      id: s.id, set_index: s.set_index, weight_kg: s.weight_kg, reps: s.reps,
+      rpe: s.rpe, rir: s.rir, notes: s.notes, is_pr: s.is_pr,
+    });
+  }
+  return order.map((name) => ({ name, sets: byName.get(name) ?? [] }));
+}
+
+function summarizeSession(id: string, at: string, sets: LoggedSetRow[]): WorkoutHistorySession {
+  return {
+    id,
+    at,
+    sets: sets.length,
+    volume_kg: Math.round(sets.reduce((sum, x) => sum + x.weight_kg * x.reps, 0)),
+    prs: sets.filter((x) => x.is_pr).length,
+    exercises: groupByExercise(sets),
+  };
+}
+
+/**
+ * Past completed sessions of one training day, newest first — what opens when
+ * the client taps a day on Training. Every set is listed under its exercise so
+ * last time's numbers are right there before the next attempt.
+ */
+export async function getWorkoutDayHistory(dayId: string, limit = 20): Promise<WorkoutHistorySession[]> {
+  if (isDemo) {
+    const clientId = await viewingClientId();
+    return clientStore()
+      .sessions.filter(
+        (s) => s.client_id === clientId && s.program_day_id === dayId && s.completed_at !== null,
+      )
+      .sort((a, b) => (a.started_at < b.started_at ? 1 : -1))
+      .slice(0, limit)
+      .map((s) => summarizeSession(s.id, s.completed_at ?? s.started_at, setsForSession(s.id)));
+  }
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return [];
+  const { data, error } = await supabase
+    .from("logged_sessions")
+    .select(`id, started_at, completed_at, logged_sets(${LOGGED_SET_SELECT})`)
+    .eq("user_id", auth.user.id)
+    .eq("program_day_id", dayId)
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  type Row = { id: string; started_at: string; completed_at: string | null; logged_sets: SetJoin[] | null };
+  return ((data ?? []) as unknown as Row[]).map((s) =>
+    summarizeSession(s.id, s.completed_at ?? s.started_at, (s.logged_sets ?? []).map(toLoggedSetRow)),
+  );
+}
+
 /** Recent completed sessions, newest first — the training history list. */
 export async function getMySessions(limit = 12): Promise<
-  { id: string; day_name: string; at: string; sets: number; volume_kg: number; prs: number }[]
+  { id: string; day_id: string | null; day_name: string; at: string; sets: number; volume_kg: number; prs: number }[]
 > {
   if (isDemo) {
     const clientId = await viewingClientId();
@@ -323,6 +431,7 @@ export async function getMySessions(limit = 12): Promise<
         const sets = cs.sets.filter((x) => x.session_id === s.id);
         return {
           id: s.id,
+          day_id: s.program_day_id,
           day_name: s.day_name,
           at: s.completed_at ?? s.started_at,
           sets: sets.length,
@@ -336,18 +445,23 @@ export async function getMySessions(limit = 12): Promise<
   if (!auth.user) return [];
   const { data, error } = await supabase
     .from("logged_sessions")
-    .select("id, started_at, completed_at, logged_sets(weight_kg, reps, is_pr)")
+    .select("id, program_day_id, started_at, completed_at, day:program_days(name), logged_sets(weight_kg, reps, is_pr)")
     .eq("user_id", auth.user.id)
     .not("completed_at", "is", null)
     .order("completed_at", { ascending: false })
     .limit(limit);
   if (error) return [];
-  type SetJoin = { weight_kg: number | null; reps: number | null; is_pr: boolean | null };
-  return (data ?? []).map((s) => {
-    const sets = (s.logged_sets as unknown as SetJoin[]) ?? [];
+  type SetRow = { weight_kg: number | null; reps: number | null; is_pr: boolean | null };
+  type Row = {
+    id: string; program_day_id: string | null; started_at: string; completed_at: string | null;
+    day: { name: string } | null; logged_sets: SetRow[] | null;
+  };
+  return ((data ?? []) as unknown as Row[]).map((s) => {
+    const sets = s.logged_sets ?? [];
     return {
       id: s.id,
-      day_name: "Session",
+      day_id: s.program_day_id,
+      day_name: s.day?.name ?? "Session",
       at: s.completed_at ?? s.started_at,
       sets: sets.length,
       volume_kg: Math.round(sets.reduce((sum, x) => sum + (x.weight_kg ?? 0) * (x.reps ?? 0), 0)),
@@ -396,8 +510,13 @@ function estimate(weight: number, reps: number): number {
 export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrition> {
   if (isDemo) {
     const clientId = await viewingClientId();
-    const plan = store().plans.find(
-      (p) => p.client_id === clientId && p.status === "published",
+    const s = store();
+    // Same rule as the live branch: while a coach is active their plan wins,
+    // otherwise the client's own targets apply.
+    const hasActiveCoach = s.clients.find((c) => c.client_id === clientId)?.status === "active";
+    const plan = pickProgram(
+      s.plans.filter((p) => p.client_id === clientId && p.status === "published"),
+      hasActiveCoach,
     );
     const entries = foodLogsOn(clientId, day).map((f) => ({
       id: f.id,
@@ -409,6 +528,7 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
     return {
       day,
       plan_name: plan?.name ?? null,
+      plan_owner: plan ? (plan.coach_id === null ? "self" : "coach") : null,
       target: plan
         ? {
             kcal: plan.kcal_target,
@@ -424,7 +544,7 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
 
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { day, plan_name: null, target: ZERO, totals: ZERO, entries: [] };
+  if (!auth.user) return { day, plan_name: null, plan_owner: null, target: ZERO, totals: ZERO, entries: [] };
   const [{ data: plans }, { data: logs }] = await Promise.all([
     supabase
       .from("nutrition_plans")
@@ -440,7 +560,7 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
   const plan = pickProgram(
     (plans ?? []) as unknown as (SelectableProgram & Record<string, unknown>)[],
     (await activeCoachId(supabase, auth.user.id)) !== null,
-  ) as { name: string; kcal_target: number; protein_target_g: number;
+  ) as { name: string; coach_id: string | null; kcal_target: number; protein_target_g: number;
          carbs_target_g: number; fat_target_g: number } | null;
   type LogRow = {
     id: string; slot: MealSlot; food_name: string; grams: number;
@@ -456,6 +576,7 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
   return {
     day,
     plan_name: plan?.name ?? null,
+    plan_owner: plan ? (plan.coach_id === null ? "self" : "coach") : null,
     target: plan
       ? {
           kcal: plan.kcal_target,
@@ -470,13 +591,44 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
 }
 
 /** The published plan as a template — what the coach wants eaten, per meal. */
+/**
+ * Which days in [from, to] have at least one food log — what the week strip
+ * marks as "logged", so a glance shows the gaps in the week.
+ */
+export async function getMyFoodDays(from: string, to: string): Promise<string[]> {
+  if (isDemo) {
+    const clientId = await viewingClientId();
+    const days = new Set<string>();
+    for (const f of clientStore().foodLogs) {
+      if (f.client_id === clientId && f.logged_on >= from && f.logged_on <= to) days.add(f.logged_on);
+    }
+    return [...days].sort();
+  }
+
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return [];
+  const { data } = await supabase
+    .from("food_logs")
+    .select("date")
+    .eq("user_id", auth.user.id)
+    .gte("date", from)
+    .lte("date", to);
+  const days = new Set<string>();
+  for (const row of (data ?? []) as { date: string }[]) days.add(row.date);
+  return [...days].sort();
+}
+
 export async function getMyPlanMeals(): Promise<
   { id: string; slot: MealSlot; name: string; foods: { name: string; grams: number; macros: Macros }[] }[]
 > {
   if (isDemo) {
     const clientId = await viewingClientId();
-    const plan = store().plans.find(
-      (p) => p.client_id === clientId && p.status === "published",
+    const s = store();
+    const hasActiveCoach = s.clients.find((c) => c.client_id === clientId)?.status === "active";
+    const plan = pickProgram(
+      s.plans.filter((p) => p.client_id === clientId && p.status === "published"),
+      hasActiveCoach,
     );
     if (!plan) return [];
     return [...plan.meals]
@@ -703,11 +855,14 @@ export async function getToday(): Promise<ClientToday | null> {
     days[0] ??
     null;
 
+  // What the greeting shows: the username, or the first name for accounts that
+  // have not set one yet — never the email.
+  const profile = isDemo ? null : await getProfile();
   return {
     client_id: clientId,
     full_name: isDemo
       ? (store().clients.find((c) => c.client_id === clientId)?.full_name ?? DEMO_CLIENT_NAME)
-      : "You",
+      : displayName(profile),
     adherence,
     streak_days: activity.streak,
     next_workout: next,

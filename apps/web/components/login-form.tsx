@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { isDemo, supabaseBrowser, enabledOAuthProviders } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/client";
 import { authErrorKey } from "@/lib/auth-errors";
+import { usernameAvailable } from "@/app/profile-actions";
+import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
+import type { Sex } from "@/lib/types";
 
 export type LoginMode = "signin" | "signup" | "forgot";
 type Role = "coach" | "client";
@@ -25,6 +28,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   const { t } = useI18n();
   const [mode, setMode] = useState<LoginMode>(initialMode);
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [sex, setSex] = useState<Sex | "">("");
+  const [age, setAge] = useState("");
   const [role, setRole] = useState<Role>("client");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -66,6 +72,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   function validate(): string | null {
     if (mode === "forgot") return null;
     if (mode === "signup" && fullName.trim().length === 0) return t.login.errNameRequired;
+    if (mode === "signup" && !isValidUsername(username)) return t.login.errUsernameFormat;
+    if (mode === "signup" && !sex) return t.login.errSexRequired;
+    if (mode === "signup" && !isValidAge(parseInt(age, 10))) return t.login.errAgeRange;
     if (mode === "signup" && password.length < MIN_PASSWORD) return t.login.errPasswordShort;
     if (mode === "signup" && password !== repeat) return t.login.errPasswordMismatch;
     return null;
@@ -97,12 +106,26 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
     }
 
     if (mode === "signup") {
+      // Asked up front so a taken name is a friendly message, not a numbered
+      // variant chosen by the trigger.
+      if (!(await usernameAvailable(username))) {
+        setBusy(false);
+        setError(t.login.errUsernameTaken);
+        return;
+      }
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          // read by the handle_new_user trigger; anything but coach/client is ignored there
-          data: { full_name: fullName.trim(), role },
+          // read by the handle_new_user trigger; anything but coach/client is
+          // ignored there, and so are a malformed username, sex or birth year
+          data: {
+            full_name: fullName.trim(),
+            role,
+            username: username.trim(),
+            sex,
+            birth_year: String(birthYearFromAge(parseInt(age, 10))),
+          },
           emailRedirectTo: `${origin}/auth/callback?next=/dashboard`,
         },
       });
@@ -194,6 +217,39 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
             onChange={(e) => setFullName(e.target.value)} placeholder={t.login.fullName}
             className={inputClass}
           />
+          <div>
+            <input
+              type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username}
+              onChange={(e) => setUsername(e.target.value.trim())} placeholder={t.login.username}
+              className={inputClass}
+            />
+            <p className="mt-1 text-[11px] text-ink-faint">{t.login.usernameHint}</p>
+          </div>
+          <div className="grid grid-cols-[1fr_5.5rem] gap-3">
+            <fieldset className="min-w-0">
+              <legend className="mb-1.5 text-xs font-medium text-ink-soft">{t.login.sex}</legend>
+              <div className="grid grid-cols-3 gap-1.5">
+                {SEXES.map((option) => (
+                  <button
+                    key={option} type="button" aria-pressed={sex === option} onClick={() => setSex(option)}
+                    className={`truncate rounded-lg border px-1 py-2 text-[11px] font-semibold ${
+                      sex === option ? "border-accent bg-accent-soft text-accent-ink" : "border-line bg-bg hover:border-ink-faint"
+                    }`}
+                  >
+                    {option === "male" ? t.login.sexMale : option === "female" ? t.login.sexFemale : t.login.sexOther}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-ink-soft">{t.login.age}</span>
+              <input
+                inputMode="numeric" value={age}
+                onChange={(e) => setAge(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
+                className={`${inputClass} text-center tabular-nums`}
+              />
+            </label>
+          </div>
           <fieldset>
             <legend className="mb-1.5 text-xs font-medium text-ink-soft">{t.login.iAm}</legend>
             <div className="grid grid-cols-2 gap-2">

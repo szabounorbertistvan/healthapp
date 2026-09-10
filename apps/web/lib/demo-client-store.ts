@@ -27,7 +27,11 @@ export type StoredLoggedSet = {
   set_index: number;
   weight_kg: number;
   reps: number;
+  /** Felt intensity 1..10. */
   rpe: number | null;
+  /** Reps in reserve as typed (RIR-mode programs). */
+  rir: number | null;
+  notes: string | null;
   is_pr: boolean;
   logged_at: string;
 };
@@ -102,7 +106,7 @@ type ClientStore = {
 
 // Bump whenever ClientStore changes shape — a store carried across a hot reload
 // that is missing a new field would crash every reader.
-const STORE_VERSION = 3;
+const STORE_VERSION = 4;
 
 const globalRef = globalThis as unknown as {
   __voinicClientStore?: ClientStore & { version?: number };
@@ -231,6 +235,9 @@ function seed(): ClientStore {
   const sessions: StoredSession[] = [];
   const sets: StoredLoggedSet[] = [];
 
+  // Keyed by the demo program's day ids (lib/demo.ts: pd1 = Legs A, pd2 = Push B)
+  // so the per-day history screen finds these sessions.
+  const dayIdFor: Record<string, string> = { "Legs A": "pd1", "Push B": "pd2" };
   const template: Record<string, { name: string; weight: number; reps: number; sets: number }[]> = {
     "Legs A": [
       { name: "Barbell Squat", weight: 80, reps: 8, sets: 4 },
@@ -262,7 +269,7 @@ function seed(): ClientStore {
     sessions.push({
       id: sessionId,
       client_id: DEMO_CLIENT_ID,
-      program_day_id: null,
+      program_day_id: dayIdFor[entry.day] ?? null,
       day_name: entry.day,
       started_at: daysAgoStamp(entry.daysAgo),
       completed_at: daysAgoStamp(entry.daysAgo),
@@ -282,7 +289,9 @@ function seed(): ClientStore {
           set_index: i + 1,
           weight_kg: weight,
           reps: ex.reps,
-          rpe: 2,
+          rpe: 8,
+          rir: 2,
+          notes: i === ex.sets - 1 && isPr ? "Felt strong, bar speed good." : null,
           is_pr: isPr,
           logged_at: daysAgoStamp(entry.daysAgo),
         });

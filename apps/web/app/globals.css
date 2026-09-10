@@ -3,9 +3,12 @@
 /*
   Voinic palette — near-black + gold, warm neutrals.
 
-  Dark is the brand and the default for everyone; it does NOT follow the OS
-  preference. Light is an explicit opt-in via the `bg-theme` cookie, which the
-  root layout renders as `data-theme="light"` on <html> (see lib/theme.ts).
+  Dark is the brand look and the fallback. By default the app follows the
+  device: with no `bg-theme` cookie the root layout renders no `data-theme`
+  attribute and the `prefers-color-scheme: light` block below applies the light
+  palette. An explicit choice in the cookie renders `data-theme="dark"` or
+  `data-theme="light"` on <html>, which wins over the media query either way
+  (see lib/theme.ts).
 
   Rules: gold is the brand accent (fills, borders, active states, charts).
   Text on gold is always dark (`accent-fg`), never white. Small accent text on
@@ -35,6 +38,29 @@
   color-scheme: dark;
 }
 
+/* The light palette, defined once and applied twice: by the device preference
+   when nothing is forced, and by the explicit light choice. Tailwind v4 reads
+   the --color-* tokens from :root, so overriding them here re-themes every
+   utility class. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --color-bg: #f7f5f0;
+    --color-surface: #ffffff;
+    --color-ink: #16161a;
+    --color-ink-soft: #4a4944;
+    --color-ink-faint: #7a786f;
+    --color-line: #e4dfd3;
+    --color-accent: #c9a227;
+    --color-accent-fg: #16161a;
+    --color-accent-ink: #7f5c0b;
+    --color-accent-soft: #f6eed6;
+    --color-warn: #c2621a;
+    --color-warn-soft: #f9e7d9;
+    --color-risk: #c04545;
+    --color-risk-soft: #f7e2e2;
+  }
+}
 :root[data-theme="light"] {
   color-scheme: light;
   --color-bg: #f7f5f0;
@@ -70,4 +96,14 @@ body:has(.login-dialog[open]) {
 /* The wordmark PNG is white lettering from the logo; on the light theme flip it to ink. */
 :root[data-theme="light"] .brand-wordmark {
   filter: invert(1) brightness(0.1);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .brand-wordmark {
+    filter: invert(1) brightness(0.1);
+  }
+}
+
+/* Range inputs (set intensity, macro split) take the brand accent. */
+input[type="range"] {
+  accent-color: var(--color-accent);
 }

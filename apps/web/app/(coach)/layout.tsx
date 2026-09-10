@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isDemo } from "@/lib/supabase/server";
-import { getProfile } from "@/lib/data";
+import { displayName, getProfile } from "@/lib/data";
 import { NavLinks } from "@/components/nav-links";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -18,6 +18,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   if (!profile) redirect("/");
   // the coach web area is for coaches and admins; clients have their own surface
   if (profile.role === "client") redirect("/today");
+  if (!isDemo && !profile.username) redirect("/complete-profile");
   const { t } = await getI18n();
 
   return (
@@ -27,7 +28,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
           <Logo size="sm" />
         </Link>
         <p className="mb-5 px-2 text-xs text-ink-faint">
-          {profile.full_name} · <span className="font-semibold text-accent-ink">{TIER_LABEL[profile.tier]}</span>
+          {displayName(profile)} · <span className="font-semibold text-accent-ink">{TIER_LABEL[profile.tier]}</span>
         </p>
         <NavLinks isAdmin={profile.role === "admin"} />
         <div className="mt-auto space-y-3 pt-6">

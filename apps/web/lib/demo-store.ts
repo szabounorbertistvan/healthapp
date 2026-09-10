@@ -1,4 +1,5 @@
 import { demoClients, demoDashboard, demoPrograms, demoProgramDetail, demoNutritionPlans } from "./demo";
+import type { ExerciseSummary } from "@healthapp/shared";
 import type { ClientRow, DashboardRow } from "./types";
 
 // Mutable demo backend.
@@ -74,7 +75,10 @@ export type StoredMeal = {
 
 export type StoredPlan = {
   id: string;
+  /** null = the client's own targets (nplans_solo_all in SQL); set = coach-authored. */
+  coach_id: string | null;
   client_id: string;
+  updated_at: string;
   client_name: string;
   name: string;
   status: "draft" | "published" | "archived";
@@ -91,13 +95,19 @@ export type StoredClient = DashboardRow & {
   started_at: string | null;
 };
 
-type Store = { clients: StoredClient[]; programs: StoredProgram[]; plans: StoredPlan[] };
+type Store = {
+  clients: StoredClient[];
+  programs: StoredProgram[];
+  plans: StoredPlan[];
+  /** Exercises created in the app (exercises.owner_id set, source 'custom'). */
+  customExercises: ExerciseSummary[];
+};
 
 // Next.js hot-reloads modules in dev; without this the coach loses their work
 // on every file save. The version stamp is what makes that safe: a store kept
 // across a reload that added a field would otherwise be missing it, and every
 // reader would crash on undefined. Bump it whenever Store changes shape.
-const STORE_VERSION = 3;
+const STORE_VERSION = 4;
 
 const globalRef = globalThis as unknown as {
   __voinicDemoStore?: Store & { version?: number };
@@ -203,7 +213,9 @@ function seed(): Store {
 
   const plans: StoredPlan[] = demoNutritionPlans.map((n) => ({
     id: n.id,
+    coach_id: DEMO_COACH_ID,
     client_id: clientIdFor(n.client_name),
+    updated_at: new Date().toISOString(),
     client_name: n.client_name,
     name: n.name,
     status: n.status,
@@ -214,7 +226,7 @@ function seed(): Store {
     meals: n.id === "n1" ? seedMealsForMaria() : [],
   }));
 
-  return { clients, programs, plans };
+  return { clients, programs, plans, customExercises: [] };
 }
 
 // The plan from WIREFRAMES W6, so the builder opens on something real.

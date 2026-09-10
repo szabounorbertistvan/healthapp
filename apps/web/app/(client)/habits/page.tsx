@@ -30,7 +30,7 @@ export default async function HabitsPage() {
         </Card>
       )}
 
-      <AddHabitForm />
+      <AddHabitForm existingNames={habits.map((h) => h.name)} />
     </div>
   );
 }

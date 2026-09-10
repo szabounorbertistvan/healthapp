@@ -2,8 +2,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  addProgramExercise, addSoloProgramDay, createSoloProgram, publishProgram,
+  addProgramExercise, addSoloProgramDay, createSoloProgram, publishProgram, removeProgramDay,
 } from "@/app/builder-actions";
+import { SwipeToDelete } from "@/components/swipe-to-delete";
+import { fill } from "@/lib/i18n";
 import { ExercisePicker } from "@/components/exercise-picker";
 import { MuscleGroupPicker, MUSCLE_GROUPS } from "@/components/muscle-group-picker";
 import { Card } from "@/components/ui";
@@ -59,8 +61,22 @@ export function SoloProgramBuilder({ program }: { program: ProgramDetail | null 
       ) : null}
 
       {program.days.map((day) => (
-        <Card key={day.id} className="space-y-3">
-          <p className="font-bold">{day.name}</p>
+        <SwipeToDelete
+          key={day.id}
+          confirmText={fill(t.clientApp.workout.deleteDayConfirm, { name: day.name })}
+          onDelete={() =>
+            new Promise<void>((resolve) => {
+              run(async () => {
+                const r = await removeProgramDay(program.id, day.id);
+                if (pickerDayId === day.id) setPickerDayId(null);
+                resolve();
+                return r;
+              });
+            })
+          }
+        >
+        <Card className="space-y-3">
+          <p className="pr-8 font-bold">{day.name}</p>
           {day.muscle_groups.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {day.muscle_groups.map((g) => (
@@ -110,7 +126,11 @@ export function SoloProgramBuilder({ program }: { program: ProgramDetail | null 
             />
           ) : null}
         </Card>
+        </SwipeToDelete>
       ))}
+      {program.days.length > 0 ? (
+        <p className="text-[11px] text-ink-faint sm:hidden">{t.clientApp.workout.swipeHint}</p>
+      ) : null}
 
       <Card className="space-y-3">
         <input

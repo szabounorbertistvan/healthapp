@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getProfile } from "@/lib/data";
+import { displayName, getProfile } from "@/lib/data";
 import { isDemo } from "@/lib/supabase/server";
 import { DEMO_CLIENT_NAME } from "@/lib/demo-client-store";
 import { ClientNav, ClientTabBar } from "@/components/client-nav";
@@ -28,7 +28,10 @@ export default async function ClientLayout({ children }: { children: React.React
     const profile = await getProfile();
     if (!profile) redirect("/");
     if (profile.role === "coach") redirect("/dashboard");
-    name = profile.full_name;
+    // An account without a username (Google sign-up, or older than the field)
+    // finishes its profile before it sees anything else.
+    if (!profile.username) redirect("/complete-profile");
+    name = displayName(profile);
   }
   const { t } = await getI18n();
 

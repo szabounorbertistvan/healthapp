@@ -8,26 +8,31 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { portionsFor, type DemoFood } from "@/lib/demo-foods";
 import type { MealSlot } from "@/lib/types";
-import { Card } from "./ui";
 import { BarcodeScanner } from "./barcode-scanner";
 import { ProductCard } from "./product-card";
 
-const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
-
 /**
- * Search a food, set grams, log it. Reuses the coach builder search action so
- * both surfaces hit one food source — demo table now, Open Food Facts through
- * the edge function once a backend is connected.
+ * Search a food, set grams, log it — opened inside the meal it logs to, so the
+ * slot is already decided (eat&track style). Reuses the coach builder search
+ * action so both surfaces hit one food source — demo table now, Open Food
+ * Facts through the edge function once a backend is connected.
  */
-export function FoodLogger() {
+export function FoodLogger({
+  slot,
+  day,
+  onClose,
+}: {
+  slot: MealSlot;
+  /** yyyy-mm-dd being viewed; the log lands on that day, not on today. */
+  day: string;
+  onClose: () => void;
+}) {
   const { t } = useI18n();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<DemoFood[]>([]);
   const [picked, setPicked] = useState<DemoFood | null>(null);
   const [grams, setGrams] = useState("100");
-  const [slot, setSlot] = useState<MealSlot>(defaultSlot());
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -35,24 +40,11 @@ export function FoodLogger() {
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!open) return;
     const timer = setTimeout(() => {
       startTransition(async () => setResults(await searchFoods(q)));
     }, 200);
     return () => clearTimeout(timer);
-  }, [q, open]);
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg hover:opacity-90"
-      >
-        {t.clientWidgets.foodLogger.logFood}
-      </button>
-    );
-  }
+  }, [q]);
 
   const gramsNum = parseFloat(grams);
   const portions = picked ? portionsFor(picked) : [];
@@ -75,37 +67,18 @@ export function FoodLogger() {
       : null;
 
   return (
-    <Card>
+    <div className="mt-3 border-t border-line pt-3">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-          {t.clientWidgets.foodLogger.logFood}
+          {fill(t.clientWidgets.foodLogger.addTo, { slot: t.clientWidgets.foodLogger.slots[slot] })}
         </p>
         <button
           type="button"
-          onClick={() => {
-            setOpen(false);
-            setPicked(null);
-            setQ("");
-          }}
+          onClick={onClose}
           className="text-xs font-semibold text-ink-faint hover:text-ink"
         >
           {t.common.actions.close}
         </button>
-      </div>
-
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {SLOTS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setSlot(s)}
-            className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize ${
-              slot === s ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft"
-            }`}
-          >
-            {t.clientWidgets.foodLogger.slots[s]}
-          </button>
-        ))}
       </div>
 
       {picked ? (
@@ -176,6 +149,7 @@ export function FoodLogger() {
                 setError(null);
                 const result = await logFood({
                   slot,
+                  day,
                   foodName: picked.name_ro || picked.name_en,
                   grams: gramsNum,
                   per100g: picked.per_100g,
@@ -287,15 +261,6 @@ export function FoodLogger() {
       )}
 
       {error ? <p className="mt-2 text-sm font-semibold text-risk">{error}</p> : null}
-    </Card>
+    </div>
   );
-}
-
-/** Guess the meal from the clock so the common case needs no tap. */
-function defaultSlot(): MealSlot {
-  const hour = new Date().getHours();
-  if (hour < 11) return "breakfast";
-  if (hour < 16) return "lunch";
-  if (hour < 21) return "dinner";
-  return "snack";
 }

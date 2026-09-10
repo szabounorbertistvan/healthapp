@@ -15,6 +15,15 @@ const en = {
     rir: "RIR",
     rpe: "RPE",
     logSet: "Log set",
+    intensity: "Intensity",
+    intensityScale: "1 easy · 10 all-out",
+    note: "Note",
+    notePlaceholder: "How did the set feel? Grip, tempo, pain, anything to remember…",
+  },
+  swipeToDelete: {
+    delete: "Delete",
+    confirm: "Delete?",
+    keep: "Keep",
   },
   foodLogger: {
     logFood: "Log food",
@@ -57,6 +66,14 @@ const en = {
     noServing: "No serving size on record for this product — choose the weight yourself on the next step.",
     logThis: "Log this",
   },
+  weekStrip: {
+    prevWeek: "Previous week",
+    nextWeek: "Next week",
+    today: "Today",
+    dayAria: "{date}, {status}",
+    logged: "logged",
+    empty: "nothing logged",
+  },
   foodEntry: {
     couldNotUpdate: "Could not update",
     couldNotDelete: "Could not delete",
@@ -91,10 +108,58 @@ const en = {
   },
   addHabitForm: {
     title: "Add a habit",
+    ideas: "Ideas to start with",
+    tapForDetails: "Tap one to see what it is and why it helps.",
+    custom: "Or write your own",
     name: "name",
     namePlaceholder: "Walk 30 minutes",
     daysPerWeek: "days/week",
+    addThis: "Add this habit",
     couldNotAdd: "Could not add that",
+  },
+  habitSuggestions: {
+    water: {
+      name: "Drink 2 L of water",
+      what: "Two litres across the day — a glass on waking, one with every meal, one around training.",
+      why: "Even mild dehydration lowers strength output and makes hunger harder to read. It is the cheapest performance habit there is.",
+    },
+    steps: {
+      name: "10 000 steps",
+      what: "Walk enough during the day to reach ten thousand steps on your phone or watch.",
+      why: "Daily walking is most of your non-training energy burn, keeps joints happy and helps recovery without adding fatigue.",
+    },
+    sleep: {
+      name: "Sleep 7 h+",
+      what: "Seven or more hours in bed, lights out and screens away at a regular time.",
+      why: "Muscle is built and appetite is regulated while you sleep. Short nights show up as weaker sessions and more cravings.",
+    },
+    meditation: {
+      name: "5 min of meditation",
+      what: "Five minutes sitting still and following your breath, first thing or before bed.",
+      why: "It lowers stress hormones that fight fat loss and recovery, and it trains the focus you need under a heavy bar.",
+    },
+    stretching: {
+      name: "10 min of stretching",
+      what: "Ten minutes of stretching or mobility for the muscles you trained, or the hips and shoulders on rest days.",
+      why: "Better range of motion means safer, deeper reps, and fewer of the small aches that make you skip a session.",
+    },
+    protein: {
+      name: "Protein at every meal",
+      what: "A palm-sized portion of protein — meat, fish, eggs, dairy, legumes or a shake — in each of your meals.",
+      why: "Spreading protein across the day is what lets your muscles use it. It also keeps you full, which makes the calorie target easier.",
+    },
+    vegetables: {
+      name: "Vegetables twice a day",
+      what: "A serving of vegetables or fruit at lunch and at dinner.",
+      why: "Fibre, vitamins and volume for very few calories — the easiest way to feel full while eating in a deficit.",
+    },
+  },
+  macroTargets: {
+    protein: "Protein",
+    carbs: "Carbs",
+    fat: "Fat",
+    grams: "g",
+    kcalPerGram: "{n} kcal/g",
   },
 };
 
@@ -113,6 +178,15 @@ const ro: typeof en = {
     rir: "RIR",
     rpe: "RPE",
     logSet: "Înregistrează setul",
+    intensity: "Intensitate",
+    intensityScale: "1 ușor · 10 la maximum",
+    note: "Notă",
+    notePlaceholder: "Cum a fost setul? Priză, tempo, durere, orice vrei să ții minte…",
+  },
+  swipeToDelete: {
+    delete: "Șterge",
+    confirm: "Ștergi?",
+    keep: "Păstrează",
   },
   foodLogger: {
     logFood: "Adaugă mâncare",
@@ -155,6 +229,14 @@ const ro: typeof en = {
     noServing: "Nu există o mărime de porție înregistrată pentru acest produs — alege greutatea singur la pasul următor.",
     logThis: "Înregistrează",
   },
+  weekStrip: {
+    prevWeek: "Săptămâna anterioară",
+    nextWeek: "Săptămâna următoare",
+    today: "Azi",
+    dayAria: "{date}, {status}",
+    logged: "înregistrat",
+    empty: "nimic înregistrat",
+  },
   foodEntry: {
     couldNotUpdate: "Nu s-a putut actualiza",
     couldNotDelete: "Nu s-a putut șterge",
@@ -186,10 +268,58 @@ const ro: typeof en = {
   },
   addHabitForm: {
     title: "Adaugă un obicei",
+    ideas: "Idei de început",
+    tapForDetails: "Apasă pe una ca să vezi ce e și de ce ajută.",
+    custom: "Sau scrie unul al tău",
     name: "nume",
     namePlaceholder: "Mergi pe jos 30 de minute",
     daysPerWeek: "zile/săptămână",
+    addThis: "Adaugă acest obicei",
     couldNotAdd: "Nu s-a putut adăuga",
+  },
+  habitSuggestions: {
+    water: {
+      name: "Bea 2 L de apă",
+      what: "Doi litri pe parcursul zilei — un pahar la trezire, unul la fiecare masă, unul în jurul antrenamentului.",
+      why: "Chiar și o deshidratare ușoară scade forța și face foamea mai greu de citit. E cel mai ieftin obicei de performanță.",
+    },
+    steps: {
+      name: "10 000 de pași",
+      what: "Mergi destul pe jos ca telefonul sau ceasul să arate zece mii de pași.",
+      why: "Mersul zilnic e cea mai mare parte din energia arsă în afara antrenamentului, ține articulațiile sănătoase și ajută recuperarea fără să adauge oboseală.",
+    },
+    sleep: {
+      name: "Dormi 7 h+",
+      what: "Șapte ore sau mai mult în pat, cu lumina stinsă și ecranele departe, la o oră regulată.",
+      why: "Mușchiul se construiește și apetitul se reglează în somn. Nopțile scurte se văd în sesiuni mai slabe și mai multe pofte.",
+    },
+    meditation: {
+      name: "5 min de meditație",
+      what: "Cinci minute stând liniștit și urmărindu-ți respirația, dimineața sau înainte de culcare.",
+      why: "Scade hormonii de stres care luptă împotriva slăbirii și recuperării și antrenează concentrarea de care ai nevoie sub o bară grea.",
+    },
+    stretching: {
+      name: "10 min de stretching",
+      what: "Zece minute de stretching sau mobilitate pentru mușchii antrenați, sau pentru șolduri și umeri în zilele de pauză.",
+      why: "O amplitudine mai bună înseamnă repetări mai sigure și mai profunde și mai puține dureri mici care te fac să sari o sesiune.",
+    },
+    protein: {
+      name: "Proteină la fiecare masă",
+      what: "O porție cât palma de proteină — carne, pește, ouă, lactate, leguminoase sau un shake — la fiecare masă.",
+      why: "Împărțirea proteinei pe parcursul zilei e ce le permite mușchilor să o folosească. Te ține și sătul, ceea ce face ținta de calorii mai ușoară.",
+    },
+    vegetables: {
+      name: "Legume de două ori pe zi",
+      what: "O porție de legume sau fructe la prânz și la cină.",
+      why: "Fibre, vitamine și volum pentru foarte puține calorii — cel mai simplu mod de a te simți sătul într-un deficit.",
+    },
+  },
+  macroTargets: {
+    protein: "Proteine",
+    carbs: "Carbohidrați",
+    fat: "Grăsimi",
+    grams: "g",
+    kcalPerGram: "{n} kcal/g",
   },
 };
 

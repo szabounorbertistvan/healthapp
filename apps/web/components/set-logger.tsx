@@ -9,7 +9,9 @@ import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
 
 /**
  * Log a set in three taps: the fields arrive pre-filled from the coach target,
- * so a set that goes to plan is one button press (PRODUCT_SPEC B1).
+ * so a set that goes to plan is one button press (PRODUCT_SPEC B1). Under the
+ * kg / reps / RIR boxes sit a 1–10 intensity slider and a one-line note, both
+ * optional, so the set can carry how it felt as well as what it was.
  */
 export function SetLogger({ day }: { day: ClientWorkoutDay }) {
   const { t } = useI18n();
@@ -86,7 +88,7 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
             done={done}
             sets={blockSets}
             pending={pending}
-            onLog={(weight, reps, rpe) =>
+            onLog={(entry) =>
               startTransition(async () => {
                 setError(null);
                 setPr(null);
@@ -97,9 +99,11 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
                   exerciseId: exercise.exercise_id ?? null,
                   programExerciseId: exercise.id,
                   setIndex: done + 1,
-                  weightKg: weight,
-                  reps,
-                  rpe,
+                  weightKg: entry.weight,
+                  reps: entry.reps,
+                  rpe: entry.intensity,
+                  rir: entry.rir,
+                  notes: entry.notes,
                 });
                 if (!result.ok) {
                   setError(result.message ?? t.clientWidgets.setLogger.couldNotLogSet);
@@ -112,9 +116,11 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
                     program_exercise_id: exercise.id,
                     exercise: exercise.exercise,
                     set_index: done + 1,
-                    weight_kg: weight,
-                    reps,
-                    rpe,
+                    weight_kg: entry.weight,
+                    reps: entry.reps,
+                    rpe: entry.intensity,
+                    rir: entry.rir,
+                    notes: entry.notes,
                     is_pr: Boolean(result.is_pr),
                     at: new Date().toISOString(),
                   },
@@ -145,6 +151,16 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
   );
 }
 
+type SetEntry = {
+  weight: number;
+  reps: number;
+  /** 1..10 from the slider. */
+  intensity: number;
+  /** Reps in reserve as typed, RIR-mode programs only. */
+  rir: number | null;
+  notes: string | null;
+};
+
 function ExerciseBlock({
   name, targetSets, targetReps, targetWeight, targetRpe, rest, intensityMode,
   done, sets, pending, onLog,
@@ -157,22 +173,38 @@ function ExerciseBlock({
   rest: string;
   intensityMode: "rpe" | "rir" | "simple";
   done: number;
-  sets: { id: string; set_index: number; weight_kg: number; reps: number; is_pr: boolean }[];
+  sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">[];
   pending: boolean;
-  onLog: (weight: number, reps: number, rpe: number | null) => void;
+  onLog: (entry: SetEntry) => void;
 }) {
   const { t } = useI18n();
-  // program_exercises.target_rpe and logged_sets.rpe are both RPE, constrained
-  // to 1..10. When the coach set the program to RIR the field shows and takes
-  // reps-in-reserve — RIR 0 is a normal answer, RPE 0 is not — and converts on
-  // the way in and out.
+  const m = t.clientWidgets.setLogger;
+  // program_exercises.target_rpe holds whatever the coach typed under the
+  // program's own scale: RIR for an RIR program, RPE otherwise (the builder
+  // writes the column raw). In RIR mode the box shows that number as reps in
+  // reserve and saves it to logged_sets.rir; the slider is always the felt
+  // intensity 1..10 (logged_sets.rpe), pre-set from the target — RIR 2 ≈ 8/10.
   const asRir = intensityMode === "rir";
   const [weight, setWeight] = useState(targetWeight?.toString() ?? "");
   const [reps, setReps] = useState(parseInt(targetReps, 10) ? String(parseInt(targetReps, 10)) : "");
-  const [effort, setEffort] = useState(
-    targetRpe === null ? "" : String(asRir ? Math.max(0, 10 - targetRpe) : targetRpe),
+  const [rir, setRir] = useState(asRir && targetRpe !== null ? String(targetRpe) : "");
+  const [intensity, setIntensity] = useState<number>(
+    targetRpe === null ? 7 : Math.round(clamp(asRir ? 10 - targetRpe : targetRpe, 1, 10)),
   );
+  const [notes, setNotes] = useState("");
   const complete = done >= targetSets;
+
+  function submit() {
+    const rirValue = asRir && rir.trim() !== "" ? clamp(parseFloat(rir), 0, 10) : null;
+    onLog({
+      weight: parseFloat(weight),
+      reps: parseInt(reps, 10),
+      intensity,
+      rir: rirValue !== null && Number.isFinite(rirValue) ? rirValue : null,
+      notes: notes.trim() || null,
+    });
+    setNotes("");
+  }
 
   return (
     <Card>
@@ -181,7 +213,7 @@ function ExerciseBlock({
           <p className="truncate font-bold">{name}</p>
           <p className="mt-0.5 text-xs text-ink-faint">
             {targetSets}×{targetReps}
-            {targetWeight ? ` · ${targetWeight} kg` : ""} · {t.clientWidgets.setLogger.rest} {rest}
+            {targetWeight ? ` · ${targetWeight} kg` : ""} · {m.rest} {rest}
           </p>
         </div>
         <span
@@ -198,45 +230,74 @@ function ExerciseBlock({
           {sets.map((s) => (
             <li
               key={s.id}
+              title={s.notes ?? undefined}
               className={`rounded-md px-2 py-1 text-xs tabular-nums ${
                 s.is_pr ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft"
               }`}
             >
               {s.weight_kg} kg × {s.reps}
-              {s.is_pr ? ` · ${t.clientWidgets.setLogger.pr}` : ""}
+              {s.rir !== null ? ` · ${m.rir} ${s.rir}` : ""}
+              {s.rpe !== null ? ` · ${s.rpe}/10` : ""}
+              {s.is_pr ? ` · ${m.pr}` : ""}
+              {s.notes ? " · ✎" : ""}
             </li>
           ))}
         </ul>
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-end gap-2">
-        <Field label={t.clientWidgets.setLogger.kg} value={weight} onChange={setWeight} />
-        <Field label={t.clientWidgets.setLogger.reps} value={reps} onChange={setReps} />
-        <Field
-          label={asRir ? t.clientWidgets.setLogger.rir : t.clientWidgets.setLogger.rpe}
-          value={effort}
-          onChange={setEffort}
-        />
+        <Field label={m.kg} value={weight} onChange={setWeight} />
+        <Field label={m.reps} value={reps} onChange={setReps} />
+        {asRir ? <Field label={m.rir} value={rir} onChange={setRir} /> : null}
         <button
           type="button"
           disabled={pending}
-          onClick={() => onLog(parseFloat(weight), parseInt(reps, 10), toRpe(effort, asRir))}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
+          onClick={submit}
+          className="ml-auto rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
         >
-          {t.clientWidgets.setLogger.logSet}
+          {m.logSet}
         </button>
       </div>
+
+      <div className="mt-3">
+        <div className="flex items-baseline justify-between">
+          <label htmlFor={`intensity-${name}`} className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+            {m.intensity}
+          </label>
+          <span className="text-xs tabular-nums">
+            <b className="text-ink">{intensity}</b>
+            <span className="text-ink-faint">/10</span>
+          </span>
+        </div>
+        <input
+          id={`intensity-${name}`}
+          type="range"
+          min={1}
+          max={10}
+          step={1}
+          value={intensity}
+          onChange={(e) => setIntensity(parseInt(e.target.value, 10))}
+          className="mt-1 w-full"
+        />
+        <p className="text-[10px] text-ink-faint">{m.intensityScale}</p>
+      </div>
+
+      <label className="mt-2 flex flex-col gap-1">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{m.note}</span>
+        <input
+          value={notes}
+          maxLength={500}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder={m.notePlaceholder}
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+      </label>
     </Card>
   );
 }
 
-/** The effort field as logged_sets.rpe wants it: 1..10, or null when blank. */
-function toRpe(value: string, asRir: boolean): number | null {
-  if (value.trim() === "") return null;
-  const parsed = parseFloat(value);
-  if (!Number.isFinite(parsed)) return null;
-  const rpe = asRir ? 10 - parsed : parsed;
-  return Math.min(Math.max(rpe, 1), 10);
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(Math.max(n, min), max);
 }
 
 function Field({

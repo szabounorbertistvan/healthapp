@@ -61,8 +61,9 @@ const en = {
   },
   theme: {
     label: "Theme",
-    dark: "Dark theme",
-    light: "Light theme",
+    system: "Theme: follows your device",
+    dark: "Theme: dark",
+    light: "Theme: light",
   },
   actions: {
     save: "Save",
@@ -159,8 +160,9 @@ const ro: typeof en = {
   },
   theme: {
     label: "Temă",
-    dark: "Temă întunecată",
-    light: "Temă luminoasă",
+    system: "Temă: urmează telefonul",
+    dark: "Temă: întunecată",
+    light: "Temă: luminoasă",
   },
   actions: {
     save: "Salvează",

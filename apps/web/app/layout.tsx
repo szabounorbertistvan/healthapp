@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [{ locale, t }, theme] = await Promise.all([getI18n(), getTheme()]);
   return (
-    <html lang={locale} data-theme={theme} className={`${inter.variable} ${exo2.variable}`}>
+    <html lang={locale} data-theme={theme === "system" ? undefined : theme} className={`${inter.variable} ${exo2.variable}`}>
       <body className="font-sans antialiased">
         <I18nProvider locale={locale} dict={t}>
           {children}

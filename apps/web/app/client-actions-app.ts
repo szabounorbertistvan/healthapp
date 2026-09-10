@@ -6,7 +6,12 @@
 // a flaky connection can never duplicate a row (supabase/README.md, offline
 // idempotency). Demo mode writes to the in-process store instead.
 import { revalidatePath } from "next/cache";
-import { estimated1RM, isPersonalRecord, portionMacros, type Macros } from "@healthapp/shared";
+import {
+  estimated1RM, gramsFromSplit, isPersonalRecord, MACRO_KEYS, portionMacros,
+  type Macros, type MacroSplit,
+} from "@healthapp/shared";
+import { getI18n } from "@/lib/i18n/server";
+import { store } from "@/lib/demo-store";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
 import { viewingClientId } from "@/lib/view-mode";
@@ -39,7 +44,12 @@ export async function logSet(input: {
   setIndex: number;
   weightKg: number;
   reps: number;
+  /** Felt intensity 1..10 from the slider. */
   rpe: number | null;
+  /** Reps in reserve as typed (RIR-mode programs), 0..10. */
+  rir?: number | null;
+  /** Free-text comment about the set. */
+  notes?: string | null;
 }): Promise<LogSetResult> {
   if (!Number.isFinite(input.weightKg) || input.weightKg < 0) {
     return { ok: false, message: "Weight must be a positive number" };
@@ -47,6 +57,14 @@ export async function logSet(input: {
   if (!Number.isInteger(input.reps) || input.reps <= 0) {
     return { ok: false, message: "Reps must be a whole number above zero" };
   }
+  if (input.rpe !== null && (!Number.isFinite(input.rpe) || input.rpe < 1 || input.rpe > 10)) {
+    return { ok: false, message: "Intensity must be between 1 and 10" };
+  }
+  const rir = input.rir ?? null;
+  if (rir !== null && (!Number.isFinite(rir) || rir < 0 || rir > 10)) {
+    return { ok: false, message: "RIR must be between 0 and 10" };
+  }
+  const notes = input.notes?.trim().slice(0, 500) || null;
 
   if (isDemo) {
     const clientId = await viewingClientId();
@@ -76,11 +94,14 @@ export async function logSet(input: {
       weight_kg: input.weightKg,
       reps: input.reps,
       rpe: input.rpe,
+      rir,
+      notes,
       is_pr: isPr,
       logged_at: new Date().toISOString(),
     });
     revalidatePath("/today");
     revalidatePath(`/workout/${input.dayId}`);
+    revalidatePath(`/workout/${input.dayId}/log`);
     return { ok: true, demo: true, is_pr: isPr };
   }
 
@@ -130,6 +151,8 @@ export async function logSet(input: {
     weight_kg: input.weightKg,
     reps: input.reps,
     rpe: input.rpe,
+    rir,
+    notes,
     is_pr: isPr,
     // Keyed on the prescribed row, not the library exercise: a day may program
     // the same lift twice (heavy, then a back-off block) and each keeps its own
@@ -143,6 +166,7 @@ export async function logSet(input: {
 
   revalidatePath("/today");
   revalidatePath(`/workout/${input.dayId}`);
+  revalidatePath(`/workout/${input.dayId}/log`);
   return { ok: true, is_pr: isPr, estimated_1rm: estimated1RM(input.weightKg, input.reps) };
 }
 
@@ -596,3 +620,86 @@ function asUuid(value: string | null | undefined): string | null {
     : null;
 }
 
+
+/**
+ * The client's own daily targets: calories plus a protein/carbs/fat split.
+ * Stored as a nutrition plan with coach_id null (policy nplans_solo_all), the
+ * same shape a coach's plan has, so getMyDayNutrition reads both through one
+ * path — and while a coach is active the coach's plan still wins (pickProgram).
+ * Grams are derived in @healthapp/shared from the split, never typed twice.
+ */
+export async function setMyNutritionTargets(input: {
+  kcal: number;
+  split: MacroSplit;
+}): Promise<ActionResult> {
+  if (!Number.isFinite(input.kcal) || input.kcal < 500 || input.kcal > 10000) {
+    return { ok: false, message: "Daily calories must be between 500 and 10000" };
+  }
+  const total = input.split.protein + input.split.carbs + input.split.fat;
+  if (total !== 100 || MACRO_KEYS.some((k) => input.split[k] < 0)) {
+    return { ok: false, message: "The macro split must add up to 100%" };
+  }
+  const grams = gramsFromSplit(input.kcal, input.split);
+  const { t } = await getI18n();
+  const name = t.clientApp.nutritionTargets.ownPlanName;
+
+  if (isDemo) {
+    const clientId = await viewingClientId();
+    const s = store();
+    const existing = s.plans.find((p) => p.client_id === clientId && p.coach_id === null);
+    if (existing) {
+      existing.kcal_target = grams.kcal;
+      existing.protein_target_g = grams.protein;
+      existing.carbs_target_g = grams.carbs;
+      existing.fat_target_g = grams.fat;
+      existing.status = "published";
+      existing.updated_at = new Date().toISOString();
+    } else {
+      s.plans.unshift({
+        id: newId("n"),
+        coach_id: null,
+        client_id: clientId,
+        client_name: "You",
+        name,
+        status: "published",
+        kcal_target: grams.kcal,
+        protein_target_g: grams.protein,
+        carbs_target_g: grams.carbs,
+        fat_target_g: grams.fat,
+        updated_at: new Date().toISOString(),
+        meals: [],
+      });
+    }
+    revalidatePath("/food");
+    revalidatePath("/today");
+    return { ok: true, demo: true };
+  }
+
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const { data: existing } = await supabase
+    .from("nutrition_plans")
+    .select("id")
+    .eq("client_id", auth.user.id)
+    .is("coach_id", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const values = {
+    kcal_target: grams.kcal,
+    protein_target_g: grams.protein,
+    carbs_target_g: grams.carbs,
+    fat_target_g: grams.fat,
+    status: "published" as const,
+  };
+  const { error } = existing
+    ? await supabase.from("nutrition_plans").update(values).eq("id", existing.id)
+    : await supabase
+        .from("nutrition_plans")
+        .insert({ ...values, coach_id: null, client_id: auth.user.id, name });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/food");
+  revalidatePath("/today");
+  return { ok: true };
+}
