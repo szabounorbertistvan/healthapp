@@ -21,20 +21,16 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
   const supabase = await supabaseServer();
   const term = q.trim();
 
-  // A real search goes through the food-search function, which merges the
-  // local cache with Open Food Facts and writes every hit back into `foods`.
-  // Reading the table directly — what this did before — returns nothing on a
-  // fresh project, because nothing else ever fills the cache. The table read
-  // below stays as the browse-on-open case and the fallback when the function
-  // cannot be reached.
-  if (term.length >= 2) {
-    const remote = await searchFoodsRemote(supabase, term);
-    if (remote) return remote;
-  }
-
+  // The table is the primary source: it holds the USDA generic list, the
+  // curated staples and every product ever scanned, and `search_text` makes
+  // the match accent-insensitive. The food-search function (Open Food Facts)
+  // only tops the list up when the table is thin for this term, so a barcode
+  // product nobody has scanned yet can still be found by name.
   let query = supabase
     .from("foods")
     .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
+    .order("verified", { ascending: false })
+    .order("name_en")
     .limit(30);
   if (term) {
     // `search_text` is the lower-cased, unaccented name+brand kept by the
@@ -44,7 +40,7 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
     if (safe) query = query.ilike("search_text", `%${safe}%`);
   }
   const { data } = await query;
-  return (data ?? []).map((row) => ({
+  const local: DemoFood[] = (data ?? []).map((row) => ({
     id: row.id,
     name_en: row.name_en,
     name_ro: row.name_ro ?? row.name_en,
@@ -61,6 +57,12 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
     // client falls back to its own table when this is empty.
     portions: (row.portions ?? []) as DemoFood["portions"],
   }));
+
+  if (term.length < 2 || local.length >= 10) return local;
+
+  const remote = (await searchFoodsRemote(supabase, term)) ?? [];
+  const seen = new Set(local.map((f) => f.id));
+  return [...local, ...remote.filter((f) => !seen.has(f.id))].slice(0, 30);
 }
 
 type RemoteFood = {
