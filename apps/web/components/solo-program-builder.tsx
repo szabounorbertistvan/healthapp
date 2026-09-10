@@ -2,9 +2,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  addProgramExercise, addSoloProgramDay, createSoloProgram, publishProgram,
+  addProgramExercise, addSoloProgramDay, createSoloProgram, deleteSoloProgramDay, publishProgram,
 } from "@/app/builder-actions";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ExercisePicker } from "@/components/exercise-picker";
+import { SwipeToDelete } from "@/components/swipe-to-delete";
 import { MuscleGroupPicker, MUSCLE_GROUPS } from "@/components/muscle-group-picker";
 import { Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
@@ -20,6 +22,7 @@ export function SoloProgramBuilder({ program }: { program: ProgramDetail | null 
   const [dayName, setDayName] = useState("");
   const [groups, setGroups] = useState<string[]>([]);
   const [pickerDayId, setPickerDayId] = useState<string | null>(null);
+  const [dayToDelete, setDayToDelete] = useState<string | null>(null);
 
   function run(action: () => Promise<{ ok: boolean; message?: string }>) {
     setError(null);
@@ -59,57 +62,74 @@ export function SoloProgramBuilder({ program }: { program: ProgramDetail | null 
       ) : null}
 
       {program.days.map((day) => (
-        <Card key={day.id} className="space-y-3">
-          <p className="font-bold">{day.name}</p>
-          {day.muscle_groups.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {day.muscle_groups.map((g) => (
-                <span key={g} className="rounded bg-bg px-1.5 py-0.5 text-[10px] capitalize text-ink-faint">
-                  {g}
-                </span>
-              ))}
+        <SwipeToDelete
+          key={day.id}
+          label={t.common.actions.delete}
+          onTrigger={() => setDayToDelete(day.id)}
+        >
+          <Card className="space-y-3">
+            <p className="font-bold">{day.name}</p>
+            {day.muscle_groups.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {day.muscle_groups.map((g) => (
+                  <span key={g} className="rounded bg-bg px-1.5 py-0.5 text-[10px] capitalize text-ink-faint">
+                    {g}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {day.exercises.length > 0 ? (
+              <ul className="space-y-1 text-sm text-ink-soft">
+                {day.exercises.map((e) => (
+                  <li key={e.id}>
+                    {e.exercise} — {e.sets}×{e.reps}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPickerDayId(pickerDayId === day.id ? null : day.id)}
+                className="rounded-lg border border-line px-3 py-2 text-xs font-semibold hover:border-accent"
+              >
+                {t.clientApp.builder.addExercise}
+              </button>
+              {/* The swipe is touch-only and undiscoverable on a desktop, so the
+                  same action needs a button anyone can see. */}
+              <button
+                type="button"
+                onClick={() => setDayToDelete(day.id)}
+                className="rounded-lg px-3 py-2 text-xs font-semibold text-risk hover:bg-risk-soft"
+              >
+                {t.common.actions.delete}
+              </button>
             </div>
-          ) : null}
-          {day.exercises.length > 0 ? (
-            <ul className="space-y-1 text-sm text-ink-soft">
-              {day.exercises.map((e) => (
-                <li key={e.id}>
-                  {e.exercise} — {e.sets}×{e.reps}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => setPickerDayId(pickerDayId === day.id ? null : day.id)}
-            className="rounded-lg border border-line px-3 py-2 text-xs font-semibold hover:border-accent"
-          >
-            {t.clientApp.builder.addExercise}
-          </button>
-          {pickerDayId === day.id ? (
-            // Keyed by day id so switching days always remounts the picker
-            // rather than reusing one whose `initialMuscle` was read once at
-            // mount time — otherwise the filter would keep showing the first
-            // day's muscle group after switching to a day with a different one.
-            <ExercisePicker
-              key={day.id}
-              muscles={[...MUSCLE_GROUPS]}
-              equipment={[]}
-              initialMuscle={day.muscle_groups[0] ?? ""}
-              pendingLabel={t.clientApp.builder.addExercise}
-              onPick={(exercise) =>
-                run(() =>
-                  addProgramExercise({
-                    programId: program.id,
-                    dayId: day.id,
-                    exerciseId: exercise.id ?? exercise.external_id,
-                    exerciseName: exercise.name_en,
-                  }),
-                )
-              }
-            />
-          ) : null}
-        </Card>
+            {pickerDayId === day.id ? (
+              // Keyed by day id so switching days always remounts the picker
+              // rather than reusing one whose `initialMuscle` was read once at
+              // mount time — otherwise the filter would keep showing the first
+              // day's muscle group after switching to a day with a different one.
+              <ExercisePicker
+                key={day.id}
+                muscles={[...MUSCLE_GROUPS]}
+                equipment={[]}
+                initialMuscle={day.muscle_groups[0] ?? ""}
+                pendingLabel={t.clientApp.builder.addExercise}
+                onPick={(exercise) =>
+                  run(() =>
+                    addProgramExercise({
+                      programId: program.id,
+                      dayId: day.id,
+                      exerciseId: exercise.id ?? exercise.external_id,
+                      exerciseName: exercise.name_en,
+                    }),
+                  )
+                }
+              />
+            ) : null}
+          </Card>
+        </SwipeToDelete>
       ))}
 
       <Card className="space-y-3">
@@ -152,6 +172,22 @@ export function SoloProgramBuilder({ program }: { program: ProgramDetail | null 
       </button>
       <p className="text-xs text-ink-faint">{t.clientApp.builder.publishHint}</p>
       {error ? <p className="text-sm text-risk">{error}</p> : null}
+
+      <ConfirmDialog
+        open={dayToDelete !== null}
+        title={t.clientApp.builder.deleteDayTitle}
+        body={t.clientApp.builder.deleteDayBody}
+        confirmLabel={t.common.actions.delete}
+        cancelLabel={t.common.actions.cancel}
+        pending={pending}
+        onConfirm={() => {
+          const id = dayToDelete;
+          if (!id) return;
+          setDayToDelete(null);
+          run(() => deleteSoloProgramDay(program.id, id));
+        }}
+        onCancel={() => setDayToDelete(null)}
+      />
     </div>
   );
 }

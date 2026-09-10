@@ -58,12 +58,15 @@ body {
   color: var(--color-ink);
 }
 
-/* Sign-in modal (components/login-modal.tsx): dim + blur the page behind, no scroll. */
-.login-dialog::backdrop {
+/* Native <dialog> modals (components/login-modal.tsx, components/confirm-dialog.tsx):
+   dim + blur the page behind, no scroll. */
+.login-dialog::backdrop,
+.confirm-dialog::backdrop {
   background: color-mix(in srgb, var(--color-bg) 70%, transparent);
   backdrop-filter: blur(6px);
 }
-body:has(.login-dialog[open]) {
+body:has(.login-dialog[open]),
+body:has(.confirm-dialog[open]) {
   overflow: hidden;
 }
 

@@ -404,7 +404,7 @@ export async function addSoloProgramDay(
     program.days.push({
       id: newId("pd"),
       week_index: 1,
-      day_index: program.days.filter((d) => d.week_index === 1).length,
+      day_index: nextDayIndex(program.days.filter((d) => d.week_index === 1).map((d) => d.day_index)),
       name: dayName,
       muscle_groups: muscleGroups,
       exercises: [],
@@ -415,20 +415,72 @@ export async function addSoloProgramDay(
   }
 
   const supabase = await supabaseServer();
-  const { count } = await supabase
+  const { data: rows } = await supabase
     .from("program_days")
-    .select("id", { count: "exact", head: true })
+    .select("day_index")
     .eq("program_id", programId)
-    .eq("week_index", 1);
+    .eq("week_index", 1)
+    .order("day_index", { ascending: false })
+    .limit(1);
   const { error } = await supabase.from("program_days").insert({
     program_id: programId,
     week_index: 1,
-    day_index: count ?? 0,
+    day_index: nextDayIndex((rows ?? []).map((r) => r.day_index)),
     name: dayName,
     muscle_groups: muscleGroups,
   });
   if (error) return { ok: false, message: error.message };
   revalidatePath("/workout/build");
+  revalidatePath("/workout");
+  return { ok: true };
+}
+
+/**
+ * The next free ordinal: the highest in use plus one, never the number of days.
+ * deleteSoloProgramDay leaves a gap, and counting would hand the next day an
+ * index that still exists, which the unique key (program_id, week_index,
+ * day_index) rejects. A gap changes nothing — days are ordered by the index,
+ * not addressed by it.
+ *
+ * addProgramDay and duplicateProgramDay still count, which is safe only
+ * because the coach side has no way to delete a day. Give it one and it needs
+ * this too.
+ */
+function nextDayIndex(used: number[]): number {
+  return used.reduce((max, i) => Math.max(max, i), -1) + 1;
+}
+
+/** Remove one day of a solo client's own program, along with its exercises. */
+export async function deleteSoloProgramDay(
+  programId: string,
+  dayId: string,
+): Promise<ActionResult> {
+  if (isDemo) {
+    const program = store().programs.find((p) => p.id === programId);
+    if (!program) return { ok: false, message: "Program not found" };
+    const before = program.days.length;
+    program.days = program.days.filter((d) => d.id !== dayId);
+    if (program.days.length === before) return { ok: false, message: "Day not found" };
+    touch(program);
+    revalidatePath("/workout/build");
+    revalidatePath("/workout");
+    revalidatePath("/today");
+    return { ok: true, demo: true };
+  }
+
+  // program_exercises cascades. logged_sessions.program_day_id is
+  // `on delete set null`, so sessions already logged against this day survive
+  // as ad-hoc ones and the history stays intact. Whose day this is stays an RLS
+  // question: program_days_rw already covers the solo case (coach_id is null
+  // and client_id = auth.uid()), so there is nothing to re-check in app code.
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase.from("program_days").delete({ count: "exact" }).eq("id", dayId),
+  );
+  if (failed) return failed;
+  revalidatePath("/workout/build");
+  revalidatePath("/workout");
+  revalidatePath("/today");
   return { ok: true };
 }
 

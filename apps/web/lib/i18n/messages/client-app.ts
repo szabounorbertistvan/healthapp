@@ -94,6 +94,9 @@ const en = {
     muscleGroups: "Muscle groups",
     addExercise: "Add exercise",
     noDays: "No days yet. Add your first one.",
+    deleteDayTitle: "Delete this day?",
+    deleteDayBody:
+      "Its exercises go with it. Workouts you have already logged stay in your history.",
     publish: "Publish",
     published: "Published",
     publishHint: "Publishing makes it the program you follow on Training.",
@@ -212,6 +215,9 @@ const ro: typeof en = {
     muscleGroups: "Grupe musculare",
     addExercise: "Adaugă exercițiu",
     noDays: "Nicio zi încă. Adaug-o pe prima.",
+    deleteDayTitle: "Ștergi ziua asta?",
+    deleteDayBody:
+      "Exercițiile ei dispar odată cu ea. Antrenamentele deja înregistrate rămân în istoric.",
     publish: "Publică",
     published: "Publicat",
     publishHint: "După publicare devine programul pe care îl urmezi la Antrenament.",
