@@ -35,6 +35,18 @@ export async function middleware(request: NextRequest) {
 
   const { data } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
+
+  // getUser() above may have refreshed an expired session, and the refreshed
+  // tokens live on `response`. A redirect is a different response object, so
+  // without copying them the browser keeps its old refresh token, the next
+  // request cannot refresh again, and a signed-in person bounces to the
+  // landing page as if logged out — with /login itself unreachable, because
+  // this middleware kept seeing the (refreshable) session and redirecting.
+  const redirect = (to: string) => {
+    const target = NextResponse.redirect(new URL(to, request.url));
+    response.cookies.getAll().forEach((cookie) => target.cookies.set(cookie));
+    return target;
+  };
   // legal pages are public for everyone, signed in or not — no redirects either way.
   // Same for the auth callback and password reset: an already-signed-in user
   // clicking a recovery link must still reach them, or the token is lost.
@@ -47,12 +59,12 @@ export async function middleware(request: NextRequest) {
 
   // logged-out users see only the landing page (and login)
   if (!data.user && !isLanding && !isLogin) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return redirect("/");
   }
   // logged-in users skip the login page. The landing page stays reachable
   // (the logo links to it); it shows an "open the app" button instead of sign-in.
   if (data.user && isLogin) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return redirect("/dashboard");
   }
   return response;
 }
