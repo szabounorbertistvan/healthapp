@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { newDemoClient, store } from "@/lib/demo-store";
 import { entitlementsFor } from "@healthapp/shared";
-import { rpcErrorCode } from "@healthapp/api";
+import { rpcErrorCode, type RpcErrorCode } from "@healthapp/api";
 import { cookies } from "next/headers";
 import { ONBOARDING_COOKIE, ONBOARDING_COOKIE_MAX_AGE } from "@/lib/onboarding";
 import { getProfile } from "@/lib/data";
@@ -39,6 +39,9 @@ export async function addDemoClient(fullName: string): Promise<ActionResult> {
   return { ok: true, demo: true };
 }
 
+/** acceptInvite only ever raises the invite RPC codes, so the screen's copy table can be exhaustive over them. */
+export type InviteResult = ActionResult & { errorCode?: RpcErrorCode };
+
 /**
  * Claim a coach's invite code. The rules — unknown code, expired, already
  * coached — are enforced by the accept_invite() function in the database, and
@@ -47,7 +50,7 @@ export async function addDemoClient(fullName: string): Promise<ActionResult> {
  * and the caller pairs it with localized copy through inviteMessage() — the raw
  * Postgres message never leaves the server.
  */
-export async function acceptInvite(code: string): Promise<ActionResult> {
+export async function acceptInvite(code: string): Promise<InviteResult> {
   const clean = code.trim().toUpperCase();
   if (!clean) return { ok: false, errorCode: "INVALID_CODE" };
   if (isDemo) return { ok: true, demo: true };

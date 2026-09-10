@@ -57,11 +57,11 @@ export function CompleteProfileForm({
       });
       if (!result.ok) {
         setError(
-          result.code === "USERNAME_TAKEN" ? m.errUsernameTaken
-          : result.code === "USERNAME_FORMAT" ? m.errUsernameFormat
-          : result.code === "AGE" ? m.errAge
-          : result.code === "SEX" ? m.errSex
-          : result.code === "NAME" ? m.errName
+          result.errorCode === "USERNAME_TAKEN" ? m.errUsernameTaken
+          : result.errorCode === "USERNAME_FORMAT" ? m.errUsernameFormat
+          : result.errorCode === "AGE" ? m.errAge
+          : result.errorCode === "SEX" ? m.errSex
+          : result.errorCode === "NAME" ? m.errName
           : result.message ?? m.errGeneric,
         );
         return;

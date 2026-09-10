@@ -10,8 +10,17 @@ export type ActionResult = {
   ok: boolean;
   demo?: boolean;
   message?: string;
-  errorCode?: RpcErrorCode;
+  errorCode?: ActionErrorCode;
 };
+
+/**
+ * Every business code an action can hand a screen: the ones Postgres raises
+ * from the invite RPCs, the profile-completion checks, and `mutated()`'s
+ * "RLS let the write through with zero rows". A union rather than `string` so
+ * a screen comparing against a misspelt code fails to compile.
+ */
+export type ActionErrorCode = RpcErrorCode | ProfileErrorCode | "NO_ROWS";
+export type ProfileErrorCode = "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN";
 
 export async function createInvite(): Promise<ActionResult & { code?: string }> {
   if (isDemo) return { ok: true, demo: true, code: "DEMO1234" };

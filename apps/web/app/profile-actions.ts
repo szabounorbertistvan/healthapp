@@ -31,17 +31,17 @@ export async function completeProfile(input: {
 }): Promise<ActionResult> {
   const fullName = input.fullName.trim();
   const username = input.username.trim();
-  if (!fullName) return { ok: false, code: "NAME", message: "Tell us your name" };
-  if (!isValidUsername(username)) return { ok: false, code: "USERNAME_FORMAT" };
-  if (!SEXES.includes(input.sex)) return { ok: false, code: "SEX" };
-  if (!isValidAge(input.age)) return { ok: false, code: "AGE" };
+  if (!fullName) return { ok: false, errorCode: "NAME", message: "Tell us your name" };
+  if (!isValidUsername(username)) return { ok: false, errorCode: "USERNAME_FORMAT" };
+  if (!SEXES.includes(input.sex)) return { ok: false, errorCode: "SEX" };
+  if (!isValidAge(input.age)) return { ok: false, errorCode: "AGE" };
 
   if (isDemo) return { ok: true, demo: true };
 
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: "Not signed in" };
-  if (!(await usernameAvailable(username))) return { ok: false, code: "USERNAME_TAKEN" };
+  if (!(await usernameAvailable(username))) return { ok: false, errorCode: "USERNAME_TAKEN" };
 
   const failed = await mutated(
     await supabase
@@ -55,7 +55,7 @@ export async function completeProfile(input: {
   if (failed) {
     // The unique index catches a race the availability check missed.
     if (failed.message?.includes("users_username_lower_idx")) {
-      return { ok: false, code: "USERNAME_TAKEN" };
+      return { ok: false, errorCode: "USERNAME_TAKEN" };
     }
     return failed;
   }

@@ -17,5 +17,5 @@ export async function mutated(result: MutationResult): Promise<ActionResult | nu
   if (outcome === "ok") return null;
   if (outcome === "error") return { ok: false, message: result.error?.message };
   const { t } = await getI18n();
-  return { ok: false, code: "NO_ROWS", message: t.common.actions.nothingChanged };
+  return { ok: false, errorCode: "NO_ROWS", message: t.common.actions.nothingChanged };
 }
