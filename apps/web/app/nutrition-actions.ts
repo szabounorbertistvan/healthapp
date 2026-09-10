@@ -48,6 +48,7 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
     id: row.id,
     name_en: row.name_en,
     name_ro: row.name_ro ?? row.name_en,
+    english_only: row.name_ro == null,
     group: "",
     brand: row.brand,
     per_100g: {
@@ -65,6 +66,8 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
 type RemoteFood = {
   food_id: string | null;
   name: string;
+  /** Present once the deployed function sends it; null means English only. */
+  name_ro?: string | null;
   brand: string | null;
   per_100g: DemoFood["per_100g"];
 };
@@ -94,7 +97,8 @@ async function searchFoodsRemote(
       .map((r) => ({
         id: r.food_id,
         name_en: r.name,
-        name_ro: r.name,
+        name_ro: r.name_ro ?? r.name,
+        english_only: r.name_ro == null,
         group: "",
         brand: r.brand ?? null,
         per_100g: r.per_100g,
@@ -375,6 +379,7 @@ function toDemoFood(row: FoodRow): DemoFood {
     id: row.id,
     name_en: row.name_en ?? name,
     name_ro: name,
+    english_only: row.name_ro == null,
     group: "",
     brand: row.brand ?? null,
     per_100g: {

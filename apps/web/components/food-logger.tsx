@@ -238,6 +238,11 @@ export function FoodLogger({
           {scanError ? (
             <p className="mt-2 text-xs leading-snug text-warn">{scanError}</p>
           ) : null}
+          {results.some((food) => food.english_only) ? (
+            <p className="mt-2 text-[11px] leading-snug text-ink-faint">
+              {t.clientWidgets.foodLogger.englishOnlyHint}
+            </p>
+          ) : null}
           <ul className="mt-2 max-h-64 divide-y divide-line overflow-y-auto">
             {results.map((food) => (
               <li key={food.id}>
@@ -246,7 +251,17 @@ export function FoodLogger({
                   onClick={() => pick(food)}
                   className="flex w-full items-baseline justify-between gap-3 px-1 py-2 text-left text-sm hover:bg-bg"
                 >
-                  <span className="min-w-0 truncate">{food.name_ro || food.name_en}</span>
+                  <span className="flex min-w-0 items-baseline gap-1.5">
+                    <span className="min-w-0 truncate">{food.name_ro || food.name_en}</span>
+                    {food.english_only ? (
+                      <span
+                        className="shrink-0 rounded border border-line px-1 text-[9px] font-semibold uppercase tracking-wider text-ink-faint"
+                        title={t.clientWidgets.foodLogger.englishOnlyHint}
+                      >
+                        {t.clientWidgets.foodLogger.englishOnly}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="shrink-0 text-xs tabular-nums text-ink-faint">
                     {food.per_100g.kcal} kcal/100 g
                   </span>

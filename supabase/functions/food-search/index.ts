@@ -11,6 +11,8 @@ type FoodResult = {
   food_id: string | null;
   external: { source: string; id: string } | null;
   name: string;
+  /** Romanian name when one exists; null tells the app to mark the row English-only. */
+  name_ro: string | null;
   brand: string | null;
   per_100g: { kcal: number; protein: number; carbs: number; fat: number };
   verified: boolean;
@@ -49,6 +51,7 @@ Deno.serve(async (req) => {
     food_id: f.id,
     external: f.external_id ? { source: f.source, id: f.external_id } : null,
     name: (locale === "ro" ? f.name_ro : f.name_en) ?? f.name_en ?? f.name_ro,
+    name_ro: f.name_ro ?? null,
     brand: f.brand,
     per_100g: { kcal: +f.kcal_100g, protein: +f.protein_100g, carbs: +f.carbs_100g, fat: +f.fat_100g },
     verified: f.verified,
@@ -90,6 +93,7 @@ Deno.serve(async (req) => {
           food_id: cached?.id ?? null,
           external: { source: "off", id: code },
           name,
+          name_ro: null,
           brand: row.brand,
           per_100g: { kcal: row.kcal_100g, protein: row.protein_100g, carbs: row.carbs_100g, fat: row.fat_100g },
           verified: false,

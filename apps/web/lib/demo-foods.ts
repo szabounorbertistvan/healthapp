@@ -18,6 +18,11 @@ export type DemoFood = {
   brand?: string | null;
   /** Servings carried on the row in live mode; absent for demo rows. */
   portions?: FoodPortion[];
+  /**
+   * True when the row has no Romanian name yet (the USDA import is English
+   * only until an admin translates it). The pickers show a small "EN" mark.
+   */
+  english_only?: boolean;
 };
 
 const f = (

@@ -44,6 +44,8 @@ const en = {
     scanBarcode: "Scan a barcode",
     scanNotFound: "No product for {code}. Search for it by name, or add it as a custom food.",
     scanInvalid: "That does not look like a barcode.",
+    englishOnly: "EN",
+    englishOnlyHint: "Generic ingredients come from the USDA database and are in English for now.",
     scanUnreachable: "Could not reach the food database. Search by name instead.",
   },
   barcodeScanner: {
@@ -207,6 +209,8 @@ const ro: typeof en = {
     scanBarcode: "Scanează un cod de bare",
     scanNotFound: "Niciun produs pentru {code}. Caută-l după nume sau adaugă-l ca aliment personalizat.",
     scanInvalid: "Nu pare a fi un cod de bare.",
+    englishOnly: "EN",
+    englishOnlyHint: "Ingredientele generice vin din baza USDA și sunt deocamdată în engleză.",
     scanUnreachable: "Baza de date de alimente nu a putut fi contactată. Caută după nume în schimb.",
   },
   barcodeScanner: {

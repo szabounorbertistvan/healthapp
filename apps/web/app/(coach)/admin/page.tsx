@@ -25,7 +25,14 @@ export default async function AdminPage({
 
   return (
     <div>
-      <PageTitle title={t.common.nav.admin} />
+      <PageTitle title={t.common.nav.admin}>
+        <Link
+          href="/admin/foods"
+          className="rounded-lg border border-line px-3 py-1.5 text-sm font-semibold hover:border-accent"
+        >
+          {t.coachApp.admin.foods.link}
+        </Link>
+      </PageTitle>
       <div className="mb-5 flex flex-wrap gap-3">
         <StatCard label={t.coachApp.admin.totalUsers} value={stats.total_users} />
         <StatCard label={t.coachApp.admin.coaches} value={stats.coaches} />

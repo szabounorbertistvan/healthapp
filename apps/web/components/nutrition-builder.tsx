@@ -279,7 +279,17 @@ function FoodPicker({ onPick }: { onPick: (food: DemoFood, grams: number) => voi
           <li key={food.id} className="rounded-lg border border-line bg-bg p-2.5">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{food.name_ro}</p>
+                <p className="flex items-baseline gap-1.5 text-sm font-semibold">
+                  <span className="min-w-0 truncate">{food.name_ro}</span>
+                  {food.english_only ? (
+                    <span
+                      className="shrink-0 rounded border border-line px-1 text-[9px] font-semibold uppercase tracking-wider text-ink-faint"
+                      title={m.englishOnlyHint}
+                    >
+                      {m.englishOnly}
+                    </span>
+                  ) : null}
+                </p>
                 <p className="mt-0.5 text-xs text-ink-faint tabular-nums">
                   {food.per_100g.kcal} kcal · {food.per_100g.protein}P {food.per_100g.carbs}C{" "}
                   {food.per_100g.fat}F /100g
