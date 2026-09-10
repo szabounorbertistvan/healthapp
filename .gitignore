@@ -50,3 +50,6 @@ env.download
 .vercel
 .env*
 !.env.example
+
+# Claude Code worktrees — working copies, never committed
+.claude/worktrees/
