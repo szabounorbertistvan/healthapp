@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useI18n } from "@/lib/i18n/client";
 
 const REVEAL_PX = 88;
@@ -7,23 +8,26 @@ const DRAG_THRESHOLD_PX = 8;
 
 /**
  * Swipe the wrapped card to the left to reveal a delete action; tapping it asks
- * once more before calling `onDelete`. Vertical scrolling is untouched
- * (`touch-action: pan-y`), and a swipe never fires the card's own click — the
- * card is usually a link, and a drag that ends in a navigation is the classic
- * mobile-list bug. A small trash button at the top right does the same for
- * mouse users, who cannot swipe.
+ * once more, in a ConfirmDialog, before calling `onDelete`. Vertical scrolling
+ * is untouched (`touch-action: pan-y`), and a swipe never fires the card's own
+ * click — the card is usually a link, and a drag that ends in a navigation is
+ * the classic mobile-list bug. A small trash button at the top right does the
+ * same for mouse users, who cannot swipe.
  */
 export function SwipeToDelete({
   children,
   onDelete,
-  confirmText,
+  confirmTitle,
+  confirmBody,
   disabled = false,
   className = "",
 }: {
   children: ReactNode;
   onDelete: () => void | Promise<void>;
-  /** The question shown before deleting, e.g. Delete “Legs A”? */
-  confirmText: string;
+  /** The question, e.g. Delete “Legs A”? */
+  confirmTitle: string;
+  /** What deleting costs, spelled out under the question. */
+  confirmBody: string;
   disabled?: boolean;
   className?: string;
 }) {
@@ -154,36 +158,18 @@ export function SwipeToDelete({
         ) : null}
       </div>
 
-      {confirming ? (
-        <div
-          role="alertdialog"
-          aria-label={m.confirm}
-          className="absolute inset-y-0 right-0 flex flex-col items-start justify-center gap-2 rounded-xl bg-surface/95 p-4 backdrop-blur-sm"
-          style={{ left: REVEAL_PX }}
-        >
-          <p className="text-sm font-semibold">{confirmText}</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              data-swipe-action
-              disabled={busy}
-              onClick={confirmDelete}
-              className="rounded-lg bg-risk px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
-            >
-              {busy ? "…" : m.delete}
-            </button>
-            <button
-              type="button"
-              data-swipe-action
-              disabled={busy}
-              onClick={close}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold hover:border-accent"
-            >
-              {m.keep}
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        open={confirming}
+        title={confirmTitle}
+        body={confirmBody}
+        confirmLabel={m.delete}
+        cancelLabel={m.keep}
+        pending={busy}
+        onConfirm={confirmDelete}
+        // Backing out of the question leaves the tray open, so the card does
+        // not silently spring shut on someone who only wanted a second look.
+        onCancel={() => setConfirming(false)}
+      />
     </div>
   );
 }

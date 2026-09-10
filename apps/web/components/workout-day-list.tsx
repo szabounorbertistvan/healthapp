@@ -63,7 +63,8 @@ export function WorkoutDayList({ groups }: { groups: ClientProgramGroup[] }) {
               group.is_own ? (
                 <SwipeToDelete
                   key={day.day_id}
-                  confirmText={fill(w.deleteDayConfirm, { name: day.day_name })}
+                  confirmTitle={fill(w.deleteDayTitle, { name: day.day_name })}
+                  confirmBody={w.deleteDayBody}
                   onDelete={() => remove(day)}
                 >
                   <DayCard day={day} />

@@ -22,7 +22,6 @@ const en = {
   },
   swipeToDelete: {
     delete: "Delete",
-    confirm: "Delete?",
     keep: "Keep",
   },
   foodLogger: {
@@ -187,7 +186,6 @@ const ro: typeof en = {
   },
   swipeToDelete: {
     delete: "Șterge",
-    confirm: "Ștergi?",
     keep: "Păstrează",
   },
   foodLogger: {

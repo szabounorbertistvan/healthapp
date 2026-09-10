@@ -63,7 +63,8 @@ export function SoloProgramBuilder({ program }: { program: ProgramDetail | null 
       {program.days.map((day) => (
         <SwipeToDelete
           key={day.id}
-          confirmText={fill(t.clientApp.workout.deleteDayConfirm, { name: day.name })}
+          confirmTitle={fill(t.clientApp.workout.deleteDayTitle, { name: day.name })}
+          confirmBody={t.clientApp.workout.deleteDayBody}
           onDelete={() =>
             new Promise<void>((resolve) => {
               run(async () => {

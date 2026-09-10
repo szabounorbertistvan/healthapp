@@ -35,7 +35,9 @@ const en = {
     byYou: "built by you",
     followed: "following",
     deleteDay: "Delete day",
-    deleteDayConfirm: "Delete “{name}”? Its exercises go with it. Sessions you already logged stay in your history.",
+    deleteDayTitle: "Delete “{name}”?",
+    deleteDayBody:
+      "Its exercises go with it. Workouts you have already logged stay in your history.",
     swipeHint: "Swipe a day to the left to delete it.",
     couldNotDelete: "Could not delete that day",
     history: "History",
@@ -221,7 +223,9 @@ const ro: typeof en = {
     byYou: "creat de tine",
     followed: "urmărit",
     deleteDay: "Șterge ziua",
-    deleteDayConfirm: "Ștergi „{name}”? Exercițiile ei dispar. Sesiunile deja înregistrate rămân în istoric.",
+    deleteDayTitle: "Ștergi „{name}”?",
+    deleteDayBody:
+      "Exercițiile ei dispar odată cu ea. Antrenamentele deja înregistrate rămân în istoric.",
     swipeHint: "Glisează o zi spre stânga pentru a o șterge.",
     couldNotDelete: "Ziua nu a putut fi ștearsă",
     history: "Istoric",
