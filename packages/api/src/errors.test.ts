@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { RPC_ERRORS, messageKeyFor, rpcErrorCode } from "./errors";
+import { RPC_ERRORS, inviteMessage, rpcErrorCode } from "./errors";
 
 // Postgres functions signal business rules with `raise exception 'CODE'`
 // (PRODUCT_SPEC §5). Both surfaces must turn the same code into the same
@@ -25,14 +25,26 @@ describe("rpcErrorCode", () => {
   });
 });
 
-describe("messageKeyFor", () => {
-  test("gives every known business rule a translation key", () => {
-    for (const code of RPC_ERRORS) {
-      expect(messageKeyFor(code)).toMatch(/^errors\./);
-    }
+describe("inviteMessage", () => {
+  // The caller passes copy it has already localized; this decides which line.
+  const copy = {
+    INVALID_CODE: "invalid",
+    EXPIRED: "expired",
+    ALREADY_HAS_COACH: "has coach",
+    CLIENT_LIMIT_REACHED: "limit",
+    UNKNOWN: "generic",
+  };
+
+  test("picks the line written for the raised code", () => {
+    expect(inviteMessage(copy, "EXPIRED")).toBe("expired");
   });
 
-  test("routes an unknown failure to the generic key", () => {
-    expect(messageKeyFor("UNKNOWN")).toBe("errors.unknown");
+  test("gives every business rule a line of its own", () => {
+    const lines = RPC_ERRORS.map((code) => inviteMessage(copy, code));
+    expect(new Set(lines).size).toBe(RPC_ERRORS.length);
+  });
+
+  test("falls back to the generic line when the failure carried no code", () => {
+    expect(inviteMessage(copy, undefined)).toBe("generic");
   });
 });

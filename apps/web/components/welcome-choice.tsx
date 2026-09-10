@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { acceptInvite, chooseSoloTraining } from "@/app/client-actions";
 import { Card } from "@/components/ui";
+import { inviteMessage } from "@healthapp/api";
 import { useI18n } from "@/lib/i18n/client";
 
 export function WelcomeChoice() {
@@ -14,12 +15,16 @@ export function WelcomeChoice() {
   const [pending, startTransition] = useTransition();
   const w = t.clientApp.welcome;
 
-  // accept_invite's business codes → copy; anything unrecognised gets the generic line
-  const inviteError = (code: string | undefined) =>
-    code === "INVALID_CODE" ? w.errInvalidCode
-    : code === "EXPIRED" ? w.errExpired
-    : code === "ALREADY_HAS_COACH" ? w.errAlreadyHasCoach
-    : w.errUnknown;
+  // Every code accept_invite can raise, paired with its localized line. Written
+  // out rather than defaulted: a new code in RPC_ERRORS must fail to compile
+  // here, not quietly render as "could not use that code".
+  const inviteCopy = {
+    INVALID_CODE: w.errInvalidCode,
+    EXPIRED: w.errExpired,
+    ALREADY_HAS_COACH: w.errAlreadyHasCoach,
+    CLIENT_LIMIT_REACHED: w.errClientLimit,
+    UNKNOWN: w.errUnknown,
+  };
 
   return (
     <div className="space-y-3">
@@ -42,7 +47,7 @@ export function WelcomeChoice() {
                 startTransition(async () => {
                   setError(null);
                   const r = await acceptInvite(code);
-                  if (!r.ok) setError(inviteError(r.code));
+                  if (!r.ok) setError(inviteMessage(inviteCopy, r.errorCode));
                   else router.push("/today");
                 })
               }

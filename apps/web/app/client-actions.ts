@@ -7,6 +7,7 @@ import { rpcErrorCode } from "@healthapp/api";
 import { cookies } from "next/headers";
 import { ONBOARDING_COOKIE, ONBOARDING_COOKIE_MAX_AGE } from "@/lib/onboarding";
 import { getProfile } from "@/lib/data";
+import { getI18n } from "@/lib/i18n/server";
 import type { ActionResult } from "./actions";
 
 /**
@@ -18,22 +19,19 @@ import type { ActionResult } from "./actions";
  * because demo mode has no second person to accept anything.
  */
 export async function addDemoClient(fullName: string): Promise<ActionResult> {
+  const { t } = await getI18n();
+  const m = t.coachWidgets.addClientButton;
   const name = fullName.trim();
-  if (!name) return { ok: false, message: "Give the client a name" };
+  if (!name) return { ok: false, message: m.nameRequired };
 
-  if (!isDemo) {
-    return {
-      ok: false,
-      message: "Clients join by accepting an invite — use Invite client.",
-    };
-  }
+  if (!isDemo) return { ok: false, message: m.inviteOnly };
 
   const profile = await getProfile();
   const maxClients = entitlementsFor(profile?.tier ?? "free").maxClients;
   const used = store().clients.filter((c) => c.status !== "ended").length;
   // Same rule create_invite enforces in SQL, so demo cannot exceed what the
   // server would allow.
-  if (used >= maxClients) return { ok: false, message: "CLIENT_LIMIT_REACHED" };
+  if (used >= maxClients) return { ok: false, errorCode: "CLIENT_LIMIT_REACHED" };
 
   store().clients.push(newDemoClient(name));
   revalidatePath("/clients");
@@ -45,18 +43,24 @@ export async function addDemoClient(fullName: string): Promise<ActionResult> {
  * Claim a coach's invite code. The rules — unknown code, expired, already
  * coached — are enforced by the accept_invite() function in the database, and
  * its raised codes are decoded by @healthapp/api. The result carries the
- * business `code` (INVALID_CODE / EXPIRED / ALREADY_HAS_COACH / UNKNOWN) and the
- * caller picks the localized copy — the raw Postgres message never reaches a
- * screen.
+ * business `errorCode` (INVALID_CODE / EXPIRED / ALREADY_HAS_COACH / UNKNOWN)
+ * and the caller pairs it with localized copy through inviteMessage() — the raw
+ * Postgres message never leaves the server.
  */
 export async function acceptInvite(code: string): Promise<ActionResult> {
   const clean = code.trim().toUpperCase();
-  if (!clean) return { ok: false, code: "INVALID_CODE" };
+  if (!clean) return { ok: false, errorCode: "INVALID_CODE" };
   if (isDemo) return { ok: true, demo: true };
 
   const supabase = await supabaseServer();
   const { error } = await supabase.rpc("accept_invite", { p_code: clean });
-  if (error) return { ok: false, code: rpcErrorCode(error) ?? "UNKNOWN", message: error.message };
+  if (error) {
+    // The raw Postgres text stays on the server. It is useful to us and
+    // meaningless to a client, and anything returned here crosses into the
+    // browser payload whether a screen renders it or not.
+    console.error("accept_invite failed:", error.message);
+    return { ok: false, errorCode: rpcErrorCode(error) ?? "UNKNOWN" };
+  }
   revalidatePath("/today");
   return { ok: true };
 }

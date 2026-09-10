@@ -24,7 +24,7 @@ export function AddClientButton({ disabled = false }: { disabled?: boolean }) {
         setName("");
         setOpen(false);
         router.refresh();
-      } else if (result.message === "CLIENT_LIMIT_REACHED") {
+      } else if (result.errorCode === "CLIENT_LIMIT_REACHED") {
         setError(m.limitReached);
       } else {
         setError(result.message ?? m.addError);

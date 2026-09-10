@@ -181,6 +181,7 @@ const en = {
     errInvalidCode: "That code isn’t valid. Check it with your coach.",
     errExpired: "That code has expired. Ask your coach for a new one.",
     errAlreadyHasCoach: "You already have a coach. Leave them in settings first.",
+    errClientLimit: "Your coach has reached their client limit. Ask them to make room.",
     errUnknown: "Could not use that code. Please try again.",
   },
 };
@@ -366,6 +367,7 @@ const ro: typeof en = {
     errInvalidCode: "Codul nu e valid. Verifică-l cu antrenorul tău.",
     errExpired: "Codul a expirat. Cere-i antrenorului unul nou.",
     errAlreadyHasCoach: "Ai deja un antrenor. Renunță la el din setări înainte.",
+    errClientLimit: "Antrenorul tău a atins limita de clienți. Roagă-l să facă loc.",
     errUnknown: "Codul nu a putut fi folosit. Încearcă din nou.",
   },
 };

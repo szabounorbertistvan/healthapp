@@ -1,8 +1,17 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import type { RpcErrorCode } from "@healthapp/api";
 
-export type ActionResult = { ok: boolean; demo?: boolean; message?: string; code?: string };
+// `errorCode`, not `code`: createInvite below returns the *invite* code in a
+// field of its own, and one name for two meanings is how a screen ends up
+// showing an error where a coach expected something to hand their client.
+export type ActionResult = {
+  ok: boolean;
+  demo?: boolean;
+  message?: string;
+  errorCode?: RpcErrorCode;
+};
 
 export async function createInvite(): Promise<ActionResult & { code?: string }> {
   if (isDemo) return { ok: true, demo: true, code: "DEMO1234" };
