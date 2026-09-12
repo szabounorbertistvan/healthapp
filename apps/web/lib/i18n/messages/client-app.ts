@@ -40,11 +40,6 @@ const en = {
     couldNotDelete: "Could not delete that day",
     history: "History",
     noSessions: "No completed sessions yet.",
-    session: "Session",
-    when: "When",
-    sets: "Sets",
-    volume: "Volume",
-    prs: "PRs",
   },
   workoutDay: {
     backToTraining: "← Training",
@@ -227,11 +222,6 @@ const ro: typeof en = {
     couldNotDelete: "Ziua nu a putut fi ștearsă",
     history: "Istoric",
     noSessions: "Încă nicio sesiune finalizată.",
-    session: "Sesiune",
-    when: "Când",
-    sets: "Seturi",
-    volume: "Volum",
-    prs: "Recorduri",
   },
   workoutDay: {
     backToTraining: "← Antrenament",

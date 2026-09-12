@@ -34,7 +34,8 @@ export function LanguageSelector({ className = "" }: { className?: string }) {
           onClick={() => select(l)}
           aria-pressed={l === locale}
           title={t.common.language[l]}
-          className={`px-2.5 py-1.5 ${
+          // 44px tall on phones (thumb target); the desktop sidebar keeps the slim pill.
+          className={`min-h-11 px-3 sm:min-h-0 sm:px-2.5 sm:py-1.5 ${
             l === locale ? "bg-accent text-accent-fg" : "bg-surface text-ink-soft hover:text-ink"
           }`}
         >

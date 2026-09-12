@@ -40,7 +40,8 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       onClick={toggle}
       aria-label={label}
       title={label}
-      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft hover:text-ink ${pending ? "opacity-60" : ""} ${className}`}
+      // 44px square on phones (thumb target), 32px next to the sidebar nav.
+      className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft hover:text-ink sm:h-8 sm:w-8 ${pending ? "opacity-60" : ""} ${className}`}
     >
       {theme === "system" ? (
         // half-filled circle: "follows the device"

@@ -64,14 +64,14 @@ export default async function ClientLayout({ children }: { children: React.React
             and the tab bar has no room to spare, so the phone gets its own slim
             header carrying both. Without it a client on the surface they
             actually use could never switch language or sign out. */}
-        <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-5 py-3 sm:hidden">
+        <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-5 py-2 sm:hidden">
           <span className="truncate text-sm font-bold tracking-tight">{name}</span>
-          <div className="flex shrink-0 items-center gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <LanguageSelector />
             <ThemeToggle />
-          </div>
-            <SignOutButton className="text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50" />
+            {/* Text link kept, but with a 44px hit area; the negative margin
+                lets the padding reach the header edge without moving the label. */}
+            <SignOutButton className="-mr-2 min-h-11 px-2 text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50" />
           </div>
         </header>
         <main className="flex-1 p-5 pb-28 sm:p-8 sm:pb-8">{children}</main>

@@ -46,20 +46,17 @@ export default async function WorkoutPage() {
         <p className="text-sm text-ink-faint">{t.clientApp.workout.noSessions}</p>
       ) : (
         <Card className="p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-[11px] uppercase tracking-wider text-ink-faint">
-                <th className="px-4 py-3 font-semibold">{t.clientApp.workout.session}</th>
-                <th className="px-4 py-3 font-semibold">{t.clientApp.workout.when}</th>
-                <th className="px-4 py-3 text-right font-semibold">{t.clientApp.workout.sets}</th>
-                <th className="px-4 py-3 text-right font-semibold">{t.clientApp.workout.volume}</th>
-                <th className="px-4 py-3 text-right font-semibold">{t.clientApp.workout.prs}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((s) => (
-                <tr key={s.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-semibold">
+          {/* Rows, not a table: five px-4 columns need ~440px in Romanian,
+              which on a 375px phone meant a sideways-scrolling page. Same
+              name + subline shape WorkoutHistory uses on the day page. */}
+          <ul className="text-sm">
+            {sessions.map((s) => (
+              <li
+                key={s.id}
+                className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-0"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">
                     {s.day_id ? (
                       <Link href={`/workout/${s.day_id}`} className="hover:text-accent-ink">
                         {s.day_name}
@@ -67,23 +64,24 @@ export default async function WorkoutPage() {
                     ) : (
                       s.day_name
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-ink-soft">{timeAgo(s.at, locale)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{s.sets}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {s.volume_kg.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB")} kg
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {s.prs > 0 ? (
-                      <span className="font-semibold text-accent-ink">{s.prs}</span>
-                    ) : (
-                      <span className="text-ink-faint">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink-faint">{timeAgo(s.at, locale)}</p>
+                </div>
+                <p className="shrink-0 text-right text-xs tabular-nums text-ink-soft">
+                  {s.sets} {t.clientApp.workoutDay.sets} ·{" "}
+                  {s.volume_kg.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB")} kg
+                  {s.prs > 0 ? (
+                    <>
+                      {" · "}
+                      <span className="font-semibold text-accent-ink">
+                        {s.prs} {t.clientApp.workoutDay.prs}
+                      </span>
+                    </>
+                  ) : null}
+                </p>
+              </li>
+            ))}
+          </ul>
         </Card>
       )}
     </div>
