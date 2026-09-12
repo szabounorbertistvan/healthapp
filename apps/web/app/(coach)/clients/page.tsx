@@ -53,7 +53,13 @@ export default async function ClientsPage() {
             <tbody>
               {clients.map((c) => (
                 <tr key={c.client_id || c.started_at} className="border-b border-line last:border-0">
-                  <td className="whitespace-nowrap px-4 py-3 font-semibold">{c.full_name}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-semibold">
+                    {c.status === "active" && c.client_id ? (
+                      <Link href={`/clients/${c.client_id}`} className="hover:text-accent-ink">{c.full_name}</Link>
+                    ) : (
+                      c.full_name
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-ink-soft">{t.coachApp.clients.status[c.status] ?? c.status}</td>
                   <td className="px-4 py-3">
                     {c.status === "active" ? <SignalBadge signal={c.signal} /> : "—"}

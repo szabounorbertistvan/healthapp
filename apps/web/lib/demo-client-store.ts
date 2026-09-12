@@ -133,7 +133,7 @@ type ClientStore = {
 
 // Bump whenever ClientStore changes shape — a store carried across a hot reload
 // that is missing a new field would crash every reader.
-const STORE_VERSION = 6;
+const STORE_VERSION = 7;
 
 const globalRef = globalThis as unknown as {
   __voinicClientStore?: ClientStore & { version?: number };
@@ -393,6 +393,8 @@ function seed(): ClientStore {
       waist_cm: Math.round((74 - i * 0.4) * 10) / 10,
     });
   });
+  // A mid-week weigh-in, so the weekly summary has a start and an end to compare.
+  measurements.push({ id: newId("me"), client_id: DEMO_CLIENT_ID, taken_on: daysAgoIso(4), weight_kg: 67.6, waist_cm: 71.4 });
 
   // Last week reviewed; this week still missing — the "check-in missed" signal.
   const checkIns: StoredClientCheckIn[] = [

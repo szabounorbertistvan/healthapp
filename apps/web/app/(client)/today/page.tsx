@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getToday, isEmptyAccount } from "@/lib/client-data";
 import { getMyChallenges } from "@/lib/challenges-data";
+import { getMyWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
+import { WeeklySummaryCard } from "@/components/weekly-summary";
 import { hasChosenSolo } from "@/lib/onboarding";
 import { Card, EmptyState, PageTitle, SignalBadge } from "@/components/ui";
 import { AdherenceMeter, MacroPanel } from "@/components/client-ui";
@@ -11,8 +13,9 @@ import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 
-export default async function TodayPage() {
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { t, locale } = await getI18n();
+  const weekChoice: WeekChoice = (await searchParams).week === "previous" ? "previous" : "current";
 
   // Nothing to show on Today until the client has a coach or a program of their
   // own, so send a brand-new account to the choice instead of an empty screen.
@@ -20,7 +23,7 @@ export default async function TodayPage() {
   // "I train on my own" without finishing a program (see chooseSoloTraining).
   if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
 
-  const [today, challenges] = await Promise.all([getToday(), getMyChallenges()]);
+  const [today, challenges, weekly] = await Promise.all([getToday(), getMyChallenges(), getMyWeeklySummary(weekChoice)]);
   if (!today) {
     return (
       <EmptyState
@@ -68,6 +71,8 @@ export default async function TodayPage() {
           </Card>
         </div>
       </div>
+
+      {weekly ? <WeeklySummaryCard summary={weekly} switchPath="/today" /> : null}
 
       <TrainingLoadSummaryCard summary={today.training_load} />
 

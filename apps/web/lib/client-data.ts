@@ -270,17 +270,17 @@ export async function isEmptyAccount(): Promise<boolean> {
 type TodaySession = { id: string; completed: boolean; logged: LoggedSetRow[] };
 
 /** The columns a logged set is read with, live. */
-const LOGGED_SET_SELECT =
+export const LOGGED_SET_SELECT =
   "id, program_exercise_id, set_index, weight_kg, reps, rpe, rir, notes, is_pr, received_at, exercise:exercises(name_en, name_ro)";
 
-type SetJoin = {
+export type SetJoin = {
   id: string; program_exercise_id: string | null; set_index: number;
   weight_kg: number | null; reps: number | null; rpe: number | null; rir: number | null;
   notes: string | null; is_pr: boolean | null; received_at: string;
   exercise: { name_en: string; name_ro: string | null } | null;
 };
 
-function toLoggedSetRow(s: SetJoin): LoggedSetRow {
+export function toLoggedSetRow(s: SetJoin): LoggedSetRow {
   return {
     id: s.id,
     program_exercise_id: s.program_exercise_id,
@@ -1075,7 +1075,7 @@ async function liveActivity(weekStart: string): Promise<Activity> {
 }
 
 /** Consecutive days ending today (or yesterday) with any logged activity. */
-function streakFrom(activeDays: ReadonlySet<string>): number {
+export function streakFrom(activeDays: ReadonlySet<string>): number {
   let streak = 0;
   for (let i = 0; i < 60; i++) {
     if (activeDays.has(daysAgoIso(i))) {

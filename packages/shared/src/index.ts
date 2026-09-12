@@ -11,3 +11,4 @@ export * from "./exercises";
 export * from "./text";
 export * from "./training-load";
 export * from "./challenges";
+export * from "./weekly-summary";
