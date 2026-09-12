@@ -67,6 +67,14 @@ export default async function ClientLayout({ children }: { children: React.React
         <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-5 py-2 sm:hidden">
           <span className="truncate text-sm font-bold tracking-tight">{name}</span>
           <div className="flex shrink-0 items-center gap-2">
+            {/* The tab bar is full, so the feed gets the header — one tap from any client screen. */}
+            <Link
+              href="/feed"
+              aria-label={t.common.social.feed}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg hover:border-accent"
+            >
+              💬
+            </Link>
             <LanguageSelector />
             <ThemeToggle />
             {/* Text link kept, but with a 44px hit area; the negative margin

@@ -24,46 +24,8 @@ function useWeeklyFormat() {
     duration: (min: number) =>
       min >= 60 ? fill(w.hours, { h: Math.floor(min / 60), m: min % 60 }) : fill(w.minutes, { m: min }),
     pct: (v: number) => `${v > 0 ? "+" : ""}${nfp.format(v)}%`,
+    pctAbs: (v: number) => `${nfp.format(Math.abs(v))}%`,
   };
-}
-
-/** "vs 287 last week · +10.8%" under a headline number. */
-function DeltaLine({ d, format }: { d: Delta | null; format: (v: number) => string }) {
-  const { t } = useI18n();
-  const f = useWeeklyFormat();
-  const w = t.common.weekly;
-  if (!d) return null;
-  const tone = d.direction === "up" ? "text-accent-ink" : d.direction === "down" ? "text-warn" : "text-ink-faint";
-  return (
-    <p className="mt-0.5 text-[11px] leading-snug text-ink-faint">
-      <span>{d.previous === 0 && d.pct === null ? w.noPreviousWeek : fill(w.vsLastWeek, { value: format(d.previous) })}</span>
-      {d.pct !== null ? <span className={`ml-1 whitespace-nowrap font-semibold tabular-nums ${tone}`}>{f.pct(d.pct)}</span> : null}
-    </p>
-  );
-}
-
-function Stat({ label, value, unit, delta, format }: {
-  label: string; value: string; unit?: string; delta?: Delta | null; format?: (v: number) => string;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{label}</p>
-      <p className="mt-0.5 truncate text-xl font-bold tabular-nums leading-tight">
-        {value}
-        {unit ? <span className="ml-1 text-xs font-medium text-ink-faint">{unit}</span> : null}
-      </p>
-      {delta !== undefined && format ? <DeltaLine d={delta} format={format} /> : null}
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="border-t border-line pt-3">
-      <h3 className="mb-2 text-xs font-bold">{title}</h3>
-      {children}
-    </section>
-  );
 }
 
 function insightText(i: Insight, t: ReturnType<typeof useI18n>["t"], f: ReturnType<typeof useWeeklyFormat>): string {
@@ -83,12 +45,63 @@ function insightText(i: Insight, t: ReturnType<typeof useI18n>["t"], f: ReturnTy
   }
 }
 
+// ---------- rows ----------
+// One line per metric: label · value · delta pill. Rows scan; six stacked
+// label/number/"vs last week" blocks did not.
+
+function DeltaPill({ d }: { d: Delta | null }) {
+  const f = useWeeklyFormat();
+  if (!d || d.pct === null) return <span className="w-14 shrink-0" aria-hidden />;
+  const tone =
+    d.direction === "up" ? "bg-accent-soft text-accent-ink" : d.direction === "down" ? "bg-warn-soft text-warn" : "bg-bg text-ink-faint";
+  const arrow = d.direction === "up" ? "▲" : d.direction === "down" ? "▼" : "•";
+  return (
+    <span className={`inline-flex w-14 shrink-0 items-center justify-end gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${tone}`}>
+      <span className="text-[9px]">{arrow}</span>
+      {f.pctAbs(d.pct)}
+    </span>
+  );
+}
+
+function Row({ label, value, unit, previous, delta }: {
+  label: string;
+  value: string;
+  unit?: string;
+  /** Last week's value, shown muted after the number. */
+  previous?: string | null;
+  delta?: Delta | null;
+}) {
+  return (
+    <li className="flex items-center gap-2 py-1.5">
+      <span className="min-w-0 flex-1 text-sm leading-snug text-ink-soft">{label}</span>
+      <span className="shrink-0 text-right text-sm font-bold tabular-nums">
+        {value}
+        {unit ? <span className="ml-0.5 text-xs font-medium text-ink-faint">{unit}</span> : null}
+        {previous ? <span className="ml-1.5 text-[11px] font-medium text-ink-faint">← {previous}</span> : null}
+      </span>
+      <DeltaPill d={delta ?? null} />
+    </li>
+  );
+}
+
+function Section({ title, aside, children }: { title: string; aside?: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{title}</h3>
+        {aside ? <span className="text-[11px] text-ink-faint">{aside}</span> : null}
+      </div>
+      <ul className="mt-1 divide-y divide-line">{children}</ul>
+    </section>
+  );
+}
+
 /**
- * The week in one card: training, nutrition, progress, consistency, PRs and
- * the insight line. Everything comes from @healthapp/shared's comparison; the
- * card only formats. `switchPath` renders the current / previous toggle when
- * the page supports it — a path string, since a function cannot cross the
- * server → client boundary; the card appends ?week=.
+ * The week in one card: one headline insight, then four compact sections of
+ * rows. Everything comes from @healthapp/shared's comparison; the card only
+ * formats. `switchPath` renders the previous / current toggle when the page
+ * supports it — a path string, since a function cannot cross the server →
+ * client boundary; the card appends ?week=.
  */
 export function WeeklySummaryCard({ summary: s, switchPath, compact = false }: {
   summary: WeeklySummary;
@@ -99,164 +112,121 @@ export function WeeklySummaryCard({ summary: s, switchPath, compact = false }: {
   const f = useWeeklyFormat();
   const w = t.common.weekly;
   const cur = s.current;
+  const prev = s.previous;
   const n = cur.nutrition;
   const p = cur.progress;
   const c = cur.consistency;
-  const hasNutrition = n.avg !== null;
   const hasProgress = p.weight !== null || p.waist !== null || Object.keys(p.others).length > 0;
-  const kg = (v: number) => `${f.n(v)} kg`;
+  const [headline, ...rest] = s.insights;
+  const prevIf = (v: number, show = true) => (show && v > 0 ? f.n(v) : null);
 
   return (
     <Card>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <div>
+      {/* header: eyebrow + range on the left, the week switch on the right */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{w.title}</p>
-          <p className="mt-0.5 text-sm font-bold">
+          <p className="mt-0.5 truncate text-sm font-bold">
             {f.date(cur.week.start)} – {f.date(cur.week.end)}
-            <span className="ml-2 text-xs font-medium text-ink-faint">
-              {s.choice === "current" ? w.currentWeek : w.previousWeek}
-            </span>
           </p>
         </div>
         {switchPath ? (
-          <div className="flex overflow-hidden rounded-lg border border-line text-xs font-semibold">
-            {(["previous", "current"] as const).map((choice) => (
-              <Link
-                key={choice}
-                href={`${switchPath}?week=${choice}`}
-                scroll={false}
-                className={`px-3 py-1.5 ${s.choice === choice ? "bg-accent text-accent-fg" : "text-ink-soft hover:text-ink"}`}
-              >
-                {choice === "current" ? w.currentWeek : w.previousWeek}
-              </Link>
-            ))}
+          <div className="flex shrink-0 overflow-hidden rounded-lg border border-line text-xs font-semibold">
+            <Link href={`${switchPath}?week=previous`} scroll={false} aria-label={w.previousWeek}
+              className={`min-h-9 px-3 leading-9 ${s.choice === "previous" ? "bg-accent text-accent-fg" : "text-ink-soft hover:text-ink"}`}>
+              ‹
+            </Link>
+            <Link href={`${switchPath}?week=current`} scroll={false}
+              className={`min-h-9 px-3 leading-9 ${s.choice === "current" ? "bg-accent text-accent-fg" : "text-ink-soft hover:text-ink"}`}>
+              {s.choice === "current" ? w.currentWeek : w.previousWeek}
+            </Link>
           </div>
-        ) : null}
+        ) : (
+          <span className="shrink-0 text-xs text-ink-faint">{s.choice === "current" ? w.currentWeek : w.previousWeek}</span>
+        )}
       </div>
 
-      {/* Insight sits at the top: it is the sentence the numbers below justify. */}
-      <ul className="mt-3 space-y-1">
-        {s.insights.map((i, idx) => (
-          <li key={idx} className={`text-sm leading-snug ${idx === 0 ? "font-semibold text-accent-ink" : "text-ink-soft"}`}>
-            {insightText(i, t, f)}
-          </li>
-        ))}
-      </ul>
+      {/* one headline, the rest as a quiet second line */}
+      {headline ? (
+        <div className="mt-3 rounded-lg bg-accent-soft px-3 py-2.5">
+          <p className="text-sm font-semibold leading-snug text-accent-ink">{insightText(headline, t, f)}</p>
+          {rest.length > 0 ? (
+            <p className="mt-1 text-xs leading-snug text-ink-soft">{rest.map((i) => insightText(i, t, f)).join(" · ")}</p>
+          ) : null}
+        </div>
+      ) : null}
 
-      <div className={`mt-4 space-y-4 ${compact ? "" : "lg:grid lg:grid-cols-2 lg:gap-x-8 lg:space-y-0 lg:[&>section]:mt-4"}`}>
+      <div className={`mt-4 space-y-5 ${compact ? "" : "lg:grid lg:grid-cols-2 lg:gap-x-10 lg:gap-y-5 lg:space-y-0"}`}>
         <Section title={w.training}>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <Stat label={w.workouts} value={f.n(cur.training.workouts)} delta={s.training.workouts} format={f.n} />
-            <Stat
-              label={w.duration}
-              value={cur.training.duration_min > 0 ? f.duration(cur.training.duration_min) : "—"}
-              delta={cur.training.duration_min > 0 ? s.training.duration_min : null}
-              format={f.duration}
-            />
-            <Stat label={w.trainingLoad} value={f.n(cur.training.load)} delta={s.training.load} format={f.n} />
-            <Stat label={w.volume} value={f.n(cur.training.volume_kg)} unit="kg" delta={s.training.volume_kg} format={kg} />
-            <Stat label={w.sets} value={f.n(cur.training.sets)} delta={s.training.sets} format={f.n} />
-            <Stat label={w.exercises} value={f.n(cur.training.exercises)} delta={s.training.exercises} format={f.n} />
-          </div>
+          <Row label={w.workouts} value={f.n(cur.training.workouts)} previous={prevIf(prev.training.workouts)} delta={s.training.workouts} />
+          <Row label={w.duration} value={cur.training.duration_min > 0 ? f.duration(cur.training.duration_min) : "—"}
+            previous={prev.training.duration_min > 0 ? f.duration(prev.training.duration_min) : null}
+            delta={cur.training.duration_min > 0 ? s.training.duration_min : null} />
+          <Row label={w.trainingLoad} value={f.n(cur.training.load)} previous={prevIf(prev.training.load)} delta={s.training.load} />
+          <Row label={w.volume} value={f.n(cur.training.volume_kg)} unit="kg" previous={prevIf(prev.training.volume_kg)} delta={s.training.volume_kg} />
+          <Row label={w.sets} value={f.n(cur.training.sets)} previous={prevIf(prev.training.sets)} delta={s.training.sets} />
+          <Row label={w.exercises} value={f.n(cur.training.exercises)} previous={prevIf(prev.training.exercises)} delta={s.training.exercises} />
           {cur.training.prs > 0 ? (
-            <div className="mt-3 rounded-lg bg-accent-soft px-3 py-2">
+            <li className="py-2">
               <p className="text-sm font-semibold text-accent-ink">
                 {cur.training.prs === 1 ? w.newPrOne : fill(w.newPrs, { count: cur.training.prs })}
               </p>
-              <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-ink-soft">
+              <ul className="mt-1.5 flex flex-wrap gap-1.5">
                 {cur.training.pr_lifts.slice(0, 6).map((pr, i) => (
-                  <li key={i} className="tabular-nums">
-                    <span className="font-semibold text-ink">{pr.exercise}</span> {f.n1(pr.weight_kg)} kg × {pr.reps}
+                  <li key={i} className="rounded-md bg-bg px-2 py-1 text-xs tabular-nums text-ink-soft">
+                    <span className="font-semibold text-ink">{pr.exercise}</span> {f.n1(pr.weight_kg)} × {pr.reps}
                   </li>
                 ))}
               </ul>
-            </div>
+            </li>
           ) : null}
         </Section>
 
-        <Section title={w.nutrition}>
-          {hasNutrition && n.avg ? (
+        <Section title={w.nutrition} aside={n.avg ? fill(w.daysLogged, { count: n.days_logged }) : undefined}>
+          {n.avg ? (
             <>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                <Stat label={w.kcalPerDay} value={f.n(n.avg.kcal)} delta={s.nutrition.kcal} format={f.n} />
-                <Stat label={w.proteinPerDay} value={f.n(n.avg.protein)} delta={s.nutrition.protein} format={f.n} />
-                <Stat label={w.carbsPerDay} value={f.n(n.avg.carbs)} delta={s.nutrition.carbs} format={f.n} />
-                <Stat label={w.fatPerDay} value={f.n(n.avg.fat)} delta={s.nutrition.fat} format={f.n} />
-                <Stat
-                  label={w.adherence}
-                  value={n.adherence_pct === null ? w.noData : `${n.adherence_pct}%`}
-                  delta={n.adherence_pct === null ? null : s.nutrition.adherence_pct}
-                  format={(v) => `${v}%`}
-                />
-              </div>
-              <p className="mt-2 text-[11px] text-ink-faint">{fill(w.daysLogged, { count: n.days_logged })}</p>
+              <Row label={w.kcalPerDay} value={f.n(n.avg.kcal)} previous={prevIf(prev.nutrition.avg?.kcal ?? 0)} delta={s.nutrition.kcal} />
+              <Row label={w.proteinPerDay} value={f.n(n.avg.protein)} previous={prevIf(prev.nutrition.avg?.protein ?? 0)} delta={s.nutrition.protein} />
+              <Row label={w.carbsPerDay} value={f.n(n.avg.carbs)} previous={prevIf(prev.nutrition.avg?.carbs ?? 0)} delta={s.nutrition.carbs} />
+              <Row label={w.fatPerDay} value={f.n(n.avg.fat)} previous={prevIf(prev.nutrition.avg?.fat ?? 0)} delta={s.nutrition.fat} />
+              <Row label={w.adherence} value={n.adherence_pct === null ? w.noData : `${n.adherence_pct}%`}
+                previous={prev.nutrition.adherence_pct !== null ? `${prev.nutrition.adherence_pct}%` : null}
+                delta={n.adherence_pct === null ? null : s.nutrition.adherence_pct} />
             </>
           ) : (
-            <p className="text-sm text-ink-faint">{w.noData}</p>
+            <li className="py-1.5 text-sm text-ink-faint">{w.noData}</li>
           )}
         </Section>
 
         <Section title={w.progress}>
           {hasProgress ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-              {p.weight ? (
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{w.weight}</p>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums leading-tight">
-                    {f.signed(p.weight.delta)} <span className="text-xs font-medium text-ink-faint">kg</span>
-                  </p>
-                  <p className="mt-0.5 text-[11px] tabular-nums text-ink-faint">
-                    {f.n1(p.weight.start)} → {f.n1(p.weight.end)} kg
-                  </p>
-                </div>
-              ) : null}
-              {p.waist ? (
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{w.waist}</p>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums leading-tight">
-                    {f.signed(p.waist.delta)} <span className="text-xs font-medium text-ink-faint">cm</span>
-                  </p>
-                  <p className="mt-0.5 text-[11px] tabular-nums text-ink-faint">
-                    {f.n1(p.waist.start)} → {f.n1(p.waist.end)} cm
-                  </p>
-                </div>
-              ) : null}
+            <>
+              {p.weight ? <Row label={w.weight} value={f.signed(p.weight.delta)} unit="kg" previous={`${f.n1(p.weight.start)} → ${f.n1(p.weight.end)}`} /> : null}
+              {p.waist ? <Row label={w.waist} value={f.signed(p.waist.delta)} unit="cm" previous={`${f.n1(p.waist.start)} → ${f.n1(p.waist.end)}`} /> : null}
               {Object.entries(p.others).map(([name, ch]) => (
-                <div key={name}>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{name}</p>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums leading-tight">
-                    {f.signed(ch.delta)} <span className="text-xs font-medium text-ink-faint">cm</span>
-                  </p>
-                  <p className="mt-0.5 text-[11px] tabular-nums text-ink-faint">
-                    {f.n1(ch.start)} → {f.n1(ch.end)} cm
-                  </p>
-                </div>
+                <Row key={name} label={name} value={f.signed(ch.delta)} unit="cm" previous={`${f.n1(ch.start)} → ${f.n1(ch.end)}`} />
               ))}
-            </div>
+            </>
           ) : (
-            <p className="text-sm text-ink-faint">{w.noData}</p>
+            <li className="py-1.5 text-sm text-ink-faint">{w.noData}</li>
           )}
         </Section>
 
         <Section title={w.consistency}>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-            {c.completion_pct !== null ? (
-              <Stat
-                label={w.plannedWorkouts}
-                value={`${cur.training.workouts} / ${c.planned_workouts}`}
-                unit={`· ${c.completion_pct}%`}
-                delta={s.consistency.completion_pct}
-                format={(v) => `${v}%`}
-              />
-            ) : null}
-            <Stat label={w.activeDays} value={`${c.active_days} / 7`} delta={s.consistency.active_days} format={f.n} />
-            <Stat label={w.workoutDays} value={f.n(c.workout_days)} delta={s.consistency.workout_days} format={f.n} />
-            {c.streak_days > 0 ? <Stat label={w.streak} value={f.n(c.streak_days)} unit={w.streakDays} /> : null}
-          </div>
           {c.completion_pct !== null ? (
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-bg">
-              <div className={`h-full rounded-full ${c.completion_pct >= 80 ? "bg-accent" : c.completion_pct >= 50 ? "bg-warn" : "bg-risk"}`} style={{ width: `${c.completion_pct}%` }} />
-            </div>
+            <Row label={w.plannedWorkouts} value={`${cur.training.workouts} / ${c.planned_workouts}`} unit={`· ${c.completion_pct}%`}
+              previous={prev.consistency.completion_pct !== null ? `${prev.consistency.completion_pct}%` : null}
+              delta={s.consistency.completion_pct} />
+          ) : null}
+          <Row label={w.activeDays} value={`${c.active_days} / 7`} previous={prevIf(prev.consistency.active_days)} delta={s.consistency.active_days} />
+          <Row label={w.workoutDays} value={f.n(c.workout_days)} previous={prevIf(prev.consistency.workout_days)} delta={s.consistency.workout_days} />
+          {c.streak_days > 0 ? <Row label={w.streak} value={f.n(c.streak_days)} unit={w.streakDays} /> : null}
+          {c.completion_pct !== null ? (
+            <li className="pt-2">
+              <div className="h-1.5 overflow-hidden rounded-full bg-bg">
+                <div className={`h-full rounded-full ${c.completion_pct >= 80 ? "bg-accent" : c.completion_pct >= 50 ? "bg-warn" : "bg-risk"}`} style={{ width: `${c.completion_pct}%` }} />
+              </div>
+            </li>
           ) : null}
         </Section>
       </div>

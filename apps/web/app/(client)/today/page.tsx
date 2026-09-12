@@ -1,213 +1,111 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getToday, isEmptyAccount } from "@/lib/client-data";
+import { getMySessions, getToday, isEmptyAccount } from "@/lib/client-data";
 import { getMyChallenges } from "@/lib/challenges-data";
 import { getMyWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
-import { WeeklySummaryCard } from "@/components/weekly-summary";
 import { hasChosenSolo } from "@/lib/onboarding";
-import { Card, EmptyState, PageTitle, SignalBadge } from "@/components/ui";
-import { AdherenceMeter, MacroPanel } from "@/components/client-ui";
+import { isoDay } from "@/lib/demo-client-store";
+import { Card, EmptyState } from "@/components/ui";
 import { HabitTicks } from "@/components/habit-ticks";
+import { NutritionTile, StatusHero, Tile, TodayWeekStrip, WorkoutRow } from "@/components/today-dashboard";
 import { TrainingLoadSummaryCard } from "@/components/training-load";
+import { WeeklySummaryCard } from "@/components/weekly-summary";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 
+/**
+ * Today, phone-first: the week on top, the mark with this week's standing,
+ * the one workout that matters now, a grid of small tiles, then the detail
+ * (habits, check-in, weekly summary, training load) for whoever scrolls.
+ */
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { t, locale } = await getI18n();
   const weekChoice: WeekChoice = (await searchParams).week === "previous" ? "previous" : "current";
 
   // Nothing to show on Today until the client has a coach or a program of their
   // own, so send a brand-new account to the choice instead of an empty screen.
-  // The moment either path is taken this stops firing — including picking
-  // "I train on my own" without finishing a program (see chooseSoloTraining).
   if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
 
-  const [today, challenges, weekly] = await Promise.all([getToday(), getMyChallenges(), getMyWeeklySummary(weekChoice)]);
+  const [today, challenges, weekly, recent] = await Promise.all([
+    getToday(),
+    getMyChallenges(),
+    getMyWeeklySummary(weekChoice),
+    getMySessions(3),
+  ]);
   if (!today) {
-    return (
-      <EmptyState
-        title={t.clientApp.today.notSignedInTitle}
-        hint={t.clientApp.today.notSignedInHint}
-      />
-    );
+    return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
   }
 
+  const d = t.clientApp.today;
   const {
     adherence, next_workout: next, nutrition, habits, check_in: checkIn,
     sessions_done: done, sessions_planned: planned, streak_days: streak, last_activity: last,
   } = today;
+  const todayIso = isoDay();
+  const doneToday = recent.find((s) => s.at.slice(0, 10) === todayIso) ?? null;
+  const workoutDays = today.training_load.daily.filter((x) => x.load > 0).map((x) => x.day);
+  const habitsDone = habits.filter((h) => h.done_today).length;
+  const activeChallenges = challenges.filter((c) => c.joined && c.status === "active").length;
+  const completedChallenges = challenges.filter((c) => c.status === "completed").length;
 
   return (
     <div className="space-y-4">
-      <PageTitle title={fill(t.clientApp.today.hi, { name: today.full_name.split(" ")[0] })}>
-        <SignalBadge signal={adherence.signal} />
-      </PageTitle>
+      <TodayWeekStrip today={todayIso} workoutDays={workoutDays} />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <AdherenceMeter overall={adherence.overall} reason={adherence.reason} />
-        </Card>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-1">
-          <Card>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              {t.clientApp.today.streak}
-            </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">
-              {streak}
-              <span className="ml-1 text-sm font-medium text-ink-faint">
-                {streak === 1 ? t.clientApp.today.day : t.clientApp.today.days}
-              </span>
-            </p>
-          </Card>
-          <Card>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              {t.clientApp.today.workouts}
-            </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">
-              {done}
-              <span className="text-sm font-medium text-ink-faint"> / {planned || 3}</span>
-            </p>
-          </Card>
+      <StatusHero adherence={adherence} />
+
+      {adherence.signal === "at_risk" ? (
+        <p className="rounded-xl bg-risk-soft px-4 py-2.5 text-center text-xs leading-snug text-risk">
+          <b>{d.atRiskTitle}</b> — {fill(d.atRiskBody, { time: timeAgo(last, locale) })}
+        </p>
+      ) : null}
+
+      <WorkoutRow doneToday={doneToday} next={next} />
+      <p className="text-center">
+        <Link href="/workout" className="text-sm font-semibold text-accent-ink hover:underline">
+          {d.viewCalendar}
+        </Link>
+      </p>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Tile href="/workout" icon="🎯" label={d.workouts} value={String(done)} unit={`/ ${planned || 3}`} done={planned > 0 && done >= planned} />
+        <Tile href="/progress" icon="🔥" label={d.streak} value={String(streak)} unit={streak === 1 ? d.day : d.days} done={streak >= 7} />
+        <NutritionTile totals={nutrition.totals} target={nutrition.target} />
+        <div className="grid gap-3">
+          <Tile href="/habits" icon="✅" label={t.common.nav.habits} value={habits.length > 0 ? `${habitsDone}/${habits.length}` : "—"} done={habits.length > 0 && habitsDone === habits.length} />
+          <Tile
+            href="/check-in"
+            icon="📝"
+            label={t.common.nav.checkIn}
+            value={checkIn.submitted ? "✓" : d.due}
+            unit={checkIn.submitted ? d.submitted : undefined}
+            done={checkIn.submitted}
+          />
         </div>
+        <Tile href="/challenges" icon="🏅" label={t.common.challenges.title} value={String(activeChallenges)} unit={d.active} done={completedChallenges > 0} />
+        <Tile href="/feed" icon="💬" label={t.common.social.feed}>
+          <p className="mt-2 line-clamp-2 text-xs text-ink-soft">{t.common.social.emptyHint}</p>
+        </Tile>
       </div>
+
+      {habits.length > 0 ? (
+        <Card>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.habitsToday}</p>
+          <HabitTicks habits={habits} />
+        </Card>
+      ) : null}
+
+      {checkIn.last?.coach_feedback ? (
+        <Card className="bg-accent-soft">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{d.fromYourCoach}</p>
+          <p className="mt-1 text-sm leading-snug text-ink-soft">{checkIn.last.coach_feedback}</p>
+        </Card>
+      ) : null}
 
       {weekly ? <WeeklySummaryCard summary={weekly} switchPath="/today" /> : null}
 
       <TrainingLoadSummaryCard summary={today.training_load} />
-
-      {/* Challenges and the feed live off the tab bar, so Today carries the way in. */}
-      <div className="grid gap-4 sm:grid-cols-2">
-      <Link href="/challenges" className="block min-w-0">
-        <Card className="flex items-center justify-between gap-3 hover:border-accent">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              {t.common.challenges.title}
-            </p>
-            <p className="mt-1 truncate text-sm text-ink-soft">
-              {challenges.some((c) => c.joined)
-                ? fill(t.common.challenges.onToday, {
-                    active: challenges.filter((c) => c.joined && c.status === "active").length,
-                    completed: challenges.filter((c) => c.status === "completed").length,
-                  })
-                : t.common.challenges.onTodayNone}
-            </p>
-          </div>
-          <span className="shrink-0 text-lg text-ink-faint">›</span>
-        </Card>
-      </Link>
-      <Link href="/feed" className="block min-w-0">
-        <Card className="flex items-center justify-between gap-3 hover:border-accent">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.social.feed}</p>
-            <p className="mt-1 truncate text-sm text-ink-soft">{t.common.social.emptyHint}</p>
-          </div>
-          <span className="shrink-0 text-lg text-ink-faint">›</span>
-        </Card>
-      </Link>
-      </div>
-
-      {adherence.signal === "at_risk" ? (
-        <Card className="border-risk-soft bg-risk-soft">
-          <p className="text-sm font-semibold text-risk">{t.clientApp.today.atRiskTitle}</p>
-          <p className="mt-1 text-xs leading-snug text-risk">
-            {fill(t.clientApp.today.atRiskBody, { time: timeAgo(last, locale) })}
-          </p>
-        </Card>
-      ) : null}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-            {t.clientApp.today.nextWorkout}
-          </p>
-          {next ? (
-            <>
-              <p className="font-bold">{next.day_name}</p>
-              <p className="mt-0.5 text-xs text-ink-faint">
-                {next.program_name} · {fill(t.clientApp.workout.exercisesCount, { count: next.exercises.length })}
-              </p>
-              <ul className="mt-3 space-y-1 text-sm text-ink-soft">
-                {next.exercises.slice(0, 3).map((e) => (
-                  <li key={e.id} className="flex justify-between gap-2">
-                    <span className="truncate">{e.exercise}</span>
-                    <span className="shrink-0 tabular-nums text-ink-faint">
-                      {e.sets}×{e.reps}
-                    </span>
-                  </li>
-                ))}
-                {next.exercises.length > 3 ? (
-                  <li className="text-xs text-ink-faint">
-                    {fill(t.clientApp.workout.moreExercises, { count: next.exercises.length - 3 })}
-                  </li>
-                ) : null}
-              </ul>
-              <Link
-                href={`/workout/${next.day_id}/log`}
-                className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90"
-              >
-                {t.clientApp.today.startWorkout}
-              </Link>
-            </>
-          ) : (
-            <p className="text-sm text-ink-soft">{t.clientApp.today.noProgram}</p>
-          )}
-        </Card>
-
-        <div className="space-y-4">
-          <MacroPanel
-            totals={nutrition.totals}
-            target={nutrition.target}
-            title={nutrition.plan_name ?? t.common.nav.nutrition}
-          />
-          <Link
-            href="/food"
-            className="inline-block rounded-lg border border-line px-4 py-2 text-sm font-semibold hover:border-accent"
-          >
-            {t.clientApp.today.logFood}
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-            {t.clientApp.today.habitsToday}
-          </p>
-          {habits.length === 0 ? (
-            <p className="text-sm text-ink-soft">{t.clientApp.today.noHabitsYet}</p>
-          ) : (
-            <HabitTicks habits={habits} />
-          )}
-        </Card>
-
-        <Card>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-            {t.clientApp.today.weeklyCheckIn}
-          </p>
-          {checkIn.submitted ? (
-            <p className="text-sm text-ink-soft">{t.clientApp.today.checkInSubmitted}</p>
-          ) : (
-            <>
-              <p className="text-sm text-ink-soft">{t.clientApp.today.checkInNotSubmitted}</p>
-              <Link
-                href="/check-in"
-                className="mt-3 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90"
-              >
-                {t.clientApp.today.checkInCta}
-              </Link>
-            </>
-          )}
-          {checkIn.last?.coach_feedback ? (
-            <div className="mt-4 rounded-lg bg-accent-soft p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
-                {t.clientApp.today.fromYourCoach}
-              </p>
-              <p className="mt-1 text-sm leading-snug text-ink-soft">{checkIn.last.coach_feedback}</p>
-            </div>
-          ) : null}
-        </Card>
-      </div>
     </div>
   );
 }
