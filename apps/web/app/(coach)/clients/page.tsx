@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getClients, getProfile, isDemo } from "@/lib/data";
 import { Card, EmptyState, PageTitle, SignalBadge } from "@/components/ui";
 import { pct, timeAgo } from "@/lib/format";
@@ -21,6 +22,9 @@ export default async function ClientsPage() {
           <span className={`text-sm tabular-nums ${limitReached ? "font-semibold text-warn" : "text-ink-soft"}`}>
             {fill(t.coachApp.clients.slots, { used, max: maxClients })} · {TIER_LABEL[profile?.tier ?? "free"]}
           </span>
+          <Link href="/clients/challenges" className="text-xs font-semibold text-accent-ink hover:underline">
+            {t.common.challenges.coachTitle}
+          </Link>
           {isDemo ? <AddClientButton disabled={limitReached} /> : null}
           <InviteButton disabled={limitReached} />
         </div>

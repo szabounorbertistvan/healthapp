@@ -10,7 +10,7 @@
 // client is Maria D., "d1") but nothing else.
 //
 // Lives in the server process: lost on dev-server restart.
-import { estimated1RM, portionMacros, sumMacros, type Macros } from "@healthapp/shared";
+import { estimated1RM, portionMacros, sumMacros, type ChallengeType, type Macros } from "@healthapp/shared";
 
 /** The demo client. Matches demoDashboard[0] so coach and client agree on who this is. */
 export const DEMO_CLIENT_ID = "d1";
@@ -94,6 +94,31 @@ export type StoredClientCheckIn = {
   coach_feedback: string | null;
 };
 
+/** Mirrors public.challenges: titles in both languages, one type, one window. */
+export type StoredChallenge = {
+  id: string;
+  title_en: string;
+  title_ro: string;
+  description_en: string | null;
+  description_ro: string | null;
+  type: ChallengeType;
+  target_value: number;
+  start_date: string;
+  end_date: string;
+  creator_id: string | null;
+  visibility: "public" | "private";
+  created_at: string;
+};
+
+/** Mirrors public.challenge_participants. completed_at is stamped once, never cleared. */
+export type StoredParticipant = {
+  id: string;
+  challenge_id: string;
+  user_id: string;
+  joined_at: string;
+  completed_at: string | null;
+};
+
 type ClientStore = {
   sessions: StoredSession[];
   sets: StoredLoggedSet[];
@@ -102,11 +127,13 @@ type ClientStore = {
   habitLogs: StoredHabitLog[];
   measurements: StoredMeasurement[];
   checkIns: StoredClientCheckIn[];
+  challenges: StoredChallenge[];
+  participants: StoredParticipant[];
 };
 
 // Bump whenever ClientStore changes shape — a store carried across a hot reload
 // that is missing a new field would crash every reader.
-const STORE_VERSION = 5;
+const STORE_VERSION = 6;
 
 const globalRef = globalThis as unknown as {
   __voinicClientStore?: ClientStore & { version?: number };
@@ -386,5 +413,100 @@ function seed(): ClientStore {
     },
   ];
 
-  return { sessions, sets, foodLogs, habits, habitLogs, measurements, checkIns };
+  // Two more clients with real sessions, so the challenge leaderboard ranks
+  // derived numbers rather than typed-in ones. Elena trains four times a week
+  // (on track); Andrei is back after a break and manages about two.
+  const others: { clientId: string; day: string; daysAgo: number; minutes: number; lifts: { name: string; weight: number; reps: number; sets: number }[] }[] = [];
+  const elenaA = [
+    { name: "Barbell Squat", weight: 70, reps: 6, sets: 4 },
+    { name: "Bench Press", weight: 50, reps: 6, sets: 4 },
+    { name: "Barbell Row", weight: 55, reps: 8, sets: 3 },
+  ];
+  const elenaB = [
+    { name: "Deadlift", weight: 100, reps: 5, sets: 4 },
+    { name: "Overhead Press", weight: 32.5, reps: 8, sets: 3 },
+    { name: "Pull-up", weight: 0, reps: 8, sets: 3 },
+  ];
+  for (const back of [1, 3, 5, 8, 10, 12, 15, 17, 19, 22, 24, 26]) {
+    others.push({
+      clientId: "d5", day: back % 2 === 1 ? "Full A" : "Full B", daysAgo: back, minutes: 55 + (back % 3) * 6,
+      lifts: back % 2 === 1 ? elenaA : elenaB,
+    });
+  }
+  const andrei = [
+    { name: "Leg Press", weight: 120, reps: 10, sets: 3 },
+    { name: "Bench Press", weight: 60, reps: 8, sets: 3 },
+    { name: "Lat Pulldown", weight: 55, reps: 10, sets: 3 },
+  ];
+  for (const back of [2, 6, 11, 16, 20, 25]) {
+    others.push({ clientId: "d2", day: "Return A", daysAgo: back, minutes: 42 + (back % 4) * 5, lifts: andrei });
+  }
+  for (const entry of others) {
+    const sessionId = newId("ls");
+    const started = daysAgoStamp(entry.daysAgo);
+    sessions.push({
+      id: sessionId,
+      client_id: entry.clientId,
+      program_day_id: null,
+      day_name: entry.day,
+      started_at: started,
+      completed_at: new Date(new Date(started).getTime() + entry.minutes * 60_000).toISOString(),
+    });
+    for (const ex of entry.lifts) {
+      for (let i = 0; i < ex.sets; i++) {
+        sets.push({
+          id: newId("lst"), session_id: sessionId, program_exercise_id: null, exercise_name: ex.name,
+          set_index: i + 1, weight_kg: ex.weight, reps: ex.reps, rpe: 8, rir: null, notes: null,
+          is_pr: false, logged_at: started,
+        });
+      }
+    }
+  }
+
+  // The four platform challenges for the current month (mirrors the migration seed).
+  const monthStart = isoDay().slice(0, 8) + "01";
+  const monthEndDate = new Date(Number(monthStart.slice(0, 4)), Number(monthStart.slice(5, 7)), 0);
+  const monthEnd = isoDay(monthEndDate);
+  const challenges: StoredChallenge[] = [
+    {
+      id: "ch1", title_en: "10 Workouts", title_ro: "10 antrenamente",
+      description_en: "Complete ten training sessions this month.",
+      description_ro: "Finalizează zece sesiuni de antrenament luna aceasta.",
+      type: "workouts", target_value: 10, start_date: monthStart, end_date: monthEnd,
+      creator_id: null, visibility: "public", created_at: daysAgoStamp(20),
+    },
+    {
+      id: "ch2", title_en: "500 Training Load", title_ro: "500 puncte încărcare",
+      description_en: "Accumulate 500 training-load points across your sessions.",
+      description_ro: "Acumulează 500 de puncte de încărcare din sesiunile tale.",
+      type: "training_load", target_value: 500, start_date: monthStart, end_date: monthEnd,
+      creator_id: null, visibility: "public", created_at: daysAgoStamp(20),
+    },
+    {
+      id: "ch3", title_en: "100,000 kg Volume", title_ro: "100.000 kg volum",
+      description_en: "Lift a combined 100,000 kg this month.",
+      description_ro: "Ridică în total 100.000 kg luna aceasta.",
+      type: "volume", target_value: 100000, start_date: monthStart, end_date: monthEnd,
+      creator_id: null, visibility: "public", created_at: daysAgoStamp(20),
+    },
+    {
+      id: "ch4", title_en: "20 Active Days", title_ro: "20 de zile active",
+      description_en: "Log something — a set, a meal or a habit — on twenty different days.",
+      description_ro: "Înregistrează ceva — un set, o masă sau un obicei — în douăzeci de zile diferite.",
+      type: "active_days", target_value: 20, start_date: monthStart, end_date: monthEnd,
+      creator_id: null, visibility: "public", created_at: daysAgoStamp(20),
+    },
+  ];
+  const participants: StoredParticipant[] = [
+    { id: newId("cp"), challenge_id: "ch1", user_id: DEMO_CLIENT_ID, joined_at: daysAgoStamp(12), completed_at: null },
+    { id: newId("cp"), challenge_id: "ch2", user_id: DEMO_CLIENT_ID, joined_at: daysAgoStamp(12), completed_at: null },
+    { id: newId("cp"), challenge_id: "ch1", user_id: "d5", joined_at: daysAgoStamp(14), completed_at: null },
+    { id: newId("cp"), challenge_id: "ch2", user_id: "d5", joined_at: daysAgoStamp(14), completed_at: null },
+    { id: newId("cp"), challenge_id: "ch3", user_id: "d5", joined_at: daysAgoStamp(14), completed_at: null },
+    { id: newId("cp"), challenge_id: "ch1", user_id: "d2", joined_at: daysAgoStamp(9), completed_at: null },
+    { id: newId("cp"), challenge_id: "ch2", user_id: "d2", joined_at: daysAgoStamp(9), completed_at: null },
+    { id: newId("cp"), challenge_id: "ch4", user_id: "d2", joined_at: daysAgoStamp(9), completed_at: null },
+  ];
+
+  return { sessions, sets, foodLogs, habits, habitLogs, measurements, checkIns, challenges, participants };
 }

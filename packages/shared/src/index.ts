@@ -10,3 +10,4 @@ export * from "./sync";
 export * from "./exercises";
 export * from "./text";
 export * from "./training-load";
+export * from "./challenges";

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getToday, isEmptyAccount } from "@/lib/client-data";
+import { getMyChallenges } from "@/lib/challenges-data";
 import { hasChosenSolo } from "@/lib/onboarding";
 import { Card, EmptyState, PageTitle, SignalBadge } from "@/components/ui";
 import { AdherenceMeter, MacroPanel } from "@/components/client-ui";
@@ -19,7 +20,7 @@ export default async function TodayPage() {
   // "I train on my own" without finishing a program (see chooseSoloTraining).
   if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
 
-  const today = await getToday();
+  const [today, challenges] = await Promise.all([getToday(), getMyChallenges()]);
   if (!today) {
     return (
       <EmptyState
@@ -69,6 +70,26 @@ export default async function TodayPage() {
       </div>
 
       <TrainingLoadSummaryCard summary={today.training_load} />
+
+      {/* Challenges live off the tab bar, so Today carries the way in. */}
+      <Link href="/challenges" className="block">
+        <Card className="flex items-center justify-between gap-3 hover:border-accent">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+              {t.common.challenges.title}
+            </p>
+            <p className="mt-1 truncate text-sm text-ink-soft">
+              {challenges.some((c) => c.joined)
+                ? fill(t.common.challenges.onToday, {
+                    active: challenges.filter((c) => c.joined && c.status === "active").length,
+                    completed: challenges.filter((c) => c.status === "completed").length,
+                  })
+                : t.common.challenges.onTodayNone}
+            </p>
+          </div>
+          <span className="shrink-0 text-lg text-ink-faint">›</span>
+        </Card>
+      </Link>
 
       {adherence.signal === "at_risk" ? (
         <Card className="border-risk-soft bg-risk-soft">

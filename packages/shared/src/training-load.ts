@@ -74,19 +74,49 @@ export function trainingLoad(input: TrainingLoadInput): TrainingLoad {
   const rpes = sets.map(effectiveRpe).filter((r): r is number => r !== null);
   const intensity = rpes.length > 0 ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
 
+  return trainingLoadFromStats({
+    volume_kg: volume,
+    sets: sets.length,
+    duration_min: input.duration_min ?? null,
+    intensity,
+    exercises: input.exercise_count ?? null,
+  });
+}
+
+/** Per-session aggregates — what a SQL rollup over logged_sets produces. */
+export type SessionStats = {
+  volume_kg: number;
+  sets: number;
+  duration_min: number | null;
+  /** Mean effective RPE over the sets that carried one, else null. */
+  intensity: number | null;
+  exercises: number | null;
+};
+
+/**
+ * The formula on already-aggregated numbers. trainingLoad() is a thin wrapper
+ * that aggregates the sets first; anything that already holds a per-session
+ * rollup (the challenge leaderboard RPC) enters here and gets the same score.
+ */
+export function trainingLoadFromStats(stats: SessionStats): TrainingLoad {
+  const volume = Math.max(0, stats.volume_kg || 0);
+  const setCount = Math.max(0, Math.round(stats.sets || 0));
+  const intensity = stats.intensity;
+
   const duration =
-    typeof input.duration_min === "number" &&
-    Number.isFinite(input.duration_min) &&
-    input.duration_min >= 1 &&
-    input.duration_min <= MAX_SESSION_MIN
-      ? input.duration_min
+    typeof stats.duration_min === "number" &&
+    Number.isFinite(stats.duration_min) &&
+    stats.duration_min >= 1 &&
+    stats.duration_min <= MAX_SESSION_MIN
+      ? stats.duration_min
       : null;
 
-  const exercises = Math.max(0, Math.round(input.exercise_count ?? 0));
+  const exercises = Math.max(0, Math.round(stats.exercises ?? 0));
 
-  if (sets.length === 0) {
+  if (setCount === 0) {
     return { score: 0, category: "very_light", volume_kg: 0, sets: 0, duration_min: duration, intensity, exercises };
   }
+  const sets = { length: setCount };
 
   // Each present signal contributes weight × curve; absent ones drop out and
   // the total is divided by the weight that was actually available.

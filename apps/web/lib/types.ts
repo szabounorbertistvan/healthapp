@@ -1,4 +1,6 @@
-import type { AdherenceResult, LoadTrend, Macros, TrainingLoad } from "@healthapp/shared";
+import type {
+  AdherenceResult, ChallengeStatus, ChallengeType, LoadTrend, Macros, TrainingLoad,
+} from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
 
 export type Signal = "on_track" | "needs_attention" | "at_risk";
@@ -276,6 +278,47 @@ export type TrainingLoadSummary = {
   trend: LoadTrend;
   /** One bar per day, oldest first — the last 14 days. */
   daily: { day: string; load: number }[];
+};
+
+/** A challenge as one person sees it: the definition plus their own standing in it. */
+export type ChallengeCard = {
+  id: string;
+  title: string;
+  description: string | null;
+  type: ChallengeType;
+  target: number;
+  start_date: string;
+  end_date: string;
+  visibility: "public" | "private";
+  participants: number;
+  joined: boolean;
+  /** Persisted the first time the target was reached; null until then. */
+  completed_at: string | null;
+  /** Progress in the challenge unit (count / points / kg / days); 0 when not joined. */
+  progress: number;
+  pct: number;
+  status: ChallengeStatus;
+  days_remaining: number;
+  can_join: boolean;
+};
+
+export type LeaderboardRow = {
+  rank: number;
+  user_id: string;
+  name: string;
+  value: number;
+  me: boolean;
+};
+
+export type ChallengeDetail = ChallengeCard & {
+  /** Null for a private challenge with a single participant — nothing to rank. */
+  leaderboard: LeaderboardRow[] | null;
+};
+
+/** One client of the coach inside a challenge. */
+export type CoachChallengeRow = {
+  challenge: ChallengeCard;
+  clients: { client_id: string; name: string; progress: number; pct: number; completed: boolean }[];
 };
 
 export type ClientFoodEntry = {
