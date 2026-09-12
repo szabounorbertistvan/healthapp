@@ -7,13 +7,17 @@
 import "server-only";
 import {
   computeAdherence,
+  dailyLoad,
+  loadTrend,
   macroScore,
   pickProgram,
   portionMacros,
+  sumLoad,
   sumMacros,
   type Macros,
   type SelectableProgram,
 } from "@healthapp/shared";
+import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { isDemo, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
 import { store } from "./demo-store";
@@ -47,6 +51,8 @@ import type {
   LoggedSetRow,
   MealSlot,
   MessageRow,
+  SessionSummaryRow,
+  TrainingLoadSummary,
   WorkoutHistorySession,
 } from "./types";
 
@@ -371,13 +377,19 @@ function groupByExercise(sets: LoggedSetRow[]): WorkoutHistorySession["exercises
   return order.map((name) => ({ name, sets: byName.get(name) ?? [] }));
 }
 
-function summarizeSession(id: string, at: string, sets: LoggedSetRow[]): WorkoutHistorySession {
+function summarizeSession(
+  id: string,
+  started_at: string,
+  completed_at: string | null,
+  sets: LoggedSetRow[],
+): WorkoutHistorySession {
   return {
     id,
-    at,
+    at: completed_at ?? started_at,
     sets: sets.length,
     volume_kg: Math.round(sets.reduce((sum, x) => sum + x.weight_kg * x.reps, 0)),
     prs: sets.filter((x) => x.is_pr).length,
+    load: loadOf(sets, started_at, completed_at),
     exercises: groupByExercise(sets),
   };
 }
@@ -396,7 +408,7 @@ export async function getWorkoutDayHistory(dayId: string, limit = 20): Promise<W
       )
       .sort((a, b) => (a.started_at < b.started_at ? 1 : -1))
       .slice(0, limit)
-      .map((s) => summarizeSession(s.id, s.completed_at ?? s.started_at, setsForSession(s.id)));
+      .map((s) => summarizeSession(s.id, s.started_at, s.completed_at, setsForSession(s.id)));
   }
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
@@ -412,14 +424,12 @@ export async function getWorkoutDayHistory(dayId: string, limit = 20): Promise<W
   if (error) return [];
   type Row = { id: string; started_at: string; completed_at: string | null; logged_sets: SetJoin[] | null };
   return ((data ?? []) as unknown as Row[]).map((s) =>
-    summarizeSession(s.id, s.completed_at ?? s.started_at, (s.logged_sets ?? []).map(toLoggedSetRow)),
+    summarizeSession(s.id, s.started_at, s.completed_at, (s.logged_sets ?? []).map(toLoggedSetRow)),
   );
 }
 
 /** Recent completed sessions, newest first — the training history list. */
-export async function getMySessions(limit = 12): Promise<
-  { id: string; day_id: string | null; day_name: string; at: string; sets: number; volume_kg: number; prs: number }[]
-> {
+export async function getMySessions(limit = 12): Promise<SessionSummaryRow[]> {
   if (isDemo) {
     const clientId = await viewingClientId();
     const cs = clientStore();
@@ -437,6 +447,11 @@ export async function getMySessions(limit = 12): Promise<
           sets: sets.length,
           volume_kg: Math.round(sets.reduce((sum, x) => sum + x.weight_kg * x.reps, 0)),
           prs: sets.filter((x) => x.is_pr).length,
+          load: loadOf(
+            sets.map((x) => ({ ...x, exercise: x.exercise_name })),
+            s.started_at,
+            s.completed_at,
+          ),
         };
       });
   }
@@ -445,13 +460,13 @@ export async function getMySessions(limit = 12): Promise<
   if (!auth.user) return [];
   const { data, error } = await supabase
     .from("logged_sessions")
-    .select("id, program_day_id, started_at, completed_at, day:program_days(name), logged_sets(weight_kg, reps, is_pr)")
+    .select(`id, program_day_id, started_at, completed_at, day:program_days(name), logged_sets(${LOAD_SET_SELECT}, is_pr)`)
     .eq("user_id", auth.user.id)
     .not("completed_at", "is", null)
     .order("completed_at", { ascending: false })
     .limit(limit);
   if (error) return [];
-  type SetRow = { weight_kg: number | null; reps: number | null; is_pr: boolean | null };
+  type SetRow = LoadSetJoin & { is_pr: boolean | null };
   type Row = {
     id: string; program_day_id: string | null; started_at: string; completed_at: string | null;
     day: { name: string } | null; logged_sets: SetRow[] | null;
@@ -466,8 +481,70 @@ export async function getMySessions(limit = 12): Promise<
       sets: sets.length,
       volume_kg: Math.round(sets.reduce((sum, x) => sum + (x.weight_kg ?? 0) * (x.reps ?? 0), 0)),
       prs: sets.filter((x) => x.is_pr).length,
+      load: loadOf(sets.map(toLoadSet), s.started_at, s.completed_at),
     };
   });
+}
+
+/**
+ * Week-over-week training load. Three windows over the same rows: the
+ * calendar week so far, the full previous one, and a rolling seven days;
+ * plus a 14-day daily series for the chart. Weeks start Monday, like
+ * adherence and the check-in.
+ */
+export async function getMyTrainingLoad(): Promise<TrainingLoadSummary> {
+  const days14 = Array.from({ length: 14 }, (_, i) => daysAgoIso(13 - i));
+  const entries = isDemo ? demoLoadEntries(await viewingClientId()) : await liveLoadEntries();
+  const today = isoDay();
+  const thisMonday = mondayOf(0);
+  const lastMonday = mondayOf(1);
+  const this_week = sumLoad(entries, thisMonday, today);
+  const last_week = sumLoad(entries, lastMonday, shiftIso(thisMonday, -1));
+  return {
+    this_week,
+    last_week,
+    last_7_days: sumLoad(entries, daysAgoIso(6), today),
+    trend: loadTrend(this_week, last_week),
+    daily: dailyLoad(entries, days14),
+  };
+}
+
+function shiftIso(day: string, days: number): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return isoDay(new Date(y, m - 1, d + days));
+}
+
+/** Completed sessions of the last three weeks as (day, score) pairs. */
+function demoLoadEntries(clientId: string | null): { day: string; load: number }[] {
+  const cs = clientStore();
+  const since = daysAgoIso(20);
+  return cs.sessions
+    .filter((s) => s.client_id === clientId && s.completed_at !== null && s.started_at.slice(0, 10) >= since)
+    .map((s) => ({
+      day: s.started_at.slice(0, 10),
+      load: loadOf(
+        cs.sets.filter((x) => x.session_id === s.id).map((x) => ({ ...x, exercise: x.exercise_name })),
+        s.started_at,
+        s.completed_at,
+      ).score,
+    }));
+}
+
+async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return [];
+  const { data } = await supabase
+    .from("logged_sessions")
+    .select(`started_at, completed_at, logged_sets(${LOAD_SET_SELECT})`)
+    .eq("user_id", auth.user.id)
+    .not("completed_at", "is", null)
+    .gte("started_at", `${daysAgoIso(20)}T00:00:00`);
+  type Row = { started_at: string; completed_at: string | null; logged_sets: LoadSetJoin[] | null };
+  return ((data ?? []) as unknown as Row[]).map((s) => ({
+    day: s.started_at.slice(0, 10),
+    load: loadOf((s.logged_sets ?? []).map(toLoadSet), s.started_at, s.completed_at).score,
+  }));
 }
 
 export async function getMyPrs(): Promise<ClientPrRow[]> {
@@ -820,11 +897,12 @@ export async function getToday(): Promise<ClientToday | null> {
   const clientId = await currentClientId();
   if (!clientId) return null;
 
-  const [days, nutrition, habits, checkIn] = await Promise.all([
+  const [days, nutrition, habits, checkIn, training_load] = await Promise.all([
     getMyProgramDays(),
     getMyDayNutrition(),
     getMyHabits(),
     getMyCheckInState(),
+    getMyTrainingLoad(),
   ]);
 
   const weekStart = mondayOf(0);
@@ -873,6 +951,7 @@ export async function getToday(): Promise<ClientToday | null> {
     check_in: checkIn,
     last_activity: activity.lastActivity,
     unread_from_coach: 0,
+    training_load,
   };
 }
 

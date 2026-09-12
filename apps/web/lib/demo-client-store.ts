@@ -106,7 +106,7 @@ type ClientStore = {
 
 // Bump whenever ClientStore changes shape — a store carried across a hot reload
 // that is missing a new field would crash every reader.
-const STORE_VERSION = 4;
+const STORE_VERSION = 5;
 
 const globalRef = globalThis as unknown as {
   __voinicClientStore?: ClientStore & { version?: number };
@@ -251,16 +251,17 @@ function seed(): ClientStore {
   };
 
   // Four prior weeks progressing ~2.5% a week, then this week's single session.
-  const plan: { daysAgo: number; day: keyof typeof template; scale: number }[] = [
-    { daysAgo: 31, day: "Legs A", scale: 0.9 },
-    { daysAgo: 28, day: "Push B", scale: 0.9 },
-    { daysAgo: 24, day: "Legs A", scale: 0.93 },
-    { daysAgo: 21, day: "Push B", scale: 0.93 },
-    { daysAgo: 17, day: "Legs A", scale: 0.96 },
-    { daysAgo: 14, day: "Push B", scale: 0.96 },
-    { daysAgo: 10, day: "Legs A", scale: 1.0 },
-    { daysAgo: 8, day: "Push B", scale: 1.0 },
-    { daysAgo: 5, day: "Legs A", scale: 1.02 },
+  // Minutes give the sessions a real length, so training load has a duration.
+  const plan: { daysAgo: number; day: keyof typeof template; scale: number; minutes: number }[] = [
+    { daysAgo: 31, day: "Legs A", scale: 0.9, minutes: 62 },
+    { daysAgo: 28, day: "Push B", scale: 0.9, minutes: 48 },
+    { daysAgo: 24, day: "Legs A", scale: 0.93, minutes: 66 },
+    { daysAgo: 21, day: "Push B", scale: 0.93, minutes: 51 },
+    { daysAgo: 17, day: "Legs A", scale: 0.96, minutes: 64 },
+    { daysAgo: 14, day: "Push B", scale: 0.96, minutes: 47 },
+    { daysAgo: 10, day: "Legs A", scale: 1.0, minutes: 70 },
+    { daysAgo: 8, day: "Push B", scale: 1.0, minutes: 53 },
+    { daysAgo: 5, day: "Legs A", scale: 1.02, minutes: 68 },
   ];
 
   const bestSoFar = new Map<string, number>();
@@ -272,7 +273,7 @@ function seed(): ClientStore {
       program_day_id: dayIdFor[entry.day] ?? null,
       day_name: entry.day,
       started_at: daysAgoStamp(entry.daysAgo),
-      completed_at: daysAgoStamp(entry.daysAgo),
+      completed_at: new Date(new Date(daysAgoStamp(entry.daysAgo)).getTime() + entry.minutes * 60_000).toISOString(),
     });
     for (const ex of template[entry.day]) {
       const weight = Math.round(ex.weight * entry.scale * 2) / 2;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getMyProgramGroups, getMySessions } from "@/lib/client-data";
 import { Card, EmptyState, PageTitle } from "@/components/ui";
 import { WorkoutDayList } from "@/components/workout-day-list";
+import { TrainingLoadBadge } from "@/components/training-load";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -67,18 +68,22 @@ export default async function WorkoutPage() {
                   </p>
                   <p className="mt-0.5 text-xs text-ink-faint">{timeAgo(s.at, locale)}</p>
                 </div>
-                <p className="shrink-0 text-right text-xs tabular-nums text-ink-soft">
-                  {s.sets} {t.clientApp.workoutDay.sets} ·{" "}
-                  {s.volume_kg.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB")} kg
-                  {s.prs > 0 ? (
-                    <>
-                      {" · "}
-                      <span className="font-semibold text-accent-ink">
-                        {s.prs} {t.clientApp.workoutDay.prs}
-                      </span>
-                    </>
-                  ) : null}
-                </p>
+                <div className="flex shrink-0 flex-col items-end gap-1 text-right text-xs tabular-nums text-ink-soft">
+                  <p>
+                    {s.load.duration_min !== null ? `${s.load.duration_min} min · ` : ""}
+                    {s.sets} {t.clientApp.workoutDay.sets} ·{" "}
+                    {s.volume_kg.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB")} kg
+                    {s.prs > 0 ? (
+                      <>
+                        {" · "}
+                        <span className="font-semibold text-accent-ink">
+                          {s.prs} {t.clientApp.workoutDay.prs}
+                        </span>
+                      </>
+                    ) : null}
+                  </p>
+                  <TrainingLoadBadge load={s.load} />
+                </div>
               </li>
             ))}
           </ul>

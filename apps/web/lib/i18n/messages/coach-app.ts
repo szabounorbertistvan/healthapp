@@ -28,6 +28,7 @@ const en = {
     thAdherence: "Adherence",
     thLastActivity: "Last activity",
     thSince: "Since",
+    thLoad: "Load (7d)",
     status: {
       invited: "invited",
       active: "active",
@@ -179,6 +180,7 @@ const ro: typeof en = {
     thAdherence: "Aderență",
     thLastActivity: "Ultima activitate",
     thSince: "Din",
+    thLoad: "Încărcare (7z)",
     status: {
       invited: "invitat",
       active: "activ",

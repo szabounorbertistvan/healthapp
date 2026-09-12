@@ -1,6 +1,8 @@
 import { demoClients, demoDashboard, demoPrograms, demoProgramDetail, demoNutritionPlans } from "./demo";
 import type { ExerciseSummary } from "@healthapp/shared";
 import type { ClientRow, DashboardRow } from "./types";
+import { clientStore, daysAgoIso } from "./demo-client-store";
+import { loadOf } from "./training-load";
 
 // Mutable demo backend.
 //
@@ -140,7 +142,26 @@ export function demoClientRows(): ClientRow[] {
     last_activity: c.last_activity,
     status: c.status,
     started_at: c.started_at,
+    load_7d: demoLoad7d(c.client_id),
   }));
+}
+
+/** Sum of the last seven days' session scores — only the demo client has sessions. */
+function demoLoad7d(clientId: string): number {
+  const cs = clientStore();
+  const since = daysAgoIso(6);
+  return cs.sessions
+    .filter((s) => s.client_id === clientId && s.completed_at !== null && s.started_at.slice(0, 10) >= since)
+    .reduce(
+      (sum, s) =>
+        sum +
+        loadOf(
+          cs.sets.filter((x) => x.session_id === s.id).map((x) => ({ ...x, exercise: x.exercise_name })),
+          s.started_at,
+          s.completed_at,
+        ).score,
+      0,
+    );
 }
 
 export function demoDashboardRows(): DashboardRow[] {

@@ -11,6 +11,7 @@ import {
   type StoredPlan, type StoredProgram,
 } from "./demo-store";
 import { effectiveTier, portionMacros, sumMacros } from "@healthapp/shared";
+import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import type {
   AdminStats, AdminUserRow, CheckInRow, ClientRow, ConversationRow, DashboardRow,
   MessageRow, NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
@@ -159,7 +160,7 @@ export async function getClients(): Promise<ClientRow[]> {
     .select("status, started_at, client:users!trainer_clients_client_id_fkey(id, full_name)")
     .in("status", ["invited", "active"]);
   if (error) throw error;
-  const dash = await getDashboard();
+  const [dash, load] = await Promise.all([getDashboard(), clientLoad7d(supabase)]);
   const byId = new Map(dash.map((d) => [d.client_id, d]));
   return (data ?? []).map((r) => {
     const client = r.client as unknown as { id: string; full_name: string } | null;
@@ -172,8 +173,34 @@ export async function getClients(): Promise<ClientRow[]> {
       last_activity: d?.last_activity ?? null,
       status: r.status,
       started_at: r.started_at,
+      load_7d: client ? (load.get(client.id) ?? 0) : 0,
     };
   });
+}
+
+/**
+ * Training load per client over the last seven days. One query: RLS
+ * (sessions_coach_read) already narrows it to the coach's active clients, so
+ * there is nothing to filter here beyond the window.
+ */
+async function clientLoad7d(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+): Promise<Map<string, number>> {
+  const since = new Date();
+  since.setDate(since.getDate() - 6);
+  since.setHours(0, 0, 0, 0);
+  const { data } = await supabase
+    .from("logged_sessions")
+    .select(`user_id, started_at, completed_at, logged_sets(${LOAD_SET_SELECT})`)
+    .not("completed_at", "is", null)
+    .gte("started_at", since.toISOString());
+  type Row = { user_id: string; started_at: string; completed_at: string | null; logged_sets: LoadSetJoin[] | null };
+  const totals = new Map<string, number>();
+  for (const s of (data ?? []) as unknown as Row[]) {
+    const score = loadOf((s.logged_sets ?? []).map(toLoadSet), s.started_at, s.completed_at).score;
+    totals.set(s.user_id, (totals.get(s.user_id) ?? 0) + score);
+  }
+  return totals;
 }
 
 export async function getCheckIns(): Promise<CheckInRow[]> {

@@ -77,7 +77,7 @@ export const demoDashboard: DashboardRow[] = [
 export const demoClients: ClientRow[] = demoDashboard.map((d) => ({
   client_id: d.client_id, full_name: d.full_name, signal: d.signal,
   overall_pct: d.overall_pct, last_activity: d.last_activity, status: "active",
-  started_at: daysAgo(120),
+  started_at: daysAgo(120), load_7d: 0,
 }));
 
 export const demoCheckIns: CheckInRow[] = [

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getWorkoutDay, getWorkoutDayHistory } from "@/lib/client-data";
 import { Card, PageTitle } from "@/components/ui";
 import { WorkoutHistory } from "@/components/workout-history";
+import { TrainingLoadCard } from "@/components/training-load";
+import { timeAgo } from "@/lib/format";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -17,12 +19,14 @@ export default async function WorkoutDayPage({
 }: {
   params: Promise<{ dayId: string }>;
 }) {
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   const { dayId } = await params;
   const [day, history] = await Promise.all([getWorkoutDay(dayId), getWorkoutDayHistory(dayId)]);
   if (!day) notFound();
   const d = t.clientApp.workoutDay;
   const inProgress = day.logged.length > 0;
+  // History is newest first, so [0] is the last time this day was trained.
+  const last = history[0] ?? null;
 
   return (
     <div className="space-y-4">
@@ -57,6 +61,8 @@ export default async function WorkoutDayPage({
           {inProgress ? d.continueWorkout : d.start}
         </Link>
       </Card>
+
+      {last ? <TrainingLoadCard load={last.load} when={timeAgo(last.at, locale)} /> : null}
 
       <div>
         <div className="mb-3 flex items-baseline justify-between">

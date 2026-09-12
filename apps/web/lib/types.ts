@@ -1,4 +1,4 @@
-import type { AdherenceResult, Macros } from "@healthapp/shared";
+import type { AdherenceResult, LoadTrend, Macros, TrainingLoad } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
 
 export type Signal = "on_track" | "needs_attention" | "at_risk";
@@ -61,6 +61,8 @@ export type ClientRow = {
   last_activity: string | null;
   status: "invited" | "active" | "ended";
   started_at: string | null;
+  /** Sum of session training-load scores over the last 7 days (0 when nothing was logged). */
+  load_7d: number;
 };
 
 export type CheckInRow = {
@@ -243,10 +245,37 @@ export type WorkoutHistorySession = {
   sets: number;
   volume_kg: number;
   prs: number;
+  /** Computed from the sets and timestamps by @healthapp/shared at read time. */
+  load: TrainingLoad;
   exercises: {
     name: string;
     sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">[];
   }[];
+};
+
+/** One row of the Training history list — a completed session in brief. */
+export type SessionSummaryRow = {
+  id: string;
+  day_id: string | null;
+  day_name: string;
+  at: string;
+  sets: number;
+  volume_kg: number;
+  prs: number;
+  load: TrainingLoad;
+};
+
+/** Week-over-week training load for the Today dashboard. */
+export type TrainingLoadSummary = {
+  /** Monday-to-today of the current calendar week. */
+  this_week: number;
+  /** The full previous calendar week. */
+  last_week: number;
+  /** Rolling: today and the six days before it. */
+  last_7_days: number;
+  trend: LoadTrend;
+  /** One bar per day, oldest first — the last 14 days. */
+  daily: { day: string; load: number }[];
 };
 
 export type ClientFoodEntry = {
@@ -314,4 +343,5 @@ export type ClientToday = {
   check_in: ClientCheckInState;
   last_activity: string | null;
   unread_from_coach: number;
+  training_load: TrainingLoadSummary;
 };

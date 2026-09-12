@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import type { WorkoutHistorySession } from "@/lib/types";
 import { Card } from "./ui";
+import { TrainingLoadBadge } from "./training-load";
 
 /**
  * Past sessions of one training day, newest first. The most recent one opens
@@ -57,8 +58,9 @@ export function WorkoutHistory({ sessions }: { sessions: WorkoutHistorySession[]
                   ) : null}
                 </p>
               </div>
-              <span className="shrink-0 text-xs font-semibold text-ink-faint">
-                {open ? d.hideSets : d.showSets}
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <TrainingLoadBadge load={session.load} showLabel={false} />
+                <span className="text-xs font-semibold text-ink-faint">{open ? d.hideSets : d.showSets}</span>
               </span>
             </button>
 

@@ -9,3 +9,4 @@ export * from "./billing";
 export * from "./sync";
 export * from "./exercises";
 export * from "./text";
+export * from "./training-load";

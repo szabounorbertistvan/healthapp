@@ -41,6 +41,7 @@ export default async function ClientsPage() {
                 <th className="px-4 py-3">{t.coachApp.clients.thStatus}</th>
                 <th className="px-4 py-3">{t.coachApp.clients.thSignal}</th>
                 <th className="px-4 py-3">{t.coachApp.clients.thAdherence}</th>
+                <th className="px-4 py-3">{t.coachApp.clients.thLoad}</th>
                 <th className="px-4 py-3">{t.coachApp.clients.thLastActivity}</th>
                 <th className="px-4 py-3">{t.coachApp.clients.thSince}</th>
               </tr>
@@ -54,6 +55,9 @@ export default async function ClientsPage() {
                     {c.status === "active" ? <SignalBadge signal={c.signal} /> : "—"}
                   </td>
                   <td className="px-4 py-3 tabular-nums">{c.status === "active" ? pct(c.overall_pct) : "—"}</td>
+                  <td className="px-4 py-3 tabular-nums">
+                    {c.status === "active" && c.load_7d > 0 ? c.load_7d : <span className="text-ink-faint">—</span>}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3 text-ink-soft">{timeAgo(c.last_activity, locale)}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
                     {c.started_at ? new Date(c.started_at).toLocaleDateString(locale) : "—"}

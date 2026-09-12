@@ -5,6 +5,7 @@ import { hasChosenSolo } from "@/lib/onboarding";
 import { Card, EmptyState, PageTitle, SignalBadge } from "@/components/ui";
 import { AdherenceMeter, MacroPanel } from "@/components/client-ui";
 import { HabitTicks } from "@/components/habit-ticks";
+import { TrainingLoadSummaryCard } from "@/components/training-load";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
@@ -66,6 +67,8 @@ export default async function TodayPage() {
           </Card>
         </div>
       </div>
+
+      <TrainingLoadSummaryCard summary={today.training_load} />
 
       {adherence.signal === "at_risk" ? (
         <Card className="border-risk-soft bg-risk-soft">
