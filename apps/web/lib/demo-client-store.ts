@@ -10,7 +10,11 @@
 // client is Maria D., "d1") but nothing else.
 //
 // Lives in the server process: lost on dev-server restart.
-import { estimated1RM, portionMacros, sumMacros, type ChallengeType, type Macros } from "@healthapp/shared";
+import {
+  estimated1RM, portionMacros, sumMacros,
+  type ChallengeType, type Macros, type PostPayload, type PostType, type PostVisibility,
+} from "@healthapp/shared";
+import { loadOf } from "./training-load";
 
 /** The demo client. Matches demoDashboard[0] so coach and client agree on who this is. */
 export const DEMO_CLIENT_ID = "d1";
@@ -119,6 +123,23 @@ export type StoredParticipant = {
   completed_at: string | null;
 };
 
+/** Mirror public.social_* — see the migration for the privacy rules. */
+export type StoredFollow = { id: string; follower_id: string; following_id: string; created_at: string };
+export type StoredPost = {
+  id: string;
+  user_id: string;
+  type: PostType;
+  text: string | null;
+  activity_id: string | null;
+  challenge_id: string | null;
+  payload: PostPayload;
+  visibility: PostVisibility;
+  created_at: string;
+  deleted_at: string | null;
+};
+export type StoredReaction = { id: string; post_id: string; user_id: string; type: "kudos"; created_at: string };
+export type StoredComment = { id: string; post_id: string; user_id: string; body: string; created_at: string };
+
 type ClientStore = {
   sessions: StoredSession[];
   sets: StoredLoggedSet[];
@@ -129,11 +150,15 @@ type ClientStore = {
   checkIns: StoredClientCheckIn[];
   challenges: StoredChallenge[];
   participants: StoredParticipant[];
+  follows: StoredFollow[];
+  posts: StoredPost[];
+  reactions: StoredReaction[];
+  comments: StoredComment[];
 };
 
 // Bump whenever ClientStore changes shape — a store carried across a hot reload
 // that is missing a new field would crash every reader.
-const STORE_VERSION = 7;
+const STORE_VERSION = 8;
 
 const globalRef = globalThis as unknown as {
   __voinicClientStore?: ClientStore & { version?: number };
@@ -510,5 +535,63 @@ function seed(): ClientStore {
     { id: newId("cp"), challenge_id: "ch4", user_id: "d2", joined_at: daysAgoStamp(9), completed_at: null },
   ];
 
-  return { sessions, sets, foodLogs, habits, habitLogs, measurements, checkIns, challenges, participants };
+  // Social: Maria follows Elena and Andrei; a few posts snapshotted from the
+  // sessions above, so the feed shows derived numbers. Elena's last session
+  // becomes a public workout post, Andrei writes text, Maria shares a PR.
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+  const follows: StoredFollow[] = [
+    { id: newId("fo"), follower_id: DEMO_CLIENT_ID, following_id: "d5", created_at: daysAgoStamp(20) },
+    { id: newId("fo"), follower_id: DEMO_CLIENT_ID, following_id: "d2", created_at: daysAgoStamp(18) },
+    { id: newId("fo"), follower_id: "d5", following_id: DEMO_CLIENT_ID, created_at: daysAgoStamp(19) },
+    { id: newId("fo"), follower_id: "d2", following_id: DEMO_CLIENT_ID, created_at: daysAgoStamp(9) },
+  ];
+  const elenaLast = sessions.find((s) => s.client_id === "d5")!;
+  const elenaSets = sets.filter((x) => x.session_id === elenaLast.id);
+  const elenaLoad = loadOf(elenaSets.map((x) => ({ ...x, exercise: x.exercise_name })), elenaLast.started_at, elenaLast.completed_at);
+  const mariaLast = sessions.find((s) => s.client_id === DEMO_CLIENT_ID)!;
+  const mariaPr = sets.find((x) => x.session_id === mariaLast.id && x.is_pr)!;
+  const posts: StoredPost[] = [
+    {
+      id: "po1", user_id: "d5", type: "workout", text: "Full A done — squats felt light today.",
+      activity_id: elenaLast.id, challenge_id: null, visibility: "public", created_at: hoursAgo(5), deleted_at: null,
+      payload: {
+        kind: "workout", name: elenaLast.day_name, date: elenaLast.started_at.slice(0, 10),
+        duration_min: elenaLoad.duration_min, exercises: elenaLoad.exercises, sets: elenaLoad.sets,
+        volume_kg: elenaLoad.volume_kg, load: elenaLoad.score, prs: 0,
+      },
+    },
+    {
+      id: "po2", user_id: "d2", type: "text", text: "Back in the gym after 3 weeks off. Slow and steady. 💪",
+      activity_id: null, challenge_id: null, payload: null, visibility: "followers", created_at: hoursAgo(28), deleted_at: null,
+    },
+    {
+      id: "po3", user_id: DEMO_CLIENT_ID, type: "pr", text: null, activity_id: mariaLast.id, challenge_id: null,
+      visibility: "public", created_at: daysAgoStamp(4), deleted_at: null,
+      payload: {
+        kind: "pr", exercise: mariaPr.exercise_name, weight_kg: mariaPr.weight_kg, reps: mariaPr.reps,
+        estimated_1rm: estimated1RM(mariaPr.weight_kg, mariaPr.reps), date: mariaLast.started_at.slice(0, 10),
+      },
+    },
+    {
+      id: "po4", user_id: "d5", type: "progress", text: "12 weeks of consistency! Strength base block done.",
+      activity_id: null, challenge_id: null, payload: { kind: "progress", photo_path: null },
+      visibility: "public", created_at: daysAgoStamp(6), deleted_at: null,
+    },
+  ];
+  const reactions: StoredReaction[] = [
+    { id: newId("re"), post_id: "po1", user_id: DEMO_CLIENT_ID, type: "kudos", created_at: hoursAgo(4) },
+    { id: newId("re"), post_id: "po1", user_id: "d2", type: "kudos", created_at: hoursAgo(3) },
+    { id: newId("re"), post_id: "po3", user_id: "d5", type: "kudos", created_at: daysAgoStamp(3) },
+    { id: newId("re"), post_id: "po3", user_id: "d2", type: "kudos", created_at: daysAgoStamp(3) },
+    { id: newId("re"), post_id: "po4", user_id: DEMO_CLIENT_ID, type: "kudos", created_at: daysAgoStamp(5) },
+  ];
+  const comments: StoredComment[] = [
+    { id: newId("co"), post_id: "po1", user_id: DEMO_CLIENT_ID, body: "Light?! 70 kg for 6 is not light 😄", created_at: hoursAgo(4) },
+    { id: newId("co"), post_id: "po3", user_id: "d5", body: "Huge. That 1RM is climbing fast.", created_at: daysAgoStamp(3) },
+  ];
+
+  return {
+    sessions, sets, foodLogs, habits, habitLogs, measurements, checkIns, challenges, participants,
+    follows, posts, reactions, comments,
+  };
 }

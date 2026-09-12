@@ -1,5 +1,6 @@
 import type {
-  AdherenceResult, ChallengeStatus, ChallengeType, LoadTrend, Macros, TrainingLoad,
+  AdherenceResult, ChallengeStatus, ChallengeType, LoadTrend, Macros, PostPayload, PostType,
+  PostVisibility, TrainingLoad,
 } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
 
@@ -319,6 +320,73 @@ export type ChallengeDetail = ChallengeCard & {
 export type CoachChallengeRow = {
   challenge: ChallengeCard;
   clients: { client_id: string; name: string; progress: number; pct: number; completed: boolean }[];
+};
+
+// ---------- social ----------
+
+/** One feed item, author and counts folded in — served by social_feed(). */
+export type FeedPost = {
+  id: string;
+  user_id: string;
+  author_name: string;
+  author_avatar: string | null;
+  type: PostType;
+  text: string | null;
+  payload: PostPayload;
+  visibility: PostVisibility;
+  created_at: string;
+  activity_id: string | null;
+  challenge_id: string | null;
+  kudos_count: number;
+  comment_count: number;
+  my_kudos: boolean;
+  /** Who gave the first kudos, for "Norbert and 13 others". */
+  kudos_first: string | null;
+  mine: boolean;
+};
+
+export type FeedPage = { items: FeedPost[]; next_cursor: string | null };
+
+export type PostComment = {
+  id: string;
+  user_id: string;
+  author_name: string;
+  author_avatar: string | null;
+  body: string;
+  created_at: string;
+  mine: boolean;
+};
+
+/** A person's public face: name, follow counts and three aggregate numbers. Nothing private. */
+export type SocialProfile = {
+  id: string;
+  name: string;
+  username: string | null;
+  avatar_url: string | null;
+  followers: number;
+  following: number;
+  workouts: number;
+  prs: number;
+  challenges: number;
+  is_following: boolean;
+  follows_me: boolean;
+  me: boolean;
+};
+
+export type PersonRow = { id: string; name: string; username: string | null; avatar_url: string | null; is_following: boolean };
+
+/** What the "Workout completed" screen offers to share — aggregates plus the PRs of that session. */
+export type ShareableSession = {
+  session_id: string;
+  name: string;
+  date: string;
+  duration_min: number | null;
+  exercises: number;
+  sets: number;
+  volume_kg: number;
+  load: number;
+  prs: { set_id: string; exercise: string; weight_kg: number; reps: number; estimated_1rm: number; shared: boolean }[];
+  already_shared: boolean;
 };
 
 export type ClientFoodEntry = {

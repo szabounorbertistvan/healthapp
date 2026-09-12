@@ -140,7 +140,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
           startTransition(async () => {
             const result = await finishWorkout(day.day_id);
             if (!result.ok) setError(result.message ?? t.clientWidgets.setLogger.couldNotFinish);
-            else router.push("/today");
+            // The done screen offers to share the session; without an id it falls back to Today.
+            else router.push(result.sessionId ? `/workout/${day.day_id}/done?session=${result.sessionId}` : "/today");
           })
         }
         className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-40"

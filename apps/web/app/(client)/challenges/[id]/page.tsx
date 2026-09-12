@@ -6,6 +6,7 @@ import {
   ChallengeProgressBar, ChallengeStatusBadge, JoinLeaveButton, Leaderboard,
 } from "@/components/challenges";
 import { ChallengeDeadline, ChallengeNumbers } from "@/components/challenge-detail";
+import { ShareChallenge } from "@/components/share-challenge";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -36,7 +37,10 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
             <ChallengeProgressBar pct={c.joined ? c.pct : 0} completed={completed} height="h-3" />
           </div>
           {completed ? (
-            <p className="mt-3 text-base font-bold text-accent-ink">{ch.completed}</p>
+            <>
+              <p className="mt-3 text-base font-bold text-accent-ink">{ch.completed}</p>
+              {c.joined ? <div className="mt-3"><ShareChallenge challengeId={c.id} /></div> : null}
+            </>
           ) : !c.joined ? (
             <p className="mt-2 text-xs text-ink-faint">{ch.notJoined}</p>
           ) : null}

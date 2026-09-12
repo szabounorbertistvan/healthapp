@@ -76,8 +76,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
       <TrainingLoadSummaryCard summary={today.training_load} />
 
-      {/* Challenges live off the tab bar, so Today carries the way in. */}
-      <Link href="/challenges" className="block">
+      {/* Challenges and the feed live off the tab bar, so Today carries the way in. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+      <Link href="/challenges" className="block min-w-0">
         <Card className="flex items-center justify-between gap-3 hover:border-accent">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
@@ -95,6 +96,16 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           <span className="shrink-0 text-lg text-ink-faint">›</span>
         </Card>
       </Link>
+      <Link href="/feed" className="block min-w-0">
+        <Card className="flex items-center justify-between gap-3 hover:border-accent">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.social.feed}</p>
+            <p className="mt-1 truncate text-sm text-ink-soft">{t.common.social.emptyHint}</p>
+          </div>
+          <span className="shrink-0 text-lg text-ink-faint">›</span>
+        </Card>
+      </Link>
+      </div>
 
       {adherence.signal === "at_risk" ? (
         <Card className="border-risk-soft bg-risk-soft">

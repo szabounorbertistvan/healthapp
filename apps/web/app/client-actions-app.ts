@@ -221,7 +221,8 @@ async function openSession(
   return raced ? (raced.id as string) : { ok: false, message: error.message };
 }
 
-export async function finishWorkout(dayId: string): Promise<ActionResult> {
+/** Completes today's session and hands back its id, so the done screen can offer to share it. */
+export async function finishWorkout(dayId: string): Promise<ActionResult & { sessionId?: string }> {
   if (isDemo) {
     const clientId = await viewingClientId();
     const cs = clientStore();
@@ -232,21 +233,22 @@ export async function finishWorkout(dayId: string): Promise<ActionResult> {
     session.completed_at = new Date().toISOString();
     revalidatePath("/today");
     revalidatePath("/workout");
-    return { ok: true, demo: true };
+    return { ok: true, demo: true, sessionId: session.id };
   }
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: "Not signed in" };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("logged_sessions")
     .update({ completed_at: new Date().toISOString() })
     .eq("user_id", auth.user.id)
     .eq("program_day_id", dayId)
-    .is("completed_at", null);
+    .is("completed_at", null)
+    .select("id");
   if (error) return { ok: false, message: error.message };
   revalidatePath("/today");
   revalidatePath("/workout");
-  return { ok: true };
+  return { ok: true, sessionId: data?.[0]?.id };
 }
 
 export async function logFood(input: {

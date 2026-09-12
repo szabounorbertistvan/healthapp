@@ -12,6 +12,7 @@ const items: { href: string; key: keyof Dictionary["common"]["nav"] }[] = [
   { href: "/progress", key: "progress" },
   { href: "/check-in", key: "checkIn" },
   { href: "/challenges", key: "challenges" },
+  { href: "/feed", key: "feed" },
   { href: "/coach", key: "coach" },
   { href: "/billing", key: "billing" },
 ];
