@@ -1,16 +1,16 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import type { PostVisibility } from "@healthapp/shared";
-import { kudosSummary, POST_TEXT_MAX, COMMENT_MAX } from "@healthapp/shared";
+import { kudosSummary, toggleKudosState, POST_TEXT_MAX, COMMENT_MAX } from "@healthapp/shared";
 import {
-  addComment, createProgressPost, createTextPost, deleteComment, deletePost, follow, toggleKudos, unfollow,
+  addComment, createProgressPost, createTextPost, deleteComment, deletePost, follow, loadKudos, toggleKudos, unfollow,
 } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { parseDay } from "@/lib/week";
-import type { FeedPost, PostComment, ShareableSession } from "@/lib/types";
+import type { FeedPost, KudosGiver, PostComment, ShareableSession } from "@/lib/types";
 import { Card } from "./ui";
 
 // ---------- small pieces ----------
@@ -129,19 +129,6 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const s = t.common.social;
-  const [state, setOptimistic] = useOptimistic(
-    { my_kudos: post.my_kudos, kudos_count: post.kudos_count },
-    (cur, next: boolean) => ({ my_kudos: next, kudos_count: cur.kudos_count + (next ? 1 : -1) }),
-  );
-  const summary = kudosSummary(state.kudos_count, post.kudos_first);
-  const kudosLine =
-    summary.first === null
-      ? null
-      : summary.others > 1
-        ? fill(s.kudosBy, { name: summary.first, others: summary.others })
-        : summary.others === 1
-          ? fill(s.kudosByTwo, { name: summary.first })
-          : fill(s.kudosByOne, { name: summary.first });
 
   return (
     <Card>
@@ -162,25 +149,11 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
 
       <PostBody post={post} />
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-3 text-xs">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              setOptimistic(!state.my_kudos);
-              await toggleKudos(post.id);
-              router.refresh();
-            })
-          }
-          className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-semibold ${state.my_kudos ? "bg-accent-soft text-accent-ink" : "text-ink-soft hover:bg-bg"}`}
-        >
-          🔥 <span className="tabular-nums">{state.kudos_count}</span> <span className="hidden sm:inline">{s.kudos}</span>
-        </button>
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3 text-xs">
+        <Kudos post={post} />
         <Link href={`/feed/${post.id}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-semibold text-ink-soft hover:bg-bg">
           💬 <span className="tabular-nums">{post.comment_count}</span> <span className="hidden sm:inline">{s.comments}</span>
         </Link>
-        {kudosLine ? <span className="ml-auto truncate text-ink-faint">{kudosLine}</span> : null}
         {post.mine && detail ? (
           <button
             type="button"
@@ -192,13 +165,191 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
                 router.refresh();
               })
             }
-            className="ml-auto text-ink-faint hover:text-risk"
+            className="order-last ml-auto text-ink-faint hover:text-risk"
           >
             {s.deletePost}
           </button>
         ) : null}
       </div>
     </Card>
+  );
+}
+
+// ---------- kudos ----------
+
+/**
+ * The give/take-back button, the count (opens who gave it) and the
+ * "Norbert, Maria and 3 others" line. Rendered as a fragment so the pieces
+ * sit in the card's action row. The flip is optimistic: useOptimistic shows
+ * the new state at once and falls back to the server's row when the
+ * transition ends, so a failed action rolls back by itself — the only extra
+ * work is saying so, quietly, under the row.
+ */
+function Kudos({ post }: { post: FeedPost }) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [listOpen, setListOpen] = useState(false);
+  const s = t.common.social;
+  const [state, flip] = useOptimistic<{ my_kudos: boolean; kudos_count: number }, void>(
+    { my_kudos: post.my_kudos, kudos_count: post.kudos_count },
+    (cur) => toggleKudosState(cur),
+  );
+
+  // The names travel with the row; when the viewer's own flip is in flight the
+  // count moves but the names do not — kudosSummary keeps them consistent.
+  const summary = kudosSummary(state.kudos_count, post.kudos_names);
+  const line = (() => {
+    const { first, second, others } = summary;
+    if (first === null) return null;
+    if (second === null) {
+      if (others === 0) return fill(s.kudosByOne, { name: first });
+      if (others === 1) return fill(s.kudosByOneAndOne, { name: first });
+      return fill(s.kudosByOneAndOthers, { name: first, others });
+    }
+    if (others === 0) return fill(s.kudosByTwo, { name: first, second });
+    if (others === 1) return fill(s.kudosByThree, { name: first, second });
+    return fill(s.kudosBy, { name: first, second, others });
+  })();
+
+  function toggle() {
+    if (pending) return; // one request at a time per button; a second tap waits for the row
+    setError(null);
+    startTransition(async () => {
+      flip();
+      const r = await toggleKudos(post.id);
+      if (!r.ok) {
+        setError(r.message ?? s.kudosError);
+        return; // no refresh: the optimistic state drops back to the row as it was
+      }
+      router.refresh();
+    });
+  }
+
+  const openList = () => { if (state.kudos_count > 0) setListOpen(true); };
+
+  return (
+    <>
+      <span className="inline-flex items-center">
+        {post.mine ? (
+          <span className="inline-flex min-h-9 items-center gap-1.5 px-2 font-semibold text-ink-soft" aria-hidden>🔥 {s.kudos}</span>
+        ) : (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-pressed={state.my_kudos}
+            aria-busy={pending}
+            title={state.my_kudos ? s.removeKudos : s.kudos}
+            className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-semibold transition-colors ${
+              state.my_kudos ? "bg-accent-soft text-accent-ink" : "text-ink-soft hover:bg-bg"
+            } ${pending ? "opacity-70" : ""}`}
+          >
+            🔥 <span>{s.kudos}</span>
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={openList}
+          disabled={state.kudos_count === 0}
+          aria-label={fill(s.kudosCount, { count: state.kudos_count })}
+          title={s.seeKudos}
+          className={`min-h-9 rounded-lg px-1.5 font-semibold tabular-nums ${state.kudos_count > 0 ? "text-ink hover:bg-bg" : "text-ink-faint"}`}
+        >
+          {state.kudos_count}
+        </button>
+      </span>
+      {line ? (
+        <button type="button" onClick={openList} className="order-last ml-auto min-w-0 truncate text-left text-ink-faint hover:text-ink">
+          {line}
+        </button>
+      ) : null}
+      {error ? <p role="status" className="order-last basis-full text-[11px] text-risk">{error}</p> : null}
+      {listOpen ? <KudosDialog postId={post.id} onClose={() => setListOpen(false)} /> : null}
+    </>
+  );
+}
+
+/** Who gave kudos — a native <dialog>, first page on open, "Load more" for the rest. */
+function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void }) {
+  const { t } = useI18n();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [items, setItems] = useState<KudosGiver[] | null>(null);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const s = t.common.social;
+
+  useEffect(() => {
+    ref.current?.showModal();
+    let alive = true;
+    loadKudos(postId).then((page) => {
+      if (!alive) return;
+      setItems(page.items);
+      setCursor(page.next_cursor);
+    });
+    return () => { alive = false; };
+  }, [postId]);
+
+  function more() {
+    if (!cursor) return;
+    startTransition(async () => {
+      const page = await loadKudos(postId, cursor);
+      setItems((prev) => [...(prev ?? []), ...page.items]);
+      setCursor(page.next_cursor);
+    });
+  }
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onClose}
+      onClick={(e) => { if (e.target === e.currentTarget) ref.current?.close(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); ref.current?.close(); } }}
+      aria-label={s.kudos}
+      className="app-dialog m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-line bg-bg p-0 text-ink shadow-2xl"
+    >
+      <div className="p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="font-bold">🔥 {s.kudos}</p>
+          <button
+            type="button"
+            onClick={() => ref.current?.close()}
+            aria-label={t.common.actions.close}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft hover:bg-surface hover:text-ink"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+        {items === null ? (
+          <p className="py-6 text-center text-sm text-ink-faint">{t.common.actions.loading}</p>
+        ) : items.length === 0 ? (
+          <p className="py-6 text-center text-sm text-ink-faint">{s.noKudosYet}</p>
+        ) : (
+          <ul className="max-h-[60vh] space-y-1 overflow-y-auto">
+            {items.map((k) => (
+              <li key={k.user_id}>
+                <Link href={`/people/${k.user_id}`} className="flex min-h-11 items-center gap-3 rounded-lg px-1 hover:bg-surface">
+                  <Avatar name={k.name} url={k.avatar_url} size="h-8 w-8" />
+                  <span className="min-w-0 truncate text-sm font-semibold">{k.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        {cursor ? (
+          <button
+            type="button"
+            onClick={more}
+            disabled={pending}
+            className="mt-3 min-h-11 w-full rounded-lg border border-line text-sm font-semibold text-ink-soft hover:border-accent disabled:opacity-50"
+          >
+            {s.loadMore}
+          </button>
+        ) : null}
+      </div>
+    </dialog>
   );
 }
 

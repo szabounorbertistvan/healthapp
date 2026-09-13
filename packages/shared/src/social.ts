@@ -159,8 +159,36 @@ export function validateComment(input: string): string | null {
 
 // ---------- kudos ----------
 
-/** "Norbert and 13 others" — the count and, when known, who gave the first one. */
-export function kudosSummary(count: number, firstName: string | null): { count: number; others: number; first: string | null } {
-  if (count <= 0 || !firstName) return { count, others: 0, first: null };
-  return { count, others: count - 1, first: firstName };
+export const KUDOS_PAGE_SIZE = 20;
+
+/**
+ * Who may give kudos: anyone who can see the post, except its author. The
+ * SQL policy (reactions_insert → can_kudos_post) and the server action both
+ * apply this, so a self-kudos is refused before it reaches the database.
+ */
+export type KudosError = "not_visible" | "self";
+
+export function canKudos(post: PostLike, viewerId: string, follows: ReadonlySet<string>): KudosError | null {
+  if (!canSeePost(post, viewerId, follows)) return "not_visible";
+  if (post.user_id === viewerId) return "self";
+  return null;
+}
+
+/**
+ * "Norbert, Maria and 12 others" — the count plus the first one or two names
+ * the feed row already carries (kudos_names), so the card never asks for more.
+ */
+export function kudosSummary(
+  count: number,
+  names: readonly string[],
+): { count: number; others: number; first: string | null; second: string | null } {
+  const [first = null, second = null] = names.filter((n) => n.trim().length > 0).slice(0, 2);
+  if (count <= 0 || first === null) return { count, others: 0, first: null, second: null };
+  const shown = second !== null && count >= 2 ? second : null;
+  return { count, others: Math.max(0, count - (shown === null ? 1 : 2)), first, second: shown };
+}
+
+/** The flip the card shows before the server answers. Applying it twice restores the input. */
+export function toggleKudosState(state: { my_kudos: boolean; kudos_count: number }): { my_kudos: boolean; kudos_count: number } {
+  return { my_kudos: !state.my_kudos, kudos_count: Math.max(0, state.kudos_count + (state.my_kudos ? -1 : 1)) };
 }

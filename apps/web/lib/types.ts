@@ -340,12 +340,22 @@ export type FeedPost = {
   kudos_count: number;
   comment_count: number;
   my_kudos: boolean;
-  /** Who gave the first kudos, for "Norbert and 13 others". */
-  kudos_first: string | null;
+  /** The first one or two givers, for "Norbert, Maria and 12 others". */
+  kudos_names: string[];
   mine: boolean;
 };
 
 export type FeedPage = { items: FeedPost[]; next_cursor: string | null };
+
+/** One row of "who gave kudos" — served by social_post_kudos(). */
+export type KudosGiver = {
+  user_id: string;
+  name: string;
+  avatar_url: string | null;
+  created_at: string;
+};
+
+export type KudosPage = { items: KudosGiver[]; next_cursor: string | null };
 
 export type PostComment = {
   id: string;

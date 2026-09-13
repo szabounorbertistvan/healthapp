@@ -5,6 +5,7 @@
 import { revalidatePath } from "next/cache";
 import {
   POST_VISIBILITIES,
+  canKudos,
   payloadIsSafe,
   validateComment,
   validateFollow,
@@ -21,8 +22,9 @@ import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { viewingClientId } from "@/lib/view-mode";
 import { clientStore, newId } from "@/lib/demo-client-store";
-import { getShareableSession } from "@/lib/social-data";
+import { getPostKudos, getShareableSession } from "@/lib/social-data";
 import { getChallenge } from "@/lib/challenges-data";
+import type { KudosPage } from "@/lib/types";
 import type { ActionResult } from "./actions";
 
 export type PostResult = ActionResult & { postId?: string };
@@ -215,11 +217,25 @@ export async function deletePost(postId: string): Promise<ActionResult> {
 
 // ---------- kudos ----------
 
-export async function toggleKudos(postId: string): Promise<ActionResult & { kudos?: boolean }> {
+export type KudosResult = ActionResult & { kudos?: boolean };
+
+/**
+ * Give kudos, or take it back if already given. `kudos` in the result is the
+ * state the row is in afterwards, so the card can settle on the truth when
+ * two taps race. The giver is always the signed-in user; the post must be
+ * visible to them and not their own (canKudos here, can_kudos_post in RLS).
+ */
+export async function toggleKudos(postId: string): Promise<KudosResult> {
+  const { t } = await getI18n();
   const uid = await userId();
   if (!uid) return { ok: false, message: "Not signed in" };
   if (isDemo) {
     const cs = clientStore();
+    const post = cs.posts.find((p) => p.id === postId);
+    const follows = new Set(cs.follows.filter((f) => f.follower_id === uid).map((f) => f.following_id));
+    const err = post ? canKudos(post, uid, follows) : "not_visible";
+    if (err === "self") return { ok: false, message: t.common.social.cannotKudosSelf };
+    if (err !== null) return { ok: false, message: t.common.social.postNotFound };
     const i = cs.reactions.findIndex((r) => r.post_id === postId && r.user_id === uid);
     if (i >= 0) cs.reactions.splice(i, 1);
     else cs.reactions.push({ id: newId("re"), post_id: postId, user_id: uid, type: "kudos", created_at: new Date().toISOString() });
@@ -227,13 +243,32 @@ export async function toggleKudos(postId: string): Promise<ActionResult & { kudo
     return { ok: true, demo: true, kudos: i < 0 };
   }
   const supabase = await supabaseServer();
-  const { data: existing } = await supabase.from("social_reactions").select("id").eq("post_id", postId).eq("user_id", uid).maybeSingle();
-  const { error } = existing
-    ? await supabase.from("social_reactions").delete().eq("id", existing.id)
-    : await supabase.from("social_reactions").insert({ post_id: postId, user_id: uid, type: "kudos" });
-  if (error) return { ok: false, message: error.message };
+  // posts_select is can_see_post(): a post the user may not see (or a deleted one) reads as absent.
+  const { data: post } = await supabase.from("social_posts").select("user_id").eq("id", postId).maybeSingle();
+  if (!post) return { ok: false, message: t.common.social.postNotFound };
+  if (post.user_id === uid) return { ok: false, message: t.common.social.cannotKudosSelf };
+
+  const { data: existing } = await supabase.from("social_reactions").select("id").eq("post_id", postId).eq("user_id", uid).eq("type", "kudos").maybeSingle();
+  if (existing) {
+    // A zero-row delete means another tap already removed it — the end state is the same.
+    const { error } = await supabase.from("social_reactions").delete().eq("id", existing.id).eq("user_id", uid);
+    if (error) return { ok: false, message: error.message };
+    touched([`/feed/${postId}`]);
+    return { ok: true, kudos: false };
+  }
+  const { error } = await supabase.from("social_reactions").insert({ post_id: postId, user_id: uid, type: "kudos" });
+  if (error && error.code !== "23505") {
+    // 42501 = RLS refused it (visibility changed or self-kudos); anything else is a real failure.
+    return { ok: false, message: error.code === "42501" ? t.common.social.postNotFound : error.message };
+  }
+  // 23505 = the unique (post_id, user_id, type): a racing tap already gave it. Same end state.
   touched([`/feed/${postId}`]);
-  return { ok: true, kudos: !existing };
+  return { ok: true, kudos: true };
+}
+
+/** One page of who gave kudos, for the list behind the count. A read, but on demand from the card. */
+export async function loadKudos(postId: string, before: string | null = null): Promise<KudosPage> {
+  return getPostKudos(postId, before);
 }
 
 // ---------- comments ----------

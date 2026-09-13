@@ -5,7 +5,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(39);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -96,18 +96,96 @@ select is((select text from public.social_posts where id = '90000000-0000-0000-0
   'public post', 'updating another user''s post changes nothing (RLS filters it out)');
 
 -- ---------- kudos ----------
+-- Alex (follows Maria) on Maria's public post
 select lives_ok($$
   insert into public.social_reactions (post_id, user_id)
   values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a')
-$$, 'kudos on a visible post');
+$$, 'kudos on a visible public post');
 select throws_ok($$
   insert into public.social_reactions (post_id, user_id)
   values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a')
 $$, '23505', null, 'duplicate kudos is refused');
+select lives_ok($$
+  insert into public.social_reactions (post_id, user_id)
+  values ('90000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-00000000000a')
+$$, 'a follower gives kudos on a followers-only post');
 select throws_ok($$
   insert into public.social_reactions (post_id, user_id)
   values ('90000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-00000000000a')
-$$, '42501', null, 'kudos on a post you cannot see is refused');
+$$, '42501', null, 'kudos on a private post you cannot see is refused');
+select throws_ok($$
+  insert into public.social_reactions (post_id, user_id)
+  values ('90000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-00000000000c')
+$$, '42501', null, 'nobody can give kudos in someone else''s name');
+select is((select kudos_count from public.social_feed(20, null, null) where id = '90000000-0000-0000-0000-000000000001'),
+  1, 'the feed counts the kudos');
+select is((select my_kudos from public.social_feed(20, null, null) where id = '90000000-0000-0000-0000-000000000001'),
+  true, 'the feed knows the caller gave it');
+select is((select kudos_names from public.social_feed(20, null, null) where id = '90000000-0000-0000-0000-000000000001'),
+  array['alex'], 'the feed names the giver');
+select is((select count(*)::int from public.social_post_kudos('90000000-0000-0000-0000-000000000001', 20, null)),
+  1, 'the kudos list shows who gave it');
+
+-- a stranger: public yes, followers-only no
+select pg_temp.authenticate_as('c0000000-0000-0000-0000-00000000000c');
+select throws_ok($$
+  insert into public.social_reactions (post_id, user_id)
+  values ('90000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-00000000000c')
+$$, '42501', null, 'a non-follower cannot give kudos on a followers-only post');
+select lives_ok($$
+  insert into public.social_reactions (post_id, user_id)
+  values ('90000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-00000000000c')
+$$, 'a stranger gives kudos on a public post');
+select is((select count(*)::int from public.social_post_kudos('90000000-0000-0000-0000-000000000002', 20, null)),
+  0, 'the kudos list of a post you cannot see is empty');
+select is((select kudos_names from public.social_feed(20, null, 'b0000000-0000-0000-0000-00000000000b') where id = '90000000-0000-0000-0000-000000000001'),
+  array['alex', 'stranger'], 'the feed names the first two givers in order');
+
+-- the author: no self-kudos, but the notification arrived
+select pg_temp.authenticate_as('b0000000-0000-0000-0000-00000000000b');
+select throws_ok($$
+  insert into public.social_reactions (post_id, user_id)
+  values ('90000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-00000000000b')
+$$, '42501', null, 'self-kudos is refused');
+select is((select count(*)::int from public.notifications
+           where user_id = 'b0000000-0000-0000-0000-00000000000b' and category = 'new_kudos'
+             and payload ->> 'post_id' = '90000000-0000-0000-0000-000000000001'),
+  2, 'the author gets one new_kudos notification per giver');
+
+-- taking it back, and the deleted post
+select pg_temp.authenticate_as('c0000000-0000-0000-0000-00000000000c');
+delete from public.social_reactions
+  where post_id = '90000000-0000-0000-0000-000000000001' and user_id = 'a0000000-0000-0000-0000-00000000000a';
+select is((select count(*)::int from public.social_reactions where post_id = '90000000-0000-0000-0000-000000000001'),
+  2, 'another user cannot remove your kudos');
+delete from public.social_reactions
+  where post_id = '90000000-0000-0000-0000-000000000001' and user_id = 'c0000000-0000-0000-0000-00000000000c';
+select is((select kudos_count from public.social_feed(20, null, 'b0000000-0000-0000-0000-00000000000b') where id = '90000000-0000-0000-0000-000000000001'),
+  1, 'removing your kudos drops the count');
+select lives_ok($$
+  insert into public.social_reactions (post_id, user_id)
+  values ('90000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-00000000000c')
+$$, 'kudos can be given again after being taken back');
+select pg_temp.authenticate_as('b0000000-0000-0000-0000-00000000000b');
+select is((select count(*)::int from public.notifications
+           where user_id = 'b0000000-0000-0000-0000-00000000000b' and category = 'new_kudos'
+             and payload ->> 'post_id' = '90000000-0000-0000-0000-000000000001'),
+  2, 'giving kudos again does not notify the author twice');
+select pg_temp.authenticate_as('b0000000-0000-0000-0000-00000000000b');
+update public.social_posts set deleted_at = now() where id = '90000000-0000-0000-0000-000000000001';
+select pg_temp.authenticate_as('a0000000-0000-0000-0000-00000000000a');
+delete from public.social_reactions
+  where post_id = '90000000-0000-0000-0000-000000000001' and user_id = 'a0000000-0000-0000-0000-00000000000a';
+select throws_ok($$
+  insert into public.social_reactions (post_id, user_id)
+  values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a')
+$$, '42501', null, 'kudos on a deleted post is refused');
+select is((select count(*)::int from public.social_post_kudos('90000000-0000-0000-0000-000000000001', 20, null)),
+  0, 'the kudos list of a deleted post is empty');
+-- restore the post (as its author) for the comment tests below
+select pg_temp.authenticate_as('b0000000-0000-0000-0000-00000000000b');
+update public.social_posts set deleted_at = null where id = '90000000-0000-0000-0000-000000000001';
+select pg_temp.authenticate_as('a0000000-0000-0000-0000-00000000000a');
 
 -- ---------- comments ----------
 insert into public.social_comments (id, post_id, user_id, body) values

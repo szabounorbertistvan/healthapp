@@ -6,6 +6,7 @@
 import "server-only";
 import {
   FEED_PAGE_SIZE,
+  KUDOS_PAGE_SIZE,
   canSeePost,
   feedPage,
   estimated1RM,
@@ -17,7 +18,7 @@ import { viewingClientId } from "./view-mode";
 import { clientStore, type StoredPost } from "./demo-client-store";
 import { loadOf } from "./training-load";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./client-data";
-import type { FeedPage, FeedPost, PersonRow, PostComment, ShareableSession, SocialProfile } from "./types";
+import type { FeedPage, FeedPost, KudosGiver, KudosPage, PersonRow, PostComment, ShareableSession, SocialProfile } from "./types";
 
 async function me(): Promise<string | null> {
   if (isDemo) return viewingClientId();
@@ -54,7 +55,7 @@ function demoFeedPost(p: StoredPost, viewer: string): FeedPost {
     kudos_count: kudos.length,
     comment_count: cs.comments.filter((c) => c.post_id === p.id).length,
     my_kudos: kudos.some((r) => r.user_id === viewer),
-    kudos_first: kudos[0] ? demoName(kudos[0].user_id) : null,
+    kudos_names: kudos.slice(0, 2).map((r) => demoName(r.user_id)),
     mine: p.user_id === viewer,
   };
 }
@@ -123,6 +124,35 @@ export async function getPost(id: string): Promise<{ post: FeedPost; comments: P
     post: { ...found, payload: found.payload ?? null, mine: found.user_id === viewer },
     comments: ((comments ?? []) as CommentRow[]).map((c) => ({ ...c, mine: c.user_id === viewer })),
   };
+}
+
+// ---------- kudos ----------
+
+/**
+ * Who gave kudos on a post, newest first, one page. Empty — not an error —
+ * for a post the viewer may not see: live, social_post_kudos() returns no
+ * rows; demo, canSeePost() says no. The card's count is the only way in.
+ */
+export async function getPostKudos(postId: string, before: string | null = null): Promise<KudosPage> {
+  const viewer = await me();
+  if (!viewer) return { items: [], next_cursor: null };
+  if (isDemo) {
+    const cs = clientStore();
+    const p = cs.posts.find((x) => x.id === postId);
+    if (!p || !canSeePost(p, viewer, demoFollows(viewer))) return { items: [], next_cursor: null };
+    const all = cs.reactions
+      .filter((r) => r.post_id === postId && (!before || r.created_at < before))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
+    const items = all.slice(0, KUDOS_PAGE_SIZE).map((r) => ({
+      user_id: r.user_id, name: demoName(r.user_id), avatar_url: null, created_at: r.created_at,
+    }));
+    return { items, next_cursor: all.length > items.length ? items[items.length - 1]!.created_at : null };
+  }
+  const supabase = await supabaseServer();
+  const { data } = await supabase.rpc("social_post_kudos", { p_post: postId, p_limit: KUDOS_PAGE_SIZE + 1, p_before: before });
+  const rows = ((data ?? []) as (KudosGiver & { username: string | null })[]).map(({ username: _u, ...r }) => r);
+  const items = rows.slice(0, KUDOS_PAGE_SIZE);
+  return { items, next_cursor: rows.length > KUDOS_PAGE_SIZE ? items[items.length - 1]!.created_at : null };
 }
 
 // ---------- people ----------
