@@ -29,7 +29,8 @@ import { getPostKudos, getShareableSession } from "@/lib/social-data";
 import { getChallenge } from "@/lib/challenges-data";
 import { getMyStreak } from "@/lib/streak-data";
 import type { KudosPage } from "@/lib/types";
-import { notSignedIn, type ActionResult } from "./actions";
+import type { ActionResult } from "./actions";
+import { notSignedIn } from "@/lib/action-result";
 
 export type PostResult = ActionResult & { postId?: string };
 

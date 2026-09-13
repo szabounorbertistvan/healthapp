@@ -6,7 +6,8 @@ import { getLocale } from "@/lib/i18n/server";
 import { normalizeForSearch } from "@healthapp/shared";
 import { DEMO_COACH_ID, newId, store, type StoredPlan } from "@/lib/demo-store";
 import { demoFoods, findDemoFoodByBarcode, searchDemoFoods, type DemoFood } from "@/lib/demo-foods";
-import { notSignedIn, type ActionResult } from "./actions";
+import type { ActionResult } from "./actions";
+import { notSignedIn } from "@/lib/action-result";
 
 // Nutrition plan builder writes (W6, Sprint 6).
 //

@@ -3,7 +3,8 @@ import { revalidatePath } from "next/cache";
 import { isDemo, liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { demoFoods } from "@/lib/demo-foods";
-import { notSignedIn, type ActionResult } from "./actions";
+import type { ActionResult } from "./actions";
+import { notSignedIn } from "@/lib/action-result";
 
 /**
  * Admin: give a shared food its Romanian name.

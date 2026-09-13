@@ -9,7 +9,8 @@ import { isDemo, liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { viewingClientId } from "@/lib/view-mode";
 import { clientStore, isoDay, newId } from "@/lib/demo-client-store";
-import { notSignedIn, type ActionResult } from "./actions";
+import type { ActionResult } from "./actions";
+import { notSignedIn } from "@/lib/action-result";
 
 function touched(id: string) {
   revalidatePath("/challenges");

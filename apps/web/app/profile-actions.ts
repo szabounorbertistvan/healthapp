@@ -4,7 +4,8 @@ import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
-import { notSignedIn, type ActionResult } from "./actions";
+import type { ActionResult } from "./actions";
+import { notSignedIn } from "@/lib/action-result";
 
 // Profile fields the account carries beyond the auth row: username, sex, year
 // of birth. Sign-up collects them as user metadata (handle_new_user copies them

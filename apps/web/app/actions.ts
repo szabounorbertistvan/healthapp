@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
+import { notSignedIn } from "@/lib/action-result";
 import type { RpcErrorCode } from "@healthapp/api";
 
 // `errorCode`, not `code`: createInvite below returns the *invite* code in a
@@ -21,8 +22,6 @@ export type ActionResult = {
  */
 export type ActionErrorCode = RpcErrorCode | ProfileErrorCode | "NO_ROWS";
 export type ProfileErrorCode = "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN";
-
-export const notSignedIn = { ok: false, message: "Not signed in" } as const;
 
 export async function createInvite(): Promise<ActionResult & { code?: string }> {
   if (isDemo) return { ok: true, demo: true, code: "DEMO1234" };

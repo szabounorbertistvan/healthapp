@@ -24,7 +24,8 @@ import {
   newId,
   type MealSlot,
 } from "@/lib/demo-client-store";
-import { notSignedIn, type ActionResult } from "./actions";
+import type { ActionResult } from "./actions";
+import { notSignedIn } from "@/lib/action-result";
 
 export type LogSetResult = ActionResult & { is_pr?: boolean; estimated_1rm?: number };
 

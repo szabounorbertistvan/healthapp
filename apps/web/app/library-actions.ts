@@ -3,7 +3,7 @@ import { filterExercises, type ExerciseFilter, type ExerciseSummary } from "@hea
 import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
 import { exerciseLibrary } from "@/lib/exercise-library";
 import { store } from "@/lib/demo-store";
-import { notSignedIn } from "./actions";
+import { notSignedIn } from "@/lib/action-result";
 
 // Exercise search (W5), callable from client components.
 //

@@ -4,7 +4,8 @@ import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { DEMO_COACH_ID, newId, store, type StoredProgram, type StoredProgramDay } from "@/lib/demo-store";
 import { viewingClientId } from "@/lib/view-mode";
-import { notSignedIn, type ActionResult } from "./actions";
+import type { ActionResult } from "./actions";
+import { notSignedIn } from "@/lib/action-result";
 
 // Program builder writes (W4, Sprint 3).
 //
