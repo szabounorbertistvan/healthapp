@@ -5,7 +5,7 @@ import {
   demoAdminStats, demoCheckIns, demoClients, demoConversations, demoDashboard,
   demoMessages, demoNutritionPlans, demoProfile,
 } from "./demo";
-import { isDemo, supabaseServer } from "./supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
 import {
   demoClientRows, demoDashboardRows, demoRoster, store,
   type StoredPlan, type StoredProgram,
@@ -23,13 +23,13 @@ export { isDemo };
 export async function getProfile(): Promise<Profile | null> {
   if (isDemo) return demoProfile;
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return null;
+  const userId = await currentUserId();
+  if (!userId) return null;
   const [{ data: user }, { data: sub }] = await Promise.all([
-    supabase.from("users").select("id, full_name, username, sex, birth_year, role").eq("id", auth.user.id).single(),
+    supabase.from("users").select("id, full_name, username, sex, birth_year, role").eq("id", userId).single(),
     supabase.from("subscriptions")
       .select("tier, status, trial_ends_at, stripe_customer_id")
-      .eq("user_id", auth.user.id).maybeSingle(),
+      .eq("user_id", userId).maybeSingle(),
   ]);
   if (!user) return null;
   const role = user.role as Role;
@@ -340,7 +340,7 @@ export async function getConversations(): Promise<ConversationRow[]> {
 export async function getMessages(conversationId: string): Promise<MessageRow[]> {
   if (isDemo) return demoMessages[conversationId] ?? [];
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
+  const userId = await currentUserId();
   const { data, error } = await supabase
     .from("messages")
     .select("id, body, created_at, sender_id")
@@ -349,7 +349,7 @@ export async function getMessages(conversationId: string): Promise<MessageRow[]>
   if (error) throw error;
   return (data ?? []).map((m) => ({
     id: m.id, body: m.body, at: m.created_at,
-    mine: m.sender_id === auth.user?.id,
+    mine: m.sender_id === userId,
   }));
 }
 

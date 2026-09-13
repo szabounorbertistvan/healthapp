@@ -16,7 +16,7 @@ import {
   type ChallengeActivity,
   type ChallengeType,
 } from "@healthapp/shared";
-import { isDemo, supabaseServer } from "./supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
 import { getI18n } from "./i18n/server";
 import { getProfile, getRoster } from "./data";
 import { store } from "./demo-store";
@@ -188,32 +188,46 @@ export async function getMyChallenges(): Promise<ChallengeCard[]> {
     return sortCards(cards);
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
   const [{ data: rows }, { data: parts }] = await Promise.all([
     supabase.from("challenges").select("*").order("end_date", { ascending: false }),
     supabase.from("challenge_participants").select("challenge_id, user_id, completed_at"),
   ]);
   type Part = { challenge_id: string; user_id: string; completed_at: string | null };
   const partRows = (parts ?? []) as Part[];
-  const cards: ChallengeCard[] = [];
-  for (const row of (rows ?? []) as Row[]) {
+  const EMPTY: ChallengeActivity = { sessions: [], active_days: [] };
+
+  // One progress RPC per joined challenge, but issued together rather than one
+  // after the other: someone in six challenges was paying six sequential round
+  // trips before a single card could render.
+  const entries = ((rows ?? []) as Row[]).map((row) => {
     const members = partRows.filter((p) => p.challenge_id === row.id);
-    const mine = members.find((p) => p.user_id === auth.user.id) ?? null;
-    let activity: ChallengeActivity = { sessions: [], active_days: [] };
-    if (mine) {
+    return { row, members, mine: members.find((p) => p.user_id === userId) ?? null };
+  });
+  const activities = await Promise.all(
+    entries.map(async ({ row, mine }) => {
+      if (!mine) return EMPTY;
       const { data } = await supabase.rpc("challenge_progress_rows", { p_challenge: row.id });
-      activity = activitiesFrom((data ?? []) as ProgressRow[]).get(auth.user.id)?.activity ?? activity;
-    }
-    const card = await toCard(
-      row,
-      { joined: mine !== null, completed_at: mine?.completed_at ?? null, participants: members.length, activity },
-      today,
-    );
-    if (!card) continue;
-    await livePersistCompletion(supabase, row.id, auth.user.id, card);
-    cards.push(card);
-  }
+      return activitiesFrom((data ?? []) as ProgressRow[]).get(userId)?.activity ?? EMPTY;
+    }),
+  );
+
+  const built = await Promise.all(
+    entries.map(({ row, members, mine }, i) =>
+      toCard(
+        row,
+        { joined: mine !== null, completed_at: mine?.completed_at ?? null, participants: members.length, activity: activities[i] },
+        today,
+      ),
+    ),
+  );
+
+  const cards = built.filter((c): c is ChallengeCard => c !== null);
+  // Awarding a completion is a write, but each one touches a different row, so
+  // they go out together too. livePersistCompletion is a no-op for a card that
+  // is not newly complete, which is the overwhelming majority of them.
+  await Promise.all(cards.map((card) => livePersistCompletion(supabase, card.id, userId, card)));
   return sortCards(cards);
 }
 
@@ -245,8 +259,8 @@ export async function getChallenge(id: string): Promise<ChallengeDetail | null> 
     return { ...card, leaderboard: leaderboardOf(ch.visibility, entries) };
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return null;
+  const userId = await currentUserId();
+  if (!userId) return null;
   const { data: row } = await supabase.from("challenges").select("*").eq("id", id).maybeSingle();
   if (!row || !isChallengeType((row as Row).type)) return null;
   const r = row as Row;
@@ -256,7 +270,7 @@ export async function getChallenge(id: string): Promise<ChallengeDetail | null> 
   ]);
   type Part = { user_id: string; completed_at: string | null };
   const members = (parts ?? []) as Part[];
-  const mine = members.find((p) => p.user_id === auth.user.id) ?? null;
+  const mine = members.find((p) => p.user_id === userId) ?? null;
   const activities = activitiesFrom((progress ?? []) as ProgressRow[]);
   const card = await toCard(
     r,
@@ -264,18 +278,18 @@ export async function getChallenge(id: string): Promise<ChallengeDetail | null> 
       joined: mine !== null,
       completed_at: mine?.completed_at ?? null,
       participants: members.length,
-      activity: activities.get(auth.user.id)?.activity ?? { sessions: [], active_days: [] },
+      activity: activities.get(userId)?.activity ?? { sessions: [], active_days: [] },
     },
     today,
   );
   if (!card) return null;
-  await livePersistCompletion(supabase, id, auth.user.id, card);
+  await livePersistCompletion(supabase, id, userId, card);
   const entries = members.map((p) => {
     const a = activities.get(p.user_id);
     return {
       user_id: p.user_id,
       name: a?.name ?? "—",
-      me: p.user_id === auth.user.id,
+      me: p.user_id === userId,
       value: a ? challengeProgress(r.type as ChallengeType, a.activity, r) : 0,
     };
   });

@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { userIdFromClient } from "@/lib/supabase/claims";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
@@ -33,10 +34,18 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const { data } = await supabase.auth.getUser();
+  // Verify the token locally rather than asking the Auth server: this runs on
+  // every request, including every client-side navigation, and a round trip
+  // here sat in front of every page. See lib/supabase/claims.ts — including
+  // why the fallback matters. An expiring session is still refreshed first,
+  // and the cookie-copying below is what carries those refreshed tokens onto
+  // a redirect, exactly as before.
+  const signedIn = (await userIdFromClient(supabase, (error) => {
+    console.error("[middleware] getClaims failed, falling back to getUser:", error);
+  })) !== null;
   const path = request.nextUrl.pathname;
 
-  // getUser() above may have refreshed an expired session, and the refreshed
+  // The check above may have refreshed an expired session, and the refreshed
   // tokens live on `response`. A redirect is a different response object, so
   // without copying them the browser keeps its old refresh token, the next
   // request cannot refresh again, and a signed-in person bounces to the
@@ -58,12 +67,12 @@ export async function middleware(request: NextRequest) {
   const isLogin = path.startsWith("/login");
 
   // logged-out users see only the landing page (and login)
-  if (!data.user && !isLanding && !isLogin) {
+  if (!signedIn && !isLanding && !isLogin) {
     return redirect("/");
   }
   // logged-in users skip the login page. The landing page stays reachable
   // (the logo links to it); it shows an "open the app" button instead of sign-in.
-  if (data.user && isLogin) {
+  if (signedIn && isLogin) {
     return redirect("/dashboard");
   }
   return response;

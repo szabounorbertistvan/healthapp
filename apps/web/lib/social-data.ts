@@ -12,7 +12,7 @@ import {
   estimated1RM,
   type PostPayload,
 } from "@healthapp/shared";
-import { isDemo, supabaseServer } from "./supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
 import { store } from "./demo-store";
 import { viewingClientId } from "./view-mode";
 import { clientStore, type StoredPost } from "./demo-client-store";
@@ -22,9 +22,7 @@ import type { FeedPage, FeedPost, KudosGiver, KudosPage, PersonRow, PostComment,
 
 async function me(): Promise<string | null> {
   if (isDemo) return viewingClientId();
-  const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  return auth.user?.id ?? null;
+  return currentUserId();
 }
 
 // ---------- demo helpers ----------

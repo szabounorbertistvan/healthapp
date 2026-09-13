@@ -21,7 +21,7 @@ import {
   type StreakPostPayload,
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { viewingClientId } from "@/lib/view-mode";
 import { clientStore, newId } from "@/lib/demo-client-store";
@@ -41,9 +41,7 @@ function touched(extra: string[] = []) {
 
 async function userId(): Promise<string | null> {
   if (isDemo) return viewingClientId();
-  const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  return auth.user?.id ?? null;
+  return currentUserId();
 }
 
 function visibilityOf(input: string | undefined): PostVisibility {

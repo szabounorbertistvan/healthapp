@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { DEMO_COACH_ID, newId, store, type StoredProgram, type StoredProgramDay } from "@/lib/demo-store";
 import { viewingClientId } from "@/lib/view-mode";
@@ -50,12 +50,12 @@ export async function createProgram(input: {
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const { data, error } = await supabase
     .from("programs")
     .insert({
-      coach_id: auth.user.id,
+      coach_id: userId,
       client_id: input.clientId,
       name,
       weeks: input.weeks,
@@ -371,13 +371,13 @@ export async function createSoloProgram(input: {
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const { data, error } = await supabase
     .from("programs")
     .insert({
       coach_id: null,
-      client_id: auth.user.id,
+      client_id: userId,
       name,
       weeks: 1,
       intensity_mode: input.intensityMode,
@@ -446,12 +446,12 @@ export async function getMySoloProgramId(): Promise<string | null> {
     return mine[0]?.id ?? null;
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return null;
+  const userId = await currentUserId();
+  if (!userId) return null;
   const { data } = await supabase
     .from("programs")
     .select("id")
-    .eq("client_id", auth.user.id)
+    .eq("client_id", userId)
     .is("coach_id", null)
     .order("updated_at", { ascending: false })
     .limit(1)

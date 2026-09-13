@@ -18,7 +18,8 @@ import {
   type SelectableProgram,
 } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
-import { isDemo, supabaseServer } from "./supabase/server";
+import { cache } from "react";
+import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
 import { store } from "./demo-store";
 import { displayName, getProfile } from "./data";
@@ -67,9 +68,7 @@ const ZERO: Macros = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
  */
 export async function currentClientId(): Promise<string | null> {
   if (isDemo) return viewingClientId();
-  const supabase = await supabaseServer();
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
+  return currentUserId();
 }
 
 // ---------- training ----------
@@ -141,16 +140,22 @@ export async function getMyProgramGroups(): Promise<ClientProgramGroup[]> {
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
-  const { data: rows, error } = await supabase
-    .from("programs")
-    .select(`id, name, intensity_mode, coach_id, updated_at,
-      program_days(id, name, week_index, day_index,
-        program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds,
-          exercise:exercises(name_en, name_ro)))`)
-    .eq("client_id", auth.user.id)
-    .eq("status", "published");
+  const userId = await currentUserId();
+  if (!userId) return [];
+  // The programs and the coach lookup answer independent questions, so they go
+  // out together; only the session lookup below genuinely has to wait, because
+  // it is keyed by the day ids the programs query returns.
+  const [{ data: rows, error }, coachId] = await Promise.all([
+    supabase
+      .from("programs")
+      .select(`id, name, intensity_mode, coach_id, updated_at,
+        program_days(id, name, week_index, day_index,
+          program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds,
+            exercise:exercises(name_en, name_ro)))`)
+      .eq("client_id", userId)
+      .eq("status", "published"),
+    activeCoachId(userId),
+  ]);
   if (error || !rows) return [];
 
   type ExJoin = {
@@ -164,7 +169,6 @@ export async function getMyProgramGroups(): Promise<ClientProgramGroup[]> {
   };
 
   const programs = rows as unknown as ProgramJoin[];
-  const coachId = await activeCoachId(supabase, auth.user.id);
   const followed = pickProgram(programs, coachId !== null);
 
   // What is already logged today, addressed by the same deterministic key the
@@ -173,7 +177,7 @@ export async function getMyProgramGroups(): Promise<ClientProgramGroup[]> {
   // that is already there.
   const today = isoDay();
   const allDayIds = programs.flatMap((p) => (p.program_days ?? []).map((d) => d.id));
-  const sessions = await sessionsForDays(supabase, auth.user.id, allDayIds, today);
+  const sessions = await sessionsForDays(supabase, userId, allDayIds, today);
 
   return sortPrograms(programs).map((program) => {
     const days = [...(program.program_days ?? [])].sort((a, b) => a.day_index - b.day_index);
@@ -225,11 +229,14 @@ export async function getMyProgramDays(): Promise<ClientWorkoutDay[]> {
   return groups.find((g) => g.followed)?.days ?? [];
 }
 
-/** The coach currently working with this client, or null when they train alone. */
-async function activeCoachId(
-  supabase: Awaited<ReturnType<typeof supabaseServer>>,
-  userId: string,
-): Promise<string | null> {
+/**
+ * The coach currently working with this client, or null when they train alone.
+ *
+ * Memoized per request: programs, nutrition, the plan header and the empty-account
+ * check all need it, and it used to be four identical round trips per render.
+ */
+const activeCoachId = cache(async (userId: string): Promise<string | null> => {
+  const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("trainer_clients")
     .select("coach_id")
@@ -245,25 +252,25 @@ async function activeCoachId(
     throw new Error(`Failed to look up active coach for client ${userId}: ${error.message}`);
   }
   return (data?.coach_id as string | undefined) ?? null;
-}
+});
 
 /** True when the client has no coach, no program and no nutrition plan yet. */
 export async function isEmptyAccount(): Promise<boolean> {
   if (isDemo) return false;
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return false;
+  const userId = await currentUserId();
+  if (!userId) return false;
   const [coach, programs, plans] = await Promise.all([
-    activeCoachId(supabase, auth.user.id),
-    supabase.from("programs").select("id", { count: "exact", head: true }).eq("client_id", auth.user.id),
-    supabase.from("nutrition_plans").select("id", { count: "exact", head: true }).eq("client_id", auth.user.id),
+    activeCoachId(userId),
+    supabase.from("programs").select("id", { count: "exact", head: true }).eq("client_id", userId),
+    supabase.from("nutrition_plans").select("id", { count: "exact", head: true }).eq("client_id", userId),
   ]);
   // A failed count is unknown, not zero — treating it as "empty" would bounce a
   // client with a real program to /welcome on a transient database error.
   // activeCoachId() already throws for the same reason; be as loud here.
   const failed = programs.error ?? plans.error;
   if (failed) {
-    throw new Error(`Failed to check whether account ${auth.user.id} is empty: ${failed.message}`);
+    throw new Error(`Failed to check whether account ${userId} is empty: ${failed.message}`);
   }
   return coach === null && (programs.count ?? 0) === 0 && (plans.count ?? 0) === 0;
 }
@@ -412,12 +419,12 @@ export async function getWorkoutDayHistory(dayId: string, limit = 20): Promise<W
       .map((s) => summarizeSession(s.id, s.started_at, s.completed_at, setsForSession(s.id)));
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
   const { data, error } = await supabase
     .from("logged_sessions")
     .select(`id, started_at, completed_at, logged_sets(${LOGGED_SET_SELECT})`)
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .eq("program_day_id", dayId)
     .not("completed_at", "is", null)
     .order("completed_at", { ascending: false })
@@ -457,12 +464,12 @@ export async function getMySessions(limit = 12): Promise<SessionSummaryRow[]> {
       });
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
   const { data, error } = await supabase
     .from("logged_sessions")
     .select(`id, program_day_id, started_at, completed_at, day:program_days(name), logged_sets(${LOAD_SET_SELECT}, is_pr)`)
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .not("completed_at", "is", null)
     .order("completed_at", { ascending: false })
     .limit(limit);
@@ -533,12 +540,12 @@ function demoLoadEntries(clientId: string | null): { day: string; load: number }
 
 async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
   const { data } = await supabase
     .from("logged_sessions")
     .select(`started_at, completed_at, logged_sets(${LOAD_SET_SELECT})`)
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .not("completed_at", "is", null)
     .gte("started_at", `${daysAgoIso(20)}T00:00:00`);
   type Row = { started_at: string; completed_at: string | null; logged_sets: LoadSetJoin[] | null };
@@ -551,13 +558,13 @@ async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
 export async function getMyPrs(): Promise<ClientPrRow[]> {
   if (isDemo) return bestLifts(await viewingClientId());
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
   // user_id is denormalized onto logged_sets precisely so this needs no join.
   const { data, error } = await supabase
     .from("logged_sets")
     .select("weight_kg, reps, received_at, is_pr, exercise:exercises(name_en, name_ro)")
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .eq("is_pr", true)
     .order("received_at", { ascending: false });
   if (error) return [];
@@ -621,23 +628,24 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { day, plan_name: null, plan_owner: null, target: ZERO, totals: ZERO, entries: [] };
-  const [{ data: plans }, { data: logs }] = await Promise.all([
+  const userId = await currentUserId();
+  if (!userId) return { day, plan_name: null, plan_owner: null, target: ZERO, totals: ZERO, entries: [] };
+  const [{ data: plans }, { data: logs }, coachId] = await Promise.all([
     supabase
       .from("nutrition_plans")
       .select("id, name, kcal_target, protein_target_g, carbs_target_g, fat_target_g, coach_id, updated_at")
-      .eq("client_id", auth.user.id)
+      .eq("client_id", userId)
       .eq("status", "published"),
     supabase
       .from("food_logs")
       .select("id, slot, food_name, grams, kcal, protein_g, carbs_g, fat_g")
-      .eq("user_id", auth.user.id)
+      .eq("user_id", userId)
       .eq("date", day),
+    activeCoachId(userId),
   ]);
   const plan = pickProgram(
     (plans ?? []) as unknown as (SelectableProgram & Record<string, unknown>)[],
-    (await activeCoachId(supabase, auth.user.id)) !== null,
+    coachId !== null,
   ) as { name: string; coach_id: string | null; kcal_target: number; protein_target_g: number;
          carbs_target_g: number; fat_target_g: number } | null;
   type LogRow = {
@@ -684,12 +692,12 @@ export async function getMyFoodDays(from: string, to: string): Promise<string[]>
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
   const { data } = await supabase
     .from("food_logs")
     .select("date")
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .gte("date", from)
     .lte("date", to);
   const days = new Set<string>();
@@ -723,17 +731,20 @@ export async function getMyPlanMeals(): Promise<
       }));
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
-  const { data: rows } = await supabase
-    .from("nutrition_plans")
-    .select(`id, coach_id, updated_at, planned_meals(id, slot, name, position,
-      planned_meal_foods(id, grams, food:foods(name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g)))`)
-    .eq("client_id", auth.user.id)
-    .eq("status", "published");
+  const userId = await currentUserId();
+  if (!userId) return [];
+  const [{ data: rows }, coachId] = await Promise.all([
+    supabase
+      .from("nutrition_plans")
+      .select(`id, coach_id, updated_at, planned_meals(id, slot, name, position,
+        planned_meal_foods(id, grams, food:foods(name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g)))`)
+      .eq("client_id", userId)
+      .eq("status", "published"),
+    activeCoachId(userId),
+  ]);
   const data = pickProgram(
     (rows ?? []) as unknown as (SelectableProgram & Record<string, unknown>)[],
-    (await activeCoachId(supabase, auth.user.id)) !== null,
+    coachId !== null,
   );
   if (!data) return [];
   type FoodJoin = {
@@ -785,14 +796,14 @@ export async function getMyHabits(): Promise<ClientHabitRow[]> {
       });
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
   // The schema has no target_per_week: a habit carries `weekdays int[]`
   // (0=Sun), so how often it is scheduled is how many days it names.
   const { data } = await supabase
     .from("habits")
     .select("id, name, weekdays, habit_logs(date)")
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .eq("active", true);
   type HabitJoin = { id: string; name: string; weekdays: number[] | null; habit_logs: { date: string }[] };
   return ((data ?? []) as unknown as HabitJoin[]).map((h) => ({
@@ -814,14 +825,14 @@ export async function getMyMeasurements(limit = 12): Promise<ClientMeasurementRo
       .reverse();
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
   // Waist is not a column: circumferences is a jsonb bag of {waist, chest, ...}
   // in cm, so the app reads one key out of it rather than a named field.
   const { data } = await supabase
     .from("measurements")
     .select("id, date, weight_kg, circumferences")
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .order("date", { ascending: false })
     .limit(limit);
   type Row = {
@@ -861,12 +872,12 @@ export async function getMyCheckInState(): Promise<ClientCheckInState> {
     };
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { week_start: weekStart, submitted: false, last: null };
+  const userId = await currentUserId();
+  if (!userId) return { week_start: weekStart, submitted: false, last: null };
   const { data } = await supabase
     .from("check_ins")
     .select("week_start, weight_kg, note, coach_reviewed_at")
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .order("week_start", { ascending: false })
     .limit(2);
   const rows = data ?? [];
@@ -898,24 +909,28 @@ export async function getToday(): Promise<ClientToday | null> {
   const clientId = await currentClientId();
   if (!clientId) return null;
 
-  const [days, nutrition, habits, checkIn, training_load] = await Promise.all([
-    getMyProgramDays(),
-    getMyDayNutrition(),
-    getMyHabits(),
-    getMyCheckInState(),
-    getMyTrainingLoad(),
-  ]);
-
   const weekStart = mondayOf(0);
-  const plannedSessions = days.length;
 
-  // The four inputs adherence turns on. They used to be demo-only, which left
-  // every live client reading 0 workouts, 0 food days and 99 inactive days —
-  // permanently "at_risk" no matter what they had logged.
-  const [activity, streak] = await Promise.all([
-    isDemo ? demoActivity(clientId, weekStart) : liveActivity(weekStart),
-    getWorkoutStreak(clientId),
-  ]);
+  // One wave, not four. The activity, the streak and the profile depend on
+  // nothing the other reads produce, and waiting for them in sequence added
+  // three full round trips to every load of the client's home screen.
+  //
+  // The four adherence inputs used to be demo-only, which left every live
+  // client reading 0 workouts, 0 food days and 99 inactive days — permanently
+  // "at_risk" no matter what they had logged.
+  const [days, nutrition, habits, checkIn, training_load, activity, streak, profile] =
+    await Promise.all([
+      getMyProgramDays(),
+      getMyDayNutrition(),
+      getMyHabits(),
+      getMyCheckInState(),
+      getMyTrainingLoad(),
+      isDemo ? demoActivity(clientId, weekStart) : liveActivity(weekStart),
+      getWorkoutStreak(clientId),
+      isDemo ? null : getProfile(),
+    ]);
+
+  const plannedSessions = days.length;
 
   const habitTicks = habits.reduce((sum, h) => sum + h.done_this_week, 0);
   const habitScheduled = habits.reduce((sum, h) => sum + h.target_per_week, 0);
@@ -939,7 +954,6 @@ export async function getToday(): Promise<ClientToday | null> {
 
   // What the greeting shows: the username, or the first name for accounts that
   // have not set one yet — never the email.
-  const profile = isDemo ? null : await getProfile();
   return {
     client_id: clientId,
     full_name: isDemo
@@ -993,8 +1007,8 @@ async function liveActivity(weekStart: string): Promise<Activity> {
     doneDays: new Set<string>(),
   };
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return empty;
+  const userId = await currentUserId();
+  if (!userId) return empty;
 
   // The inactivity check looks back 60 days; the week figures are a filter
   // over the same rows rather than four more round trips. (The workout streak
@@ -1004,22 +1018,22 @@ async function liveActivity(weekStart: string): Promise<Activity> {
     supabase
       .from("logged_sessions")
       .select("program_day_id, completed_at, started_at")
-      .eq("user_id", auth.user.id)
+      .eq("user_id", userId)
       .gte("started_at", `${since}T00:00:00`),
     supabase
       .from("food_logs")
       .select("date, kcal, received_at")
-      .eq("user_id", auth.user.id)
+      .eq("user_id", userId)
       .gte("date", since),
     supabase
       .from("habit_logs")
       .select("date, received_at")
-      .eq("user_id", auth.user.id)
+      .eq("user_id", userId)
       .gte("date", since),
     supabase
       .from("logged_sets")
       .select("received_at")
-      .eq("user_id", auth.user.id)
+      .eq("user_id", userId)
       .order("received_at", { ascending: false })
       .limit(1),
   ]);
@@ -1079,19 +1093,19 @@ export async function getMyCoachThread(): Promise<
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return null;
+  const userId = await currentUserId();
+  if (!userId) return null;
   const { data } = await supabase
     .from("conversations")
     .select("id, coach:users!conversations_coach_id_fkey(full_name), messages(id, body, created_at, sender_id)")
-    .eq("client_id", auth.user.id)
+    .eq("client_id", userId)
     .limit(1)
     .maybeSingle();
   if (!data) return null;
   type Msg = { id: string; body: string; created_at: string; sender_id: string };
   const messages = ((data.messages as unknown as Msg[]) ?? [])
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map((m) => ({ id: m.id, body: m.body, at: m.created_at, mine: m.sender_id === auth.user.id }));
+    .map((m) => ({ id: m.id, body: m.body, at: m.created_at, mine: m.sender_id === userId }));
   return {
     id: data.id,
     coach_name: (data.coach as unknown as { full_name: string })?.full_name ?? "Your coach",

@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
 import { normalizeForSearch } from "@healthapp/shared";
@@ -155,12 +155,12 @@ export async function createNutritionPlan(input: {
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const { data, error } = await supabase
     .from("nutrition_plans")
     .insert({
-      coach_id: auth.user.id,
+      coach_id: userId,
       client_id: input.clientId,
       name,
       kcal_target: input.kcal,

@@ -21,7 +21,7 @@ import {
   type StreakSummary,
   type WorkoutDay,
 } from "@healthapp/shared";
-import { isDemo, supabaseServer } from "./supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
 import { viewingClientId } from "./view-mode";
 import { clientStore } from "./demo-client-store";
 
@@ -69,9 +69,7 @@ const workoutDaysFor = cache(async (userId: string): Promise<{ days: WorkoutDay[
 
 async function me(): Promise<string | null> {
   if (isDemo) return viewingClientId();
-  const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  return auth.user?.id ?? null;
+  return currentUserId();
 }
 
 /** Current streak of a user the caller may read (self, or a coach's client) — for the weekly summary. */

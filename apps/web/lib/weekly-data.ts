@@ -17,7 +17,7 @@ import {
   type WeeklyMeasurement,
   type WeeklySession,
 } from "@healthapp/shared";
-import { isDemo, supabaseServer } from "./supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
 import { store } from "./demo-store";
 import { viewingClientId } from "./view-mode";
 import { clientStore, daysAgoIso, isoDay } from "./demo-client-store";
@@ -34,9 +34,9 @@ export type WeeklySummary = WeeklyComparison & { choice: WeekChoice };
 export async function getMyWeeklySummary(choice: WeekChoice = "current"): Promise<WeeklySummary | null> {
   if (isDemo) return summaryFor(await viewingClientId(), choice);
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return null;
-  return summaryFor(auth.user.id, choice);
+  const userId = await currentUserId();
+  if (!userId) return null;
+  return summaryFor(userId, choice);
 }
 
 /**

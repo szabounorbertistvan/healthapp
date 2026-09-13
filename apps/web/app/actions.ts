@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
 import type { RpcErrorCode } from "@healthapp/api";
 
 // `errorCode`, not `code`: createInvite below returns the *invite* code in a
@@ -38,12 +38,12 @@ export async function reviewCheckIn(
 ): Promise<ActionResult> {
   if (isDemo) return { ok: true, demo: true };
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
 
   if (feedback.trim()) {
     const { error: fbError } = await supabase.from("coach_feedback").insert({
-      coach_id: auth.user.id,
+      coach_id: userId,
       client_id: clientId,
       reference_type: "check_in",
       reference_id: checkInId,
@@ -65,11 +65,11 @@ export async function sendMessage(conversationId: string, body: string): Promise
   if (isDemo) return { ok: true, demo: true };
   if (!body.trim()) return { ok: false, message: "Empty message" };
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const { error } = await supabase.from("messages").insert({
     conversation_id: conversationId,
-    sender_id: auth.user.id,
+    sender_id: userId,
     body: body.trim(),
   });
   if (error) return { ok: false, message: error.message };

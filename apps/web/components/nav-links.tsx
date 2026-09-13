@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
+import { NavSpinner } from "./spinner";
 import type { Dictionary } from "@/lib/i18n";
 
 const items: { href: string; key: keyof Dictionary["common"]["nav"] }[] = [
@@ -29,13 +30,14 @@ export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
           <Link
             key={item.href}
             href={item.href}
-            className={`rounded-lg px-3 py-2 text-sm ${
+            className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm ${
               active
                 ? "bg-accent-soft font-semibold text-accent-ink"
                 : "text-ink-soft hover:bg-bg"
             }`}
           >
             {t.common.nav[item.key]}
+            <NavSpinner />
           </Link>
         );
       })}

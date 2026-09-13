@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMySessions, getToday, isEmptyAccount } from "@/lib/client-data";
 import { getMyChallenges } from "@/lib/challenges-data";
@@ -7,26 +6,39 @@ import { getMyStreak } from "@/lib/streak-data";
 import { hasChosenSolo } from "@/lib/onboarding";
 import { isoDay } from "@/lib/demo-client-store";
 import { Card, EmptyState } from "@/components/ui";
-import { HabitTicks } from "@/components/habit-ticks";
-import { NutritionTile, StatusHero, Tile, TodayWeekStrip, WorkoutRow } from "@/components/today-dashboard";
+import { LinkRow, TodayChecklist, WeekCard } from "@/components/today-dashboard";
 import { TrainingLoadSummaryCard } from "@/components/training-load";
 import { StreakCard } from "@/components/streak";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
 import { timeAgo } from "@/lib/format";
+import { parseDay } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 
 /**
- * Today, phone-first: the week on top, the mark with this week's standing,
- * the one workout that matters now, a grid of small tiles, then the detail
- * (habits, check-in, streak, weekly summary, training load) for whoever scrolls.
+ * Today, phone-first, top to bottom: the date, today's checklist (the one
+ * card that answers "what do I do now"), a word from the coach, the week's
+ * score with its parts, the workout streak, links to the rest, and the weekly
+ * report folded away for whoever wants the numbers.
  */
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { t, locale } = await getI18n();
-  const weekChoice: WeekChoice = (await searchParams).week === "previous" ? "previous" : "current";
+  const params = await searchParams;
+  const weekChoice: WeekChoice = params.week === "previous" ? "previous" : "current";
+  // The report's own week switch appends ?week=…, so any value means the
+  // reader has it open — keep it open across that navigation.
+  const reportOpen = params.week !== undefined;
 
   // Nothing to show on Today until the client has a coach or a program of their
   // own, so send a brand-new account to the choice instead of an empty screen.
+  //
+  // This stays in front of the reads below rather than racing them. Running it
+  // alongside would save two round trips for an established account, but it
+  // would also mean a brand-new account fetches its whole Today screen before
+  // being sent away from it — wasted at best, and a 500 instead of a clean
+  // redirect if any of those reads dislikes an account with nothing in it.
+  // The reads below are one wave now, so two round trips is a small share of
+  // the page, and this is the cheap half of the trade.
   if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
 
   const [today, challenges, weekly, recent, streakView] = await Promise.all([
@@ -46,58 +58,22 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     sessions_done: done, sessions_planned: planned, streak_days: streak, last_activity: last,
   } = today;
   const todayIso = isoDay();
+  const todayDate = parseDay(todayIso);
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(todayDate);
+  const longDate = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(todayDate);
   const doneToday = recent.find((s) => s.at.slice(0, 10) === todayIso) ?? null;
   const workoutDays = today.training_load.daily.filter((x) => x.load > 0).map((x) => x.day);
-  const habitsDone = habits.filter((h) => h.done_today).length;
   const activeChallenges = challenges.filter((c) => c.joined && c.status === "active").length;
-  const completedChallenges = challenges.filter((c) => c.status === "completed").length;
+  const nudge = adherence.signal === "at_risk" ? fill(d.atRiskBody, { time: timeAgo(last, locale) }) : null;
 
   return (
-    <div className="space-y-4">
-      <TodayWeekStrip today={todayIso} workoutDays={workoutDays} />
+    <div className="mx-auto w-full max-w-2xl space-y-4">
+      <header>
+        <h1 className="text-xl font-bold tracking-tight first-letter:uppercase">{weekday}</h1>
+        <p className="text-sm text-ink-faint first-letter:uppercase">{longDate}</p>
+      </header>
 
-      <StatusHero adherence={adherence} />
-
-      {adherence.signal === "at_risk" ? (
-        <p className="rounded-xl bg-risk-soft px-4 py-2.5 text-center text-xs leading-snug text-risk">
-          <b>{d.atRiskTitle}</b> — {fill(d.atRiskBody, { time: timeAgo(last, locale) })}
-        </p>
-      ) : null}
-
-      <WorkoutRow doneToday={doneToday} next={next} />
-      <p className="text-center">
-        <Link href="/workout" className="text-sm font-semibold text-accent-ink hover:underline">
-          {d.viewCalendar}
-        </Link>
-      </p>
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Tile href="/workout" icon="🎯" label={d.workouts} value={String(done)} unit={`/ ${planned || 3}`} done={planned > 0 && done >= planned} />
-        <Tile href="/streak" icon="🔥" label={d.streak} value={String(streak)} unit={streak === 1 ? d.day : d.days} done={streak >= 7} />
-        <NutritionTile totals={nutrition.totals} target={nutrition.target} />
-        <div className="grid gap-3">
-          <Tile href="/habits" icon="✅" label={t.common.nav.habits} value={habits.length > 0 ? `${habitsDone}/${habits.length}` : "—"} done={habits.length > 0 && habitsDone === habits.length} />
-          <Tile
-            href="/check-in"
-            icon="📝"
-            label={t.common.nav.checkIn}
-            value={checkIn.submitted ? "✓" : d.due}
-            unit={checkIn.submitted ? d.submitted : undefined}
-            done={checkIn.submitted}
-          />
-        </div>
-        <Tile href="/challenges" icon="🏅" label={t.common.challenges.title} value={String(activeChallenges)} unit={d.active} done={completedChallenges > 0} />
-        <Tile href="/feed" icon="💬" label={t.common.social.feed}>
-          <p className="mt-2 line-clamp-2 text-xs text-ink-soft">{t.common.social.emptyHint}</p>
-        </Tile>
-      </div>
-
-      {habits.length > 0 ? (
-        <Card>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.habitsToday}</p>
-          <HabitTicks habits={habits} />
-        </Card>
-      ) : null}
+      <TodayChecklist doneToday={doneToday} next={next} nutrition={nutrition} habits={habits} checkIn={checkIn} />
 
       {checkIn.last?.coach_feedback ? (
         <Card className="bg-accent-soft">
@@ -106,11 +82,36 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </Card>
       ) : null}
 
+      <WeekCard
+        adherence={adherence}
+        today={todayIso}
+        workoutDays={workoutDays}
+        done={done}
+        planned={planned}
+        streak={streak}
+        nudge={nudge}
+        load={today.training_load}
+      />
+
       {streakView ? <StreakCard view={streakView} compact /> : null}
 
-      {weekly ? <WeeklySummaryCard summary={weekly} switchPath="/today" /> : null}
+      <Card className="overflow-hidden p-0">
+        <ul className="divide-y divide-line">
+          <LinkRow href="/challenges" icon="🏅" label={t.common.challenges.title} meta={`${activeChallenges} ${d.active}`} />
+          <LinkRow href="/feed" icon="💬" label={t.common.social.feed} />
+        </ul>
+      </Card>
 
-      <TrainingLoadSummaryCard summary={today.training_load} />
+      <details id="weekly-report" open={reportOpen} className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 hover:border-accent [&::-webkit-details-marker]:hidden">
+          <span className="text-sm font-semibold">{d.weeklyReport}</span>
+          <span className="text-ink-faint transition-transform group-open:rotate-180" aria-hidden>▾</span>
+        </summary>
+        <div className="mt-4 space-y-4">
+          {weekly ? <WeeklySummaryCard summary={weekly} switchPath="/today" /> : null}
+          <TrainingLoadSummaryCard summary={today.training_load} />
+        </div>
+      </details>
     </div>
   );
 }

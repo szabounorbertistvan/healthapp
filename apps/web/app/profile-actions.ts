@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
@@ -39,8 +39,8 @@ export async function completeProfile(input: {
   if (isDemo) return { ok: true, demo: true };
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   if (!(await usernameAvailable(username))) return { ok: false, errorCode: "USERNAME_TAKEN" };
 
   const failed = await mutated(
@@ -50,7 +50,7 @@ export async function completeProfile(input: {
         { full_name: fullName, username, sex: input.sex, birth_year: birthYearFromAge(input.age) },
         { count: "exact" },
       )
-      .eq("id", auth.user.id),
+      .eq("id", userId),
   );
   if (failed) {
     // The unique index catches a race the availability check missed.

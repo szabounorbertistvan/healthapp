@@ -5,7 +5,7 @@
 import { revalidatePath } from "next/cache";
 import { canJoin } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { viewingClientId } from "@/lib/view-mode";
 import { clientStore, isoDay, newId } from "@/lib/demo-client-store";
@@ -32,8 +32,8 @@ export async function joinChallenge(id: string): Promise<ActionResult> {
     return { ok: true, demo: true };
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   // RLS (participants_join) refuses an ended challenge too; checking here
   // gives the person a translated reason instead of a policy error.
   const { data: ch } = await supabase.from("challenges").select("start_date, end_date").eq("id", id).maybeSingle();
@@ -41,7 +41,7 @@ export async function joinChallenge(id: string): Promise<ActionResult> {
   if (!canJoin(ch, isoDay())) return { ok: false, message: t.common.challenges.endedCannotJoin };
   const { error } = await supabase
     .from("challenge_participants")
-    .upsert({ challenge_id: id, user_id: auth.user.id }, { onConflict: "challenge_id,user_id", ignoreDuplicates: true });
+    .upsert({ challenge_id: id, user_id: userId }, { onConflict: "challenge_id,user_id", ignoreDuplicates: true });
   if (error) return { ok: false, message: error.message };
   touched(id);
   return { ok: true };
@@ -57,13 +57,13 @@ export async function leaveChallenge(id: string): Promise<ActionResult> {
     return { ok: true, demo: true };
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const result = await supabase
     .from("challenge_participants")
     .delete({ count: "exact" })
     .eq("challenge_id", id)
-    .eq("user_id", auth.user.id);
+    .eq("user_id", userId);
   const failure = await mutated(result);
   if (failure) return failure;
   touched(id);

@@ -1,6 +1,6 @@
 "use server";
 import { filterExercises, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
 import { exerciseLibrary } from "@/lib/exercise-library";
 import { store } from "@/lib/demo-store";
 
@@ -96,12 +96,12 @@ export async function createCustomExercise(
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const { data, error } = await supabase
     .from("exercises")
     .insert({
-      owner_id: auth.user.id,
+      owner_id: userId,
       source: "custom",
       name_en: name,
       name_ro: name,

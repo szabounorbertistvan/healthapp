@@ -12,7 +12,7 @@ import {
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
 import { store } from "@/lib/demo-store";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
 import { viewingClientId } from "@/lib/view-mode";
 import {
@@ -106,8 +106,8 @@ export async function logSet(input: {
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
 
   if (!input.exerciseId) {
     // logged_sets.exercise_id is NOT NULL and there is no name lookup here on
@@ -119,8 +119,8 @@ export async function logSet(input: {
   // client_generated_id is a uuid column, and it is what makes a retry safe.
   // Deriving it from the day and date keeps one session per day per program
   // day however many times this runs.
-  const sessionKey = sessionKeyFor(auth.user.id, input.dayId, isoDay());
-  const sessionId = await openSession(supabase, auth.user.id, input.dayId, sessionKey);
+  const sessionKey = sessionKeyFor(userId, input.dayId, isoDay());
+  const sessionId = await openSession(supabase, userId, input.dayId, sessionKey);
   if (typeof sessionId !== "string") return sessionId;
 
   // The same PR check the demo path and the mobile app run, against the best
@@ -129,7 +129,7 @@ export async function logSet(input: {
   const { data: history } = await supabase
     .from("logged_sets")
     .select("weight_kg, reps")
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .eq("exercise_id", input.exerciseId)
     .order("received_at", { ascending: false })
     .limit(200);
@@ -144,7 +144,7 @@ export async function logSet(input: {
 
   const { error } = await supabase.from("logged_sets").insert({
     session_id: sessionId,
-    user_id: auth.user.id,
+    user_id: userId,
     exercise_id: input.exerciseId,
     program_exercise_id: input.programExerciseId ?? null,
     set_index: input.setIndex,
@@ -236,12 +236,12 @@ export async function finishWorkout(dayId: string): Promise<ActionResult & { ses
     return { ok: true, demo: true, sessionId: session.id };
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const { data, error } = await supabase
     .from("logged_sessions")
     .update({ completed_at: new Date().toISOString() })
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .eq("program_day_id", dayId)
     .is("completed_at", null)
     .select("id");
@@ -287,10 +287,10 @@ export async function logFood(input: {
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const { error } = await supabase.from("food_logs").insert({
-    user_id: auth.user.id,
+    user_id: userId,
     date: day,
     slot: input.slot,
     food_id: asUuid(input.foodId),
@@ -418,8 +418,8 @@ export async function toggleHabit(habitId: string, day = isoDay()): Promise<Acti
     return { ok: true, demo: true };
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const { data: existing } = await supabase
     .from("habit_logs")
     .select("id")
@@ -430,7 +430,7 @@ export async function toggleHabit(habitId: string, day = isoDay()): Promise<Acti
     ? await supabase.from("habit_logs").delete().eq("id", existing.id)
     : await supabase.from("habit_logs").insert({
         habit_id: habitId,
-        user_id: auth.user.id,
+        user_id: userId,
         date: day,
         client_generated_id: uuidFrom(`${habitId}:${day}`),
       });
@@ -457,15 +457,15 @@ export async function addHabit(name: string, targetPerWeek: number): Promise<Act
     return { ok: true, demo: true };
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   // No target_per_week column: scheduling is `weekdays int[]` with 0=Sun. A
   // target of n means the first n days of the week, which is the closest this
   // simple form can express — a real weekday picker is the proper fix.
   const weekdays = Array.from({ length: target }, (_, i) => i);
   const { error } = await supabase.from("habits").insert({
-    user_id: auth.user.id,
-    created_by: auth.user.id,
+    user_id: userId,
+    created_by: userId,
     name: name.trim(),
     weekdays,
     active: true,
@@ -507,8 +507,8 @@ export async function addMeasurement(input: {
     return { ok: true, demo: true };
   }
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   // The upsert replaces the whole row, so read what is already there first.
   // Waist lives inside the circumferences jsonb, and weight_kg is a plain
   // column — both have to be carried forward, or a waist-only entry in the
@@ -516,7 +516,7 @@ export async function addMeasurement(input: {
   const { data: existing } = await supabase
     .from("measurements")
     .select("weight_kg, circumferences")
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .eq("date", takenOn)
     .maybeSingle();
   const circumferences: Record<string, number> = {
@@ -526,7 +526,7 @@ export async function addMeasurement(input: {
 
   const { error } = await supabase.from("measurements").upsert(
     {
-      user_id: auth.user.id,
+      user_id: userId,
       date: takenOn,
       weight_kg: input.weightKg ?? existing?.weight_kg ?? null,
       circumferences,
@@ -579,20 +579,20 @@ export async function submitCheckIn(input: {
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   // check_ins is unique on (user_id, week_start). Say so in words rather than
   // letting the constraint violation reach the form, and mirror the demo guard.
   const { data: already } = await supabase
     .from("check_ins")
     .select("id")
-    .eq("user_id", auth.user.id)
+    .eq("user_id", userId)
     .eq("week_start", weekStart)
     .maybeSingle();
   if (already) return { ok: false, message: "This week is already checked in" };
 
   const { error } = await supabase.from("check_ins").insert({
-    user_id: auth.user.id,
+    user_id: userId,
     week_start: weekStart,
     weight_kg: input.weightKg,
     sleep: input.sleep,
@@ -678,12 +678,12 @@ export async function setMyNutritionTargets(input: {
   }
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, message: "Not signed in" };
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, message: "Not signed in" };
   const { data: existing } = await supabase
     .from("nutrition_plans")
     .select("id")
-    .eq("client_id", auth.user.id)
+    .eq("client_id", userId)
     .is("coach_id", null)
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -699,7 +699,7 @@ export async function setMyNutritionTargets(input: {
     ? await supabase.from("nutrition_plans").update(values).eq("id", existing.id)
     : await supabase
         .from("nutrition_plans")
-        .insert({ ...values, coach_id: null, client_id: auth.user.id, name });
+        .insert({ ...values, coach_id: null, client_id: userId, name });
   if (error) return { ok: false, message: error.message };
   revalidatePath("/food");
   revalidatePath("/today");
