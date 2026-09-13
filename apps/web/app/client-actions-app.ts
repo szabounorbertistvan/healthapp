@@ -277,6 +277,7 @@ export async function logFood(input: {
       logged_on: day,
       slot: input.slot,
       food_name: input.foodName,
+      food_id: input.foodId || null,
       grams: input.grams,
       macros,
       per_100g: input.per100g,
@@ -709,4 +710,76 @@ export async function setMyNutritionTargets(input: {
   revalidatePath("/food");
   revalidatePath("/today");
   return { ok: true };
+}
+
+/**
+ * Star or un-star a food in the logger. Keyed by the foods row when there is
+ * one and by name otherwise (a product straight from Open Food Facts may have
+ * no row yet). The per-100 g basis is snapshotted so the favourite still logs
+ * if the row goes away — same rule as food_logs.
+ */
+export async function toggleFavoriteFood(input: {
+  foodId: string | null;
+  foodName: string;
+  per100g: Macros;
+}): Promise<ActionResult & { favorite?: boolean }> {
+  const name = input.foodName.trim();
+  if (!name) return { ok: false, message: "Pick a food" };
+
+  if (isDemo) {
+    const clientId = await viewingClientId();
+    const favs = clientStore().foodFavorites;
+    const idx = favs.findIndex(
+      (f) =>
+        f.client_id === clientId &&
+        (input.foodId
+          ? f.food_id === input.foodId
+          : f.food_id === null && f.food_name.toLowerCase() === name.toLowerCase()),
+    );
+    if (idx >= 0) {
+      favs.splice(idx, 1);
+      revalidatePath("/food");
+      return { ok: true, demo: true, favorite: false };
+    }
+    favs.push({
+      id: newId("ff"),
+      client_id: clientId,
+      food_id: input.foodId || null,
+      food_name: name,
+      per_100g: input.per100g,
+      created_at: new Date().toISOString(),
+    });
+    revalidatePath("/food");
+    return { ok: true, demo: true, favorite: true };
+  }
+
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const foodId = asUuid(input.foodId);
+  let existing = supabase.from("food_favorites").select("id").eq("user_id", userId);
+  existing = foodId
+    ? existing.eq("food_id", foodId)
+    : existing.is("food_id", null).ilike("food_name", name.replace(/[%_\\]/g, "\\$&"));
+  const { data: rows, error: readError } = await existing.limit(1);
+  if (readError) return { ok: false, message: readError.message };
+  const found = (rows ?? [])[0] as { id: string } | undefined;
+  if (found) {
+    const { error } = await supabase.from("food_favorites").delete().eq("id", found.id).eq("user_id", userId);
+    if (error) return { ok: false, message: error.message };
+    revalidatePath("/food");
+    return { ok: true, favorite: false };
+  }
+  const { error } = await supabase.from("food_favorites").insert({
+    user_id: userId,
+    food_id: foodId,
+    food_name: name,
+    kcal_100g: input.per100g.kcal,
+    protein_100g: input.per100g.protein,
+    carbs_100g: input.per100g.carbs,
+    fat_100g: input.per100g.fat,
+  });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/food");
+  return { ok: true, favorite: true };
 }

@@ -44,9 +44,9 @@ against a live project; see `docs/superpowers/specs/2026-09-08-s1-*`.
 |---|---|
 | Coach | `app/(coach)/nutrition`, `nutrition/new`, `nutrition/[id]` |
 | Client | `app/(client)/food` |
-| Writes | [app/nutrition-actions.ts](../apps/web/app/nutrition-actions.ts) (coach side), `logFood` / `updateFoodLog` / `deleteFoodLog` (client side) |
-| Reads | `getNutritionPlans` / `getNutritionPlan`, `getMyDayNutrition` / `getMyPlanMeals` / `getMyFoodDays` |
-| Tables | `foods`, `nutrition_plans → planned_meals → planned_meal_foods`, `food_logs` |
+| Writes | [app/nutrition-actions.ts](../apps/web/app/nutrition-actions.ts) (coach side), `logFood` / `updateFoodLog` / `deleteFoodLog` / `toggleFavoriteFood` (client side) |
+| Reads | `getNutritionPlans` / `getNutritionPlan`, `getMyDayNutrition` / `getMyPlanMeals` / `getMyFoodDays` / `getMyQuickFoods` (recent + starred, for the logger) |
+| Tables | `foods`, `nutrition_plans → planned_meals → planned_meal_foods`, `food_logs`, `food_favorites` |
 | Components | `nutrition-builder.tsx`, `new-plan-form.tsx`; client diary: `week-strip.tsx`, `nutrition-summary.tsx`, `meal-card.tsx`, `food-logger.tsx`, `food-entry.tsx`, `barcode-scanner.tsx` |
 | Edge functions | `food-search`, `barcode-lookup` (+ `_shared/portions.ts`) |
 

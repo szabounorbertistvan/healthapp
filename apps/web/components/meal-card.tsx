@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Macros } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
-import type { ClientFoodEntry, MealSlot } from "@/lib/types";
+import type { ClientFoodEntry, MealSlot, QuickFoods } from "@/lib/types";
 import { Card } from "./ui";
 import { FoodEntry } from "./food-entry";
 import { FoodLogger } from "./food-logger";
@@ -19,12 +19,15 @@ export function MealCard({
   day,
   entries,
   planned,
+  quick,
 }: {
   slot: MealSlot;
   label: string;
   day: string;
   entries: ClientFoodEntry[];
   planned: { name: string; grams: number; macros: Macros }[] | null;
+  /** Starred and recently logged foods, shared by every meal on the page. */
+  quick: QuickFoods;
 }) {
   const { t } = useI18n();
   const f = t.clientApp.food;
@@ -81,7 +84,7 @@ export function MealCard({
         </div>
       ) : null}
 
-      {adding ? <FoodLogger slot={slot} day={day} onClose={() => setAdding(false)} /> : null}
+      {adding ? <FoodLogger slot={slot} day={day} quick={quick} onClose={() => setAdding(false)} /> : null}
     </Card>
   );
 }

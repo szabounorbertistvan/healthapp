@@ -19,7 +19,33 @@ import { notSignedIn } from "@/lib/action-result";
 //
 // day_index is the 0-based ordinal of a day *within its week*, which is what
 // the unique key (program_id, week_index, day_index) assumes. The demo store
-// mirrors it.
+// mirrors it. Only the sort reads it, so a hole left by a deleted day is
+// harmless — see nextDayIndex().
+
+/**
+ * The next free ordinal inside a week.
+ *
+ * Not the number of days: deleting a day leaves a hole — the row is gone, the
+ * days after it keep the index they had — so counting them hands back an index
+ * that is still taken and the (program_id, week_index, day_index) unique key
+ * rejects the insert. The highest index plus one is free whatever the holes
+ * look like, and nothing but the sort reads day_index.
+ */
+async function nextDayIndex(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  programId: string,
+  weekIndex: number,
+): Promise<number> {
+  const { data } = await supabase
+    .from("program_days")
+    .select("day_index")
+    .eq("program_id", programId)
+    .eq("week_index", weekIndex)
+    .order("day_index", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return ((data?.day_index as number | undefined) ?? -1) + 1;
+}
 
 export async function createProgram(input: {
   name: string;
@@ -90,15 +116,11 @@ export async function addProgramDay(programId: string, name: string): Promise<Ac
   }
 
   const supabase = await supabaseServer();
-  const { count } = await supabase
-    .from("program_days")
-    .select("id", { count: "exact", head: true })
-    .eq("program_id", programId)
-    .eq("week_index", 1);
+  const dayIndex = await nextDayIndex(supabase, programId, 1);
   const { error } = await supabase.from("program_days").insert({
     program_id: programId,
     week_index: 1,
-    day_index: count ?? 0,
+    day_index: dayIndex,
     name: dayName,
   });
   if (error) return { ok: false, message: error.message };
@@ -263,17 +285,13 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
     .single();
   if (readError) return { ok: false, message: readError.message };
 
-  const { count } = await supabase
-    .from("program_days")
-    .select("id", { count: "exact", head: true })
-    .eq("program_id", programId)
-    .eq("week_index", source.week_index);
+  const dayIndex = await nextDayIndex(supabase, programId, source.week_index);
   const { data: created, error: writeError } = await supabase
     .from("program_days")
     .insert({
       program_id: programId,
       week_index: source.week_index,
-      day_index: count ?? 0,
+      day_index: dayIndex,
       name: `${source.name} (copy)`,
     })
     .select("id")
@@ -416,15 +434,11 @@ export async function addSoloProgramDay(
   }
 
   const supabase = await supabaseServer();
-  const { count } = await supabase
-    .from("program_days")
-    .select("id", { count: "exact", head: true })
-    .eq("program_id", programId)
-    .eq("week_index", 1);
+  const dayIndex = await nextDayIndex(supabase, programId, 1);
   const { error } = await supabase.from("program_days").insert({
     program_id: programId,
     week_index: 1,
-    day_index: count ?? 0,
+    day_index: dayIndex,
     name: dayName,
     muscle_groups: muscleGroups,
   });
@@ -463,8 +477,9 @@ export async function getMySoloProgramId(): Promise<string | null> {
 /**
  * Delete a training day and everything prescribed in it. The client reaches
  * this by swiping a day away on Training or in their builder and confirming.
- * program_exercises cascade in SQL; in demo the day simply leaves the array. day_index is re-packed so the (program, week, index)
- * key stays dense for the next addProgramDay.
+ * program_exercises cascade in SQL; in demo the day simply leaves the array.
+ * The demo store re-packs day_index; live leaves the hole, which is why the
+ * next day takes max(day_index) + 1 rather than a count.
  */
 export async function removeProgramDay(programId: string, dayId: string): Promise<ActionResult> {
   if (isDemo) {

@@ -1,4 +1,4 @@
-import { getMyDayNutrition, getMyFoodDays, getMyPlanMeals } from "@/lib/client-data";
+import { getMyDayNutrition, getMyFoodDays, getMyPlanMeals, getMyQuickFoods } from "@/lib/client-data";
 import { isoDay } from "@/lib/demo-client-store";
 import { validDay, weekDaysOf } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
@@ -25,10 +25,11 @@ export default async function FoodPage({
   const day = validDay((await searchParams).day) ?? today;
   const week = weekDaysOf(day);
 
-  const [nutrition, planMeals, loggedDays] = await Promise.all([
+  const [nutrition, planMeals, loggedDays, quick] = await Promise.all([
     getMyDayNutrition(day),
     getMyPlanMeals(),
     getMyFoodDays(week[0], week[6]),
+    getMyQuickFoods(),
   ]);
 
   const slotLabel: Record<MealSlot, string> = {
@@ -61,6 +62,7 @@ export default async function FoodPage({
               day={day}
               entries={nutrition.entries.filter((e) => e.slot === slot)}
               planned={planMeals.find((m) => m.slot === slot)?.foods ?? null}
+              quick={quick}
             />
           ))}
         </div>

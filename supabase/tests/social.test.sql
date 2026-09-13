@@ -96,10 +96,14 @@ select is((select text from public.social_posts where id = '90000000-0000-0000-0
   'public post', 'updating another user''s post changes nothing (RLS filters it out)');
 
 -- ---------- kudos ----------
--- Alex (follows Maria) on Maria's public post
+-- Alex (follows Maria) on Maria's public post.
+-- created_at is spelled out because every row in this file is written inside
+-- one transaction, where now() is the same instant for all of them: the givers
+-- would tie and `order by created_at` — what the feed names them by — would be
+-- free to return either order. In the app each kudos is its own transaction.
 select lives_ok($$
-  insert into public.social_reactions (post_id, user_id)
-  values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a')
+  insert into public.social_reactions (post_id, user_id, created_at)
+  values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a', now() - interval '1 minute')
 $$, 'kudos on a visible public post');
 select throws_ok($$
   insert into public.social_reactions (post_id, user_id)
@@ -171,23 +175,13 @@ select is((select count(*)::int from public.notifications
            where user_id = 'b0000000-0000-0000-0000-00000000000b' and category = 'new_kudos'
              and payload ->> 'post_id' = '90000000-0000-0000-0000-000000000001'),
   2, 'giving kudos again does not notify the author twice');
-select pg_temp.authenticate_as('b0000000-0000-0000-0000-00000000000b');
-update public.social_posts set deleted_at = now() where id = '90000000-0000-0000-0000-000000000001';
-select pg_temp.authenticate_as('a0000000-0000-0000-0000-00000000000a');
-delete from public.social_reactions
-  where post_id = '90000000-0000-0000-0000-000000000001' and user_id = 'a0000000-0000-0000-0000-00000000000a';
-select throws_ok($$
-  insert into public.social_reactions (post_id, user_id)
-  values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a')
-$$, '42501', null, 'kudos on a deleted post is refused');
-select is((select count(*)::int from public.social_post_kudos('90000000-0000-0000-0000-000000000001', 20, null)),
-  0, 'the kudos list of a deleted post is empty');
--- restore the post (as its author) for the comment tests below
-select pg_temp.authenticate_as('b0000000-0000-0000-0000-00000000000b');
-update public.social_posts set deleted_at = null where id = '90000000-0000-0000-0000-000000000001';
-select pg_temp.authenticate_as('a0000000-0000-0000-0000-00000000000a');
 
 -- ---------- comments ----------
+-- Before the delete below, on purpose: a soft delete is one way under RLS.
+-- The author's own `update ... set deleted_at = null` reads the row through
+-- the SELECT policy (can_see_post), which hides deleted posts, so nothing
+-- brings post 1 back — and a comment needs a post you can see.
+select pg_temp.authenticate_as('a0000000-0000-0000-0000-00000000000a');
 insert into public.social_comments (id, post_id, user_id, body) values
   ('70000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001',
    'a0000000-0000-0000-0000-00000000000a', 'nice one');
@@ -199,6 +193,19 @@ select pg_temp.authenticate_as('a0000000-0000-0000-0000-00000000000a');
 delete from public.social_comments where id = '70000000-0000-0000-0000-000000000001';
 select is((select count(*)::int from public.social_comments where id = '70000000-0000-0000-0000-000000000001'),
   0, 'the author deletes their own comment');
+
+-- ---------- the deleted post ----------
+select pg_temp.authenticate_as('b0000000-0000-0000-0000-00000000000b');
+update public.social_posts set deleted_at = now() where id = '90000000-0000-0000-0000-000000000001';
+select pg_temp.authenticate_as('a0000000-0000-0000-0000-00000000000a');
+delete from public.social_reactions
+  where post_id = '90000000-0000-0000-0000-000000000001' and user_id = 'a0000000-0000-0000-0000-00000000000a';
+select throws_ok($$
+  insert into public.social_reactions (post_id, user_id)
+  values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a')
+$$, '42501', null, 'kudos on a deleted post is refused');
+select is((select count(*)::int from public.social_post_kudos('90000000-0000-0000-0000-000000000001', 20, null)),
+  0, 'the kudos list of a deleted post is empty');
 
 select * from finish();
 rollback;

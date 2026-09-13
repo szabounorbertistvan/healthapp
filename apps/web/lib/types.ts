@@ -466,3 +466,20 @@ export type ClientToday = {
   unread_from_coach: number;
   training_load: TrainingLoadSummary;
 };
+
+/** A food one tap from being logged again — recently logged, or starred. */
+export type QuickFood = {
+  /** foods.id when known (uuid live, slug in demo); null for a name-only product. */
+  food_id: string | null;
+  name: string;
+  per_100g: Macros;
+  /** Serving presets carried on the row, when any. */
+  portions?: { label: string; grams: number; note: string }[];
+  /** Grams of the most recent log of this food, so re-logging lands on the same portion. */
+  last_grams: number | null;
+  favorite: boolean;
+  /** Food group for the icon when the table knows it; null means "guess from the name". */
+  group: string | null;
+};
+
+export type QuickFoods = { recent: QuickFood[]; favorites: QuickFood[] };

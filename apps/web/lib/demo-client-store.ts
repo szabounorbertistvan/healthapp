@@ -54,6 +54,8 @@ export type StoredFoodLog = {
   client_id: string;
   logged_on: string;
   slot: MealSlot;
+  /** foods.id when the log came from the picker; absent for older or free-text logs. */
+  food_id?: string | null;
   food_name: string;
   grams: number;
   /** Snapshot at log time — external food data may change, history must not. */
@@ -61,6 +63,16 @@ export type StoredFoodLog = {
   /** Kept so an edited portion can be re-costed without re-fetching the food. */
   per_100g: Macros;
   logged_at: string;
+};
+
+export type StoredFoodFavorite = {
+  id: string;
+  client_id: string;
+  /** Demo food id, or null for a product starred by name only. */
+  food_id: string | null;
+  food_name: string;
+  per_100g: Macros;
+  created_at: string;
 };
 
 export type StoredHabit = {
@@ -144,6 +156,7 @@ type ClientStore = {
   sessions: StoredSession[];
   sets: StoredLoggedSet[];
   foodLogs: StoredFoodLog[];
+  foodFavorites: StoredFoodFavorite[];
   habits: StoredHabit[];
   habitLogs: StoredHabitLog[];
   measurements: StoredMeasurement[];
@@ -158,7 +171,7 @@ type ClientStore = {
 
 // Bump whenever ClientStore changes shape — a store carried across a hot reload
 // that is missing a new field would crash every reader.
-const STORE_VERSION = 8;
+const STORE_VERSION = 9;
 
 const globalRef = globalThis as unknown as {
   __voinicClientStore?: ClientStore & { version?: number };
@@ -590,8 +603,14 @@ function seed(): ClientStore {
     { id: newId("co"), post_id: "po3", user_id: "d5", body: "Huge. That 1RM is climbing fast.", created_at: daysAgoStamp(3) },
   ];
 
+  // Two staples starred, so the logger opens on something useful.
+  const foodFavorites: StoredFoodFavorite[] = [
+    { id: "ff1", client_id: DEMO_CLIENT_ID, food_id: "chicken-breast", food_name: "Piept de pui, crud", per_100g: { kcal: 165, protein: 31, carbs: 0, fat: 3.6 }, created_at: daysAgoStamp(20) },
+    { id: "ff2", client_id: DEMO_CLIENT_ID, food_id: "greek-yogurt", food_name: "Iaurt grecesc 2%", per_100g: { kcal: 73, protein: 10, carbs: 3.6, fat: 2 }, created_at: daysAgoStamp(12) },
+  ];
+
   return {
-    sessions, sets, foodLogs, habits, habitLogs, measurements, checkIns, challenges, participants,
+    sessions, sets, foodLogs, foodFavorites, habits, habitLogs, measurements, checkIns, challenges, participants,
     follows, posts, reactions, comments,
   };
 }
