@@ -21,8 +21,8 @@ import {
   type StreakSummary,
   type WorkoutDay,
 } from "@healthapp/shared";
-import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
-import { viewingClientId } from "./view-mode";
+import { currentActorId } from "./actor";
+import { isDemo, supabaseServer } from "./supabase/server";
 import { clientStore } from "./demo-client-store";
 
 export type StreakView = {
@@ -67,11 +67,6 @@ const workoutDaysFor = cache(async (userId: string): Promise<{ days: WorkoutDay[
   };
 });
 
-async function me(): Promise<string | null> {
-  if (isDemo) return viewingClientId();
-  return currentUserId();
-}
-
 /** Current streak of a user the caller may read (self, or a coach's client) — for the weekly summary. */
 export async function getWorkoutStreak(userId: string): Promise<StreakSummary> {
   const { days, timezone } = await workoutDaysFor(userId);
@@ -80,7 +75,7 @@ export async function getWorkoutStreak(userId: string): Promise<StreakSummary> {
 
 /** The signed-in user's own streak, calendar and milestones. */
 export const getMyStreak = cache(async (): Promise<StreakView | null> => {
-  const viewer = await me();
+  const viewer = await currentActorId();
   if (!viewer) return null;
   const [{ days, timezone }, shared] = await Promise.all([workoutDaysFor(viewer), sharedMilestones(viewer)]);
   const today = todayIn(timezone);

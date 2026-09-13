@@ -12,7 +12,7 @@ import {
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
 import { store } from "@/lib/demo-store";
-import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
+import { isDemo, liveUser, type LiveUser } from "@/lib/supabase/server";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
 import { viewingClientId } from "@/lib/view-mode";
 import {
@@ -24,7 +24,7 @@ import {
   newId,
   type MealSlot,
 } from "@/lib/demo-client-store";
-import type { ActionResult } from "./actions";
+import { notSignedIn, type ActionResult } from "./actions";
 
 export type LogSetResult = ActionResult & { is_pr?: boolean; estimated_1rm?: number };
 
@@ -105,9 +105,9 @@ export async function logSet(input: {
     return { ok: true, demo: true, is_pr: isPr };
   }
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
 
   if (!input.exerciseId) {
     // logged_sets.exercise_id is NOT NULL and there is no name lookup here on
@@ -177,7 +177,7 @@ export async function logSet(input: {
  * id, or an ActionResult to hand straight back to the caller.
  */
 async function openSession(
-  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  supabase: LiveUser["supabase"],
   userId: string,
   dayId: string,
   sessionKey: string,
@@ -235,9 +235,9 @@ export async function finishWorkout(dayId: string): Promise<ActionResult & { ses
     revalidatePath("/workout");
     return { ok: true, demo: true, sessionId: session.id };
   }
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { data, error } = await supabase
     .from("logged_sessions")
     .update({ completed_at: new Date().toISOString() })
@@ -286,9 +286,9 @@ export async function logFood(input: {
     return { ok: true, demo: true };
   }
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { error } = await supabase.from("food_logs").insert({
     user_id: userId,
     date: day,
@@ -335,7 +335,9 @@ export async function updateFoodLog(id: string, grams: number): Promise<ActionRe
     return { ok: true, demo: true };
   }
 
-  const supabase = await supabaseServer();
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase } = live;
   const { data: row, error: readError } = await supabase
     .from("food_logs")
     .select("grams, kcal, protein_g, carbs_g, fat_g, food_id")
@@ -399,7 +401,9 @@ export async function deleteFoodLog(id: string): Promise<ActionResult> {
     revalidatePath("/today");
     return { ok: true, demo: true };
   }
-  const supabase = await supabaseServer();
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase } = live;
   const { error } = await supabase.from("food_logs").delete().eq("id", id);
   if (error) return { ok: false, message: error.message };
   revalidatePath("/food");
@@ -417,9 +421,9 @@ export async function toggleHabit(habitId: string, day = isoDay()): Promise<Acti
     revalidatePath("/habits");
     return { ok: true, demo: true };
   }
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { data: existing } = await supabase
     .from("habit_logs")
     .select("id")
@@ -456,9 +460,9 @@ export async function addHabit(name: string, targetPerWeek: number): Promise<Act
     revalidatePath("/today");
     return { ok: true, demo: true };
   }
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   // No target_per_week column: scheduling is `weekdays int[]` with 0=Sun. A
   // target of n means the first n days of the week, which is the closest this
   // simple form can express — a real weekday picker is the proper fix.
@@ -506,9 +510,9 @@ export async function addMeasurement(input: {
     revalidatePath("/today");
     return { ok: true, demo: true };
   }
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   // The upsert replaces the whole row, so read what is already there first.
   // Waist lives inside the circumferences jsonb, and weight_kg is a plain
   // column — both have to be carried forward, or a waist-only entry in the
@@ -578,9 +582,9 @@ export async function submitCheckIn(input: {
     return { ok: true, demo: true };
   }
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   // check_ins is unique on (user_id, week_start). Say so in words rather than
   // letting the constraint violation reach the form, and mirror the demo guard.
   const { data: already } = await supabase
@@ -677,9 +681,9 @@ export async function setMyNutritionTargets(input: {
     return { ok: true, demo: true };
   }
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { data: existing } = await supabase
     .from("nutrition_plans")
     .select("id")

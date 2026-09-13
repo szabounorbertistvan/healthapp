@@ -5,11 +5,11 @@
 import { revalidatePath } from "next/cache";
 import { canJoin } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
-import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
+import { isDemo, liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { viewingClientId } from "@/lib/view-mode";
 import { clientStore, isoDay, newId } from "@/lib/demo-client-store";
-import type { ActionResult } from "./actions";
+import { notSignedIn, type ActionResult } from "./actions";
 
 function touched(id: string) {
   revalidatePath("/challenges");
@@ -31,9 +31,9 @@ export async function joinChallenge(id: string): Promise<ActionResult> {
     touched(id);
     return { ok: true, demo: true };
   }
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   // RLS (participants_join) refuses an ended challenge too; checking here
   // gives the person a translated reason instead of a policy error.
   const { data: ch } = await supabase.from("challenges").select("start_date, end_date").eq("id", id).maybeSingle();
@@ -56,9 +56,9 @@ export async function leaveChallenge(id: string): Promise<ActionResult> {
     touched(id);
     return { ok: true, demo: true };
   }
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const result = await supabase
     .from("challenge_participants")
     .delete({ count: "exact" })

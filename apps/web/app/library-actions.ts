@@ -1,8 +1,9 @@
 "use server";
 import { filterExercises, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
-import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
+import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
 import { exerciseLibrary } from "@/lib/exercise-library";
 import { store } from "@/lib/demo-store";
+import { notSignedIn } from "./actions";
 
 // Exercise search (W5), callable from client components.
 //
@@ -95,9 +96,9 @@ export async function createCustomExercise(
     return { ok: true, demo: true, exercise };
   }
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { data, error } = await supabase
     .from("exercises")
     .insert({

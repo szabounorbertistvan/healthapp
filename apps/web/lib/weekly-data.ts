@@ -17,11 +17,11 @@ import {
   type WeeklyMeasurement,
   type WeeklySession,
 } from "@healthapp/shared";
-import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
+import { isDemo, liveUser, supabaseServer } from "./supabase/server";
 import { store } from "./demo-store";
 import { viewingClientId } from "./view-mode";
 import { clientStore, daysAgoIso, isoDay } from "./demo-client-store";
-import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./client-data";
+import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
 import { getWorkoutStreak } from "./streak-data";
 import { loadOf } from "./training-load";
 import type { LoggedSetRow } from "./types";
@@ -33,10 +33,9 @@ export type WeeklySummary = WeeklyComparison & { choice: WeekChoice };
 /** The signed-in client's summary for this week (default) or last week. */
 export async function getMyWeeklySummary(choice: WeekChoice = "current"): Promise<WeeklySummary | null> {
   if (isDemo) return summaryFor(await viewingClientId(), choice);
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return null;
-  return summaryFor(userId, choice);
+  const live = await liveUser();
+  if (!live) return null;
+  return summaryFor(live.userId, choice);
 }
 
 /**

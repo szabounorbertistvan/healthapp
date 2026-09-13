@@ -21,15 +21,15 @@ import {
   type StreakPostPayload,
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
-import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
+import { currentActorId } from "@/lib/actor";
+import { isDemo, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
-import { viewingClientId } from "@/lib/view-mode";
 import { clientStore, newId } from "@/lib/demo-client-store";
 import { getPostKudos, getShareableSession } from "@/lib/social-data";
 import { getChallenge } from "@/lib/challenges-data";
 import { getMyStreak } from "@/lib/streak-data";
 import type { KudosPage } from "@/lib/types";
-import type { ActionResult } from "./actions";
+import { notSignedIn, type ActionResult } from "./actions";
 
 export type PostResult = ActionResult & { postId?: string };
 
@@ -37,11 +37,6 @@ function touched(extra: string[] = []) {
   revalidatePath("/feed");
   revalidatePath("/people", "layout");
   for (const p of extra) revalidatePath(p);
-}
-
-async function userId(): Promise<string | null> {
-  if (isDemo) return viewingClientId();
-  return currentUserId();
 }
 
 function visibilityOf(input: string | undefined): PostVisibility {
@@ -52,8 +47,8 @@ function visibilityOf(input: string | undefined): PostVisibility {
 
 export async function follow(targetId: string): Promise<ActionResult> {
   const { t } = await getI18n();
-  const uid = await userId();
-  if (!uid) return { ok: false, message: "Not signed in" };
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   if (isDemo) {
     const cs = clientStore();
     const existing = new Set(cs.follows.filter((f) => f.follower_id === uid).map((f) => f.following_id));
@@ -74,8 +69,8 @@ export async function follow(targetId: string): Promise<ActionResult> {
 }
 
 export async function unfollow(targetId: string): Promise<ActionResult> {
-  const uid = await userId();
-  if (!uid) return { ok: false, message: "Not signed in" };
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   if (isDemo) {
     const cs = clientStore();
     const i = cs.follows.findIndex((f) => f.follower_id === uid && f.following_id === targetId);
@@ -101,8 +96,8 @@ async function insertPost(input: {
   activity_id?: string | null;
   challenge_id?: string | null;
 }): Promise<PostResult> {
-  const uid = await userId();
-  if (!uid) return { ok: false, message: "Not signed in" };
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   if (!payloadIsSafe(input.payload)) return { ok: false, message: "Payload carries private data" };
   if (isDemo) {
     const cs = clientStore();
@@ -225,8 +220,8 @@ export async function shareStreak(milestone: number, streakStart: string, visibi
 }
 
 export async function deletePost(postId: string): Promise<ActionResult> {
-  const uid = await userId();
-  if (!uid) return { ok: false, message: "Not signed in" };
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   if (isDemo) {
     const p = clientStore().posts.find((x) => x.id === postId && x.user_id === uid);
     if (p) p.deleted_at = new Date().toISOString();
@@ -258,8 +253,8 @@ export type KudosResult = ActionResult & { kudos?: boolean };
  */
 export async function toggleKudos(postId: string): Promise<KudosResult> {
   const { t } = await getI18n();
-  const uid = await userId();
-  if (!uid) return { ok: false, message: "Not signed in" };
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   if (isDemo) {
     const cs = clientStore();
     const post = cs.posts.find((p) => p.id === postId);
@@ -306,8 +301,8 @@ export async function loadKudos(postId: string, before: string | null = null): P
 
 export async function addComment(postId: string, body: string): Promise<ActionResult> {
   const { t } = await getI18n();
-  const uid = await userId();
-  if (!uid) return { ok: false, message: "Not signed in" };
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   const clean = validateComment(body);
   if (!clean) return { ok: false, message: t.common.social.commentInvalid };
   if (isDemo) {
@@ -323,8 +318,8 @@ export async function addComment(postId: string, body: string): Promise<ActionRe
 }
 
 export async function deleteComment(commentId: string, postId: string): Promise<ActionResult> {
-  const uid = await userId();
-  if (!uid) return { ok: false, message: "Not signed in" };
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   if (isDemo) {
     const cs = clientStore();
     const i = cs.comments.findIndex((c) => c.id === commentId && c.user_id === uid);

@@ -1,10 +1,10 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
+import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
-import type { ActionResult } from "./actions";
+import { notSignedIn, type ActionResult } from "./actions";
 
 // Profile fields the account carries beyond the auth row: username, sex, year
 // of birth. Sign-up collects them as user metadata (handle_new_user copies them
@@ -38,9 +38,9 @@ export async function completeProfile(input: {
 
   if (isDemo) return { ok: true, demo: true };
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   if (!(await usernameAvailable(username))) return { ok: false, errorCode: "USERNAME_TAKEN" };
 
   const failed = await mutated(

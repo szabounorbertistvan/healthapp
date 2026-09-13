@@ -16,7 +16,7 @@ import {
   type ChallengeActivity,
   type ChallengeType,
 } from "@healthapp/shared";
-import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
+import { isDemo, liveUser, supabaseServer } from "./supabase/server";
 import { getI18n } from "./i18n/server";
 import { getProfile, getRoster } from "./data";
 import { store } from "./demo-store";
@@ -187,9 +187,9 @@ export async function getMyChallenges(): Promise<ChallengeCard[]> {
     }
     return sortCards(cards);
   }
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return [];
+  const live = await liveUser();
+  if (!live) return [];
+  const { supabase, userId } = live;
   const [{ data: rows }, { data: parts }] = await Promise.all([
     supabase.from("challenges").select("*").order("end_date", { ascending: false }),
     supabase.from("challenge_participants").select("challenge_id, user_id, completed_at"),
@@ -258,9 +258,9 @@ export async function getChallenge(id: string): Promise<ChallengeDetail | null> 
     }));
     return { ...card, leaderboard: leaderboardOf(ch.visibility, entries) };
   }
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return null;
+  const live = await liveUser();
+  if (!live) return null;
+  const { supabase, userId } = live;
   const { data: row } = await supabase.from("challenges").select("*").eq("id", id).maybeSingle();
   if (!row || !isChallengeType((row as Row).type)) return null;
   const r = row as Row;

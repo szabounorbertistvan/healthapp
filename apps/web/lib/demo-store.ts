@@ -122,6 +122,11 @@ export function store(): Store {
   return globalRef.__voinicDemoStore;
 }
 
+/** Whether this demo client currently has a coach — pickProgram's first argument. */
+export function demoHasActiveCoach(clientId: string): boolean {
+  return store().clients.find((c) => c.client_id === clientId)?.status === "active";
+}
+
 export function newId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }

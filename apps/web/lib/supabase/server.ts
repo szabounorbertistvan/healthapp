@@ -54,3 +54,22 @@ export const currentUserId = cache(async (): Promise<string | null> => {
     console.error("[auth] getClaims failed, falling back to getUser:", error);
   });
 });
+
+export type LiveUser = {
+  supabase: Awaited<ReturnType<typeof supabaseServer>>;
+  userId: string;
+};
+
+/**
+ * The live Supabase client plus the signed-in id, or null.
+ *
+ * Replaces the four-line `supabaseServer` + `currentUserId` + early-return
+ * that every read and write used to open with. Demo branches return before
+ * they get here; a null here always means "not signed in".
+ */
+export const liveUser = cache(async (): Promise<LiveUser | null> => {
+  const supabase = await supabaseServer();
+  const userId = await currentUserId();
+  if (!userId) return null;
+  return { supabase, userId };
+});

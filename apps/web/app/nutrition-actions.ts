@@ -1,12 +1,12 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
+import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
 import { normalizeForSearch } from "@healthapp/shared";
 import { DEMO_COACH_ID, newId, store, type StoredPlan } from "@/lib/demo-store";
 import { demoFoods, findDemoFoodByBarcode, searchDemoFoods, type DemoFood } from "@/lib/demo-foods";
-import type { ActionResult } from "./actions";
+import { notSignedIn, type ActionResult } from "./actions";
 
 // Nutrition plan builder writes (W6, Sprint 6).
 //
@@ -154,9 +154,9 @@ export async function createNutritionPlan(input: {
     return { ok: true, demo: true, id: plan.id };
   }
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { data, error } = await supabase
     .from("nutrition_plans")
     .insert({

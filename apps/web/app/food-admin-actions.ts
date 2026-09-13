@@ -1,9 +1,9 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
+import { isDemo, liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { demoFoods } from "@/lib/demo-foods";
-import type { ActionResult } from "./actions";
+import { notSignedIn, type ActionResult } from "./actions";
 
 /**
  * Admin: give a shared food its Romanian name.
@@ -25,9 +25,9 @@ export async function setFoodRomanianName(foodId: string, nameRo: string): Promi
     return { ok: true, demo: true };
   }
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { data: me } = await supabase.from("users").select("role").eq("id", userId).maybeSingle();
   if (me?.role !== "admin") return { ok: false, message: "Admins only" };
 

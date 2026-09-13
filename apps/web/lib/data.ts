@@ -1,11 +1,12 @@
 // Server-side data access. Demo mode (no NEXT_PUBLIC_SUPABASE_URL) serves
 // fixtures; live mode goes through Supabase under RLS.
 import "server-only";
+import { cache } from "react";
 import {
   demoAdminStats, demoCheckIns, demoClients, demoConversations, demoDashboard,
   demoMessages, demoNutritionPlans, demoProfile,
 } from "./demo";
-import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
+import { isDemo, liveUser, supabaseServer } from "./supabase/server";
 import {
   demoClientRows, demoDashboardRows, demoRoster, store,
   type StoredPlan, type StoredProgram,
@@ -20,11 +21,11 @@ import type { Role, Tier } from "./entitlements";
 
 export { isDemo };
 
-export async function getProfile(): Promise<Profile | null> {
+export const getProfile = cache(async (): Promise<Profile | null> => {
   if (isDemo) return demoProfile;
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return null;
+  const live = await liveUser();
+  if (!live) return null;
+  const { supabase, userId } = live;
   const [{ data: user }, { data: sub }] = await Promise.all([
     supabase.from("users").select("id, full_name, username, sex, birth_year, role").eq("id", userId).single(),
     supabase.from("subscriptions")
@@ -44,7 +45,7 @@ export async function getProfile(): Promise<Profile | null> {
     trial_ends_at: sub?.trial_ends_at ?? null,
     has_stripe: Boolean(sub?.stripe_customer_id),
   };
-}
+});
 
 /**
  * What the shell shows for the signed-in person: their username, else the
@@ -339,8 +340,9 @@ export async function getConversations(): Promise<ConversationRow[]> {
 
 export async function getMessages(conversationId: string): Promise<MessageRow[]> {
   if (isDemo) return demoMessages[conversationId] ?? [];
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
+  const live = await liveUser();
+  if (!live) return [];
+  const { supabase, userId } = live;
   const { data, error } = await supabase
     .from("messages")
     .select("id, body, created_at, sender_id")

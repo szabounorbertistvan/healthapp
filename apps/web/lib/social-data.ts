@@ -12,18 +12,13 @@ import {
   estimated1RM,
   type PostPayload,
 } from "@healthapp/shared";
-import { currentUserId, isDemo, supabaseServer } from "./supabase/server";
+import { currentActorId } from "./actor";
+import { isDemo, supabaseServer } from "./supabase/server";
 import { store } from "./demo-store";
-import { viewingClientId } from "./view-mode";
 import { clientStore, type StoredPost } from "./demo-client-store";
 import { loadOf } from "./training-load";
-import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./client-data";
+import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
 import type { FeedPage, FeedPost, KudosGiver, KudosPage, PersonRow, PostComment, ShareableSession, SocialProfile } from "./types";
-
-async function me(): Promise<string | null> {
-  if (isDemo) return viewingClientId();
-  return currentUserId();
-}
 
 // ---------- demo helpers ----------
 
@@ -62,7 +57,7 @@ function demoFeedPost(p: StoredPost, viewer: string): FeedPost {
 
 /** The home feed (own + followed) or one author's posts, newest first, one page. */
 export async function getFeed(opts: { before?: string | null; author?: string | null } = {}): Promise<FeedPage> {
-  const viewer = await me();
+  const viewer = await currentActorId();
   if (!viewer) return { items: [], next_cursor: null };
   if (isDemo) {
     const cs = clientStore();
@@ -92,7 +87,7 @@ export async function getFeed(opts: { before?: string | null; author?: string | 
 }
 
 export async function getPost(id: string): Promise<{ post: FeedPost; comments: PostComment[] } | null> {
-  const viewer = await me();
+  const viewer = await currentActorId();
   if (!viewer) return null;
   if (isDemo) {
     const cs = clientStore();
@@ -132,7 +127,7 @@ export async function getPost(id: string): Promise<{ post: FeedPost; comments: P
  * rows; demo, canSeePost() says no. The card's count is the only way in.
  */
 export async function getPostKudos(postId: string, before: string | null = null): Promise<KudosPage> {
-  const viewer = await me();
+  const viewer = await currentActorId();
   if (!viewer) return { items: [], next_cursor: null };
   if (isDemo) {
     const cs = clientStore();
@@ -156,7 +151,7 @@ export async function getPostKudos(postId: string, before: string | null = null)
 // ---------- people ----------
 
 export async function getSocialProfile(userId: string): Promise<SocialProfile | null> {
-  const viewer = await me();
+  const viewer = await currentActorId();
   if (!viewer) return null;
   if (isDemo) {
     const cs = clientStore();
@@ -184,7 +179,7 @@ export async function getSocialProfile(userId: string): Promise<SocialProfile | 
 }
 
 export async function searchPeople(query: string): Promise<PersonRow[]> {
-  const viewer = await me();
+  const viewer = await currentActorId();
   const q = query.trim().toLowerCase();
   if (!viewer || q.length < 2) return [];
   if (isDemo) {
@@ -200,7 +195,7 @@ export async function searchPeople(query: string): Promise<PersonRow[]> {
 
 /** People the viewer follows / who follow them — for the profile lists. */
 export async function getFollowList(userId: string, which: "followers" | "following"): Promise<PersonRow[]> {
-  const viewer = await me();
+  const viewer = await currentActorId();
   if (!viewer) return [];
   if (isDemo) {
     const cs = clientStore();
@@ -231,7 +226,7 @@ export async function getFollowList(userId: string, which: "followers" | "follow
  * own session — live, RLS makes any other id return nothing.
  */
 export async function getShareableSession(sessionId: string): Promise<ShareableSession | null> {
-  const viewer = await me();
+  const viewer = await currentActorId();
   if (!viewer) return null;
   if (isDemo) {
     const cs = clientStore();

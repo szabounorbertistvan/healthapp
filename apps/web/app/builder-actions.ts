@@ -1,10 +1,10 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { currentUserId, isDemo, supabaseServer } from "@/lib/supabase/server";
+import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { DEMO_COACH_ID, newId, store, type StoredProgram, type StoredProgramDay } from "@/lib/demo-store";
 import { viewingClientId } from "@/lib/view-mode";
-import type { ActionResult } from "./actions";
+import { notSignedIn, type ActionResult } from "./actions";
 
 // Program builder writes (W4, Sprint 3).
 //
@@ -49,9 +49,9 @@ export async function createProgram(input: {
     return { ok: true, demo: true, id: program.id };
   }
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { data, error } = await supabase
     .from("programs")
     .insert({
@@ -370,9 +370,9 @@ export async function createSoloProgram(input: {
     return { ok: true, demo: true, id: program.id };
   }
 
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return { ok: false, message: "Not signed in" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { data, error } = await supabase
     .from("programs")
     .insert({
@@ -445,9 +445,9 @@ export async function getMySoloProgramId(): Promise<string | null> {
       .sort((a, b) => (a.updated_at > b.updated_at ? -1 : 1));
     return mine[0]?.id ?? null;
   }
-  const supabase = await supabaseServer();
-  const userId = await currentUserId();
-  if (!userId) return null;
+  const live = await liveUser();
+  if (!live) return null;
+  const { supabase, userId } = live;
   const { data } = await supabase
     .from("programs")
     .select("id")
