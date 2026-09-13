@@ -18,11 +18,16 @@ export default async function WorkoutPage() {
   return (
     <div>
       <PageTitle title={t.common.nav.training}>
-        {groups.length > 0 && !hasOwn ? (
-          <Link href="/workout/build" className="text-xs font-semibold text-accent-ink hover:underline">
-            {t.clientApp.builder.title}
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold">
+          <Link href="/exercises" className="text-accent-ink hover:underline">
+            {t.clientApp.library.title}
           </Link>
-        ) : null}
+          {groups.length > 0 && !hasOwn ? (
+            <Link href="/workout/build" className="text-accent-ink hover:underline">
+              {t.clientApp.builder.title}
+            </Link>
+          ) : null}
+        </span>
       </PageTitle>
 
       {groups.length === 0 ? (

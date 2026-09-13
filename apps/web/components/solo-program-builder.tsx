@@ -12,7 +12,8 @@ import { Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import type { ProgramDetail } from "@/lib/types";
 
-export function SoloProgramBuilder({ program }: { program: ProgramDetail | null }) {
+/** `equipment` is the library's facet list, so "create exercise" suggests the same gear names the coach sees. */
+export function SoloProgramBuilder({ program, equipment = [] }: { program: ProgramDetail | null; equipment?: string[] }) {
   const { t } = useI18n();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -110,7 +111,7 @@ export function SoloProgramBuilder({ program }: { program: ProgramDetail | null 
             <ExercisePicker
               key={day.id}
               muscles={[...MUSCLE_GROUPS]}
-              equipment={[]}
+              equipment={equipment}
               initialMuscle={day.muscle_groups[0] ?? ""}
               pendingLabel={t.clientApp.builder.addExercise}
               onPick={(exercise) =>

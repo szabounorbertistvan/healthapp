@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { getProgram } from "@/lib/data";
+import { exerciseFacets } from "@/lib/exercise-library";
 import { getMySoloProgramId } from "@/app/builder-actions";
 import { SoloProgramBuilder } from "@/components/solo-program-builder";
 import { PageTitle } from "@/components/ui";
@@ -11,8 +13,12 @@ export default async function BuildProgramPage() {
 
   return (
     <div className="space-y-4">
-      <PageTitle title={t.clientApp.builder.title} />
-      <SoloProgramBuilder program={program} />
+      <PageTitle title={t.clientApp.builder.title}>
+        <Link href="/exercises" className="text-xs font-semibold text-accent-ink hover:underline">
+          {t.clientApp.library.title}
+        </Link>
+      </PageTitle>
+      <SoloProgramBuilder program={program} equipment={exerciseFacets().equipment} />
     </div>
   );
 }

@@ -166,6 +166,12 @@ const en = {
     noCoachTitle: "No coach yet",
     noCoachHint: "Once you accept a coach invite, your conversation appears here.",
   },
+  library: {
+    title: "Exercise library",
+    hint: "Browse the library or create an exercise of your own — it shows up first when you add exercises to your program.",
+    facets: "{muscles} muscle groups · {equipment} equipment types",
+    source: "Source: Free Exercise DB (public domain).",
+  },
   builder: {
     title: "Build your program",
     namePlaceholder: "Program name",
@@ -365,6 +371,12 @@ const ro: typeof en = {
   coach: {
     noCoachTitle: "Încă nu ai antrenor",
     noCoachHint: "După ce accepți invitația unui antrenor, conversația voastră apare aici.",
+  },
+  library: {
+    title: "Biblioteca de exerciții",
+    hint: "Răsfoiește biblioteca sau creează-ți propriul exercițiu — apare primul când adaugi exerciții în programul tău.",
+    facets: "{muscles} grupe musculare · {equipment} tipuri de echipament",
+    source: "Sursă: Free Exercise DB (domeniu public).",
   },
   builder: {
     title: "Construiește-ți programul",
