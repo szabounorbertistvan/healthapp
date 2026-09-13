@@ -1,21 +1,25 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFeed, getSocialProfile } from "@/lib/social-data";
+import { getUserStreak } from "@/lib/streak-data";
+import { fill } from "@/lib/i18n";
 import { Card } from "@/components/ui";
 import { Avatar, FollowButton, PostCard } from "@/components/social";
 import { getI18n } from "@/lib/i18n/server";
 
 /**
- * A person's public profile: name, follow counts, three aggregate numbers
+ * A person's public profile: name, follow counts, three aggregate numbers,
+ * the streak as two numbers (current, longest — never the days),
  * and the posts the viewer is allowed to see. Nothing private — no weight,
  * no nutrition, no sets.
  */
 export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
   const { t } = await getI18n();
   const { id } = await params;
-  const [profile, posts] = await Promise.all([getSocialProfile(id), getFeed({ author: id })]);
+  const [profile, posts, streak] = await Promise.all([getSocialProfile(id), getFeed({ author: id }), getUserStreak(id)]);
   if (!profile) notFound();
   const s = t.common.social;
+  const st = t.common.streaks;
   const stats: [string, number][] = [
     [s.followers, profile.followers],
     [s.followingCount, profile.following],
@@ -46,6 +50,14 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             </div>
           ))}
         </dl>
+        {streak.longest > 0 ? (
+          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <span>
+              🔥 <b className="tabular-nums">{streak.current === 1 ? st.dayStreakOne : fill(st.dayStreak, { count: streak.current })}</b>
+            </span>
+            <span className="text-ink-soft">🏆 {streak.longest === 1 ? st.bestOne : fill(st.best, { count: streak.longest })}</span>
+          </p>
+        ) : null}
       </Card>
       <h2 className="text-sm font-bold">{s.yourPosts}</h2>
       {posts.items.length === 0 ? (

@@ -5,6 +5,7 @@
 import { revalidatePath } from "next/cache";
 import {
   POST_VISIBILITIES,
+  STREAK_SHARE_MIN,
   canKudos,
   payloadIsSafe,
   validateComment,
@@ -13,9 +14,11 @@ import {
   workoutPostPayload,
   type ChallengePostPayload,
   type PostPayload,
+  type PostType,
   type PostVisibility,
   type PrPostPayload,
   type ProgressPostPayload,
+  type StreakPostPayload,
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
 import { isDemo, supabaseServer } from "@/lib/supabase/server";
@@ -24,6 +27,7 @@ import { viewingClientId } from "@/lib/view-mode";
 import { clientStore, newId } from "@/lib/demo-client-store";
 import { getPostKudos, getShareableSession } from "@/lib/social-data";
 import { getChallenge } from "@/lib/challenges-data";
+import { getMyStreak } from "@/lib/streak-data";
 import type { KudosPage } from "@/lib/types";
 import type { ActionResult } from "./actions";
 
@@ -92,7 +96,7 @@ export async function unfollow(targetId: string): Promise<ActionResult> {
 // ---------- posts ----------
 
 async function insertPost(input: {
-  type: "workout" | "pr" | "challenge_completed" | "progress" | "text";
+  type: PostType;
   text: string | null;
   payload: PostPayload;
   visibility: PostVisibility;
@@ -104,12 +108,16 @@ async function insertPost(input: {
   if (!payloadIsSafe(input.payload)) return { ok: false, message: "Payload carries private data" };
   if (isDemo) {
     const cs = clientStore();
-    // Mirror the partial unique indexes: one workout post per session, one completion per challenge.
+    // Mirror the partial unique indexes: one workout post per session, one
+    // completion per challenge, one post per streak milestone.
+    const streak = input.payload?.kind === "streak" ? input.payload : null;
     const dup = cs.posts.find(
       (p) =>
         p.user_id === uid && p.deleted_at === null &&
         ((input.type === "workout" && input.activity_id && p.type === "workout" && p.activity_id === input.activity_id) ||
-          (input.type === "challenge_completed" && input.challenge_id && p.type === "challenge_completed" && p.challenge_id === input.challenge_id)),
+          (input.type === "challenge_completed" && input.challenge_id && p.type === "challenge_completed" && p.challenge_id === input.challenge_id) ||
+          (streak !== null && p.type === "streak" && p.payload?.kind === "streak" &&
+            p.payload.milestone === streak.milestone && p.payload.streak_start === streak.streak_start)),
     );
     if (dup) return { ok: true, demo: true, postId: dup.id };
     const id = newId("po");
@@ -190,6 +198,31 @@ export async function shareChallenge(challengeId: string, visibility?: string): 
   const payload: ChallengePostPayload = { kind: "challenge_completed", title_en: c.title, title_ro: c.title, type: c.type, target: c.target, value: c.progress };
   const result = await insertPost({ type: "challenge_completed", text: null, payload, visibility: visibilityOf(visibility), challenge_id: challengeId });
   revalidatePath(`/challenges/${challengeId}`);
+  return result;
+}
+
+/**
+ * Share a streak milestone — once per (milestone, streak_start). The numbers
+ * come from the server's own read of the user's sessions; the client only
+ * names which reached milestone it means, never how long the streak is.
+ */
+export async function shareStreak(milestone: number, streakStart: string, visibility?: string): Promise<PostResult> {
+  const { t } = await getI18n();
+  const view = await getMyStreak();
+  const reached = view?.milestones.find((m) => m.milestone === milestone && m.streak_start === streakStart);
+  if (!reached || reached.milestone < STREAK_SHARE_MIN) return { ok: false, message: t.common.social.notFound };
+  if (reached.shared) return { ok: true };
+  const payload: StreakPostPayload = {
+    kind: "streak",
+    streak_days: reached.milestone,
+    milestone: reached.milestone,
+    achieved_at: reached.reached_on,
+    streak_start: reached.streak_start,
+    title: `${reached.milestone} Day Streak`,
+  };
+  const result = await insertPost({ type: "streak", text: null, payload, visibility: visibilityOf(visibility) });
+  revalidatePath("/streak");
+  revalidatePath("/today");
   return result;
 }
 

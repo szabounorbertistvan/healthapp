@@ -4,11 +4,11 @@
 // is validated. Nothing sensitive is derived here: a post's payload is a
 // snapshot the author chose to publish, never a live read of their logs.
 
-export type PostType = "workout" | "pr" | "challenge_completed" | "progress" | "text";
+export type PostType = "workout" | "pr" | "challenge_completed" | "progress" | "text" | "streak";
 export type PostVisibility = "public" | "followers" | "private";
 export type ReactionType = "kudos";
 
-export const POST_TYPES: readonly PostType[] = ["workout", "pr", "challenge_completed", "progress", "text"];
+export const POST_TYPES: readonly PostType[] = ["workout", "pr", "challenge_completed", "progress", "text", "streak"];
 export const POST_VISIBILITIES: readonly PostVisibility[] = ["public", "followers", "private"];
 
 export const POST_TEXT_MAX = 500;
@@ -58,7 +58,22 @@ export type ProgressPostPayload = {
   photo_path: string | null;
 };
 
-export type PostPayload = WorkoutPostPayload | PrPostPayload | ChallengePostPayload | ProgressPostPayload | null;
+/**
+ * A streak milestone: numbers only, snapshotted when shared. Says "30 day
+ * streak" and nothing about what was lifted on any of those days.
+ * (milestone, streak_start) is the once-only key the unique index enforces.
+ */
+export type StreakPostPayload = {
+  kind: "streak";
+  streak_days: number;
+  milestone: number;
+  /** The local day the milestone was reached. */
+  achieved_at: string;
+  streak_start: string;
+  title: string;
+};
+
+export type PostPayload = WorkoutPostPayload | PrPostPayload | ChallengePostPayload | ProgressPostPayload | StreakPostPayload | null;
 
 /** Build a workout post from a scored session. Only aggregates cross into the feed. */
 export function workoutPostPayload(session: {

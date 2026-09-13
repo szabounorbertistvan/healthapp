@@ -23,6 +23,7 @@ import { sessionKeyFor } from "./stable-id";
 import { store } from "./demo-store";
 import { displayName, getProfile } from "./data";
 import { viewingClientId } from "./view-mode";
+import { getWorkoutStreak } from "./streak-data";
 import { demoConversations, demoMessages } from "./demo";
 import {
 
@@ -911,7 +912,10 @@ export async function getToday(): Promise<ClientToday | null> {
   // The four inputs adherence turns on. They used to be demo-only, which left
   // every live client reading 0 workouts, 0 food days and 99 inactive days —
   // permanently "at_risk" no matter what they had logged.
-  const activity = isDemo ? demoActivity(clientId, weekStart) : await liveActivity(weekStart);
+  const [activity, streak] = await Promise.all([
+    isDemo ? demoActivity(clientId, weekStart) : liveActivity(weekStart),
+    getWorkoutStreak(clientId),
+  ]);
 
   const habitTicks = habits.reduce((sum, h) => sum + h.done_this_week, 0);
   const habitScheduled = habits.reduce((sum, h) => sum + h.target_per_week, 0);
@@ -942,7 +946,7 @@ export async function getToday(): Promise<ClientToday | null> {
       ? (store().clients.find((c) => c.client_id === clientId)?.full_name ?? DEMO_CLIENT_NAME)
       : displayName(profile),
     adherence,
-    streak_days: activity.streak,
+    streak_days: streak.current,
     next_workout: next,
     sessions_done: activity.completedSessions,
     sessions_planned: plannedSessions,
@@ -963,7 +967,6 @@ type Activity = {
   lastActivity: string | null;
   /** Program days already trained this week — by id live, by name in demo. */
   doneDays: Set<string>;
-  streak: number;
 };
 
 function demoActivity(clientId: string, weekStart: string): Activity {
@@ -972,23 +975,12 @@ function demoActivity(clientId: string, weekStart: string): Activity {
     const totals = totalsOn(clientId, daysAgoIso(i));
     if (totals.kcal > 0) weekKcal.push({ kcal: totals.kcal });
   }
-  const activeDays = new Set<string>();
-  for (const f of clientStore().foodLogs) if (f.client_id === clientId) activeDays.add(f.logged_on);
-  const habitIds = new Set(
-    clientStore().habits.filter((h) => h.client_id === clientId).map((h) => h.id),
-  );
-  for (const h of clientStore().habitLogs) if (habitIds.has(h.habit_id)) activeDays.add(h.done_on);
-  for (const s of clientStore().sessions) {
-    if (s.client_id === clientId) activeDays.add(s.started_at.slice(0, 10));
-  }
-
   return {
     completedSessions: sessionsSince(clientId, weekStart).length,
     daysLogged: daysLoggedWithin(clientId, 7),
     weekKcal,
     lastActivity: lastActivityAt(clientId),
     doneDays: new Set(sessionsSince(clientId, weekStart).map((s) => s.day_name)),
-    streak: streakFrom(activeDays),
   };
 }
 
@@ -999,14 +991,14 @@ async function liveActivity(weekStart: string): Promise<Activity> {
     weekKcal: [],
     lastActivity: null,
     doneDays: new Set<string>(),
-    streak: 0,
   };
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return empty;
 
-  // 60 days is what the streak walk needs; the week figures are a filter over
-  // the same rows rather than four more round trips.
+  // The inactivity check looks back 60 days; the week figures are a filter
+  // over the same rows rather than four more round trips. (The workout streak
+  // is its own read — lib/streak-data — so a long streak is never capped here.)
   const since = daysAgoIso(59);
   const [sessions, foods, habitLogs, lastSet] = await Promise.all([
     supabase
@@ -1053,11 +1045,6 @@ async function liveActivity(weekStart: string): Promise<Activity> {
     kcalByDay.set(f.date, (kcalByDay.get(f.date) ?? 0) + Number(f.kcal ?? 0));
   }
 
-  const activeDays = new Set<string>();
-  for (const f of foodRows) activeDays.add(f.date);
-  for (const h of habitRows) activeDays.add(h.date);
-  for (const s of sessionRows) activeDays.add(s.started_at.slice(0, 10));
-
   const stamps = [
     ...foodRows.map((f) => f.received_at),
     ...habitRows.map((h) => h.received_at),
@@ -1070,21 +1057,7 @@ async function liveActivity(weekStart: string): Promise<Activity> {
     weekKcal: [...kcalByDay.values()].filter((kcal) => kcal > 0).map((kcal) => ({ kcal })),
     lastActivity: stamps.length > 0 ? (stamps.sort().at(-1) ?? null) : null,
     doneDays: new Set(done.map((s) => s.program_day_id).filter((id): id is string => id !== null)),
-    streak: streakFrom(activeDays),
   };
-}
-
-/** Consecutive days ending today (or yesterday) with any logged activity. */
-export function streakFrom(activeDays: ReadonlySet<string>): number {
-  let streak = 0;
-  for (let i = 0; i < 60; i++) {
-    if (activeDays.has(daysAgoIso(i))) {
-      streak++;
-    } else if (i > 0) {
-      break;
-    }
-  }
-  return streak;
 }
 
 // ---------- coach conversation ----------

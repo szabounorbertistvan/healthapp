@@ -3,12 +3,14 @@ import { redirect } from "next/navigation";
 import { getMySessions, getToday, isEmptyAccount } from "@/lib/client-data";
 import { getMyChallenges } from "@/lib/challenges-data";
 import { getMyWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
+import { getMyStreak } from "@/lib/streak-data";
 import { hasChosenSolo } from "@/lib/onboarding";
 import { isoDay } from "@/lib/demo-client-store";
 import { Card, EmptyState } from "@/components/ui";
 import { HabitTicks } from "@/components/habit-ticks";
 import { NutritionTile, StatusHero, Tile, TodayWeekStrip, WorkoutRow } from "@/components/today-dashboard";
 import { TrainingLoadSummaryCard } from "@/components/training-load";
+import { StreakCard } from "@/components/streak";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
@@ -17,7 +19,7 @@ import { fill } from "@/lib/i18n";
 /**
  * Today, phone-first: the week on top, the mark with this week's standing,
  * the one workout that matters now, a grid of small tiles, then the detail
- * (habits, check-in, weekly summary, training load) for whoever scrolls.
+ * (habits, check-in, streak, weekly summary, training load) for whoever scrolls.
  */
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { t, locale } = await getI18n();
@@ -27,11 +29,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   // own, so send a brand-new account to the choice instead of an empty screen.
   if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
 
-  const [today, challenges, weekly, recent] = await Promise.all([
+  const [today, challenges, weekly, recent, streakView] = await Promise.all([
     getToday(),
     getMyChallenges(),
     getMyWeeklySummary(weekChoice),
     getMySessions(3),
+    getMyStreak(),
   ]);
   if (!today) {
     return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
@@ -70,7 +73,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Tile href="/workout" icon="🎯" label={d.workouts} value={String(done)} unit={`/ ${planned || 3}`} done={planned > 0 && done >= planned} />
-        <Tile href="/progress" icon="🔥" label={d.streak} value={String(streak)} unit={streak === 1 ? d.day : d.days} done={streak >= 7} />
+        <Tile href="/streak" icon="🔥" label={d.streak} value={String(streak)} unit={streak === 1 ? d.day : d.days} done={streak >= 7} />
         <NutritionTile totals={nutrition.totals} target={nutrition.target} />
         <div className="grid gap-3">
           <Tile href="/habits" icon="✅" label={t.common.nav.habits} value={habits.length > 0 ? `${habitsDone}/${habits.length}` : "—"} done={habits.length > 0 && habitsDone === habits.length} />
@@ -102,6 +105,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           <p className="mt-1 text-sm leading-snug text-ink-soft">{checkIn.last.coach_feedback}</p>
         </Card>
       ) : null}
+
+      {streakView ? <StreakCard view={streakView} compact /> : null}
 
       {weekly ? <WeeklySummaryCard summary={weekly} switchPath="/today" /> : null}
 

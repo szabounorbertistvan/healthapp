@@ -110,6 +110,13 @@ function PostBody({ post }: { post: FeedPost }) {
           </p>
         </div>
       ) : null}
+      {p?.kind === "streak" ? (
+        <div className="mt-2 rounded-lg bg-accent-soft p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">🔥 {t.common.streaks.title}</p>
+          <p className="mt-1 font-bold">{fill(t.common.streaks.milestoneTitle, { count: p.milestone })}</p>
+          <p className="text-sm text-ink-soft">{fill(t.common.streaks.postBody, { count: p.streak_days })}</p>
+        </div>
+      ) : null}
       {p?.kind === "progress" ? (
         <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">📈 {s.progressUpdate}</p>
       ) : null}

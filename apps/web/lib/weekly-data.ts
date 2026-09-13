@@ -21,7 +21,8 @@ import { isDemo, supabaseServer } from "./supabase/server";
 import { store } from "./demo-store";
 import { viewingClientId } from "./view-mode";
 import { clientStore, daysAgoIso, isoDay } from "./demo-client-store";
-import { LOGGED_SET_SELECT, streakFrom, toLoggedSetRow, type SetJoin } from "./client-data";
+import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./client-data";
+import { getWorkoutStreak } from "./streak-data";
 import { loadOf } from "./training-load";
 import type { LoggedSetRow } from "./types";
 
@@ -51,9 +52,11 @@ async function summaryFor(userId: string, choice: WeekChoice): Promise<WeeklySum
   const thisWeek = weekOf(isoDay());
   const week = choice === "current" ? thisWeek : previousWeek(thisWeek);
   const prev = previousWeek(week);
+  // The workout streak (lib/streak-data): the same number Today and the streak page show.
+  const streak = await getWorkoutStreak(userId);
   const [current, previous] = isDemo
-    ? [demoInput(userId, week), demoInput(userId, prev)]
-    : await liveInputs(userId, week, prev);
+    ? [demoInput(userId, week, streak.current), demoInput(userId, prev, streak.current)]
+    : await liveInputs(userId, week, prev, streak.current);
   if (!current || !previous) return null;
   return { ...compareWeeks(weekStats(current), weekStats(previous)), choice };
 }
@@ -74,7 +77,7 @@ function toWeeklySession(started_at: string, completed_at: string | null, sets: 
 
 // ---------- demo ----------
 
-function demoInput(userId: string, week: Week): WeeklyInput {
+function demoInput(userId: string, week: Week, streak: number): WeeklyInput {
   const cs = clientStore();
   const s = store();
   const hasActiveCoach = s.clients.find((c) => c.client_id === userId)?.status === "active";
@@ -126,15 +129,15 @@ function demoInput(userId: string, week: Week): WeeklyInput {
       })),
     active_days: [...active],
     planned_workouts: program?.days.length ?? 0,
-    streak_days: streakFrom(active),
+    streak_days: streak,
   };
 }
 
 // ---------- live ----------
 
-async function liveInputs(userId: string, week: Week, prev: Week): Promise<[WeeklyInput, WeeklyInput] | [null, null]> {
+async function liveInputs(userId: string, week: Week, prev: Week, streak: number): Promise<[WeeklyInput, WeeklyInput] | [null, null]> {
   const supabase = await supabaseServer();
-  // Streak needs 60 days; the two weeks are a filter over the same rows.
+  // The two weeks, plus a little history for the load trend.
   const since = daysAgoIso(59);
   const from = prev.start < since ? prev.start : since;
   const [sessions, foods, habitLogs, measurements, plans, programs, coach] = await Promise.all([
@@ -205,7 +208,7 @@ async function liveInputs(userId: string, week: Week, prev: Week): Promise<[Week
     measurements: measured,
     active_days: [...active],
     planned_workouts: program?.program_days?.length ?? 0,
-    streak_days: streakFrom(active),
+    streak_days: streak,
   };
   return [{ ...base, week }, { ...base, week: prev }];
 }
