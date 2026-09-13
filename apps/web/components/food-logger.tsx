@@ -323,7 +323,9 @@ export function FoodLogger({
           ) : null}
 
           {showQuick ? (
-            <div className="mt-2 max-h-80 space-y-3 overflow-y-auto">
+            // No inner scroll here: a short list that clips inside a card reads
+            // as complete on a phone, and the missing rows are never found.
+            <div className="mt-2 space-y-3">
               {favs.length > 0 ? (
                 <section>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-ink">★ {fl.favorites}</p>
