@@ -41,7 +41,7 @@ const en = {
     emptyHint: "Create one and pull exercises from the 873-exercise library.",
     status: {
       published: "published",
-      draft: "draft",
+      draft: "template",
       archived: "archived",
     },
     daysUpdated: "{days} days · updated {ago}",
@@ -62,7 +62,7 @@ const en = {
     emptyHint: "Create one, then compose meals from foods with grams.",
     status: {
       published: "published",
-      draft: "draft",
+      draft: "template",
       archived: "archived",
     },
     kcal: "kcal",
@@ -181,7 +181,7 @@ const ro: typeof en = {
     emptyHint: "Creează unul și alege exerciții din biblioteca de 873 de exerciții.",
     status: {
       published: "publicat",
-      draft: "ciornă",
+      draft: "șablon",
       archived: "arhivat",
     },
     daysUpdated: "{days} zile · actualizat {ago}",
@@ -202,7 +202,7 @@ const ro: typeof en = {
     emptyHint: "Creează unul, apoi compune mese din alimente cu gramaje.",
     status: {
       published: "publicat",
-      draft: "ciornă",
+      draft: "șablon",
       archived: "arhivat",
     },
     kcal: "kcal",

@@ -11,6 +11,26 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
 /**
+ * Opt-in wire tracing: with `SUPABASE_TRACE=1` in .env.local every PostgREST,
+ * RPC and Auth call a render makes is logged with its duration and path, so a
+ * slow page reads as a list of round trips instead of a guess. Nothing here
+ * runs without the variable — the client gets the platform fetch as before.
+ */
+const tracedFetch: typeof fetch | undefined = process.env.SUPABASE_TRACE
+  ? async (input, init) => {
+      const started = performance.now();
+      try {
+        return await fetch(input, init);
+      } finally {
+        const target = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        const path = target.replace(url, "").split("?")[0];
+        const ms = Math.round(performance.now() - started).toString().padStart(4);
+        console.log(`[supabase] ${ms}ms ${init?.method ?? "GET"} ${path}`);
+      }
+    }
+  : undefined;
+
+/**
  * Fail loudly, but only once someone actually needs a client.
  *
  * Deliberately not a module-scope throw: CI runs `npm run build` without any
@@ -48,6 +68,7 @@ export const supabaseServer = cache(async () => {
     config.url,
     config.anonKey,
     {
+      global: tracedFetch ? { fetch: tracedFetch } : undefined,
       cookies: {
         getAll() {
           return cookieStore.getAll();

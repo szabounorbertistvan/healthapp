@@ -7,10 +7,10 @@ import { notSignedIn } from "@/lib/action-result";
 
 // Program builder writes (W4, Sprint 3).
 //
-// Status of the Supabase branch (docs/superpowers/specs/2026-09-08-s1-*):
-// written to the schema and reviewed against the RLS policies, not yet driven
-// end-to-end against a live project. Every update/delete goes through
-// `mutated()` so an RLS-filtered write cannot report success.
+// Driven end-to-end against the live project on 2026-09-14: create → add day →
+// add exercise → set sets/reps/RIR/rest → publish, then confirmed the client's
+// Today picked the program up. Every update/delete goes through `mutated()` so
+// an RLS-filtered write cannot report success.
 //
 // day_index is the 0-based ordinal of a day *within its week*, which is what
 // the unique key (program_id, week_index, day_index) assumes. Only the sort

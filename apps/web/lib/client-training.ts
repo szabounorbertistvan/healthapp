@@ -49,10 +49,13 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
-  // The programs and the coach lookup answer independent questions, so they go
-  // out together; only the session lookup below genuinely has to wait, because
-  // it is keyed by the day ids the programs query returns.
-  const [{ data: rows, error }, coachId] = await Promise.all([
+  // The programs, the coach lookup and today's sessions answer independent
+  // questions, so they go out together. The sessions used to wait for the
+  // programs (they are addressed by keys built from the day ids), which put a
+  // whole round trip behind an otherwise single-wave Today; now the recent
+  // sessions come back with everything else and are matched to their keys here.
+  const today = isoDay();
+  const [{ data: rows, error }, coachId, recentSessions] = await Promise.all([
     supabase
       .from("programs")
       .select(`id, name, intensity_mode, coach_id, updated_at,
@@ -62,6 +65,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
       .eq("client_id", userId)
       .eq("status", "published"),
     activeCoachId(userId),
+    recentSessionsFor(supabase, userId),
   ]);
   if (error || !rows) return [];
 
@@ -82,9 +86,8 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   // writer derives. Without this the set logger restarts its numbering at 1
   // after every reload, and logSet's client_generated_id collides with the set
   // that is already there.
-  const today = isoDay();
   const allDayIds = programs.flatMap((p) => (p.program_days ?? []).map((d) => d.id));
-  const sessions = await sessionsForDays(supabase, userId, allDayIds, today);
+  const sessions = sessionsForDays(recentSessions, userId, allDayIds, today);
 
   return sortPrograms(programs).map((program) => {
     const days = [...(program.program_days ?? [])].sort((a, b) => a.day_index - b.day_index);
@@ -163,31 +166,50 @@ export const activeCoachId = cache(async (userId: string): Promise<string | null
 
 type TodaySession = { id: string; completed: boolean; logged: LoggedSetRow[] };
 
-/** Today's session and its sets, per program day, keyed by program_day_id. */
-async function sessionsForDays(
+type SessionJoin = {
+  id: string; program_day_id: string | null; client_generated_id: string; completed_at: string | null;
+  logged_sets: SetJoin[];
+};
+
+/**
+ * The client's sessions from the last two days, with their sets — the pool
+ * today's per-day sessions are picked from. Two days rather than one because
+ * the deterministic key carries the *server's* calendar date while started_at
+ * is a timestamp: on a box whose clock is not UTC the two can straddle
+ * midnight, and a session must never go missing at 01:00 (the set logger would
+ * restart at set 1 and its next write would collide). The key match in
+ * sessionsForDays is what decides; this only has to be a superset.
+ */
+async function recentSessionsFor(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  userId: string,
+): Promise<SessionJoin[]> {
+  const { data } = await supabase
+    .from("logged_sessions")
+    .select(`id, program_day_id, client_generated_id, completed_at, logged_sets(${LOGGED_SET_SELECT})`)
+    .eq("user_id", userId)
+    .gte("started_at", `${daysAgoIso(1)}T00:00:00`);
+  return (data ?? []) as unknown as SessionJoin[];
+}
+
+/**
+ * Today's session and its sets, per program day, keyed by program_day_id.
+ * Exactly the rows the old `in (client_generated_id …)` query returned: the
+ * same deterministic keys, matched in memory against the recent pool.
+ */
+function sessionsForDays(
+  recent: SessionJoin[],
   userId: string,
   dayIds: string[],
   isoDate: string,
-): Promise<Map<string, TodaySession>> {
+): Map<string, TodaySession> {
   const byDay = new Map<string, TodaySession>();
   if (dayIds.length === 0) return byDay;
 
-  const { data } = await supabase
-    .from("logged_sessions")
-    .select(`id, program_day_id, completed_at, logged_sets(${LOGGED_SET_SELECT})`)
-    .in(
-      "client_generated_id",
-      dayIds.map((dayId) => sessionKeyFor(userId, dayId, isoDate)),
-    );
+  const wanted = new Set(dayIds.map((dayId) => sessionKeyFor(userId, dayId, isoDate)));
 
-  type SessionJoin = {
-    id: string; program_day_id: string | null; completed_at: string | null;
-    logged_sets: SetJoin[];
-  };
-
-  for (const session of (data ?? []) as unknown as SessionJoin[]) {
-    if (!session.program_day_id) continue;
+  for (const session of recent) {
+    if (!session.program_day_id || !wanted.has(session.client_generated_id)) continue;
     byDay.set(session.program_day_id, {
       id: session.id,
       completed: session.completed_at !== null,

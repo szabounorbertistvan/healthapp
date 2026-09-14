@@ -10,6 +10,10 @@
       ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "web-attached",
+      "url": "http://localhost:3000"
     }
   ]
 }

@@ -164,7 +164,8 @@ const en = {
   },
   coach: {
     noCoachTitle: "No coach yet",
-    noCoachHint: "Once you accept a coach invite, your conversation appears here.",
+    noMessagesTitle: "No messages yet",
+    noMessagesHint: "Your coach hasn’t written yet. Anything they send shows up here.",
   },
   library: {
     title: "Exercise library",
@@ -196,7 +197,7 @@ const en = {
     soloTitle: "I train on my own",
     soloBody: "Build your own week from the exercise library and log it as you go.",
     startSolo: "Build my program",
-    notFinal: "You can join a coach later from settings — this is not a one-way door.",
+    notFinal: "You can join a coach later from the Coach tab — this is not a one-way door.",
     // accept_invite raises these codes; see packages/api/src/errors.ts
     errInvalidCode: "That code isn’t valid. Check it with your coach.",
     errExpired: "That code has expired. Ask your coach for a new one.",
@@ -370,7 +371,8 @@ const ro: typeof en = {
   },
   coach: {
     noCoachTitle: "Încă nu ai antrenor",
-    noCoachHint: "După ce accepți invitația unui antrenor, conversația voastră apare aici.",
+    noMessagesTitle: "Încă niciun mesaj",
+    noMessagesHint: "Antrenorul tău nu ți-a scris încă. Tot ce trimite apare aici.",
   },
   library: {
     title: "Biblioteca de exerciții",
@@ -402,7 +404,7 @@ const ro: typeof en = {
     soloTitle: "Mă antrenez singur",
     soloBody: "Îți construiești săptămâna din biblioteca de exerciții și o loghezi pe măsură.",
     startSolo: "Construiește-mi programul",
-    notFinal: "Poți intra la un antrenor mai târziu, din setări — alegerea nu e definitivă.",
+    notFinal: "Poți intra la un antrenor mai târziu, din secțiunea Antrenor — alegerea nu e definitivă.",
     errInvalidCode: "Codul nu e valid. Verifică-l cu antrenorul tău.",
     errExpired: "Codul a expirat. Cere-i antrenorului unul nou.",
     errAlreadyHasCoach: "Ai deja un antrenor. Renunță la el din setări înainte.",

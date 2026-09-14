@@ -76,10 +76,10 @@ Missing `NEXT_PUBLIC_SUPABASE_URL` / `..._ANON_KEY` is a deployment fault, not a
 mode: `lib/supabase/server.ts` throws a named error when a client is first
 constructed (lazily, so the env-less `npm run build` CI runs still succeeds) and
 `middleware.ts` fails closed with a 500 rather than waving requests past the auth
-gate. The Supabase branches of `builder-actions.ts` and `nutrition-actions.ts`
-are written to the schema and reviewed against RLS but **have not yet been driven
-end-to-end against a live project**; treat them as unverified until someone
-has. Every `update`/`delete` in them goes through `lib/supabase/mutate.ts`
+gate. `builder-actions.ts` was driven end-to-end against the live project on
+2026-09-14 (create → day → exercise → publish → client sees it).
+`nutrition-actions.ts` still **has not been**; treat it as unverified until
+someone has. Every `update`/`delete` in them goes through `lib/supabase/mutate.ts`
 (`mutated()`): PostgREST answers an RLS-filtered write with success and zero
 rows, and the guard turns that into an error. New coach writes must use it.
 
@@ -151,6 +151,16 @@ third-party text writes it.
   and every route then serves a bare "Internal Server Error" with
   `ENOENT ... _buildManifest.js.tmp.<hash>` in the log. Stop the preview,
   `rm -rf apps/web/.next`, restart.
+- **One dev server per working tree.** Several sessions share this tree, and
+  `preview_start` with `web` while port 3000 is already taken (`autoPort`)
+  spawns a second Turbopack over the same `apps/web/.next`: both then thrash
+  each other and every page crawls. If `http://localhost:3000` already
+  answers, attach with the `web-attached` launch entry instead. Before killing
+  a stray `next dev`, check whose it is (`Get-CimInstance Win32_Process`).
+- `SUPABASE_TRACE=1` in `.env.local` logs every Supabase round trip with its
+  duration to the dev server output — the first thing to reach for when a page
+  is slow. Each PostgREST call from this box costs ~120–160 ms and an RPC
+  ~300 ms, so a page's cost is its number of *sequential* waves, not queries.
 - Date helpers (`isoDay`, `daysAgoIso`, `mondayOf`, `daysSince`) live in
   `lib/dates.ts`; serving sizes and the `FoodItem` / `FoodPortion` shapes live in
   `lib/food-portions.ts`. Both were carved out of the deleted demo modules.

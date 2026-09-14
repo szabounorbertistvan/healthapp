@@ -4,9 +4,13 @@ import { Card, PageTitle } from "@/components/ui";
 import { NewProgramForm } from "@/components/new-program-form";
 import { getI18n } from "@/lib/i18n/server";
 
-export default async function NewProgramPage() {
+export default async function NewProgramPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ client?: string }>;
+}) {
   const { t } = await getI18n();
-  const roster = await getRoster();
+  const [roster, { client }] = await Promise.all([getRoster(), searchParams]);
 
   return (
     <div>
@@ -15,7 +19,7 @@ export default async function NewProgramPage() {
       </Link>
       <PageTitle title={t.coachApp.programBuilderPage.newTitle} />
       <Card>
-        <NewProgramForm roster={roster} />
+        <NewProgramForm roster={roster} initialClientId={client} />
       </Card>
     </div>
   );

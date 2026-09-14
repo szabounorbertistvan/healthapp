@@ -2,7 +2,7 @@
 // check-in review, message thread, invite/add-client buttons.
 const en = {
   programBuilder: {
-    status: { draft: "draft", published: "published", archived: "archived" },
+    status: { draft: "template", published: "published", archived: "archived" },
     weeksOne: "{n} week",
     weeksFew: "{n} weeks",
     weeksMany: "{n} weeks",
@@ -11,7 +11,7 @@ const en = {
     publish: "Publish to client",
     published: "Published",
     publishHint: "Add at least one exercise first",
-    draftNotice: "Draft — invisible to {name} until you publish (spec B1).",
+    draftNotice: "Template — {name} cannot see this until you publish it.",
     noDaysTitle: "No days yet",
     noDaysBody: "Add a training day, then pull exercises from the library.",
     closeLibrary: "Close library",
@@ -28,7 +28,7 @@ const en = {
     somethingWentWrong: "Something went wrong",
   },
   nutritionBuilder: {
-    status: { draft: "draft", published: "published", archived: "archived" },
+    status: { draft: "template", published: "published", archived: "archived" },
     publish: "Publish to client",
     published: "Published",
     publishHint: "Add at least one food first",
@@ -91,8 +91,8 @@ const en = {
     intensityRpe: "RPE — 1 to 10",
     intensitySimple: "Simple — easy / moderate / hard",
     creating: "Creating…",
-    createDraft: "Create draft",
-    draftNote: "Created as a draft. Nothing reaches the client until you publish.",
+    createDraft: "Create template",
+    draftNote: "Created as a template. Nothing reaches the client until you publish.",
     createError: "Could not create the program",
   },
   newPlanForm: {
@@ -106,7 +106,7 @@ const en = {
     macrosAddUp: "Macros add up to {kcal} kcal",
     macrosMismatch: " — that is more than 5% away from the calorie target",
     creating: "Creating…",
-    createDraft: "Create draft",
+    createDraft: "Create template",
     createError: "Could not create the plan",
   },
   checkInReview: {
@@ -147,7 +147,7 @@ const en = {
 
 const ro: typeof en = {
   programBuilder: {
-    status: { draft: "ciornă", published: "publicat", archived: "arhivat" },
+    status: { draft: "șablon", published: "publicat", archived: "arhivat" },
     weeksOne: "{n} săptămână",
     weeksFew: "{n} săptămâni",
     weeksMany: "{n} de săptămâni",
@@ -156,7 +156,7 @@ const ro: typeof en = {
     publish: "Publică pentru client",
     published: "Publicat",
     publishHint: "Adaugă mai întâi cel puțin un exercițiu",
-    draftNotice: "Ciornă — invizibil pentru {name} până publici (spec B1).",
+    draftNotice: "Șablon — {name} nu îl vede până nu îl publici.",
     noDaysTitle: "Nicio zi încă",
     noDaysBody: "Adaugă o zi de antrenament, apoi alege exerciții din bibliotecă.",
     closeLibrary: "Închide biblioteca",
@@ -173,7 +173,7 @@ const ro: typeof en = {
     somethingWentWrong: "Ceva n-a mers bine",
   },
   nutritionBuilder: {
-    status: { draft: "ciornă", published: "publicat", archived: "arhivat" },
+    status: { draft: "șablon", published: "publicat", archived: "arhivat" },
     publish: "Publică pentru client",
     published: "Publicat",
     publishHint: "Adaugă mai întâi cel puțin un aliment",
@@ -236,8 +236,8 @@ const ro: typeof en = {
     intensityRpe: "RPE — 1 la 10",
     intensitySimple: "Simplu — ușor / moderat / greu",
     creating: "Se creează…",
-    createDraft: "Creează ciorna",
-    draftNote: "Creat ca ciornă. Nimic nu ajunge la client până nu publici.",
+    createDraft: "Creează șablonul",
+    draftNote: "Creat ca șablon. Nimic nu ajunge la client până nu îl publici.",
     createError: "Programul nu a putut fi creat",
   },
   newPlanForm: {
@@ -251,7 +251,7 @@ const ro: typeof en = {
     macrosAddUp: "Macronutrienții însumează {kcal} kcal",
     macrosMismatch: " — adică la peste 5% distanță de ținta calorică",
     creating: "Se creează…",
-    createDraft: "Creează ciorna",
+    createDraft: "Creează șablonul",
     createError: "Planul nu a putut fi creat",
   },
   checkInReview: {

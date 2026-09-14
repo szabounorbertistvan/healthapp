@@ -35,9 +35,10 @@ mouse) and deleted after confirmation. Anyone can create a custom exercise from
 the picker (`exercises.owner_id` set, `source = 'custom'`). PRs are computed in
 `packages/shared/src/prs.ts`.
 
-**Maturity: unproven.** `builder-actions.ts` is written and RLS-guarded
-(`lib/supabase/mutate.ts`) but has not been driven end-to-end against a live
-project; see `docs/superpowers/specs/2026-09-08-s1-*`.
+**Maturity: solid.** Driven end-to-end against the live project on 2026-09-14 —
+create a program for a client, add a day, add an exercise from the 888-row
+library, set sets/reps/RIR/rest, publish, and confirm it reaches the client's
+Today. RLS and column grants all held; `mutated()` guards every update/delete.
 
 ---
 

@@ -135,12 +135,17 @@ export async function getDashboard(): Promise<DashboardRow[]> {
 
 export async function getClients(): Promise<ClientRow[]> {
   const supabase = await supabaseServer();
-  const { data, error } = await supabase
-    .from("trainer_clients")
-    .select("status, started_at, client:users!trainer_clients_client_id_fkey(id, full_name)")
-    .in("status", ["invited", "active"]);
+  // Three independent reads, one wave: the roster, the dashboard RPC and the
+  // week's training load. None of them needs another's result.
+  const [{ data, error }, dash, load] = await Promise.all([
+    supabase
+      .from("trainer_clients")
+      .select("status, started_at, client:users!trainer_clients_client_id_fkey(id, full_name)")
+      .in("status", ["invited", "active"]),
+    getDashboard(),
+    clientLoad7d(supabase),
+  ]);
   if (error) throw error;
-  const [dash, load] = await Promise.all([getDashboard(), clientLoad7d(supabase)]);
   const byId = new Map(dash.map((d) => [d.client_id, d]));
   return (data ?? []).map((r) => {
     const client = r.client as unknown as { id: string; full_name: string } | null;

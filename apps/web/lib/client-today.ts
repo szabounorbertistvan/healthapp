@@ -185,6 +185,20 @@ async function liveActivity(weekStart: string): Promise<Activity> {
  * The client side of the coach thread. getMessages already resolves `mine`
  * against the signed-in user.
  */
+/**
+ * Does the signed-in client have an active coach?
+ *
+ * Distinct from getMyCoachThread(), which answers "is there a conversation
+ * row" — a client can be coached before either side has sent a message. The
+ * Coach tab needs both: no coach at all is an invitation to join one, a coach
+ * with no thread yet is simply an empty conversation.
+ */
+export async function hasActiveCoach(): Promise<boolean> {
+  const userId = await currentActorId();
+  if (!userId) return false;
+  return (await activeCoachId(userId)) !== null;
+}
+
 export async function getMyCoachThread(): Promise<
   { id: string; coach_name: string; messages: MessageRow[] } | null
 > {

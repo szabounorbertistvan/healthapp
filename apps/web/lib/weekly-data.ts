@@ -20,6 +20,7 @@ import {
 } from "@healthapp/shared";
 import { liveUser, supabaseServer } from "./supabase/server";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
+import { activeCoachId } from "./client-training";
 import { getWorkoutStreak } from "./streak-data";
 import { loadOf } from "./training-load";
 import type { LoggedSetRow } from "./types";
@@ -48,11 +49,20 @@ async function summaryFor(userId: string, choice: WeekChoice): Promise<WeeklySum
   const thisWeek = weekOf(isoDay());
   const week = choice === "current" ? thisWeek : previousWeek(thisWeek);
   const prev = previousWeek(week);
-  // The workout streak (lib/streak-data): the same number Today and the streak page show.
-  const streak = await getWorkoutStreak(userId);
-  const [current, previous] = await liveInputs(userId, week, prev, streak.current);
+  // The workout streak (lib/streak-data): the same number Today and the streak
+  // page show. It only decorates the input, so it does not gate the row reads:
+  // the streak RPC (the slowest single call on Today) and the seven row queries
+  // go out together instead of one waiting for the other.
+  const [streak, [current, previous]] = await Promise.all([
+    getWorkoutStreak(userId),
+    liveInputs(userId, week, prev),
+  ]);
   if (!current || !previous) return null;
-  return { ...compareWeeks(weekStats(current), weekStats(previous)), choice };
+  const streak_days = streak.current;
+  return {
+    ...compareWeeks(weekStats({ ...current, streak_days }), weekStats({ ...previous, streak_days })),
+    choice,
+  };
 }
 
 /** A session row → the shape weekStats folds over. */
@@ -71,7 +81,10 @@ function toWeeklySession(started_at: string, completed_at: string | null, sets: 
 
 // ---------- live ----------
 
-async function liveInputs(userId: string, week: Week, prev: Week, streak: number): Promise<[WeeklyInput, WeeklyInput] | [null, null]> {
+/** A WeeklyInput before the streak is attached — everything that comes from rows. */
+type WeeklyRows = Omit<WeeklyInput, "streak_days">;
+
+async function liveInputs(userId: string, week: Week, prev: Week): Promise<[WeeklyRows, WeeklyRows] | [null, null]> {
   const supabase = await supabaseServer();
   // The two weeks, plus a little history for the load trend.
   const since = daysAgoIso(59);
@@ -96,7 +109,8 @@ async function liveInputs(userId: string, week: Week, prev: Week, streak: number
       .select("id, coach_id, updated_at, program_days(id)")
       .eq("client_id", userId)
       .eq("status", "published"),
-    supabase.from("trainer_clients").select("coach_id").eq("client_id", userId).eq("status", "active").maybeSingle(),
+    // Request-cached: Today has already asked this for the same client.
+    activeCoachId(userId),
   ]);
   if (sessions.error) return [null, null];
 
@@ -118,7 +132,7 @@ async function liveInputs(userId: string, week: Week, prev: Week, streak: number
     byDay.set(f.date, d);
   }
 
-  const hasActiveCoach = coach.data !== null;
+  const hasActiveCoach = coach !== null;
   const plan = pickProgram((plans.data ?? []) as unknown as PlanRow[], hasActiveCoach);
   const program = pickProgram((programs.data ?? []) as unknown as ProgramRow[], hasActiveCoach);
 
@@ -135,7 +149,7 @@ async function liveInputs(userId: string, week: Week, prev: Week, streak: number
     ),
   }));
 
-  const base: Omit<WeeklyInput, "week"> = {
+  const base: Omit<WeeklyRows, "week"> = {
     sessions: weeklySessions,
     food_days: [...byDay.entries()].map(([day, m]) => ({ day, ...m })),
     target: plan
@@ -144,7 +158,6 @@ async function liveInputs(userId: string, week: Week, prev: Week, streak: number
     measurements: measured,
     active_days: [...active],
     planned_workouts: program?.program_days?.length ?? 0,
-    streak_days: streak,
   };
   return [{ ...base, week }, { ...base, week: prev }];
 }
