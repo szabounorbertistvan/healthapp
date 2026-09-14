@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { isDemo } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/data";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { getI18n } from "@/lib/i18n/server";
@@ -10,7 +9,7 @@ import { Logo, LogoMark, Wordmark } from "@/components/logo";
 import { LoginModal } from "@/components/login-modal";
 
 export default async function LandingPage() {
-  const [{ t }, profile] = await Promise.all([getI18n(), isDemo ? null : getProfile()]);
+  const [{ t }, profile] = await Promise.all([getI18n(), getProfile()]);
   const l = t.landing;
   // Signed-in visitors (they got here via the logo) get a way back into the app.
   const appHref = profile ? (profile.role === "client" ? "/today" : "/dashboard") : null;
@@ -55,16 +54,6 @@ export default async function LandingPage() {
           ) : (
             <LoginModal label={l.startFree} mode="signup" className="rounded-xl bg-accent px-6 py-3 font-semibold text-accent-fg hover:opacity-90" />
           )}
-          {isDemo ? (
-            <>
-              <Link href="/dashboard" className="rounded-xl border border-line bg-surface px-6 py-3 font-semibold text-ink-soft hover:border-accent">
-                {l.browseCoachDemo}
-              </Link>
-              <Link href="/today" className="rounded-xl border border-line bg-surface px-6 py-3 font-semibold text-ink-soft hover:border-accent">
-                {l.browseClientDemo}
-              </Link>
-            </>
-          ) : null}
         </div>
       </section>
 

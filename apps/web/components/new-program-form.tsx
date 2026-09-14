@@ -4,12 +4,23 @@ import { useRouter } from "next/navigation";
 import { createProgram } from "@/app/builder-actions";
 import { useI18n } from "@/lib/i18n/client";
 
-export function NewProgramForm({ roster }: { roster: { id: string; name: string }[] }) {
+export function NewProgramForm({
+  roster,
+  initialClientId,
+}: {
+  roster: { id: string; name: string }[];
+  /** Preselected when the coach arrived from a specific client's page. */
+  initialClientId?: string;
+}) {
   const router = useRouter();
   const { t } = useI18n();
   const m = t.coachWidgets.newProgramForm;
   const [name, setName] = useState("");
-  const [clientId, setClientId] = useState(roster[0]?.id ?? "");
+  // A ?client= that is not on the roster (stale link, ended relationship) falls
+  // back to the first entry rather than posting an id the policy would reject.
+  const [clientId, setClientId] = useState(
+    roster.some((c) => c.id === initialClientId) ? initialClientId! : (roster[0]?.id ?? ""),
+  );
   const [weeks, setWeeks] = useState(6);
   // RIR is the default per the plan's open decision: "both — coach chooses per client".
   const [intensityMode, setIntensityMode] = useState<"rir" | "rpe" | "simple">("rir");

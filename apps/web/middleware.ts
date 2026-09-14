@@ -11,8 +11,13 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
 export async function middleware(request: NextRequest) {
-  // Demo mode: no backend, no auth gate
-  if (!url) return NextResponse.next();
+  // No Supabase configured is a deployment fault, not a mode. Letting requests
+  // through here would hand every gated route to anyone; the pages themselves
+  // throw a named error from lib/supabase/server.ts, so failing closed is both
+  // safe and diagnosable. Static assets never reach this matcher.
+  if (!url || !anonKey) {
+    return new NextResponse("Supabase is not configured.", { status: 500 });
+  }
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(

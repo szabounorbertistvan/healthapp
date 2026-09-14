@@ -1,24 +1,11 @@
 // Today aggregate and the coach thread.
+import { daysAgoIso, daysSince, mondayOf } from "./dates";
 import "server-only";
 import { computeAdherence, macroScore } from "@healthapp/shared";
 import { currentActorId } from "./actor";
-import { isDemo, liveUser } from "./supabase/server";
+import { liveUser } from "./supabase/server";
 import { displayName, getProfile } from "./data";
 import { getWorkoutStreak } from "./streak-data";
-import { viewingClientId } from "./view-mode";
-import { store } from "./demo-store";
-import { demoConversations, demoMessages } from "./demo";
-import {
-  DEMO_CLIENT_NAME,
-  clientStore,
-  daysAgoIso,
-  daysLoggedWithin,
-  daysSince,
-  lastActivityAt,
-  mondayOf,
-  sessionsSince,
-  totalsOn,
-} from "./demo-client-store";
 import { activeCoachId, getMyProgramDays, getMyTrainingLoad } from "./client-training";
 import { getMyDayNutrition } from "./client-nutrition";
 import { getMyCheckInState, getMyHabits } from "./client-progress";
@@ -26,7 +13,6 @@ import type { ClientToday, MessageRow } from "./types";
 
 /** True when the client has no coach, no program and no nutrition plan yet. */
 export async function isEmptyAccount(): Promise<boolean> {
-  if (isDemo) return false;
   const live = await liveUser();
   if (!live) return false;
   const { supabase, userId } = live;
@@ -58,9 +44,6 @@ export async function getToday(): Promise<ClientToday | null> {
   const weekStart = mondayOf(0);
 
   // One wave: activity, streak and profile do not depend on the other reads.
-  // The four adherence inputs used to be demo-only, which left every live
-  // client reading 0 workouts, 0 food days and 99 inactive days — permanently
-  // "at_risk" no matter what they had logged.
   const [days, nutrition, habits, checkIn, training_load, activity, streak, profile] =
     await Promise.all([
       getMyProgramDays(),
@@ -68,9 +51,9 @@ export async function getToday(): Promise<ClientToday | null> {
       getMyHabits(),
       getMyCheckInState(),
       getMyTrainingLoad(),
-      isDemo ? demoActivity(clientId, weekStart) : liveActivity(weekStart),
+      liveActivity(weekStart),
       getWorkoutStreak(clientId),
-      isDemo ? null : getProfile(),
+      getProfile(),
     ]);
 
   const plannedSessions = days.length;
@@ -97,9 +80,7 @@ export async function getToday(): Promise<ClientToday | null> {
 
   return {
     client_id: clientId,
-    full_name: isDemo
-      ? (store().clients.find((c) => c.client_id === clientId)?.full_name ?? DEMO_CLIENT_NAME)
-      : displayName(profile),
+    full_name: displayName(profile),
     adherence,
     streak_days: streak.current,
     next_workout: next,
@@ -120,24 +101,9 @@ type Activity = {
   daysLogged: number;
   weekKcal: { kcal: number }[];
   lastActivity: string | null;
-  /** Program days already trained this week — by id live, by name in demo. */
+  /** Program days already trained this week, by id. */
   doneDays: Set<string>;
 };
-
-function demoActivity(clientId: string, weekStart: string): Activity {
-  const weekKcal: { kcal: number }[] = [];
-  for (let i = 0; i < 7; i++) {
-    const totals = totalsOn(clientId, daysAgoIso(i));
-    if (totals.kcal > 0) weekKcal.push({ kcal: totals.kcal });
-  }
-  return {
-    completedSessions: sessionsSince(clientId, weekStart).length,
-    daysLogged: daysLoggedWithin(clientId, 7),
-    weekKcal,
-    lastActivity: lastActivityAt(clientId),
-    doneDays: new Set(sessionsSince(clientId, weekStart).map((s) => s.day_name)),
-  };
-}
 
 async function liveActivity(weekStart: string): Promise<Activity> {
   const empty: Activity = {
@@ -191,8 +157,8 @@ async function liveActivity(weekStart: string): Promise<Activity> {
     (s) => s.completed_at !== null && s.completed_at >= weekStart,
   );
 
-  // kcal per day over the last 7, days with nothing logged left out — the same
-  // shape macroScore() gets in demo mode.
+  // kcal per day over the last 7, days with nothing logged left out — the
+  // shape macroScore() expects.
   const weekFrom = daysAgoIso(6);
   const kcalByDay = new Map<string, number>();
   for (const f of foodRows) {
@@ -216,20 +182,26 @@ async function liveActivity(weekStart: string): Promise<Activity> {
 }
 
 /**
- * The client side of the coach thread. Demo fixtures are written from the
- * coach point of view, so `mine` is inverted here — in live mode getMessages
- * already resolves it against the signed-in user.
+ * The client side of the coach thread. getMessages already resolves `mine`
+ * against the signed-in user.
  */
+/**
+ * Does the signed-in client have an active coach?
+ *
+ * Distinct from getMyCoachThread(), which answers "is there a conversation
+ * row" — a client can be coached before either side has sent a message. The
+ * Coach tab needs both: no coach at all is an invitation to join one, a coach
+ * with no thread yet is simply an empty conversation.
+ */
+export async function hasActiveCoach(): Promise<boolean> {
+  const userId = await currentActorId();
+  if (!userId) return false;
+  return (await activeCoachId(userId)) !== null;
+}
+
 export async function getMyCoachThread(): Promise<
   { id: string; coach_name: string; messages: MessageRow[] } | null
 > {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const conversation = demoConversations.find((c) => c.client_id === clientId);
-    if (!conversation) return null;
-    const messages = (demoMessages[conversation.id] ?? []).map((m) => ({ ...m, mine: !m.mine }));
-    return { id: conversation.id, coach_name: "Coach Alex", messages };
-  }
 
   const live = await liveUser();
   if (!live) return null;

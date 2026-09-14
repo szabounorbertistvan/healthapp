@@ -5,12 +5,23 @@ import { createNutritionPlan } from "@/app/nutrition-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";
 
-export function NewPlanForm({ roster }: { roster: { id: string; name: string }[] }) {
+export function NewPlanForm({
+  roster,
+  initialClientId,
+}: {
+  roster: { id: string; name: string }[];
+  /** Preselected when the coach arrived from a specific client's page. */
+  initialClientId?: string;
+}) {
   const router = useRouter();
   const { t } = useI18n();
   const m = t.coachWidgets.newPlanForm;
   const [name, setName] = useState("");
-  const [clientId, setClientId] = useState(roster[0]?.id ?? "");
+  // An off-roster ?client= (stale link, ended relationship) falls back to the
+  // first entry rather than posting an id the policy would reject.
+  const [clientId, setClientId] = useState(
+    roster.some((c) => c.id === initialClientId) ? initialClientId! : (roster[0]?.id ?? ""),
+  );
   const [kcal, setKcal] = useState(1800);
   const [protein, setProtein] = useState(150);
   const [carbs, setCarbs] = useState(160);

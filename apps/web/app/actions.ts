@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
+import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { notSignedIn } from "@/lib/action-result";
 import type { RpcErrorCode } from "@healthapp/api";
 
@@ -9,7 +9,6 @@ import type { RpcErrorCode } from "@healthapp/api";
 // showing an error where a coach expected something to hand their client.
 export type ActionResult = {
   ok: boolean;
-  demo?: boolean;
   message?: string;
   errorCode?: ActionErrorCode;
 };
@@ -24,10 +23,14 @@ export type ActionErrorCode = RpcErrorCode | ProfileErrorCode | "NO_ROWS";
 export type ProfileErrorCode = "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN";
 
 export async function createInvite(): Promise<ActionResult & { code?: string }> {
-  if (isDemo) return { ok: true, demo: true, code: "DEMO1234" };
   const supabase = await supabaseServer();
   const { data, error } = await supabase.rpc("create_invite");
-  if (error) return { ok: false, message: error.message };
+  if (error) {
+    // The screen shows business codes only, so this is the one place the real
+    // cause is recoverable when the RPC fails for an infrastructure reason.
+    console.error("create_invite failed:", error.message);
+    return { ok: false, message: error.message };
+  }
   revalidatePath("/clients");
   return { ok: true, code: data?.[0]?.code };
 }
@@ -37,7 +40,6 @@ export async function reviewCheckIn(
   clientId: string,
   feedback: string,
 ): Promise<ActionResult> {
-  if (isDemo) return { ok: true, demo: true };
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
@@ -63,7 +65,6 @@ export async function reviewCheckIn(
 }
 
 export async function sendMessage(conversationId: string, body: string): Promise<ActionResult> {
-  if (isDemo) return { ok: true, demo: true };
   if (!body.trim()) return { ok: false, message: "Empty message" };
   const live = await liveUser();
   if (!live) return notSignedIn;

@@ -1,26 +1,20 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
+import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
-import { DEMO_COACH_ID, newId, store, type StoredProgram, type StoredProgramDay } from "@/lib/demo-store";
-import { viewingClientId } from "@/lib/view-mode";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
 // Program builder writes (W4, Sprint 3).
 //
-// Two branches, same as lib/data.ts: the demo store when no backend is
-// configured, Supabase otherwise.
-//
-// Status of the Supabase branch (docs/superpowers/specs/2026-09-08-s1-*):
-// written to the schema and reviewed against the RLS policies, not yet driven
-// end-to-end against a live project. Every update/delete goes through
-// `mutated()` so an RLS-filtered write cannot report success.
+// Driven end-to-end against the live project on 2026-09-14: create → add day →
+// add exercise → set sets/reps/RIR/rest → publish, then confirmed the client's
+// Today picked the program up. Every update/delete goes through `mutated()` so
+// an RLS-filtered write cannot report success.
 //
 // day_index is the 0-based ordinal of a day *within its week*, which is what
-// the unique key (program_id, week_index, day_index) assumes. The demo store
-// mirrors it. Only the sort reads it, so a hole left by a deleted day is
-// harmless — see nextDayIndex().
+// the unique key (program_id, week_index, day_index) assumes. Only the sort
+// reads it, so a hole left by a deleted day is harmless — see nextDayIndex().
 
 /**
  * The next free ordinal inside a week.
@@ -58,23 +52,6 @@ export async function createProgram(input: {
   if (!name) return { ok: false, message: "Give the program a name" };
   if (!input.clientId) return { ok: false, message: "Pick a client" };
 
-  if (isDemo) {
-    const program: StoredProgram = {
-      id: newId("p"),
-      coach_id: DEMO_COACH_ID,
-      client_id: input.clientId,
-      client_name: input.clientName,
-      name,
-      status: "draft", // never visible to the client until Publish (spec B1)
-      intensity_mode: input.intensityMode,
-      weeks: input.weeks,
-      updated_at: new Date().toISOString(),
-      days: [],
-    };
-    store().programs.unshift(program);
-    revalidatePath("/programs");
-    return { ok: true, demo: true, id: program.id };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -99,21 +76,6 @@ export async function createProgram(input: {
 export async function addProgramDay(programId: string, name: string): Promise<ActionResult> {
   const dayName = name.trim() || "New day";
 
-  if (isDemo) {
-    const program = find(programId);
-    if (!program) return { ok: false, message: "Program not found" };
-    program.days.push({
-      id: newId("pd"),
-      week_index: 1,
-      day_index: program.days.filter((d) => d.week_index === 1).length,
-      name: dayName,
-      muscle_groups: [],
-      exercises: [],
-    });
-    touch(program);
-    revalidatePath(`/programs/${programId}`);
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const dayIndex = await nextDayIndex(supabase, programId, 1);
@@ -134,32 +96,6 @@ export async function addProgramExercise(input: {
   exerciseId: string;
   exerciseName: string;
 }): Promise<ActionResult> {
-  if (isDemo) {
-    const program = find(input.programId);
-    const day = findDay(input.programId, input.dayId);
-    if (!program || !day) return { ok: false, message: "Day not found" };
-    day.exercises.push({
-      id: newId("pe"),
-      exercise_id: input.exerciseId,
-      exercise_name: input.exerciseName,
-      position: day.exercises.length,
-      // Sensible starting targets — the coach edits them in place.
-      target_sets: 3,
-      target_reps: "10",
-      target_weight_kg: null,
-      target_rpe: null,
-      rest_seconds: 90,
-      notes: null,
-    });
-    touch(program);
-    revalidatePath(`/programs/${input.programId}`);
-    // A client using the solo builder can hit this action too (Task 6) —
-    // /workout and /workout/build must see the new exercise without a hard
-    // reload, same as the coach's /programs/[id] does.
-    revalidatePath("/workout/build");
-    revalidatePath("/workout");
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const { count } = await supabase
@@ -194,19 +130,6 @@ export async function updateProgramExercise(input: {
     return { ok: false, message: "Sets must be between 1 and 20" };
   }
 
-  if (isDemo) {
-    const program = find(input.programId);
-    const row = program?.days.flatMap((d) => d.exercises).find((e) => e.id === input.exerciseRowId);
-    if (!program || !row) return { ok: false, message: "Exercise not found" };
-    row.target_sets = input.target_sets;
-    row.target_reps = input.target_reps;
-    row.target_weight_kg = input.target_weight_kg;
-    row.target_rpe = input.target_rpe;
-    row.rest_seconds = input.rest_seconds;
-    touch(program);
-    revalidatePath(`/programs/${input.programId}`);
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -233,19 +156,6 @@ export async function removeProgramExercise(
   programId: string,
   exerciseRowId: string,
 ): Promise<ActionResult> {
-  if (isDemo) {
-    const program = find(programId);
-    if (!program) return { ok: false, message: "Program not found" };
-    for (const day of program.days) {
-      day.exercises = day.exercises.filter((e) => e.id !== exerciseRowId);
-      day.exercises.forEach((e, index) => {
-        e.position = index;
-      });
-    }
-    touch(program);
-    revalidatePath(`/programs/${programId}`);
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -258,22 +168,6 @@ export async function removeProgramExercise(
 
 /** Duplicate a day with all its targets — the build-once move from W4. */
 export async function duplicateProgramDay(programId: string, dayId: string): Promise<ActionResult> {
-  if (isDemo) {
-    const program = find(programId);
-    const day = program?.days.find((d) => d.id === dayId);
-    if (!program || !day) return { ok: false, message: "Day not found" };
-    program.days.push({
-      id: newId("pd"),
-      week_index: day.week_index,
-      day_index: program.days.filter((d) => d.week_index === day.week_index).length,
-      name: `${day.name} (copy)`,
-      muscle_groups: day.muscle_groups,
-      exercises: day.exercises.map((e) => ({ ...e, id: newId("pe") })),
-    });
-    touch(program);
-    revalidatePath(`/programs/${programId}`);
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const { data: source, error: readError } = await supabase
@@ -312,23 +206,6 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
 
 /** Publish makes the program visible to the client and fires Plan updated. */
 export async function publishProgram(programId: string): Promise<ActionResult> {
-  if (isDemo) {
-    const program = find(programId);
-    if (!program) return { ok: false, message: "Program not found" };
-    // Acceptance criterion B1: at least one day with at least one exercise.
-    if (program.days.every((d) => d.exercises.length === 0)) {
-      return { ok: false, message: "Add at least one exercise before publishing" };
-    }
-    program.status = "published";
-    touch(program);
-    revalidatePath(`/programs/${programId}`);
-    revalidatePath("/programs");
-    // Same reasoning as addProgramExercise above: the client surface needs to
-    // see the newly published program without a hard reload.
-    revalidatePath("/workout/build");
-    revalidatePath("/workout");
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -345,17 +222,8 @@ export async function publishProgram(programId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-function find(programId: string): StoredProgram | undefined {
-  return store().programs.find((p) => p.id === programId);
-}
 
-function findDay(programId: string, dayId: string): StoredProgramDay | undefined {
-  return find(programId)?.days.find((d) => d.id === dayId);
-}
 
-function touch(program: StoredProgram): void {
-  program.updated_at = new Date().toISOString();
-}
 
 /**
  * A program the client owns outright: coach_id null, client_id themselves.
@@ -371,23 +239,6 @@ export async function createSoloProgram(input: {
   const name = input.name.trim();
   if (!name) return { ok: false, message: "Give the program a name" };
 
-  if (isDemo) {
-    const program: StoredProgram = {
-      id: newId("p"),
-      coach_id: null,
-      client_id: await viewingClientId(),
-      client_name: "You",
-      name,
-      status: "draft",
-      intensity_mode: input.intensityMode,
-      weeks: 1,
-      updated_at: new Date().toISOString(),
-      days: [],
-    };
-    store().programs.unshift(program);
-    revalidatePath("/workout");
-    return { ok: true, demo: true, id: program.id };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -417,21 +268,6 @@ export async function addSoloProgramDay(
 ): Promise<ActionResult> {
   const dayName = name.trim() || "New day";
 
-  if (isDemo) {
-    const program = store().programs.find((p) => p.id === programId);
-    if (!program) return { ok: false, message: "Program not found" };
-    program.days.push({
-      id: newId("pd"),
-      week_index: 1,
-      day_index: program.days.filter((d) => d.week_index === 1).length,
-      name: dayName,
-      muscle_groups: muscleGroups,
-      exercises: [],
-    });
-    touch(program);
-    revalidatePath("/workout/build");
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const dayIndex = await nextDayIndex(supabase, programId, 1);
@@ -449,17 +285,6 @@ export async function addSoloProgramDay(
 
 /** The client's own draft-or-published program, if they have started one. */
 export async function getMySoloProgramId(): Promise<string | null> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    // StoredProgram now carries coach_id (Task 6), so this can tell a solo
-    // program apart from one the coach built for the same client even when
-    // both exist — scoped to the viewed client's solo (coach_id === null)
-    // programs, then the most recently updated one.
-    const mine = store()
-      .programs.filter((p) => p.client_id === clientId && p.coach_id === null)
-      .sort((a, b) => (a.updated_at > b.updated_at ? -1 : 1));
-    return mine[0]?.id ?? null;
-  }
   const live = await liveUser();
   if (!live) return null;
   const { supabase, userId } = live;
@@ -477,29 +302,10 @@ export async function getMySoloProgramId(): Promise<string | null> {
 /**
  * Delete a training day and everything prescribed in it. The client reaches
  * this by swiping a day away on Training or in their builder and confirming.
- * program_exercises cascade in SQL; in demo the day simply leaves the array.
- * The demo store re-packs day_index; live leaves the hole, which is why the
- * next day takes max(day_index) + 1 rather than a count.
+ * program_exercises cascade in SQL. Deleting leaves a hole in day_index, which
+ * is why the next day takes max(day_index) + 1 rather than a count.
  */
 export async function removeProgramDay(programId: string, dayId: string): Promise<ActionResult> {
-  if (isDemo) {
-    const program = find(programId);
-    if (!program) return { ok: false, message: "Program not found" };
-    const before = program.days.length;
-    program.days = program.days.filter((d) => d.id !== dayId);
-    if (program.days.length === before) return { ok: false, message: "Day not found" };
-    const perWeek = new Map<number, number>();
-    for (const day of program.days) {
-      const next = perWeek.get(day.week_index) ?? 0;
-      day.day_index = next;
-      perWeek.set(day.week_index, next + 1);
-    }
-    touch(program);
-    revalidatePath(`/programs/${programId}`);
-    revalidatePath("/workout/build");
-    revalidatePath("/workout");
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const failed = await mutated(

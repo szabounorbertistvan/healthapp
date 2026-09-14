@@ -13,8 +13,6 @@ const en = {
       { title: "Eat", body: "Meal plans, barcode scanning and macros that add up." },
       { title: "Progress", body: "Weight, strength and adherence on one timeline." },
     ],
-    browseCoachDemo: "Browse the coach demo",
-    browseClientDemo: "Browse the client demo",
     forYou: "For you",
     forCoaches: "For coaches",
     clientBenefits: [
@@ -39,7 +37,6 @@ const en = {
       "Română + English · offline logging · your data stays yours (GDPR export & delete built in)",
   },
   login: {
-    demoNotice: "Demo mode — sign-in is skipped. Connect Supabase to enable real auth.",
     email: "Email",
     password: "Password",
     repeatPassword: "Repeat password",
@@ -81,7 +78,9 @@ const en = {
     errInvalidCredentials: "Wrong email or password.",
     errEmailNotConfirmed: "Confirm your email first — check your inbox.",
     errEmailTaken: "An account with this email already exists.",
-    errRateLimited: "Too many attempts. Wait a minute and try again.",
+    errRateLimited: "Too many attempts. Wait a few minutes and try again.",
+    errEmailRateLimited: "Too many emails requested for this address. Try again later.",
+    errEmailRateLimitedIn: "Too many emails requested. Try again in {seconds}s.",
     errWeakPassword: "That password is too weak. Try a longer one.",
     errGeneric: "Something went wrong. Please try again.",
     // post-action states
@@ -115,8 +114,6 @@ const ro: typeof en = {
       { title: "Mănâncă", body: "Planuri de mese, scanare de coduri de bare și macro care se adună." },
       { title: "Progresează", body: "Greutate, forță și aderență pe o singură cronologie." },
     ],
-    browseCoachDemo: "Vezi demo-ul pentru antrenori",
-    browseClientDemo: "Vezi demo-ul pentru clienți",
     forYou: "Pentru tine",
     forCoaches: "Pentru antrenori",
     clientBenefits: [
@@ -141,7 +138,6 @@ const ro: typeof en = {
       "Română + English · logare offline · datele rămân ale tale (export și ștergere GDPR incluse)",
   },
   login: {
-    demoNotice: "Mod demo — autentificarea este omisă. Conectează Supabase pentru autentificare reală.",
     email: "Email",
     password: "Parolă",
     repeatPassword: "Repetă parola",
@@ -181,7 +177,9 @@ const ro: typeof en = {
     errInvalidCredentials: "Email sau parolă greșită.",
     errEmailNotConfirmed: "Confirmă-ți mai întâi emailul — verifică inbox-ul.",
     errEmailTaken: "Există deja un cont cu acest email.",
-    errRateLimited: "Prea multe încercări. Așteaptă un minut și încearcă din nou.",
+    errRateLimited: "Prea multe încercări. Așteaptă câteva minute și încearcă din nou.",
+    errEmailRateLimited: "S-au cerut prea multe emailuri pentru această adresă. Încearcă mai târziu.",
+    errEmailRateLimitedIn: "S-au cerut prea multe emailuri. Încearcă din nou în {seconds}s.",
     errWeakPassword: "Parola e prea slabă. Încearcă una mai lungă.",
     errGeneric: "Ceva n-a mers. Te rugăm să încerci din nou.",
     checkInboxTitle: "Verifică-ți inbox-ul",

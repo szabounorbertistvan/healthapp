@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
+import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
@@ -15,7 +15,6 @@ import { notSignedIn } from "@/lib/action-result";
 export async function usernameAvailable(username: string): Promise<boolean> {
   const wanted = username.trim();
   if (!isValidUsername(wanted)) return false;
-  if (isDemo) return wanted.toLowerCase() !== "coach_alex";
   const supabase = await supabaseServer();
   const { data, error } = await supabase.rpc("username_available", { p_username: wanted });
   // An unreachable check must not block sign-up: the trigger de-duplicates
@@ -37,7 +36,6 @@ export async function completeProfile(input: {
   if (!SEXES.includes(input.sex)) return { ok: false, errorCode: "SEX" };
   if (!isValidAge(input.age)) return { ok: false, errorCode: "AGE" };
 
-  if (isDemo) return { ok: true, demo: true };
 
   const live = await liveUser();
   if (!live) return notSignedIn;

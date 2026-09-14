@@ -30,7 +30,6 @@ export function MessageThread({
           { id: `local-${Date.now()}`, mine: true, body, at: new Date().toISOString() },
         ]);
         setDraft("");
-        if (result.demo) setNote(msgs.demoNotPersisted);
       } else {
         setNote(result.message ?? msgs.couldNotSend);
       }

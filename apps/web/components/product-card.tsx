@@ -1,8 +1,8 @@
 "use client";
 import { portionMacros } from "@healthapp/shared";
-import { portionsFor, type DemoFood } from "@/lib/demo-foods";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
+import { portionsFor, type FoodItem } from "@/lib/food-portions";
 
 /**
  * What a scan returns: the product, its nutrition, and where the numbers came
@@ -16,7 +16,7 @@ export function ProductCard({
   onRescan,
   busy = false,
 }: {
-  food: DemoFood;
+  food: FoodItem;
   barcode: string;
   onLog: () => void;
   onRescan: () => void;

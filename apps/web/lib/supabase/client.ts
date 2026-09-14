@@ -9,9 +9,13 @@ import { createBrowserClient } from "@supabase/ssr";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
-export const isDemo = !url;
-
 export function supabaseBrowser() {
+  if (!url || !anonKey) {
+    throw new Error(
+      "Supabase is not configured: set NEXT_PUBLIC_SUPABASE_URL and " +
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY in apps/web/.env.local (copy .env.example).",
+    );
+  }
   return createBrowserClient(url, anonKey);
 }
 
@@ -21,11 +25,8 @@ export function supabaseBrowser() {
  * dashboard reads. A disabled provider does not redirect back with an error —
  * /authorize answers with a bare JSON error page — so the login page asks
  * first and hides the button rather than sending anyone there.
- *
- * Demo mode reports every provider as enabled so the button is visible.
  */
 export async function enabledOAuthProviders(): Promise<Set<string>> {
-  if (isDemo) return new Set(["google", "apple"]);
   try {
     const res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: anonKey } });
     if (!res.ok) return new Set();

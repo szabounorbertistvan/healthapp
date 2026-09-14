@@ -1,8 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo, liveUser } from "@/lib/supabase/server";
+import { liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
-import { demoFoods } from "@/lib/demo-foods";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -18,13 +17,6 @@ export async function setFoodRomanianName(foodId: string, nameRo: string): Promi
   const clean = nameRo.trim();
   if (clean.length > 120) return { ok: false, message: "Name too long" };
 
-  if (isDemo) {
-    const food = demoFoods.find((f) => f.id === foodId);
-    if (!food) return { ok: false, message: "Food not found" };
-    food.name_ro = clean || food.name_en;
-    revalidatePath("/admin/foods");
-    return { ok: true, demo: true };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;

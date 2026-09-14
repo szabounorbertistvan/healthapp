@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { supabaseServer } from "@/lib/supabase/server";
 
 /**
  * Where every emailed auth link lands: confirmation after sign-up, password
@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
     ? "/reset-password?error=expired"
     : isOAuth ? "/login?error=oauth" : "/login?error=link";
 
-  if (isDemo) return NextResponse.redirect(new URL(next, origin));
   // Supabase reports an expired/used link (or a cancelled OAuth consent) on the
   // redirect itself. Every provider-side failure reaches the user as the same
   // generic `error=oauth`, so the description — the only thing separating a bad

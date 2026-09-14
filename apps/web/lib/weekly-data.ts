@@ -3,6 +3,7 @@
 // measurements, habit logs, the followed program, the published plan — and
 // @healthapp/shared does every calculation. The client's Today and the
 // coach's client page both come through here, so the two never disagree.
+import { daysAgoIso, isoDay } from "./dates";
 import "server-only";
 import {
   compareWeeks,
@@ -17,11 +18,9 @@ import {
   type WeeklyMeasurement,
   type WeeklySession,
 } from "@healthapp/shared";
-import { isDemo, liveUser, supabaseServer } from "./supabase/server";
-import { store } from "./demo-store";
-import { viewingClientId } from "./view-mode";
-import { clientStore, daysAgoIso, isoDay } from "./demo-client-store";
+import { liveUser, supabaseServer } from "./supabase/server";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
+import { activeCoachId } from "./client-training";
 import { getWorkoutStreak } from "./streak-data";
 import { loadOf } from "./training-load";
 import type { LoggedSetRow } from "./types";
@@ -32,7 +31,6 @@ export type WeeklySummary = WeeklyComparison & { choice: WeekChoice };
 
 /** The signed-in client's summary for this week (default) or last week. */
 export async function getMyWeeklySummary(choice: WeekChoice = "current"): Promise<WeeklySummary | null> {
-  if (isDemo) return summaryFor(await viewingClientId(), choice);
   const live = await liveUser();
   if (!live) return null;
   return summaryFor(live.userId, choice);
@@ -51,13 +49,20 @@ async function summaryFor(userId: string, choice: WeekChoice): Promise<WeeklySum
   const thisWeek = weekOf(isoDay());
   const week = choice === "current" ? thisWeek : previousWeek(thisWeek);
   const prev = previousWeek(week);
-  // The workout streak (lib/streak-data): the same number Today and the streak page show.
-  const streak = await getWorkoutStreak(userId);
-  const [current, previous] = isDemo
-    ? [demoInput(userId, week, streak.current), demoInput(userId, prev, streak.current)]
-    : await liveInputs(userId, week, prev, streak.current);
+  // The workout streak (lib/streak-data): the same number Today and the streak
+  // page show. It only decorates the input, so it does not gate the row reads:
+  // the streak RPC (the slowest single call on Today) and the seven row queries
+  // go out together instead of one waiting for the other.
+  const [streak, [current, previous]] = await Promise.all([
+    getWorkoutStreak(userId),
+    liveInputs(userId, week, prev),
+  ]);
   if (!current || !previous) return null;
-  return { ...compareWeeks(weekStats(current), weekStats(previous)), choice };
+  const streak_days = streak.current;
+  return {
+    ...compareWeeks(weekStats({ ...current, streak_days }), weekStats({ ...previous, streak_days })),
+    choice,
+  };
 }
 
 /** A session row → the shape weekStats folds over. */
@@ -74,67 +79,12 @@ function toWeeklySession(started_at: string, completed_at: string | null, sets: 
   };
 }
 
-// ---------- demo ----------
-
-function demoInput(userId: string, week: Week, streak: number): WeeklyInput {
-  const cs = clientStore();
-  const s = store();
-  const hasActiveCoach = s.clients.find((c) => c.client_id === userId)?.status === "active";
-
-  const sessions = cs.sessions
-    .filter((x) => x.client_id === userId && x.completed_at !== null)
-    .map((x) =>
-      toWeeklySession(
-        x.started_at,
-        x.completed_at,
-        cs.sets
-          .filter((st) => st.session_id === x.id)
-          .map((st) => ({
-            id: st.id, program_exercise_id: st.program_exercise_id, exercise: st.exercise_name,
-            set_index: st.set_index, weight_kg: st.weight_kg, reps: st.reps, rpe: st.rpe, rir: st.rir,
-            notes: st.notes, is_pr: st.is_pr, at: st.logged_at,
-          })),
-      ),
-    );
-
-  const byDay = new Map<string, { kcal: number; protein: number; carbs: number; fat: number }>();
-  for (const f of cs.foodLogs) {
-    if (f.client_id !== userId) continue;
-    const d = byDay.get(f.logged_on) ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-    d.kcal += f.macros.kcal; d.protein += f.macros.protein; d.carbs += f.macros.carbs; d.fat += f.macros.fat;
-    byDay.set(f.logged_on, d);
-  }
-
-  const plan = pickProgram(s.plans.filter((p) => p.client_id === userId && p.status === "published"), hasActiveCoach);
-  const program = pickProgram(s.programs.filter((p) => p.client_id === userId && p.status === "published"), hasActiveCoach);
-
-  const habitIds = new Set(cs.habits.filter((h) => h.client_id === userId).map((h) => h.id));
-  const active = new Set<string>();
-  for (const f of cs.foodLogs) if (f.client_id === userId) active.add(f.logged_on);
-  for (const h of cs.habitLogs) if (habitIds.has(h.habit_id)) active.add(h.done_on);
-  for (const x of sessions) active.add(x.day);
-
-  return {
-    week,
-    sessions,
-    food_days: [...byDay.entries()].map(([day, m]) => ({ day, ...m })),
-    target: plan ? { kcal: plan.kcal_target, protein: plan.protein_target_g, carbs: plan.carbs_target_g, fat: plan.fat_target_g } : null,
-    measurements: cs.measurements
-      .filter((m) => m.client_id === userId)
-      .map((m): WeeklyMeasurement => ({
-        day: m.taken_on,
-        weight_kg: m.weight_kg,
-        circumferences: m.waist_cm !== null ? { waist: m.waist_cm } : {},
-      })),
-    active_days: [...active],
-    planned_workouts: program?.days.length ?? 0,
-    streak_days: streak,
-  };
-}
-
 // ---------- live ----------
 
-async function liveInputs(userId: string, week: Week, prev: Week, streak: number): Promise<[WeeklyInput, WeeklyInput] | [null, null]> {
+/** A WeeklyInput before the streak is attached — everything that comes from rows. */
+type WeeklyRows = Omit<WeeklyInput, "streak_days">;
+
+async function liveInputs(userId: string, week: Week, prev: Week): Promise<[WeeklyRows, WeeklyRows] | [null, null]> {
   const supabase = await supabaseServer();
   // The two weeks, plus a little history for the load trend.
   const since = daysAgoIso(59);
@@ -159,7 +109,8 @@ async function liveInputs(userId: string, week: Week, prev: Week, streak: number
       .select("id, coach_id, updated_at, program_days(id)")
       .eq("client_id", userId)
       .eq("status", "published"),
-    supabase.from("trainer_clients").select("coach_id").eq("client_id", userId).eq("status", "active").maybeSingle(),
+    // Request-cached: Today has already asked this for the same client.
+    activeCoachId(userId),
   ]);
   if (sessions.error) return [null, null];
 
@@ -181,7 +132,7 @@ async function liveInputs(userId: string, week: Week, prev: Week, streak: number
     byDay.set(f.date, d);
   }
 
-  const hasActiveCoach = coach.data !== null;
+  const hasActiveCoach = coach !== null;
   const plan = pickProgram((plans.data ?? []) as unknown as PlanRow[], hasActiveCoach);
   const program = pickProgram((programs.data ?? []) as unknown as ProgramRow[], hasActiveCoach);
 
@@ -198,7 +149,7 @@ async function liveInputs(userId: string, week: Week, prev: Week, streak: number
     ),
   }));
 
-  const base: Omit<WeeklyInput, "week"> = {
+  const base: Omit<WeeklyRows, "week"> = {
     sessions: weeklySessions,
     food_days: [...byDay.entries()].map(([day, m]) => ({ day, ...m })),
     target: plan
@@ -207,7 +158,6 @@ async function liveInputs(userId: string, week: Week, prev: Week, streak: number
     measurements: measured,
     active_days: [...active],
     planned_workouts: program?.program_days?.length ?? 0,
-    streak_days: streak,
   };
   return [{ ...base, week }, { ...base, week: prev }];
 }

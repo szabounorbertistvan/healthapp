@@ -2,11 +2,14 @@
 
 What each part of HealthApp does, which files hold it, and how finished it is.
 Read [../CLAUDE.md](../CLAUDE.md) first for the conventions all of these follow
-(demo/live two-branch actions, `ActionResult`, cookie i18n, RLS).
+(single-branch Supabase actions, `ActionResult`, cookie i18n, RLS).
 
-Maturity legend: **solid** = works both branches, **demo-only** = the live
-Supabase branch exists but has never run against a database, **stub** = partially
-wired, **missing** = spec'd but not written.
+Maturity legend: **solid** = exercised against a live database, **unproven** =
+the code is written and RLS-guarded but has never run against one, **stub** =
+partially wired, **missing** = spec'd but not written.
+
+Demo mode was removed on 2026-09-14, so "unproven" no longer has a working
+fallback behind it — an unproven path is simply untested.
 
 ---
 
@@ -32,9 +35,10 @@ mouse) and deleted after confirmation. Anyone can create a custom exercise from
 the picker (`exercises.owner_id` set, `source = 'custom'`). PRs are computed in
 `packages/shared/src/prs.ts`.
 
-**Maturity: demo-only.** The Supabase branch of `builder-actions.ts` is written
-and RLS-guarded (`lib/supabase/mutate.ts`) but has not been driven end-to-end
-against a live project; see `docs/superpowers/specs/2026-09-08-s1-*`.
+**Maturity: solid.** Driven end-to-end against the live project on 2026-09-14 —
+create a program for a client, add a day, add an exercise from the 888-row
+library, set sets/reps/RIR/rest, publish, and confirm it reaches the client's
+Today. RLS and column grants all held; `mutated()` guards every update/delete.
 
 ---
 
@@ -73,7 +77,7 @@ nothing. Two rules the schema enforces and that are easy to break by accident:
   re-import can never wipe a curated range or overwrite a good value with an
   empty one. Grams are always **edible weight** (eggs are stored shell-off).
 
-**Maturity: demo-only** on the coach side (`nutrition-actions.ts:11`); the client
+**Maturity: unproven** on the coach side (`nutrition-actions.ts`); the client
 logging path is the most developed part of the app.
 
 ---

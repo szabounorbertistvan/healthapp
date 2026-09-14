@@ -1,24 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { isDemo } from "@/lib/supabase/server";
 import { displayName, getProfile } from "@/lib/data";
-import { NavLinks } from "@/components/nav-links";
+import { NavLinks, CoachTabBar } from "@/components/nav-links";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TIER_LABEL } from "@/lib/entitlements";
 import { Logo } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
-import { ViewSwitcher } from "@/components/view-switcher";
-import { viewableClients } from "@/app/view-actions";
 import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
-  const clients = isDemo ? await viewableClients() : [];
   if (!profile) redirect("/");
   // the coach web area is for coaches and admins; clients have their own surface
   if (profile.role === "client") redirect("/today");
-  if (!isDemo && !profile.username) redirect("/complete-profile");
+  if (!profile.username) redirect("/complete-profile");
   const { t } = await getI18n();
 
   return (
@@ -36,16 +32,33 @@ export default async function CoachLayout({ children }: { children: React.ReactN
             <LanguageSelector />
             <ThemeToggle />
           </div>
-          {isDemo ? <ViewSwitcher surface="coach" clients={clients} /> : null}
-          {isDemo ? (
-            <p className="rounded-lg bg-warn-soft px-3 py-2 text-[11px] leading-snug text-warn">
-              <b>{t.common.demoNotice.title}</b> — {t.common.demoNotice.body}
-            </p>
-          ) : null}
           <SignOutButton />
         </div>
       </aside>
-      <main className="min-w-0 flex-1 p-5 sm:p-8">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* The sidebar is desktop-only, so without this the coach surface had no
+            header, no nav and no way out on a phone. Mirrors the client header:
+            who you are on the left, and the controls the tab bar has no room
+            for on the right — messages first, for the same reason the client
+            header carries the feed. */}
+        <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-5 py-2 sm:hidden">
+          <span className="truncate text-sm font-bold tracking-tight">{displayName(profile)}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/messages"
+              aria-label={t.common.nav.messages}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg hover:border-accent"
+            >
+              ✉️
+            </Link>
+            <LanguageSelector />
+            <ThemeToggle />
+            <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg text-ink-soft hover:border-accent hover:text-ink disabled:opacity-50" />
+          </div>
+        </header>
+        <main className="min-w-0 flex-1 p-5 pb-28 sm:p-8 sm:pb-8">{children}</main>
+      </div>
+      <CoachTabBar isAdmin={profile.role === "admin"} />
     </div>
   );
 }

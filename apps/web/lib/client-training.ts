@@ -1,4 +1,5 @@
 // Client training reads: programs, days, sessions, PRs, training load.
+import { daysAgoIso, isoDay, mondayOf } from "./dates";
 import "server-only";
 import { cache } from "react";
 import {
@@ -10,17 +11,8 @@ import {
 } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
-import { isDemo, liveUser, supabaseServer } from "./supabase/server";
+import { liveUser, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
-import { demoHasActiveCoach, store } from "./demo-store";
-import { viewingClientId } from "./view-mode";
-import {
-  bestLifts,
-  clientStore,
-  daysAgoIso,
-  isoDay,
-  mondayOf,
-} from "./demo-client-store";
 import type {
   ClientPrRow,
   ClientProgramGroup,
@@ -53,59 +45,17 @@ function sortPrograms<T extends { coach_id: string | null; updated_at: string }>
  * Cached per request: Today, the day page and the set logger all ask.
  */
 export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> => {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const s = store();
-    const candidates = s.programs.filter(
-      (p) => p.client_id === clientId && p.status === "published",
-    );
-    const followed = pickProgram(candidates, demoHasActiveCoach(clientId));
-    const cs = clientStore();
-    return sortPrograms(candidates).map((program) => ({
-      program_id: program.id,
-      program_name: program.name,
-      is_own: program.coach_id === null,
-      followed: program.id === followed?.id,
-      days: program.days.map((day) => {
-        const session = cs.sessions.find(
-          (x) => x.client_id === clientId && x.program_day_id === day.id && x.completed_at === null,
-        );
-        return {
-          day_id: day.id,
-          day_name: day.name,
-          program_id: program.id,
-          program_name: program.name,
-          is_own: program.coach_id === null,
-          intensity_mode: program.intensity_mode,
-          exercises: [...day.exercises]
-            .sort((a, b) => a.position - b.position)
-            .map((e) => ({
-              id: e.id,
-              exercise: e.exercise_name,
-              sets: e.target_sets,
-              reps: e.target_reps,
-              weight: e.target_weight_kg ? `${e.target_weight_kg} kg` : "—",
-              rpe: e.target_rpe?.toString() ?? "—",
-              rest: e.rest_seconds ? `${e.rest_seconds}s` : "—",
-              weight_kg: e.target_weight_kg,
-              rpe_value: e.target_rpe,
-              rest_seconds: e.rest_seconds,
-            })),
-          logged: session ? setsForSession(session.id) : [],
-          session_id: session?.id ?? null,
-          completed: false,
-        };
-      }),
-    }));
-  }
 
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
-  // The programs and the coach lookup answer independent questions, so they go
-  // out together; only the session lookup below genuinely has to wait, because
-  // it is keyed by the day ids the programs query returns.
-  const [{ data: rows, error }, coachId] = await Promise.all([
+  // The programs, the coach lookup and today's sessions answer independent
+  // questions, so they go out together. The sessions used to wait for the
+  // programs (they are addressed by keys built from the day ids), which put a
+  // whole round trip behind an otherwise single-wave Today; now the recent
+  // sessions come back with everything else and are matched to their keys here.
+  const today = isoDay();
+  const [{ data: rows, error }, coachId, recentSessions] = await Promise.all([
     supabase
       .from("programs")
       .select(`id, name, intensity_mode, coach_id, updated_at,
@@ -115,6 +65,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
       .eq("client_id", userId)
       .eq("status", "published"),
     activeCoachId(userId),
+    recentSessionsFor(supabase, userId),
   ]);
   if (error || !rows) return [];
 
@@ -135,9 +86,8 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   // writer derives. Without this the set logger restarts its numbering at 1
   // after every reload, and logSet's client_generated_id collides with the set
   // that is already there.
-  const today = isoDay();
   const allDayIds = programs.flatMap((p) => (p.program_days ?? []).map((d) => d.id));
-  const sessions = await sessionsForDays(supabase, userId, allDayIds, today);
+  const sessions = sessionsForDays(recentSessions, userId, allDayIds, today);
 
   return sortPrograms(programs).map((program) => {
     const days = [...(program.program_days ?? [])].sort((a, b) => a.day_index - b.day_index);
@@ -216,31 +166,50 @@ export const activeCoachId = cache(async (userId: string): Promise<string | null
 
 type TodaySession = { id: string; completed: boolean; logged: LoggedSetRow[] };
 
-/** Today's session and its sets, per program day, keyed by program_day_id. */
-async function sessionsForDays(
+type SessionJoin = {
+  id: string; program_day_id: string | null; client_generated_id: string; completed_at: string | null;
+  logged_sets: SetJoin[];
+};
+
+/**
+ * The client's sessions from the last two days, with their sets — the pool
+ * today's per-day sessions are picked from. Two days rather than one because
+ * the deterministic key carries the *server's* calendar date while started_at
+ * is a timestamp: on a box whose clock is not UTC the two can straddle
+ * midnight, and a session must never go missing at 01:00 (the set logger would
+ * restart at set 1 and its next write would collide). The key match in
+ * sessionsForDays is what decides; this only has to be a superset.
+ */
+async function recentSessionsFor(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  userId: string,
+): Promise<SessionJoin[]> {
+  const { data } = await supabase
+    .from("logged_sessions")
+    .select(`id, program_day_id, client_generated_id, completed_at, logged_sets(${LOGGED_SET_SELECT})`)
+    .eq("user_id", userId)
+    .gte("started_at", `${daysAgoIso(1)}T00:00:00`);
+  return (data ?? []) as unknown as SessionJoin[];
+}
+
+/**
+ * Today's session and its sets, per program day, keyed by program_day_id.
+ * Exactly the rows the old `in (client_generated_id …)` query returned: the
+ * same deterministic keys, matched in memory against the recent pool.
+ */
+function sessionsForDays(
+  recent: SessionJoin[],
   userId: string,
   dayIds: string[],
   isoDate: string,
-): Promise<Map<string, TodaySession>> {
+): Map<string, TodaySession> {
   const byDay = new Map<string, TodaySession>();
   if (dayIds.length === 0) return byDay;
 
-  const { data } = await supabase
-    .from("logged_sessions")
-    .select(`id, program_day_id, completed_at, logged_sets(${LOGGED_SET_SELECT})`)
-    .in(
-      "client_generated_id",
-      dayIds.map((dayId) => sessionKeyFor(userId, dayId, isoDate)),
-    );
+  const wanted = new Set(dayIds.map((dayId) => sessionKeyFor(userId, dayId, isoDate)));
 
-  type SessionJoin = {
-    id: string; program_day_id: string | null; completed_at: string | null;
-    logged_sets: SetJoin[];
-  };
-
-  for (const session of (data ?? []) as unknown as SessionJoin[]) {
-    if (!session.program_day_id) continue;
+  for (const session of recent) {
+    if (!session.program_day_id || !wanted.has(session.client_generated_id)) continue;
     byDay.set(session.program_day_id, {
       id: session.id,
       completed: session.completed_at !== null,
@@ -256,25 +225,6 @@ async function sessionsForDays(
 export async function getWorkoutDay(dayId: string): Promise<ClientWorkoutDay | null> {
   const groups = await getMyProgramGroups();
   return groups.flatMap((g) => g.days).find((d) => d.day_id === dayId) ?? null;
-}
-
-function setsForSession(sessionId: string): LoggedSetRow[] {
-  return clientStore()
-    .sets.filter((s) => s.session_id === sessionId)
-    .sort((a, b) => a.set_index - b.set_index)
-    .map((s) => ({
-      id: s.id,
-      program_exercise_id: s.program_exercise_id,
-      exercise: s.exercise_name,
-      set_index: s.set_index,
-      weight_kg: s.weight_kg,
-      reps: s.reps,
-      rpe: s.rpe,
-      rir: s.rir,
-      notes: s.notes,
-      is_pr: s.is_pr,
-      at: s.logged_at,
-    }));
 }
 
 /** Group a session's sets under the exercise they belong to, in the order performed. */
@@ -320,16 +270,6 @@ function summarizeSession(
  * last time's numbers are right there before the next attempt.
  */
 export async function getWorkoutDayHistory(dayId: string, limit = 20): Promise<WorkoutHistorySession[]> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    return clientStore()
-      .sessions.filter(
-        (s) => s.client_id === clientId && s.program_day_id === dayId && s.completed_at !== null,
-      )
-      .sort((a, b) => (a.started_at < b.started_at ? 1 : -1))
-      .slice(0, limit)
-      .map((s) => summarizeSession(s.id, s.started_at, s.completed_at, setsForSession(s.id)));
-  }
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -350,31 +290,6 @@ export async function getWorkoutDayHistory(dayId: string, limit = 20): Promise<W
 
 /** Recent completed sessions, newest first — the training history list. */
 export async function getMySessions(limit = 12): Promise<SessionSummaryRow[]> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const cs = clientStore();
-    return cs.sessions
-      .filter((s) => s.client_id === clientId && s.completed_at !== null)
-      .sort((a, b) => (a.started_at < b.started_at ? 1 : -1))
-      .slice(0, limit)
-      .map((s) => {
-        const sets = cs.sets.filter((x) => x.session_id === s.id);
-        return {
-          id: s.id,
-          day_id: s.program_day_id,
-          day_name: s.day_name,
-          at: s.completed_at ?? s.started_at,
-          sets: sets.length,
-          volume_kg: Math.round(sets.reduce((sum, x) => sum + x.weight_kg * x.reps, 0)),
-          prs: sets.filter((x) => x.is_pr).length,
-          load: loadOf(
-            sets.map((x) => ({ ...x, exercise: x.exercise_name })),
-            s.started_at,
-            s.completed_at,
-          ),
-        };
-      });
-  }
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -414,7 +329,7 @@ export async function getMySessions(limit = 12): Promise<SessionSummaryRow[]> {
  */
 export async function getMyTrainingLoad(): Promise<TrainingLoadSummary> {
   const days14 = Array.from({ length: 14 }, (_, i) => daysAgoIso(13 - i));
-  const entries = isDemo ? demoLoadEntries(await viewingClientId()) : await liveLoadEntries();
+  const entries = await liveLoadEntries();
   const today = isoDay();
   const thisMonday = mondayOf(0);
   const lastMonday = mondayOf(1);
@@ -432,22 +347,6 @@ export async function getMyTrainingLoad(): Promise<TrainingLoadSummary> {
 function shiftIso(day: string, days: number): string {
   const [y, m, d] = day.split("-").map(Number);
   return isoDay(new Date(y, m - 1, d + days));
-}
-
-/** Completed sessions of the last three weeks as (day, score) pairs. */
-function demoLoadEntries(clientId: string | null): { day: string; load: number }[] {
-  const cs = clientStore();
-  const since = daysAgoIso(20);
-  return cs.sessions
-    .filter((s) => s.client_id === clientId && s.completed_at !== null && s.started_at.slice(0, 10) >= since)
-    .map((s) => ({
-      day: s.started_at.slice(0, 10),
-      load: loadOf(
-        cs.sets.filter((x) => x.session_id === s.id).map((x) => ({ ...x, exercise: x.exercise_name })),
-        s.started_at,
-        s.completed_at,
-      ).score,
-    }));
 }
 
 async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
@@ -468,7 +367,6 @@ async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
 }
 
 export async function getMyPrs(): Promise<ClientPrRow[]> {
-  if (isDemo) return bestLifts(await viewingClientId());
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;

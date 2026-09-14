@@ -41,9 +41,6 @@ export default async function NutritionPage() {
           ))}
         </div>
       )}
-      <p className="mt-4 text-xs text-ink-faint">
-        {t.coachApp.nutrition.demoFootnote}
-      </p>
     </div>
   );
 }

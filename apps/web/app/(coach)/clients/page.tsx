@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { getClients, getProfile, isDemo } from "@/lib/data";
+import { getClients, getProfile } from "@/lib/data";
 import { Card, EmptyState, PageTitle, SignalBadge } from "@/components/ui";
 import { pct, timeAgo } from "@/lib/format";
 import { InviteButton } from "@/components/invite-button";
-import { AddClientButton } from "@/components/add-client-button";
 import { entitlementsFor, TIER_LABEL } from "@/lib/entitlements";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
@@ -25,7 +24,6 @@ export default async function ClientsPage() {
           <Link href="/clients/challenges" className="text-xs font-semibold text-accent-ink hover:underline">
             {t.common.challenges.coachTitle}
           </Link>
-          {isDemo ? <AddClientButton disabled={limitReached} /> : null}
           <InviteButton disabled={limitReached} />
         </div>
       </PageTitle>

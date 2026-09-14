@@ -1,7 +1,7 @@
-// Server-side reads for challenges. Same contract as client-data.ts: demo mode
-// folds the in-process store, live mode goes through Supabase under RLS. All
-// progress is derived — challengeProgress() over session rollups and active
+// Server-side reads for challenges. Same contract as client-data.ts: everything
+// goes through Supabase under RLS. All progress is derived — challengeProgress() over session rollups and active
 // days — never read from a column, so nothing a client types can move it.
+import { isoDay } from "./dates";
 import "server-only";
 import {
   canJoin,
@@ -16,12 +16,9 @@ import {
   type ChallengeActivity,
   type ChallengeType,
 } from "@healthapp/shared";
-import { isDemo, liveUser, supabaseServer } from "./supabase/server";
+import { liveUser, supabaseServer } from "./supabase/server";
 import { getI18n } from "./i18n/server";
 import { getProfile, getRoster } from "./data";
-import { store } from "./demo-store";
-import { viewingClientId } from "./view-mode";
-import { clientStore, isoDay, type StoredChallenge, type StoredParticipant } from "./demo-client-store";
 import { loadOf } from "./training-load";
 import type { ChallengeCard, ChallengeDetail, CoachChallengeRow, LeaderboardRow } from "./types";
 
@@ -66,50 +63,6 @@ async function toCard(row: Row, standing: Standing, today: string): Promise<Chal
     days_remaining: daysRemaining(row.end_date, today),
     can_join: !standing.joined && canJoin(window, today),
   };
-}
-
-// ---------- demo ----------
-
-function demoActivityFor(userId: string): ChallengeActivity {
-  const cs = clientStore();
-  const sessions = cs.sessions
-    .filter((s) => s.client_id === userId && s.completed_at !== null)
-    .map((s) => {
-      const load = loadOf(
-        cs.sets.filter((x) => x.session_id === s.id).map((x) => ({ ...x, exercise: x.exercise_name })),
-        s.started_at,
-        s.completed_at,
-      );
-      return { day: s.started_at.slice(0, 10), load: load.score, volume_kg: load.volume_kg };
-    });
-  const active = new Set<string>();
-  for (const f of cs.foodLogs) if (f.client_id === userId) active.add(f.logged_on);
-  const habitIds = new Set(cs.habits.filter((h) => h.client_id === userId).map((h) => h.id));
-  for (const h of cs.habitLogs) if (habitIds.has(h.habit_id)) active.add(h.done_on);
-  return { sessions, active_days: [...active] };
-}
-
-function demoStanding(challenge: StoredChallenge, userId: string): Standing {
-  const members = clientStore().participants.filter((p) => p.challenge_id === challenge.id);
-  const mine = members.find((p) => p.user_id === userId) ?? null;
-  return {
-    joined: mine !== null,
-    completed_at: mine?.completed_at ?? null,
-    participants: members.length,
-    activity: mine ? demoActivityFor(userId) : { sessions: [], active_days: [] },
-  };
-}
-
-function demoName(userId: string): string {
-  return store().clients.find((c) => c.client_id === userId)?.full_name ?? userId;
-}
-
-/** Stamp completed_at the first time the target is seen reached — the "completed" event. */
-function demoPersistCompletion(p: StoredParticipant, card: ChallengeCard) {
-  if (p.completed_at === null && card.joined && isChallengeComplete(card.progress, card.target)) {
-    p.completed_at = new Date().toISOString();
-    card.completed_at = p.completed_at;
-  }
 }
 
 // ---------- live ----------
@@ -174,19 +127,6 @@ async function livePersistCompletion(
 /** Every challenge the person can see, with their own standing. Newest deadline first. */
 export async function getMyChallenges(): Promise<ChallengeCard[]> {
   const today = isoDay();
-  if (isDemo) {
-    const userId = await viewingClientId();
-    const cs = clientStore();
-    const cards: ChallengeCard[] = [];
-    for (const ch of cs.challenges) {
-      const card = await toCard(ch, demoStanding(ch, userId), today);
-      if (!card) continue;
-      const mine = cs.participants.find((p) => p.challenge_id === ch.id && p.user_id === userId);
-      if (mine) demoPersistCompletion(mine, card);
-      cards.push(card);
-    }
-    return sortCards(cards);
-  }
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -240,24 +180,6 @@ function sortCards(cards: ChallengeCard[]): ChallengeCard[] {
 /** One challenge with the leaderboard — null for a private single-person challenge. */
 export async function getChallenge(id: string): Promise<ChallengeDetail | null> {
   const today = isoDay();
-  if (isDemo) {
-    const userId = await viewingClientId();
-    const cs = clientStore();
-    const ch = cs.challenges.find((c) => c.id === id);
-    if (!ch) return null;
-    const card = await toCard(ch, demoStanding(ch, userId), today);
-    if (!card) return null;
-    const mine = cs.participants.find((p) => p.challenge_id === ch.id && p.user_id === userId);
-    if (mine) demoPersistCompletion(mine, card);
-    const members = cs.participants.filter((p) => p.challenge_id === ch.id);
-    const entries = members.map((p) => ({
-      user_id: p.user_id,
-      name: demoName(p.user_id),
-      me: p.user_id === userId,
-      value: challengeProgress(ch.type, demoActivityFor(p.user_id), ch),
-    }));
-    return { ...card, leaderboard: leaderboardOf(ch.visibility, entries) };
-  }
   const live = await liveUser();
   if (!live) return null;
   const { supabase, userId } = live;
@@ -312,35 +234,6 @@ function leaderboardOf(
  */
 export async function getCoachChallenges(): Promise<CoachChallengeRow[]> {
   const today = isoDay();
-  if (isDemo) {
-    const cs = clientStore();
-    const roster = new Set(store().clients.filter((c) => c.status === "active").map((c) => c.client_id));
-    const out: CoachChallengeRow[] = [];
-    for (const ch of cs.challenges) {
-      const members = cs.participants.filter((p) => p.challenge_id === ch.id && roster.has(p.user_id));
-      if (members.length === 0) continue;
-      const card = await toCard(
-        ch,
-        { joined: false, completed_at: null, participants: cs.participants.filter((p) => p.challenge_id === ch.id).length, activity: { sessions: [], active_days: [] } },
-        today,
-      );
-      if (!card) continue;
-      out.push({
-        challenge: card,
-        clients: members.map((p) => {
-          const progress = challengeProgress(ch.type, demoActivityFor(p.user_id), ch);
-          return {
-            client_id: p.user_id,
-            name: demoName(p.user_id),
-            progress,
-            pct: progressPct(progress, ch.target_value),
-            completed: p.completed_at !== null || isChallengeComplete(progress, ch.target_value),
-          };
-        }),
-      });
-    }
-    return out;
-  }
   const profile = await getProfile();
   if (!profile || (profile.role !== "coach" && profile.role !== "admin")) return [];
   const supabase = await supabaseServer();

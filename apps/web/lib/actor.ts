@@ -1,15 +1,14 @@
 import "server-only";
-import { currentUserId, isDemo } from "./supabase/server";
-import { viewingClientId } from "./view-mode";
+import { currentUserId } from "./supabase/server";
 
 /**
- * Who this request is acting as.
+ * Who this request is acting as — the signed-in user.
  *
- * Demo mode has no auth, so the view-switcher client stands in. Live mode is
- * the signed-in user. Every client-surface read used to reimplement this
- * three-line branch (`me()`, `userId()`, `currentClientId()`).
+ * Kept as its own name because every client-surface read calls it, and because
+ * it used to resolve a demo view-switcher identity as well. Now it is a
+ * straight re-export in function form; the indirection costs nothing and keeps
+ * the call sites honest about intent.
  */
 export async function currentActorId(): Promise<string | null> {
-  if (isDemo) return viewingClientId();
   return currentUserId();
 }

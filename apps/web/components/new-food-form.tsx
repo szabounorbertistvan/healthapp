@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { createCustomFood } from "@/app/nutrition-actions";
 import { useI18n } from "@/lib/i18n/client";
-import type { DemoFood } from "@/lib/demo-foods";
+import type { FoodItem } from "@/lib/food-portions";
 
 const inputClass = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm tabular-nums outline-none focus:border-accent";
 const labelClass = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint";
@@ -22,7 +22,7 @@ export function NewFoodForm({
   initialName?: string;
   /** What the primary button does after saving — "Save and add" or plain "Save food". */
   primaryLabel?: string;
-  onCreated: (food: DemoFood) => void;
+  onCreated: (food: FoodItem) => void;
   onCancel: () => void;
 }) {
   const { t } = useI18n();

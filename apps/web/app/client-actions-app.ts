@@ -1,29 +1,20 @@
 "use server";
 // Writes from the client (trainee) surface.
 //
-// Every action carries a client_generated_id in live mode: logged_sets,
-// food_logs and habit_logs all have a unique constraint on it, so a retry from
-// a flaky connection can never duplicate a row (supabase/README.md, offline
-// idempotency). Demo mode writes to the in-process store instead.
+// Every action carries a client_generated_id: logged_sets, food_logs and
+// habit_logs all have a unique constraint on it, so a retry from a flaky
+// connection can never duplicate a row (supabase/README.md, offline
+// idempotency).
+import type { MealSlot } from "@/lib/types";
+import { isoDay, mondayOf } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import {
   estimated1RM, gramsFromSplit, isPersonalRecord, MACRO_KEYS, portionMacros,
   type Macros, type MacroSplit,
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
-import { store } from "@/lib/demo-store";
-import { isDemo, liveUser, type LiveUser } from "@/lib/supabase/server";
+import { liveUser, type LiveUser } from "@/lib/supabase/server";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
-import { viewingClientId } from "@/lib/view-mode";
-import {
-
-  bestFor,
-  clientStore,
-  isoDay,
-  mondayOf,
-  newId,
-  type MealSlot,
-} from "@/lib/demo-client-store";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -38,7 +29,7 @@ export async function logSet(input: {
   dayId: string;
   dayName: string;
   exerciseName: string;
-  /** exercises.id — required live, absent in demo where exercises are names. */
+  /** exercises.id — required, since logged_sets.exercise_id is NOT NULL. */
   exerciseId?: string | null;
   /** program_exercises.id, so a set can be traced back to what was prescribed. */
   programExerciseId?: string | null;
@@ -67,44 +58,6 @@ export async function logSet(input: {
   }
   const notes = input.notes?.trim().slice(0, 500) || null;
 
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const cs = clientStore();
-    let session = cs.sessions.find(
-      (s) => s.client_id === clientId && s.program_day_id === input.dayId && s.completed_at === null,
-    );
-    if (!session) {
-      session = {
-        id: newId("ls"),
-        client_id: clientId,
-        program_day_id: input.dayId,
-        day_name: input.dayName,
-        started_at: new Date().toISOString(),
-        completed_at: null,
-      };
-      cs.sessions.push(session);
-    }
-    const best = bestFor(clientId, input.exerciseName);
-    const isPr = isPersonalRecord({ weight: input.weightKg, reps: input.reps }, best);
-    cs.sets.push({
-      id: newId("lst"),
-      session_id: session.id,
-      program_exercise_id: input.programExerciseId ?? null,
-      exercise_name: input.exerciseName,
-      set_index: input.setIndex,
-      weight_kg: input.weightKg,
-      reps: input.reps,
-      rpe: input.rpe,
-      rir,
-      notes,
-      is_pr: isPr,
-      logged_at: new Date().toISOString(),
-    });
-    revalidatePath("/today");
-    revalidatePath(`/workout/${input.dayId}`);
-    revalidatePath(`/workout/${input.dayId}/log`);
-    return { ok: true, demo: true, is_pr: isPr };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -124,7 +77,7 @@ export async function logSet(input: {
   const sessionId = await openSession(supabase, userId, input.dayId, sessionKey);
   if (typeof sessionId !== "string") return sessionId;
 
-  // The same PR check the demo path and the mobile app run, against the best
+  // The same PR check the mobile app runs, against the best
   // estimated 1RM already on record for this lift. Bounded by the
   // (user_id, exercise_id, received_at) index rather than reading a lifetime.
   const { data: history } = await supabase
@@ -224,18 +177,6 @@ async function openSession(
 
 /** Completes today's session and hands back its id, so the done screen can offer to share it. */
 export async function finishWorkout(dayId: string): Promise<ActionResult & { sessionId?: string }> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const cs = clientStore();
-    const session = cs.sessions.find(
-      (s) => s.client_id === clientId && s.program_day_id === dayId && s.completed_at === null,
-    );
-    if (!session) return { ok: false, message: "Nothing logged yet" };
-    session.completed_at = new Date().toISOString();
-    revalidatePath("/today");
-    revalidatePath("/workout");
-    return { ok: true, demo: true, sessionId: session.id };
-  }
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
@@ -269,24 +210,6 @@ export async function logFood(input: {
   // Snapshot the macros now: the food row may change, this log must not.
   const macros = portionMacros(input.per100g, input.grams);
 
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    clientStore().foodLogs.push({
-      id: newId("fl"),
-      client_id: clientId,
-      logged_on: day,
-      slot: input.slot,
-      food_name: input.foodName,
-      food_id: input.foodId || null,
-      grams: input.grams,
-      macros,
-      per_100g: input.per100g,
-      logged_at: new Date().toISOString(),
-    });
-    revalidatePath("/food");
-    revalidatePath("/today");
-    return { ok: true, demo: true };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -324,18 +247,6 @@ export async function updateFoodLog(id: string, grams: number): Promise<ActionRe
     return { ok: false, message: "Grams must be above zero" };
   }
 
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    // Scope by client as well as id: RLS does this in live mode, and the demo
-    // store has no such guard while an admin can switch between clients.
-    const entry = clientStore().foodLogs.find((f) => f.id === id && f.client_id === clientId);
-    if (!entry) return { ok: false, message: "That entry is gone" };
-    entry.grams = grams;
-    entry.macros = portionMacros(entry.per_100g, grams);
-    revalidatePath("/food");
-    revalidatePath("/today");
-    return { ok: true, demo: true };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -393,16 +304,6 @@ export async function updateFoodLog(id: string, grams: number): Promise<ActionRe
 }
 
 export async function deleteFoodLog(id: string): Promise<ActionResult> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const cs = clientStore();
-    const index = cs.foodLogs.findIndex((f) => f.id === id && f.client_id === clientId);
-    if (index < 0) return { ok: false, message: "That entry is gone" };
-    cs.foodLogs.splice(index, 1);
-    revalidatePath("/food");
-    revalidatePath("/today");
-    return { ok: true, demo: true };
-  }
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase } = live;
@@ -414,15 +315,6 @@ export async function deleteFoodLog(id: string): Promise<ActionResult> {
 }
 
 export async function toggleHabit(habitId: string, day = isoDay()): Promise<ActionResult> {
-  if (isDemo) {
-    const cs = clientStore();
-    const index = cs.habitLogs.findIndex((l) => l.habit_id === habitId && l.done_on === day);
-    if (index >= 0) cs.habitLogs.splice(index, 1);
-    else cs.habitLogs.push({ id: newId("hl"), habit_id: habitId, done_on: day });
-    revalidatePath("/today");
-    revalidatePath("/habits");
-    return { ok: true, demo: true };
-  }
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
@@ -449,19 +341,6 @@ export async function toggleHabit(habitId: string, day = isoDay()): Promise<Acti
 export async function addHabit(name: string, targetPerWeek: number): Promise<ActionResult> {
   if (!name.trim()) return { ok: false, message: "Give the habit a name" };
   const target = Math.min(Math.max(Math.round(targetPerWeek) || 7, 1), 7);
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    clientStore().habits.push({
-      id: newId("hb"),
-      client_id: clientId,
-      name: name.trim(),
-      target_per_week: target,
-      archived: false,
-    });
-    revalidatePath("/habits");
-    revalidatePath("/today");
-    return { ok: true, demo: true };
-  }
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
@@ -490,28 +369,6 @@ export async function addMeasurement(input: {
     return { ok: false, message: "Enter a weight or a waist measurement" };
   }
   const takenOn = input.takenOn ?? isoDay();
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const cs = clientStore();
-    const existing = cs.measurements.find(
-      (m) => m.client_id === clientId && m.taken_on === takenOn,
-    );
-    if (existing) {
-      existing.weight_kg = input.weightKg ?? existing.weight_kg;
-      existing.waist_cm = input.waistCm ?? existing.waist_cm;
-    } else {
-      cs.measurements.push({
-        id: newId("me"),
-        client_id: clientId,
-        taken_on: takenOn,
-        weight_kg: input.weightKg,
-        waist_cm: input.waistCm,
-      });
-    }
-    revalidatePath("/progress");
-    revalidatePath("/today");
-    return { ok: true, demo: true };
-  }
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
@@ -554,41 +411,12 @@ export async function submitCheckIn(input: {
   note: string;
 }): Promise<ActionResult> {
   const weekStart = mondayOf(0);
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const cs = clientStore();
-    if (cs.checkIns.some((c) => c.client_id === clientId && c.week_start === weekStart)) {
-      return { ok: false, message: "This week is already checked in" };
-    }
-    cs.checkIns.push({
-      id: newId("ci"),
-      client_id: clientId,
-      week_start: weekStart,
-      weight_kg: input.weightKg,
-      sleep: input.sleep,
-      energy: input.energy,
-      stress: input.stress,
-      hunger: input.hunger,
-      recovery: input.recovery,
-      note: input.note.trim() || null,
-      submitted_at: new Date().toISOString(),
-      coach_reviewed_at: null,
-      coach_feedback: null,
-    });
-    // A check-in is also a weigh-in — keep the two surfaces agreeing.
-    if (input.weightKg !== null) {
-      await addMeasurement({ weightKg: input.weightKg, waistCm: null });
-    }
-    revalidatePath("/check-in");
-    revalidatePath("/today");
-    return { ok: true, demo: true };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
   // check_ins is unique on (user_id, week_start). Say so in words rather than
-  // letting the constraint violation reach the form, and mirror the demo guard.
+  // letting the constraint violation reach the form.
   const { data: already } = await supabase
     .from("check_ins")
     .select("id")
@@ -621,7 +449,7 @@ export async function submitCheckIn(input: {
   return { ok: true };
 }
 
-/** PostgREST wants null, not a demo-store id or a barcode, in a uuid column. */
+/** PostgREST wants null, not a barcode or any other non-uuid, in a uuid column. */
 function asUuid(value: string | null | undefined): string | null {
   return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
     ? value
@@ -651,37 +479,6 @@ export async function setMyNutritionTargets(input: {
   const { t } = await getI18n();
   const name = t.clientApp.nutritionTargets.ownPlanName;
 
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const s = store();
-    const existing = s.plans.find((p) => p.client_id === clientId && p.coach_id === null);
-    if (existing) {
-      existing.kcal_target = grams.kcal;
-      existing.protein_target_g = grams.protein;
-      existing.carbs_target_g = grams.carbs;
-      existing.fat_target_g = grams.fat;
-      existing.status = "published";
-      existing.updated_at = new Date().toISOString();
-    } else {
-      s.plans.unshift({
-        id: newId("n"),
-        coach_id: null,
-        client_id: clientId,
-        client_name: "You",
-        name,
-        status: "published",
-        kcal_target: grams.kcal,
-        protein_target_g: grams.protein,
-        carbs_target_g: grams.carbs,
-        fat_target_g: grams.fat,
-        updated_at: new Date().toISOString(),
-        meals: [],
-      });
-    }
-    revalidatePath("/food");
-    revalidatePath("/today");
-    return { ok: true, demo: true };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -726,32 +523,6 @@ export async function toggleFavoriteFood(input: {
   const name = input.foodName.trim();
   if (!name) return { ok: false, message: "Pick a food" };
 
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const favs = clientStore().foodFavorites;
-    const idx = favs.findIndex(
-      (f) =>
-        f.client_id === clientId &&
-        (input.foodId
-          ? f.food_id === input.foodId
-          : f.food_id === null && f.food_name.toLowerCase() === name.toLowerCase()),
-    );
-    if (idx >= 0) {
-      favs.splice(idx, 1);
-      revalidatePath("/food");
-      return { ok: true, demo: true, favorite: false };
-    }
-    favs.push({
-      id: newId("ff"),
-      client_id: clientId,
-      food_id: input.foodId || null,
-      food_name: name,
-      per_100g: input.per100g,
-      created_at: new Date().toISOString(),
-    });
-    revalidatePath("/food");
-    return { ok: true, demo: true, favorite: true };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;

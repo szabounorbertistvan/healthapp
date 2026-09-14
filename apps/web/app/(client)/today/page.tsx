@@ -4,7 +4,6 @@ import { getMyChallenges } from "@/lib/challenges-data";
 import { getMyWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getMyStreak } from "@/lib/streak-data";
 import { hasChosenSolo } from "@/lib/onboarding";
-import { isoDay } from "@/lib/demo-client-store";
 import { Card, EmptyState } from "@/components/ui";
 import { LinkRow, TodayChecklist, WeekCard } from "@/components/today-dashboard";
 import { TrainingLoadSummaryCard } from "@/components/training-load";
@@ -14,6 +13,7 @@ import { timeAgo } from "@/lib/format";
 import { parseDay } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
+import { isoDay } from "@/lib/dates";
 
 /**
  * Today, phone-first, top to bottom: the date, today's checklist (the one
@@ -32,22 +32,22 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   // Nothing to show on Today until the client has a coach or a program of their
   // own, so send a brand-new account to the choice instead of an empty screen.
   //
-  // This stays in front of the reads below rather than racing them. Running it
-  // alongside would save two round trips for an established account, but it
-  // would also mean a brand-new account fetches its whole Today screen before
-  // being sent away from it — wasted at best, and a 500 instead of a clean
-  // redirect if any of those reads dislikes an account with nothing in it.
-  // The reads below are one wave now, so two round trips is a small share of
-  // the page, and this is the cheap half of the trade.
-  if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
-
-  const [today, challenges, weekly, recent, streakView] = await Promise.all([
+  // The reads are started first and the check awaited second: the check is a
+  // round trip of its own, and every established account was paying it as a
+  // wave in front of the whole page. A brand-new account still redirects
+  // before anything is awaited; its in-flight reads are simply dropped, and the
+  // detached catch keeps a rejection on that path from surfacing as unhandled.
+  const reads = Promise.all([
     getToday(),
     getMyChallenges(),
     getMyWeeklySummary(weekChoice),
     getMySessions(3),
     getMyStreak(),
   ]);
+  reads.catch(() => {});
+  if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
+
+  const [today, challenges, weekly, recent, streakView] = await reads;
   if (!today) {
     return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
   }

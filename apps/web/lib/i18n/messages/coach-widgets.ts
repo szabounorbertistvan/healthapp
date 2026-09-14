@@ -2,7 +2,7 @@
 // check-in review, message thread, invite/add-client buttons.
 const en = {
   programBuilder: {
-    status: { draft: "draft", published: "published", archived: "archived" },
+    status: { draft: "template", published: "published", archived: "archived" },
     weeksOne: "{n} week",
     weeksFew: "{n} weeks",
     weeksMany: "{n} weeks",
@@ -11,7 +11,7 @@ const en = {
     publish: "Publish to client",
     published: "Published",
     publishHint: "Add at least one exercise first",
-    draftNotice: "Draft — invisible to {name} until you publish (spec B1).",
+    draftNotice: "Template — {name} cannot see this until you publish it.",
     noDaysTitle: "No days yet",
     noDaysBody: "Add a training day, then pull exercises from the library.",
     closeLibrary: "Close library",
@@ -28,7 +28,7 @@ const en = {
     somethingWentWrong: "Something went wrong",
   },
   nutritionBuilder: {
-    status: { draft: "draft", published: "published", archived: "archived" },
+    status: { draft: "template", published: "published", archived: "archived" },
     publish: "Publish to client",
     published: "Published",
     publishHint: "Add at least one food first",
@@ -41,7 +41,7 @@ const en = {
     searchFoods: "Search foods…",
     englishOnly: "EN",
     englishOnlyHint: "Generic ingredients come from the USDA database and are in English for now.",
-    noMatch: "No match. Live search comes from Open Food Facts once a backend is connected.",
+    noMatch: "No match. Search also covers Open Food Facts.",
     addedAt100: "Added at 100 g — adjust in the meal.",
     somethingWentWrong: "Something went wrong",
     notFound: "Can't find what you're looking for?",
@@ -94,8 +94,8 @@ const en = {
     intensityRpe: "RPE — 1 to 10",
     intensitySimple: "Simple — easy / moderate / hard",
     creating: "Creating…",
-    createDraft: "Create draft",
-    draftNote: "Created as a draft. Nothing reaches the client until you publish.",
+    createDraft: "Create template",
+    draftNote: "Created as a template. Nothing reaches the client until you publish.",
     createError: "Could not create the program",
   },
   newPlanForm: {
@@ -109,12 +109,11 @@ const en = {
     macrosAddUp: "Macros add up to {kcal} kcal",
     macrosMismatch: " — that is more than 5% away from the calorie target",
     creating: "Creating…",
-    createDraft: "Create draft",
+    createDraft: "Create template",
     createError: "Could not create the plan",
   },
   checkInReview: {
     allCaughtUp: "All caught up.",
-    demoNothingSaved: "Demo mode — nothing saved.",
     feedbackSent: "Feedback sent, marked reviewed.",
     somethingWentWrong: "Something went wrong",
     thisWeek: "This week",
@@ -135,7 +134,6 @@ const en = {
     markOnly: "Mark reviewed only",
   },
   messageThread: {
-    demoNotPersisted: "Demo mode — message not persisted.",
     couldNotSend: "Could not send",
     noMessages: "No messages yet — say hi.",
     placeholder: "Message…",
@@ -148,22 +146,11 @@ const en = {
     generating: "Generating…",
     inviteClient: "Invite client",
   },
-  addClientButton: {
-    limitReached: "Client limit reached for your plan.",
-    limitReachedTitle: "Client limit reached for your plan",
-    addError: "Could not add the client",
-    nameRequired: "Give the client a name",
-    inviteOnly: "Clients join by accepting an invite — use Invite client.",
-    addClient: "+ Add client",
-    namePlaceholder: "Client name",
-    adding: "Adding…",
-    cancel: "cancel",
-  },
 };
 
 const ro: typeof en = {
   programBuilder: {
-    status: { draft: "ciornă", published: "publicat", archived: "arhivat" },
+    status: { draft: "șablon", published: "publicat", archived: "arhivat" },
     weeksOne: "{n} săptămână",
     weeksFew: "{n} săptămâni",
     weeksMany: "{n} de săptămâni",
@@ -172,7 +159,7 @@ const ro: typeof en = {
     publish: "Publică pentru client",
     published: "Publicat",
     publishHint: "Adaugă mai întâi cel puțin un exercițiu",
-    draftNotice: "Ciornă — invizibil pentru {name} până publici (spec B1).",
+    draftNotice: "Șablon — {name} nu îl vede până nu îl publici.",
     noDaysTitle: "Nicio zi încă",
     noDaysBody: "Adaugă o zi de antrenament, apoi alege exerciții din bibliotecă.",
     closeLibrary: "Închide biblioteca",
@@ -189,7 +176,7 @@ const ro: typeof en = {
     somethingWentWrong: "Ceva n-a mers bine",
   },
   nutritionBuilder: {
-    status: { draft: "ciornă", published: "publicat", archived: "arhivat" },
+    status: { draft: "șablon", published: "publicat", archived: "arhivat" },
     publish: "Publică pentru client",
     published: "Publicat",
     publishHint: "Adaugă mai întâi cel puțin un aliment",
@@ -202,7 +189,7 @@ const ro: typeof en = {
     searchFoods: "Caută alimente…",
     englishOnly: "EN",
     englishOnlyHint: "Ingredientele generice vin din baza USDA și sunt deocamdată în engleză.",
-    noMatch: "Niciun rezultat. Căutarea live vine din Open Food Facts după conectarea unui backend.",
+    noMatch: "Niciun rezultat. Căutarea acoperă și Open Food Facts.",
     addedAt100: "Adăugat la 100 g — ajustează în masă.",
     somethingWentWrong: "Ceva n-a mers bine",
     notFound: "Nu găsești ce cauți?",
@@ -255,8 +242,8 @@ const ro: typeof en = {
     intensityRpe: "RPE — 1 la 10",
     intensitySimple: "Simplu — ușor / moderat / greu",
     creating: "Se creează…",
-    createDraft: "Creează ciorna",
-    draftNote: "Creat ca ciornă. Nimic nu ajunge la client până nu publici.",
+    createDraft: "Creează șablonul",
+    draftNote: "Creat ca șablon. Nimic nu ajunge la client până nu îl publici.",
     createError: "Programul nu a putut fi creat",
   },
   newPlanForm: {
@@ -270,12 +257,11 @@ const ro: typeof en = {
     macrosAddUp: "Macronutrienții însumează {kcal} kcal",
     macrosMismatch: " — adică la peste 5% distanță de ținta calorică",
     creating: "Se creează…",
-    createDraft: "Creează ciorna",
+    createDraft: "Creează șablonul",
     createError: "Planul nu a putut fi creat",
   },
   checkInReview: {
     allCaughtUp: "Totul e la zi.",
-    demoNothingSaved: "Mod demo — nimic salvat.",
     feedbackSent: "Feedback trimis, marcat ca revizuit.",
     somethingWentWrong: "Ceva n-a mers bine",
     thisWeek: "Săptămâna aceasta",
@@ -296,7 +282,6 @@ const ro: typeof en = {
     markOnly: "Doar marchează ca revizuit",
   },
   messageThread: {
-    demoNotPersisted: "Mod demo — mesajul nu este salvat.",
     couldNotSend: "Mesajul nu a putut fi trimis",
     noMessages: "Niciun mesaj încă — salută.",
     placeholder: "Mesaj…",
@@ -308,17 +293,6 @@ const ro: typeof en = {
     limitReachedTitle: "Ai atins limita de clienți pentru planul tău",
     generating: "Se generează…",
     inviteClient: "Invită un client",
-  },
-  addClientButton: {
-    limitReached: "Ai atins limita de clienți pentru planul tău.",
-    limitReachedTitle: "Ai atins limita de clienți pentru planul tău",
-    addError: "Clientul nu a putut fi adăugat",
-    nameRequired: "Dă-i clientului un nume",
-    inviteOnly: "Clienții intră acceptând o invitație — folosește Invită client.",
-    addClient: "+ Adaugă client",
-    namePlaceholder: "Numele clientului",
-    adding: "Se adaugă…",
-    cancel: "anulează",
   },
 };
 

@@ -1,43 +1,10 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
-import { newDemoClient, store } from "@/lib/demo-store";
-import { entitlementsFor } from "@healthapp/shared";
+import { supabaseServer } from "@/lib/supabase/server";
 import { rpcErrorCode, type RpcErrorCode } from "@healthapp/api";
 import { cookies } from "next/headers";
 import { ONBOARDING_COOKIE, ONBOARDING_COOKIE_MAX_AGE } from "@/lib/onboarding";
-import { getProfile } from "@/lib/data";
-import { getI18n } from "@/lib/i18n/server";
 import type { ActionResult } from "./actions";
-
-/**
- * Add a client to the demo roster.
- *
- * Demo only, and deliberately so: in a live install a client is a real user
- * account. The coach cannot conjure one — they generate an invite code and the
- * client accepts it in the mobile app (spec A2/A3, accept_invite). This exists
- * because demo mode has no second person to accept anything.
- */
-export async function addDemoClient(fullName: string): Promise<ActionResult> {
-  const { t } = await getI18n();
-  const m = t.coachWidgets.addClientButton;
-  const name = fullName.trim();
-  if (!name) return { ok: false, message: m.nameRequired };
-
-  if (!isDemo) return { ok: false, message: m.inviteOnly };
-
-  const profile = await getProfile();
-  const maxClients = entitlementsFor(profile?.tier ?? "free").maxClients;
-  const used = store().clients.filter((c) => c.status !== "ended").length;
-  // Same rule create_invite enforces in SQL, so demo cannot exceed what the
-  // server would allow.
-  if (used >= maxClients) return { ok: false, errorCode: "CLIENT_LIMIT_REACHED" };
-
-  store().clients.push(newDemoClient(name));
-  revalidatePath("/clients");
-  revalidatePath("/dashboard");
-  return { ok: true, demo: true };
-}
 
 /** acceptInvite only ever raises the invite RPC codes, so the screen's copy table can be exhaustive over them. */
 export type InviteResult = ActionResult & { errorCode?: RpcErrorCode };
@@ -53,7 +20,6 @@ export type InviteResult = ActionResult & { errorCode?: RpcErrorCode };
 export async function acceptInvite(code: string): Promise<InviteResult> {
   const clean = code.trim().toUpperCase();
   if (!clean) return { ok: false, errorCode: "INVALID_CODE" };
-  if (isDemo) return { ok: true, demo: true };
 
   const supabase = await supabaseServer();
   const { error } = await supabase.rpc("accept_invite", { p_code: clean });
@@ -86,5 +52,5 @@ export async function chooseSoloTraining(): Promise<ActionResult> {
     sameSite: "lax",
     path: "/",
   });
-  return { ok: true, demo: isDemo };
+  return { ok: true };
 }

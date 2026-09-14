@@ -1,4 +1,4 @@
-import { getProfile, isDemo } from "@/lib/data";
+import { getProfile } from "@/lib/data";
 import { Card, PageTitle } from "@/components/ui";
 import { ENTITLEMENTS, TIER_LABEL } from "@/lib/entitlements";
 import { SubscribePanel, TrialBanner } from "@/components/billing";
@@ -46,21 +46,6 @@ export default async function SettingsPage() {
         </p>
       </Card>
 
-      <Card className="mt-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.coachApp.settings.backend}</p>
-        {isDemo ? (
-          <div className="mt-2 space-y-2 text-sm text-ink-soft">
-            <p><b className="text-ink">{t.coachApp.settings.demoTitle}</b> {t.coachApp.settings.demoIntro}</p>
-            <ol className="list-decimal space-y-1 pl-5">
-              <li>{t.coachApp.settings.step1Before} <code>supabase/</code>{t.coachApp.settings.step1After}</li>
-              <li>{t.coachApp.settings.step2Copy} <code>.env.example</code> {t.coachApp.settings.step2To} <code>.env.local</code> {t.coachApp.settings.step2Fill}</li>
-              <li>{t.coachApp.settings.step3}</li>
-            </ol>
-          </div>
-        ) : (
-          <p className="mt-2 text-sm text-ink-soft">{t.coachApp.settings.connected}</p>
-        )}
-      </Card>
     </div>
   );
 }

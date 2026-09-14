@@ -1,29 +1,12 @@
 // Client progress reads: habits, measurements, check-ins.
+import { isoDay, mondayOf } from "./dates";
 import "server-only";
-import { isDemo, liveUser } from "./supabase/server";
-import { viewingClientId } from "./view-mode";
-import { clientStore, isoDay, mondayOf } from "./demo-client-store";
+import { liveUser } from "./supabase/server";
 import type { ClientCheckInState, ClientHabitRow, ClientMeasurementRow } from "./types";
 
 export async function getMyHabits(): Promise<ClientHabitRow[]> {
   const today = isoDay();
   const weekStart = mondayOf(0);
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const cs = clientStore();
-    return cs.habits
-      .filter((h) => h.client_id === clientId && !h.archived)
-      .map((h) => {
-        const logs = cs.habitLogs.filter((l) => l.habit_id === h.id);
-        return {
-          id: h.id,
-          name: h.name,
-          target_per_week: h.target_per_week,
-          done_today: logs.some((l) => l.done_on === today),
-          done_this_week: logs.filter((l) => l.done_on >= weekStart).length,
-        };
-      });
-  }
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -45,14 +28,6 @@ export async function getMyHabits(): Promise<ClientHabitRow[]> {
 }
 
 export async function getMyMeasurements(limit = 12): Promise<ClientMeasurementRow[]> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    return clientStore()
-      .measurements.filter((m) => m.client_id === clientId)
-      .sort((a, b) => (a.taken_on < b.taken_on ? 1 : -1))
-      .slice(0, limit)
-      .reverse();
-  }
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -80,26 +55,6 @@ export async function getMyMeasurements(limit = 12): Promise<ClientMeasurementRo
 
 export async function getMyCheckInState(): Promise<ClientCheckInState> {
   const weekStart = mondayOf(0);
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const all = clientStore()
-      .checkIns.filter((c) => c.client_id === clientId)
-      .sort((a, b) => (a.week_start < b.week_start ? 1 : -1));
-    const last = all[0] ?? null;
-    return {
-      week_start: weekStart,
-      submitted: all.some((c) => c.week_start === weekStart),
-      last: last
-        ? {
-            week_start: last.week_start,
-            weight_kg: last.weight_kg,
-            note: last.note,
-            coach_feedback: last.coach_feedback,
-            reviewed: last.coach_reviewed_at !== null,
-          }
-        : null,
-    };
-  }
   const live = await liveUser();
   if (!live) return { week_start: weekStart, submitted: false, last: null };
   const { supabase, userId } = live;

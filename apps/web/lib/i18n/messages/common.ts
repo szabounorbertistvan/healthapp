@@ -12,6 +12,7 @@ const en = {
     messages: "Messages",
     settings: "Settings",
     admin: "Admin",
+    more: "More",
     // client
     today: "Today",
     training: "Training",
@@ -23,19 +24,13 @@ const en = {
     coach: "Coach",
     billing: "Billing",
   },
-  demoNotice: {
-    title: "Demo mode",
-    body: "sample data. Set Supabase env vars in .env.local to go live.",
+  moreSheet: {
+    title: "All sections",
+    close: "Close",
   },
   signOut: {
     action: "Sign out",
     pending: "Signing out…",
-  },
-  viewSwitcher: {
-    viewingAs: "Viewing as",
-    coach: "Coach",
-    client: "Client",
-    pickClient: "Pick a client",
   },
   cookieBanner: {
     ariaLabel: "Cookie notice",
@@ -331,6 +326,7 @@ const ro: typeof en = {
     messages: "Mesaje",
     settings: "Setări",
     admin: "Admin",
+    more: "Mai mult",
     today: "Azi",
     training: "Antrenament",
     habits: "Obiceiuri",
@@ -341,19 +337,13 @@ const ro: typeof en = {
     coach: "Antrenor",
     billing: "Abonament",
   },
-  demoNotice: {
-    title: "Mod demo",
-    body: "date de exemplu. Setează variabilele Supabase în .env.local pentru a trece live.",
+  moreSheet: {
+    title: "Toate secțiunile",
+    close: "Închide",
   },
   signOut: {
     action: "Deconectare",
     pending: "Se deconectează…",
-  },
-  viewSwitcher: {
-    viewingAs: "Vizualizezi ca",
-    coach: "Antrenor",
-    client: "Client",
-    pickClient: "Alege un client",
   },
   cookieBanner: {
     ariaLabel: "Notificare cookie-uri",

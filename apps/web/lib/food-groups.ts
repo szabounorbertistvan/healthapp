@@ -1,7 +1,7 @@
 // Food groups for the small icon next to a food in the pickers.
 //
-// The demo table carries a `group` on every row; live rows (USDA import, Open
-// Food Facts) carry none, so the group is read off the name with a keyword
+// Rows from the USDA import and Open Food Facts carry no group, so it is
+// read off the name with a keyword
 // pass over the normalised text — the same lower-case, unaccented form the
 // search uses, so Romanian plurals and diacritics need no special cases here.
 // A miss falls back to a neutral plate. This is a display hint only: nothing

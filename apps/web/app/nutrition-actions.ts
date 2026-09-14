@@ -1,11 +1,10 @@
 "use server";
+import { type FoodItem } from "@/lib/food-portions";
 import { revalidatePath } from "next/cache";
-import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
+import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
-import { matchesQuery, normalizeForSearch } from "@healthapp/shared";
-import { DEMO_COACH_ID, newId, store, type StoredPlan } from "@/lib/demo-store";
-import { demoFoods, findDemoFoodByBarcode, searchDemoFoods, type DemoFood } from "@/lib/demo-foods";
+import { normalizeForSearch } from "@healthapp/shared";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -16,13 +15,7 @@ import { notSignedIn } from "@/lib/action-result";
 // update/delete goes through `mutated()` so an RLS-filtered write cannot report
 // success. See docs/superpowers/specs/2026-09-08-s1-*.
 
-export async function searchFoods(q: string): Promise<DemoFood[]> {
-  if (isDemo) {
-    // Foods made in this session sit ahead of the seed table, like custom exercises do.
-    const own = store().customFoods.filter((f) => !q.trim() || matchesQuery(`${f.name_en} ${f.name_ro}`, q));
-    return [...own, ...searchDemoFoods(q)].slice(0, 30);
-  }
-
+export async function searchFoods(q: string): Promise<FoodItem[]> {
   const supabase = await supabaseServer();
   const term = q.trim();
 
@@ -45,7 +38,7 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
     if (safe) query = query.ilike("search_text", `%${safe}%`);
   }
   const { data } = await query;
-  const local: DemoFood[] = (data ?? []).map((row) => ({
+  const local: FoodItem[] = (data ?? []).map((row) => ({
     id: row.id,
     name_en: row.name_en,
     name_ro: row.name_ro ?? row.name_en,
@@ -60,7 +53,7 @@ export async function searchFoods(q: string): Promise<DemoFood[]> {
     },
     // Servings stored on the row: OFF imports plus any curated range. The
     // client falls back to its own table when this is empty.
-    portions: (row.portions ?? []) as DemoFood["portions"],
+    portions: (row.portions ?? []) as FoodItem["portions"],
   }));
 
   if (term.length < 2 || local.length >= 10) return local;
@@ -76,7 +69,7 @@ type RemoteFood = {
   /** Present once the deployed function sends it; null means English only. */
   name_ro?: string | null;
   brand: string | null;
-  per_100g: DemoFood["per_100g"];
+  per_100g: FoodItem["per_100g"];
 };
 
 /**
@@ -87,7 +80,7 @@ type RemoteFood = {
 async function searchFoodsRemote(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
   term: string,
-): Promise<DemoFood[] | null> {
+): Promise<FoodItem[] | null> {
   const locale = await getLocale();
   try {
     // The deployed function reads its input from the query string, and
@@ -133,31 +126,6 @@ export async function createNutritionPlan(input: {
     return { ok: false, message: "Daily calories must be between 500 and 10000" };
   }
 
-  if (isDemo) {
-    const plan: StoredPlan = {
-      id: newId("n"),
-      coach_id: DEMO_COACH_ID,
-      client_id: input.clientId,
-      updated_at: new Date().toISOString(),
-      client_name: input.clientName,
-      name,
-      status: "draft",
-      kcal_target: input.kcal,
-      protein_target_g: input.protein,
-      carbs_target_g: input.carbs,
-      fat_target_g: input.fat,
-      // The four slots from the spec, ready to fill.
-      meals: [
-        { id: newId("pm"), slot: "breakfast", name: "Breakfast", position: 0, foods: [] },
-        { id: newId("pm"), slot: "lunch", name: "Lunch", position: 1, foods: [] },
-        { id: newId("pm"), slot: "dinner", name: "Dinner", position: 2, foods: [] },
-        { id: newId("pm"), slot: "snack", name: "Snack", position: 3, foods: [] },
-      ],
-    };
-    store().plans.unshift(plan);
-    revalidatePath("/nutrition");
-    return { ok: true, demo: true, id: plan.id };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -199,21 +167,6 @@ export async function addPlanFood(input: {
 }): Promise<ActionResult> {
   if (input.grams <= 0) return { ok: false, message: "Grams must be above zero" };
 
-  if (isDemo) {
-    const plan = find(input.planId);
-    const meal = plan?.meals.find((m) => m.id === input.mealId);
-    const food = store().customFoods.find((f) => f.id === input.foodId) ?? demoFoods.find((f) => f.id === input.foodId);
-    if (!plan || !meal || !food) return { ok: false, message: "Meal or food not found" };
-    meal.foods.push({
-      id: newId("pmf"),
-      food_name: food.name_ro,
-      grams: input.grams,
-      per_100g: food.per_100g,
-    });
-    revalidatePath(`/nutrition/${input.planId}`);
-    return { ok: true, demo: true };
-  }
-
   const supabase = await supabaseServer();
   const { error } = await supabase.from("planned_meal_foods").insert({
     planned_meal_id: input.mealId,
@@ -232,14 +185,6 @@ export async function updatePlanFoodGrams(
 ): Promise<ActionResult> {
   if (grams <= 0) return { ok: false, message: "Grams must be above zero" };
 
-  if (isDemo) {
-    const plan = find(planId);
-    const row = plan?.meals.flatMap((m) => m.foods).find((f) => f.id === rowId);
-    if (!plan || !row) return { ok: false, message: "Food not found" };
-    row.grams = grams;
-    revalidatePath(`/nutrition/${planId}`);
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -251,15 +196,6 @@ export async function updatePlanFoodGrams(
 }
 
 export async function removePlanFood(planId: string, rowId: string): Promise<ActionResult> {
-  if (isDemo) {
-    const plan = find(planId);
-    if (!plan) return { ok: false, message: "Plan not found" };
-    for (const meal of plan.meals) {
-      meal.foods = meal.foods.filter((f) => f.id !== rowId);
-    }
-    revalidatePath(`/nutrition/${planId}`);
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -271,17 +207,6 @@ export async function removePlanFood(planId: string, rowId: string): Promise<Act
 }
 
 export async function publishNutritionPlan(planId: string): Promise<ActionResult> {
-  if (isDemo) {
-    const plan = find(planId);
-    if (!plan) return { ok: false, message: "Plan not found" };
-    if (plan.meals.every((m) => m.foods.length === 0)) {
-      return { ok: false, message: "Add at least one food before publishing" };
-    }
-    plan.status = "published";
-    revalidatePath(`/nutrition/${planId}`);
-    revalidatePath("/nutrition");
-    return { ok: true, demo: true };
-  }
 
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -296,12 +221,9 @@ export async function publishNutritionPlan(planId: string): Promise<ActionResult
   return { ok: true };
 }
 
-function find(planId: string): StoredPlan | undefined {
-  return store().plans.find((p) => p.id === planId);
-}
 
 export type BarcodeResult =
-  | { ok: true; food: DemoFood }
+  | { ok: true; food: FoodItem }
   | { ok: false; reason: "invalid" | "not_found" | "upstream" };
 
 export type NewFoodInput = {
@@ -314,7 +236,7 @@ export type NewFoodInput = {
   brand?: string | null;
 };
 
-export type CreateFoodResult = { ok: true; food: DemoFood; demo?: boolean } | { ok: false; message: string };
+export type CreateFoodResult = { ok: true; food: FoodItem } | { ok: false; message: string };
 
 /**
  * Create a food the search does not have — a home dish, a local product. The
@@ -333,12 +255,6 @@ export async function createCustomFood(input: NewFoodInput): Promise<CreateFoodR
     return { ok: false, message: "Those values are more than 100 g can hold" };
   }
   const brand = input.brand?.trim() || null;
-
-  if (isDemo) {
-    const food: DemoFood = { id: newId("cf"), name_en: name, name_ro: name, group: "", brand, per_100g, portions: [] };
-    store().customFoods.unshift(food);
-    return { ok: true, demo: true, food };
-  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -375,10 +291,6 @@ export async function lookupBarcode(code: string): Promise<BarcodeResult> {
   const clean = code.trim();
   if (!/^\d{6,14}$/.test(clean)) return { ok: false, reason: "invalid" };
 
-  if (isDemo) {
-    const found = findDemoFoodByBarcode(clean);
-    return found ? { ok: true, food: found } : { ok: false, reason: "not_found" };
-  }
 
   const supabase = await supabaseServer();
   const { data: cached } = await supabase
@@ -387,7 +299,7 @@ export async function lookupBarcode(code: string): Promise<BarcodeResult> {
     .eq("barcode", clean)
     .limit(1)
     .maybeSingle();
-  if (cached) return { ok: true, food: toDemoFood(cached) };
+  if (cached) return { ok: true, food: toFoodItem(cached) };
 
   try {
     const { data, error } = await supabase.functions.invoke("barcode-lookup", {
@@ -438,7 +350,7 @@ type FoodRow = {
   portions?: unknown;
 };
 
-function toDemoFood(row: FoodRow): DemoFood {
+function toFoodItem(row: FoodRow): FoodItem {
   const name = row.name_ro ?? row.name_en ?? "—";
   return {
     id: row.id,
@@ -453,6 +365,6 @@ function toDemoFood(row: FoodRow): DemoFood {
       carbs: row.carbs_100g,
       fat: row.fat_100g,
     },
-    portions: (row.portions ?? []) as DemoFood["portions"],
+    portions: (row.portions ?? []) as FoodItem["portions"],
   };
 }

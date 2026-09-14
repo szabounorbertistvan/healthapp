@@ -1,6 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { supabaseServer } from "@/lib/supabase/server";
 
 /**
  * End the session and return to the landing page.
@@ -11,14 +11,9 @@ import { isDemo, supabaseServer } from "@/lib/supabase/server";
  * write, so this is the only place the auth cookies actually get cleared — a
  * supabase.auth.signOut() in the browser would drop the client's copy and leave
  * the cookie the middleware reads still valid.
- *
- * Demo mode has no session, so the redirect is the whole behaviour and neither
- * shell has to hide the button.
  */
 export async function signOut(): Promise<void> {
-  if (!isDemo) {
-    const supabase = await supabaseServer();
-    await supabase.auth.signOut();
-  }
+  const supabase = await supabaseServer();
+  await supabase.auth.signOut();
   redirect("/");
 }

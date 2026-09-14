@@ -63,22 +63,23 @@ redirect there while `users.username` is null), privacy, terms, get-the-app.
 
 ## The five conventions that matter
 
-**1. Demo mode.** `isDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL`
-([lib/supabase/server.ts](apps/web/lib/supabase/server.ts)). With no Supabase URL
-set, the whole app runs off in-memory fixtures (`lib/demo.ts`,
-`lib/demo-store.ts`, `lib/demo-foods.ts`, `lib/demo-client-store.ts`). Every
-server action and every data function is written as **two branches**:
+**1. Supabase is the only backend. There is no demo mode.** It was removed on
+2026-09-14: 168 `isDemo` branches across 37 files, four fixture modules, and the
+`bg_view` view switcher all went. Development runs against the live project with
+the seeded test accounts. A read or a write is now **one branch**:
 
 ```ts
-if (isDemo) { ...mutate the store, revalidatePath, return { ok: true, demo: true } }
-const supabase = await supabaseServer();  // live branch
+const supabase = await supabaseServer();
 ```
 
-If you add a read or a write, you must write both branches or you break the demo.
-The Supabase branches of `builder-actions.ts` and `nutrition-actions.ts` are
-written to the schema and reviewed against RLS but **have not yet been driven
-end-to-end against a live project**; treat them as unverified until someone
-has. Every `update`/`delete` in them goes through `lib/supabase/mutate.ts`
+Missing `NEXT_PUBLIC_SUPABASE_URL` / `..._ANON_KEY` is a deployment fault, not a
+mode: `lib/supabase/server.ts` throws a named error when a client is first
+constructed (lazily, so the env-less `npm run build` CI runs still succeeds) and
+`middleware.ts` fails closed with a 500 rather than waving requests past the auth
+gate. `builder-actions.ts` was driven end-to-end against the live project on
+2026-09-14 (create → day → exercise → publish → client sees it).
+`nutrition-actions.ts` still **has not been**; treat it as unverified until
+someone has. Every `update`/`delete` in them goes through `lib/supabase/mutate.ts`
 (`mutated()`): PostgREST answers an RLS-filtered write with success and zero
 rows, and the guard turns that into an error. New coach writes must use it.
 
@@ -86,7 +87,7 @@ rows, and the guard turns that into an error. New coach writes must use it.
 [lib/data.ts](apps/web/lib/data.ts) (coach surfaces) and
 [lib/client-data.ts](apps/web/lib/client-data.ts) (client surfaces). Writes live
 in `app/*-actions.ts`, all `"use server"`, all returning
-`ActionResult = { ok, message?, demo? }`, all calling `revalidatePath` on the
+`ActionResult = { ok, message?, errorCode? }`, all calling `revalidatePath` on the
 routes they touch. Client components call the action then `router.refresh()`.
 
 **3. i18n is cookie-based, not routed.** No `/en/` or `/ro/` prefixes — locale
@@ -132,9 +133,9 @@ third-party text writes it.
   `prefers-color-scheme: dark` override: `bg`, `surface`, `ink`, `ink-soft`,
   `ink-faint`, `line`, `accent`, `accent-ink`, `accent-soft`, `warn`,
   `warn-soft`, `risk`, `risk-soft`. Never hardcode a hex.
-- `lib/view-mode.ts` lets a demo admin switch between coach and client surfaces
-  via the `bg_view` cookie. It is **demo-only on purpose** — doing it live would
-  be admin impersonation of health data.
+- There is no coach/client view switcher. `lib/view-mode.ts` and the `bg_view`
+  cookie were demo-only on purpose — doing it live would be admin impersonation
+  of health data — and went with demo mode. Use a client test account instead.
 - Barcode scanning uses `@zxing/browser` in [components/barcode-scanner.tsx](apps/web/components/barcode-scanner.tsx);
   a miss must always fall through to search, never dead-end.
 - Who is signed in is shown by `displayName()` in `lib/data.ts` — the username,
@@ -145,11 +146,24 @@ third-party text writes it.
   the client typed in an RIR program; `notes` is the per-set comment. In a
   program, `program_exercises.target_rpe` holds whatever the coach typed under
   the program's own scale (RIR for RIR programs) — the builder writes it raw.
-- To run the app in demo mode on this box while `.env.local` points at the live
-  project, drop a temporary `apps/web/.env.development.local` with empty
-  `NEXT_PUBLIC_SUPABASE_URL=` / `NEXT_PUBLIC_SUPABASE_ANON_KEY=` (it outranks
-  `.env.local`; gitignored) and delete it afterwards. Setting the variable to
-  an empty string from PowerShell does not work — PowerShell deletes it.
+- Never run `npm run build` (or anything else writing `apps/web/.next`) while
+  the dev server is up: the production build clobbers the dev server's `.next`
+  and every route then serves a bare "Internal Server Error" with
+  `ENOENT ... _buildManifest.js.tmp.<hash>` in the log. Stop the preview,
+  `rm -rf apps/web/.next`, restart.
+- **One dev server per working tree.** Several sessions share this tree, and
+  `preview_start` with `web` while port 3000 is already taken (`autoPort`)
+  spawns a second Turbopack over the same `apps/web/.next`: both then thrash
+  each other and every page crawls. If `http://localhost:3000` already
+  answers, attach with the `web-attached` launch entry instead. Before killing
+  a stray `next dev`, check whose it is (`Get-CimInstance Win32_Process`).
+- `SUPABASE_TRACE=1` in `.env.local` logs every Supabase round trip with its
+  duration to the dev server output — the first thing to reach for when a page
+  is slow. Each PostgREST call from this box costs ~120–160 ms and an RPC
+  ~300 ms, so a page's cost is its number of *sequential* waves, not queries.
+- Date helpers (`isoDay`, `daysAgoIso`, `mondayOf`, `daysSince`) live in
+  `lib/dates.ts`; serving sizes and the `FoodItem` / `FoodPortion` shapes live in
+  `lib/food-portions.ts`. Both were carved out of the deleted demo modules.
 
 ## Deeper notes
 

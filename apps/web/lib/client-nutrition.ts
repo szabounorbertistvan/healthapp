@@ -1,4 +1,6 @@
 // Client nutrition reads: today's log, the week strip, the published plan.
+import { isoDay } from "./dates";
+import { portionsFor } from "./food-portions";
 import "server-only";
 import {
   pickProgram,
@@ -7,54 +9,13 @@ import {
   type Macros,
   type SelectableProgram,
 } from "@healthapp/shared";
-import { isDemo, liveUser } from "./supabase/server";
-import { demoHasActiveCoach, store } from "./demo-store";
-import { viewingClientId } from "./view-mode";
+import { liveUser } from "./supabase/server";
 import { activeCoachId } from "./client-training";
-import {
-  clientStore,
-  foodLogsOn,
-  isoDay,
-  totalsOn,
-} from "./demo-client-store";
 import type { ClientDayNutrition, MealSlot, QuickFood, QuickFoods } from "./types";
-import { demoFoods, portionsFor } from "./demo-foods";
 
 const ZERO: Macros = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
 
 export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrition> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const s = store();
-    // Same rule as the live branch: while a coach is active their plan wins,
-    // otherwise the client's own targets apply.
-    const plan = pickProgram(
-      s.plans.filter((p) => p.client_id === clientId && p.status === "published"),
-      demoHasActiveCoach(clientId),
-    );
-    const entries = foodLogsOn(clientId, day).map((f) => ({
-      id: f.id,
-      slot: f.slot,
-      food_name: f.food_name,
-      grams: f.grams,
-      macros: f.macros,
-    }));
-    return {
-      day,
-      plan_name: plan?.name ?? null,
-      plan_owner: plan ? (plan.coach_id === null ? "self" : "coach") : null,
-      target: plan
-        ? {
-            kcal: plan.kcal_target,
-            protein: plan.protein_target_g,
-            carbs: plan.carbs_target_g,
-            fat: plan.fat_target_g,
-          }
-        : ZERO,
-      totals: totalsOn(clientId, day),
-      entries,
-    };
-  }
 
   const live = await liveUser();
   if (!live) return { day, plan_name: null, plan_owner: null, target: ZERO, totals: ZERO, entries: [] };
@@ -110,14 +71,6 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
  * marks as "logged", so a glance shows the gaps in the week.
  */
 export async function getMyFoodDays(from: string, to: string): Promise<string[]> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const days = new Set<string>();
-    for (const f of clientStore().foodLogs) {
-      if (f.client_id === clientId && f.logged_on >= from && f.logged_on <= to) days.add(f.logged_on);
-    }
-    return [...days].sort();
-  }
 
   const live = await liveUser();
   if (!live) return [];
@@ -137,27 +90,6 @@ export async function getMyFoodDays(from: string, to: string): Promise<string[]>
 export async function getMyPlanMeals(): Promise<
   { id: string; slot: MealSlot; name: string; foods: { name: string; grams: number; macros: Macros }[] }[]
 > {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const s = store();
-    const plan = pickProgram(
-      s.plans.filter((p) => p.client_id === clientId && p.status === "published"),
-      demoHasActiveCoach(clientId),
-    );
-    if (!plan) return [];
-    return [...plan.meals]
-      .sort((a, b) => a.position - b.position)
-      .map((m) => ({
-        id: m.id,
-        slot: m.slot,
-        name: m.name,
-        foods: m.foods.map((f) => ({
-          name: f.food_name,
-          grams: f.grams,
-          macros: portionMacros(f.per_100g, f.grams),
-        })),
-      }));
-  }
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -214,53 +146,6 @@ function quickKey(foodId: string | null, name: string): string {
  * food shows once.
  */
 export async function getMyQuickFoods(limit = 8): Promise<QuickFoods> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const s = clientStore();
-    const logs = s.foodLogs
-      .filter((f) => f.client_id === clientId)
-      .sort((a, b) => b.logged_at.localeCompare(a.logged_at));
-    const favRows = s.foodFavorites.filter((f) => f.client_id === clientId);
-    const favKeys = new Set(favRows.map((f) => quickKey(f.food_id, f.food_name)));
-    // Older demo logs carry no food_id; recover the table row from the name so
-    // the icon and the serving presets still apply.
-    const rowFor = (foodId: string | null | undefined, name: string) =>
-      demoFoods.find((d) => (foodId ? d.id === foodId : d.name_en === name || d.name_ro === name)) ?? null;
-    const keyOfLog = (l: (typeof logs)[number]) => quickKey(rowFor(l.food_id, l.food_name)?.id ?? l.food_id ?? null, l.food_name);
-
-    const recent: QuickFood[] = [];
-    const seen = new Set<string>();
-    for (const log of logs) {
-      const row = rowFor(log.food_id, log.food_name);
-      const key = keyOfLog(log);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      recent.push({
-        food_id: row?.id ?? log.food_id ?? null,
-        name: log.food_name,
-        per_100g: log.per_100g,
-        portions: row ? portionsFor(row) : undefined,
-        last_grams: log.grams,
-        favorite: favKeys.has(key),
-        group: row?.group ?? null,
-      });
-      if (recent.length >= limit) break;
-    }
-    const favorites: QuickFood[] = favRows.map((f) => {
-      const row = f.food_id ? rowFor(f.food_id, f.food_name) : null;
-      const key = quickKey(f.food_id, f.food_name);
-      return {
-        food_id: f.food_id,
-        name: f.food_name,
-        per_100g: f.per_100g,
-        portions: row ? portionsFor(row) : undefined,
-        last_grams: logs.find((l) => keyOfLog(l) === key)?.grams ?? null,
-        favorite: true,
-        group: row?.group ?? null,
-      };
-    });
-    return { recent, favorites };
-  }
 
   const live = await liveUser();
   if (!live) return { recent: [], favorites: [] };

@@ -1,11 +1,11 @@
 import { getMyDayNutrition, getMyFoodDays, getMyPlanMeals, getMyQuickFoods } from "@/lib/client-data";
-import { isoDay } from "@/lib/demo-client-store";
 import { validDay, weekDaysOf } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
 import { WeekStrip } from "@/components/week-strip";
 import { NutritionSummary } from "@/components/nutrition-summary";
 import { MealCard } from "@/components/meal-card";
 import type { MealSlot } from "@/lib/types";
+import { isoDay } from "@/lib/dates";
 
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
 

@@ -20,10 +20,13 @@ export default async function CoachClientPage({
 }) {
   const { t } = await getI18n();
   const [{ id }, { week }] = await Promise.all([params, searchParams]);
-  const client = (await getClients()).find((c) => c.client_id === id && c.status === "active");
-  if (!client) notFound();
   const choice: WeekChoice = week === "previous" ? "previous" : "current";
-  const summary = await getClientWeeklySummary(id, choice);
+  // The roster and the summary go out together: the summary is filtered by
+  // client id and RLS answers it, so it never needed the roster first. A client
+  // the coach cannot see still 404s below — the wasted summary read is empty.
+  const [clients, summary] = await Promise.all([getClients(), getClientWeeklySummary(id, choice)]);
+  const client = clients.find((c) => c.client_id === id && c.status === "active");
+  if (!client) notFound();
 
   return (
     <div className="space-y-4">
@@ -31,7 +34,24 @@ export default async function CoachClientPage({
         ← {t.common.nav.clients}
       </Link>
       <PageTitle title={client.full_name}>
-        <SignalBadge signal={client.signal} />
+        <div className="flex flex-wrap items-center gap-2">
+          <SignalBadge signal={client.signal} />
+          {/* The roster page has a generic "new program" button with a client
+              picker; from here the client is already known, so it rides on the
+              query string and the form opens with them selected. */}
+          <Link
+            href={`/programs/new?client=${id}`}
+            className="inline-flex min-h-11 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-accent-fg hover:opacity-90"
+          >
+            {t.coachApp.programs.newProgram}
+          </Link>
+          <Link
+            href={`/nutrition/new?client=${id}`}
+            className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 text-sm font-semibold hover:border-accent"
+          >
+            {t.coachApp.nutrition.newPlan}
+          </Link>
+        </div>
       </PageTitle>
       {summary ? (
         <WeeklySummaryCard summary={summary} switchPath={`/clients/${id}`} />
