@@ -12,6 +12,7 @@ const en = {
     messages: "Messages",
     settings: "Settings",
     admin: "Admin",
+    more: "More",
     // client
     today: "Today",
     training: "Training",
@@ -26,6 +27,10 @@ const en = {
   demoNotice: {
     title: "Demo mode",
     body: "sample data. Set Supabase env vars in .env.local to go live.",
+  },
+  moreSheet: {
+    title: "All sections",
+    close: "Close",
   },
   signOut: {
     action: "Sign out",
@@ -331,6 +336,7 @@ const ro: typeof en = {
     messages: "Mesaje",
     settings: "Setări",
     admin: "Admin",
+    more: "Mai mult",
     today: "Azi",
     training: "Antrenament",
     habits: "Obiceiuri",
@@ -344,6 +350,10 @@ const ro: typeof en = {
   demoNotice: {
     title: "Mod demo",
     body: "date de exemplu. Setează variabilele Supabase în .env.local pentru a trece live.",
+  },
+  moreSheet: {
+    title: "Toate secțiunile",
+    close: "Închide",
   },
   signOut: {
     action: "Deconectare",

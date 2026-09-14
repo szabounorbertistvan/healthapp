@@ -79,7 +79,7 @@ export default async function ClientLayout({ children }: { children: React.React
             <ThemeToggle />
             {/* Text link kept, but with a 44px hit area; the negative margin
                 lets the padding reach the header edge without moving the label. */}
-            <SignOutButton className="-mr-2 min-h-11 px-2 text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50" />
+            <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg text-ink-soft hover:border-accent hover:text-ink disabled:opacity-50" />
           </div>
         </header>
         <main className="flex-1 p-5 pb-28 sm:p-8 sm:pb-8">{children}</main>
