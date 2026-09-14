@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getMyProgramGroups, getMySessions } from "@/lib/client-data";
+import { getMyProgramGroups, getMySessions, hasActiveCoach } from "@/lib/client-data";
+import { HaveACoach } from "@/components/solo-program-builder";
 import { Card, EmptyState, PageTitle } from "@/components/ui";
 import { WorkoutDayList } from "@/components/workout-day-list";
 import { TrainingLoadBadge } from "@/components/training-load";
@@ -8,7 +9,7 @@ import { getI18n } from "@/lib/i18n/server";
 
 export default async function WorkoutPage() {
   const { t, locale } = await getI18n();
-  const [groups, sessions] = await Promise.all([getMyProgramGroups(), getMySessions()]);
+  const [groups, sessions, coached] = await Promise.all([getMyProgramGroups(), getMySessions(), hasActiveCoach()]);
 
   // Every published program the client holds is listed — the coach's and their
   // own — so nothing they built disappears when a coach's program arrives.
@@ -22,7 +23,7 @@ export default async function WorkoutPage() {
           <Link href="/exercises" className="text-accent-ink hover:underline">
             {t.clientApp.library.title}
           </Link>
-          {groups.length > 0 && !hasOwn ? (
+          {groups.length > 0 && !hasOwn && !coached ? (
             <Link href="/workout/build" className="text-accent-ink hover:underline">
               {t.clientApp.builder.title}
             </Link>
@@ -44,8 +45,11 @@ export default async function WorkoutPage() {
           </Link>
         </>
       ) : (
-        <WorkoutDayList groups={groups} />
+        <WorkoutDayList groups={groups} editable={!coached} />
       )}
+
+      {/* A solo client can connect to a coach later — the same invitation code flow as onboarding. */}
+      {!coached ? <div className="mt-4"><HaveACoach /></div> : null}
 
       <h2 className="mb-3 mt-8 text-sm font-bold">{t.clientApp.workout.history}</h2>
       {sessions.length === 0 ? (

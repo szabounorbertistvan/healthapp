@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { DEFAULT_TARGETS, swapNeighbour, validateTargets, type ExerciseTargets } from "@healthapp/shared";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import type { ActionResult } from "./actions";
@@ -90,30 +91,126 @@ export async function addProgramDay(programId: string, name: string): Promise<Ac
   return { ok: true };
 }
 
+/** Every route that shows a program: the coach's builder, the client's builder and their Training list. */
+function programTouched(programId: string) {
+  revalidatePath(`/programs/${programId}`);
+  revalidatePath("/workout/build");
+  revalidatePath("/workout", "layout");
+  revalidatePath("/today");
+}
+
+function targetsMessage(error: ReturnType<typeof validateTargets>): string {
+  switch (error) {
+    case "sets": return "Sets must be between 1 and 20";
+    case "reps": return "Reps must be a number or a range like 8-10";
+    case "rpe": return "RIR / RPE must be between 0 and 10";
+    case "rest": return "Rest must be between 0 and 600 seconds";
+    case "weight": return "Weight must be zero or more";
+    default: return "Check the values";
+  }
+}
+
+/**
+ * Add an exercise to a day with its prescription. The targets come from the
+ * form the picker shows before adding (sets, reps, RIR/RPE, rest); when a
+ * caller omits them the defaults are a real prescription (3 × 10, RIR 2, 90 s)
+ * that the row then shows for editing.
+ */
 export async function addProgramExercise(input: {
   programId: string;
   dayId: string;
   exerciseId: string;
   exerciseName: string;
+  targets?: Partial<ExerciseTargets>;
+  circuit?: number | null;
 }): Promise<ActionResult> {
+  const targets: ExerciseTargets = { ...DEFAULT_TARGETS, ...input.targets };
+  const invalid = validateTargets(targets);
+  if (invalid) return { ok: false, message: targetsMessage(invalid) };
 
   const supabase = await supabaseServer();
-  const { count } = await supabase
+  const { data: last } = await supabase
     .from("program_exercises")
-    .select("id", { count: "exact", head: true })
-    .eq("program_day_id", input.dayId);
+    .select("position")
+    .eq("program_day_id", input.dayId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   const { error } = await supabase.from("program_exercises").insert({
     program_day_id: input.dayId,
     exercise_id: input.exerciseId,
-    position: count ?? 0,
-    target_sets: 3,
-    target_reps: "10",
-    rest_seconds: 90,
+    position: ((last?.position as number | undefined) ?? -1) + 1,
+    ...targets,
+    circuit: input.circuit ?? null,
   });
   if (error) return { ok: false, message: error.message };
-  revalidatePath(`/programs/${input.programId}`);
-  revalidatePath("/workout/build");
-  revalidatePath("/workout");
+  programTouched(input.programId);
+  return { ok: true };
+}
+
+/** Rename a training day. The name is what the client sees on Training and in history. */
+export async function renameProgramDay(programId: string, dayId: string, name: string): Promise<ActionResult> {
+  const clean = name.trim();
+  if (!clean) return { ok: false, message: "Give the day a name" };
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase.from("program_days").update({ name: clean }, { count: "exact" }).eq("id", dayId).eq("program_id", programId),
+  );
+  if (failed) return failed;
+  programTouched(programId);
+  return { ok: true };
+}
+
+/**
+ * Move a day one step up or down. The swap happens inside move_program_day()
+ * — the unique (program, week, day_index) key needs the two updates to be one
+ * transaction. Sessions reference the day's id, so history is untouched.
+ */
+export async function moveProgramDay(programId: string, dayId: string, direction: -1 | 1): Promise<ActionResult> {
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc("move_program_day", { p_day: dayId, p_direction: direction });
+  if (error) return { ok: false, message: error.code === "42501" ? "You cannot edit this program" : error.message };
+  programTouched(programId);
+  return { ok: true };
+}
+
+/** Move an exercise one step up or down inside its day (swap with its neighbour). */
+export async function moveProgramExercise(programId: string, dayId: string, rowId: string, direction: -1 | 1): Promise<ActionResult> {
+  const supabase = await supabaseServer();
+  const { data: rows, error } = await supabase.from("program_exercises").select("id, position").eq("program_day_id", dayId);
+  if (error) return { ok: false, message: error.message };
+  const updates = swapNeighbour((rows ?? []) as { id: string; position: number }[], rowId, direction);
+  for (const u of updates) {
+    const failed = await mutated(
+      await supabase.from("program_exercises").update({ position: u.position }, { count: "exact" }).eq("id", u.id).eq("program_day_id", dayId),
+    );
+    if (failed) return failed;
+  }
+  programTouched(programId);
+  return { ok: true };
+}
+
+/** Link an exercise into a circuit (1 = A, 2 = B …) or take it out (null). */
+export async function setExerciseCircuit(programId: string, rowId: string, circuit: number | null): Promise<ActionResult> {
+  if (circuit !== null && (!Number.isInteger(circuit) || circuit < 1 || circuit > 26)) return { ok: false, message: "Unknown circuit" };
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase.from("program_exercises").update({ circuit }, { count: "exact" }).eq("id", rowId),
+  );
+  if (failed) return failed;
+  programTouched(programId);
+  return { ok: true };
+}
+
+/** Swap the exercise a prescribed row points at, keeping its sets/reps/RIR. Past sets keep their own exercise_id. */
+export async function replaceProgramExercise(programId: string, rowId: string, exerciseId: string): Promise<ActionResult> {
+  if (!exerciseId) return { ok: false, message: "Pick an exercise" };
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase.from("program_exercises").update({ exercise_id: exerciseId }, { count: "exact" }).eq("id", rowId),
+  );
+  if (failed) return failed;
+  programTouched(programId);
   return { ok: true };
 }
 
@@ -126,10 +223,8 @@ export async function updateProgramExercise(input: {
   target_rpe: number | null;
   rest_seconds: number | null;
 }): Promise<ActionResult> {
-  if (input.target_sets < 1 || input.target_sets > 20) {
-    return { ok: false, message: "Sets must be between 1 and 20" };
-  }
-
+  const invalid = validateTargets(input);
+  if (invalid) return { ok: false, message: targetsMessage(invalid) };
 
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -148,7 +243,7 @@ export async function updateProgramExercise(input: {
       .eq("id", input.exerciseRowId),
   );
   if (failed) return failed;
-  revalidatePath(`/programs/${input.programId}`);
+  programTouched(input.programId);
   return { ok: true };
 }
 
@@ -162,7 +257,7 @@ export async function removeProgramExercise(
     await supabase.from("program_exercises").delete({ count: "exact" }).eq("id", exerciseRowId),
   );
   if (failed) return failed;
-  revalidatePath(`/programs/${programId}`);
+  programTouched(programId);
   return { ok: true };
 }
 
@@ -173,7 +268,7 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
   const { data: source, error: readError } = await supabase
     .from("program_days")
     .select(
-      "week_index, name, program_exercises(exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, notes)",
+      "week_index, name, program_exercises(exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, notes, circuit)",
     )
     .eq("id", dayId)
     .single();

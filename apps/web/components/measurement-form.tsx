@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { parseDecimal } from "@healthapp/shared";
 import { addMeasurement } from "@/app/client-actions-app";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
@@ -14,10 +15,8 @@ export function MeasurementForm() {
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const parse = (v: string) => {
-    const n = parseFloat(v);
-    return v.trim() === "" || !Number.isFinite(n) ? null : n;
-  };
+  // As typed: 21,25 and 21.25 are both 21.25, and nothing is rounded on the way to the row.
+  const parse = (v: string) => parseDecimal(v);
 
   return (
     <Card>

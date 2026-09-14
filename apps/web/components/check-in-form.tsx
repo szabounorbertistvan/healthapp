@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { parseDecimal } from "@healthapp/shared";
 import { submitCheckIn } from "@/app/client-actions-app";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
@@ -79,9 +80,9 @@ export function CheckInForm() {
           onClick={() =>
             startTransition(async () => {
               setError(null);
-              const parsed = parseFloat(weight);
+              const parsed = parseDecimal(weight);
               const result = await submitCheckIn({
-                weightKg: weight.trim() === "" || !Number.isFinite(parsed) ? null : parsed,
+                weightKg: parsed,
                 ...scores,
                 note,
               });

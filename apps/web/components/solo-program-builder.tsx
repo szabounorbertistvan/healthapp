@@ -1,12 +1,11 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  addProgramExercise, addSoloProgramDay, createSoloProgram, publishProgram, removeProgramDay,
-} from "@/app/builder-actions";
+import Link from "next/link";
+import { addSoloProgramDay, createSoloProgram, publishProgram, removeProgramDay } from "@/app/builder-actions";
 import { SwipeToDelete } from "@/components/swipe-to-delete";
 import { fill } from "@/lib/i18n";
-import { ExercisePicker } from "@/components/exercise-picker";
+import { ProgramDayEditor } from "@/components/program-day-editor";
 import { MuscleGroupPicker, MUSCLE_GROUPS } from "@/components/muscle-group-picker";
 import { Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
@@ -22,7 +21,6 @@ export function SoloProgramBuilder({ program, equipment = [] }: { program: Progr
   const [name, setName] = useState("");
   const [dayName, setDayName] = useState("");
   const [groups, setGroups] = useState<string[]>([]);
-  const [pickerDayId, setPickerDayId] = useState<string | null>(null);
 
   function run(action: () => Promise<{ ok: boolean; message?: string }>) {
     setError(null);
@@ -61,7 +59,7 @@ export function SoloProgramBuilder({ program, equipment = [] }: { program: Progr
         <p className="text-sm text-ink-faint">{t.clientApp.builder.noDays}</p>
       ) : null}
 
-      {program.days.map((day) => (
+      {program.days.map((day, i) => (
         <SwipeToDelete
           key={day.id}
           confirmText={fill(t.clientApp.workout.deleteDayConfirm, { name: day.name })}
@@ -69,64 +67,22 @@ export function SoloProgramBuilder({ program, equipment = [] }: { program: Progr
             new Promise<void>((resolve) => {
               run(async () => {
                 const r = await removeProgramDay(program.id, day.id);
-                if (pickerDayId === day.id) setPickerDayId(null);
                 resolve();
                 return r;
               });
             })
           }
         >
-        <Card className="space-y-3">
-          <p className="pr-8 font-bold">{day.name}</p>
-          {day.muscle_groups.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {day.muscle_groups.map((g) => (
-                <span key={g} className="rounded bg-bg px-1.5 py-0.5 text-[10px] capitalize text-ink-faint">
-                  {g}
-                </span>
-              ))}
-            </div>
-          ) : null}
-          {day.exercises.length > 0 ? (
-            <ul className="space-y-1 text-sm text-ink-soft">
-              {day.exercises.map((e) => (
-                <li key={e.id}>
-                  {e.exercise} — {e.sets}×{e.reps}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => setPickerDayId(pickerDayId === day.id ? null : day.id)}
-            className="rounded-lg border border-line px-3 py-2 text-xs font-semibold hover:border-accent"
-          >
-            {t.clientApp.builder.addExercise}
-          </button>
-          {pickerDayId === day.id ? (
-            // Keyed by day id so switching days always remounts the picker
-            // rather than reusing one whose `initialMuscle` was read once at
-            // mount time — otherwise the filter would keep showing the first
-            // day's muscle group after switching to a day with a different one.
-            <ExercisePicker
-              key={day.id}
-              muscles={[...MUSCLE_GROUPS]}
-              equipment={equipment}
-              initialMuscle={day.muscle_groups[0] ?? ""}
-              pendingLabel={t.clientApp.builder.addExercise}
-              onPick={(exercise) =>
-                run(() =>
-                  addProgramExercise({
-                    programId: program.id,
-                    dayId: day.id,
-                    exerciseId: exercise.id ?? exercise.external_id,
-                    exerciseName: exercise.name_en,
-                  }),
-                )
-              }
-            />
-          ) : null}
-        </Card>
+          <ProgramDayEditor
+            program={program}
+            day={day}
+            index={i}
+            total={program.days.length}
+            muscles={[...MUSCLE_GROUPS]}
+            equipment={equipment}
+            run={run}
+            pending={pending}
+          />
         </SwipeToDelete>
       ))}
       {program.days.length > 0 ? (
@@ -173,6 +129,29 @@ export function SoloProgramBuilder({ program, equipment = [] }: { program: Progr
       </button>
       <p className="text-xs text-ink-faint">{t.clientApp.builder.publishHint}</p>
       {error ? <p className="text-sm text-risk">{error}</p> : null}
+      <HaveACoach />
     </div>
+  );
+}
+
+/**
+ * The way back for a solo client who later gets an invitation code: the same
+ * accept_invite() flow as onboarding, on the Coach page. Once the relationship
+ * is active this builder turns read-only (can_edit_program) — the coach owns
+ * the program from then on.
+ */
+export function HaveACoach() {
+  const { t } = useI18n();
+  const c = t.clientApp.coachConnect;
+  return (
+    <Card className="flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="font-semibold">{c.haveCoach}</p>
+        <p className="text-xs text-ink-soft">{c.haveCoachBody}</p>
+      </div>
+      <Link href="/coach" className="min-h-11 shrink-0 rounded-lg border border-line px-4 py-2.5 text-sm font-semibold hover:border-accent">
+        {c.enterCode}
+      </Link>
+    </Card>
   );
 }

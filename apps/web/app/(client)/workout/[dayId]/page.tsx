@@ -4,6 +4,7 @@ import { getWorkoutDay, getWorkoutDayHistory } from "@/lib/client-data";
 import { Card, PageTitle } from "@/components/ui";
 import { WorkoutHistory } from "@/components/workout-history";
 import { TrainingLoadCard } from "@/components/training-load";
+import { circuitSegments } from "@healthapp/shared";
 import { timeAgo } from "@/lib/format";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
@@ -44,13 +45,25 @@ export default async function WorkoutDayPage({
           {d.exercises} · {fill(t.clientApp.workout.exercisesCount, { count: day.exercises.length })}
         </p>
         <ul className="space-y-1 text-sm text-ink-soft">
-          {day.exercises.map((e) => (
-            <li key={e.id} className="flex justify-between gap-2">
-              <span className="truncate">{e.exercise}</span>
-              <span className="shrink-0 tabular-nums text-ink-faint">
-                {e.sets}×{e.reps}
-                {e.weight_kg ? ` · ${e.weight_kg} kg` : ""}
-              </span>
+          {circuitSegments(day.exercises).map((seg, si) => (
+            <li key={seg.circuit ?? `solo-${si}`} className={seg.circuit !== null ? "rounded-lg border-l-2 border-accent bg-accent-soft/30 py-1 pl-2" : ""}>
+              {seg.label ? (
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-ink">
+                  🔗 {fill(t.coachWidgets.programBuilder.circuitName, { label: seg.label })}
+                </p>
+              ) : null}
+              <ul className="space-y-1">
+                {seg.exercises.map((e) => (
+                  <li key={e.id} className="flex justify-between gap-2">
+                    <span className="truncate">{e.exercise}</span>
+                    <span className="shrink-0 tabular-nums text-ink-faint">
+                      {e.sets}×{e.reps}
+                      {e.rpe_value !== null ? ` · ${day.intensity_mode === "rpe" ? "RPE" : "RIR"} ${e.rpe_value}` : ""}
+                      {e.weight_kg ? ` · ${e.weight_kg} kg` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ul>

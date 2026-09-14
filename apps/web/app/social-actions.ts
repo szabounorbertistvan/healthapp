@@ -114,7 +114,8 @@ export async function createProgressPost(text: string, visibility?: string, weig
   const clean = validatePostText(text);
   if (!clean) return { ok: false, message: t.common.social.textInvalid };
   const payload: ProgressPostPayload = { kind: "progress", photo_path: null };
-  if (typeof weightKg === "number" && Number.isFinite(weightKg) && weightKg > 0) payload.weight_kg = Math.round(weightKg * 10) / 10;
+  // Kept as entered, to the two decimals the measurements column holds — never rounded to a whole kilo.
+  if (typeof weightKg === "number" && Number.isFinite(weightKg) && weightKg > 0) payload.weight_kg = Math.round(weightKg * 100) / 100;
   return insertPost({ type: "progress", text: clean, payload, visibility: visibilityOf(visibility) });
 }
 

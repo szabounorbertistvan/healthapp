@@ -190,7 +190,8 @@ function progressStats(measurements: WeeklyMeasurement[]): ProgressStats {
     const first = points[0]!;
     const last = points[points.length - 1]!;
     if (first.day === last.day) return null;
-    return { start: first.v, end: last.v, delta: round1(last.v - first.v) };
+    // Two decimals: the measurements column holds 21.25, and a change of 0.25 kg must not read as 0.3.
+    return { start: first.v, end: last.v, delta: round2(last.v - first.v) };
   };
   const weight = change((m) => m.weight_kg);
   const waist = change((m) => m.circumferences.waist);
@@ -356,4 +357,8 @@ export function weeklyInsights(c: Omit<WeeklyComparison, "insights">): Insight[]
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }

@@ -1,10 +1,12 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { circuitSegments, parseDecimal } from "@healthapp/shared";
 import { finishWorkout, logSet } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
+import { EditSet } from "./edit-set";
 import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
 
 /**
@@ -72,7 +74,17 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
         </Card>
       ) : null}
 
-      {day.exercises.map((exercise) => {
+      {circuitSegments(day.exercises).map((seg, si) => (
+        <div
+          key={seg.circuit ?? `solo-${si}`}
+          className={seg.circuit !== null ? "space-y-3 rounded-xl border-l-4 border-accent bg-accent-soft/30 p-2 pl-3" : "space-y-4"}
+        >
+          {seg.label ? (
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
+              🔗 {fill(t.coachWidgets.programBuilder.circuitName, { label: seg.label })} · {t.clientWidgets.setLogger.circuitHint}
+            </p>
+          ) : null}
+      {seg.exercises.map((exercise) => {
         const blockSets = setsFor.get(exercise.id) ?? [];
         const done = blockSets.length;
         return (
@@ -88,6 +100,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
             done={done}
             sets={blockSets}
             pending={pending}
+            dayId={day.day_id}
+            onEdited={(updated) => setLogged((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
             onLog={(entry) =>
               startTransition(async () => {
                 setError(null);
@@ -132,6 +146,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
           />
         );
       })}
+        </div>
+      ))}
 
       <button
         type="button"
@@ -164,7 +180,7 @@ type SetEntry = {
 
 function ExerciseBlock({
   name, targetSets, targetReps, targetWeight, targetRpe, rest, intensityMode,
-  done, sets, pending, onLog,
+  done, sets, pending, dayId, onLog, onEdited,
 }: {
   name: string;
   targetSets: number;
@@ -176,7 +192,9 @@ function ExerciseBlock({
   done: number;
   sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">[];
   pending: boolean;
+  dayId: string;
   onLog: (entry: SetEntry) => void;
+  onEdited: (set: Pick<LoggedSetRow, "id" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">) => void;
 }) {
   const { t } = useI18n();
   const m = t.clientWidgets.setLogger;
@@ -193,12 +211,13 @@ function ExerciseBlock({
     targetRpe === null ? 7 : Math.round(clamp(asRir ? 10 - targetRpe : targetRpe, 1, 10)),
   );
   const [notes, setNotes] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
   const complete = done >= targetSets;
 
   function submit() {
     const rirValue = asRir && rir.trim() !== "" ? clamp(parseFloat(rir), 0, 10) : null;
     onLog({
-      weight: parseFloat(weight),
+      weight: parseDecimal(weight) ?? NaN,
       reps: parseInt(reps, 10),
       intensity,
       rir: rirValue !== null && Number.isFinite(rirValue) ? rirValue : null,
@@ -214,6 +233,7 @@ function ExerciseBlock({
           <p className="truncate font-bold">{name}</p>
           <p className="mt-0.5 text-xs text-ink-faint">
             {targetSets}×{targetReps}
+            {targetRpe !== null ? ` · ${asRir ? m.rir : m.rpe} ${targetRpe}` : ""}
             {targetWeight ? ` · ${targetWeight} kg` : ""} · {m.rest} {rest}
           </p>
         </div>
@@ -229,22 +249,40 @@ function ExerciseBlock({
       {sets.length > 0 ? (
         <ul className="mt-3 flex flex-wrap gap-1.5">
           {sets.map((s) => (
-            <li
-              key={s.id}
-              title={s.notes ?? undefined}
-              className={`rounded-md px-2 py-1 text-xs tabular-nums ${
-                s.is_pr ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft"
-              }`}
-            >
-              {s.weight_kg} kg × {s.reps}
-              {s.rir !== null ? ` · ${m.rir} ${s.rir}` : ""}
-              {s.rpe !== null ? ` · ${s.rpe}/10` : ""}
-              {s.is_pr ? ` · ${m.pr}` : ""}
-              {s.notes ? " · ✎" : ""}
+            <li key={s.id}>
+              {/* A logged set is a button: tap to correct it. Rows still in
+                  flight (tmp_ ids) are not editable until the refresh lands. */}
+              <button
+                type="button"
+                title={s.notes ?? m.editSet}
+                aria-label={`${m.editSet}: ${s.weight_kg} kg × ${s.reps}`}
+                disabled={s.id.startsWith("tmp_")}
+                onClick={() => setEditing(editing === s.id ? null : s.id)}
+                className={`min-h-8 rounded-md px-2 py-1 text-xs tabular-nums ${
+                  s.is_pr ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
+                } ${editing === s.id ? "ring-2 ring-accent-ink" : ""}`}
+              >
+                {s.weight_kg} kg × {s.reps}
+                {s.rir !== null ? ` · ${m.rir} ${s.rir}` : ""}
+                {s.rpe !== null ? ` · ${s.rpe}/10` : ""}
+                {s.is_pr ? ` · ${m.pr}` : ""}
+                {s.notes ? " · ✎" : ""}
+              </button>
             </li>
           ))}
         </ul>
       ) : null}
+      {editing ? (() => {
+        const target = sets.find((x) => x.id === editing);
+        return target ? (
+          <EditSet
+            set={target}
+            asRir={asRir}
+            dayId={dayId}
+            onDone={(updated) => { setEditing(null); if (updated) onEdited(updated); }}
+          />
+        ) : null;
+      })() : null}
 
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <Field label={m.kg} value={weight} onChange={setWeight} />

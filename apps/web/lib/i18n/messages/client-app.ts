@@ -100,6 +100,9 @@ const en = {
     oneItemLogged: "1 item",
   },
   habits: {
+    deleteHabit: "Delete habit",
+    deleteConfirm: "Delete habit?",
+    couldNotDelete: "Could not delete the habit",
     thisWeek: "{done}/{target} this week",
     noHabitsTitle: "No habits yet",
     noHabitsHint: "Pick one of the ideas below or write your own — habits are 15% of your weekly score.",
@@ -172,6 +175,14 @@ const en = {
     hint: "Browse the library or create an exercise of your own — it shows up first when you add exercises to your program.",
     facets: "{muscles} muscle groups · {equipment} equipment types",
     source: "Source: Free Exercise DB (public domain).",
+  },
+  coachConnect: {
+    haveCoach: "Do you have a coach?",
+    haveCoachBody: "Got an invitation code? Connect and your coach takes over your program.",
+    enterCode: "Enter invitation code",
+    connect: "Connect with coach",
+    coachManagesTitle: "Your coach manages your program",
+    coachManagesBody: "Programs, days and exercises are set by your coach now. Ask them for changes — you keep logging as usual.",
   },
   builder: {
     title: "Build your program",
@@ -307,6 +318,9 @@ const ro: typeof en = {
     oneItemLogged: "1 aliment",
   },
   habits: {
+    deleteHabit: "Șterge habit-ul",
+    deleteConfirm: "Ștergi habit-ul?",
+    couldNotDelete: "Nu s-a putut șterge habit-ul",
     thisWeek: "{done}/{target} săptămâna aceasta",
     noHabitsTitle: "Încă nu ai obiceiuri",
     noHabitsHint: "Alege una dintre ideile de mai jos sau scrie una a ta — obiceiurile sunt 15% din scorul tău săptămânal.",
@@ -379,6 +393,14 @@ const ro: typeof en = {
     hint: "Răsfoiește biblioteca sau creează-ți propriul exercițiu — apare primul când adaugi exerciții în programul tău.",
     facets: "{muscles} grupe musculare · {equipment} tipuri de echipament",
     source: "Sursă: Free Exercise DB (domeniu public).",
+  },
+  coachConnect: {
+    haveCoach: "Ai un antrenor?",
+    haveCoachBody: "Ai primit un cod de invitație? Conectează-te și antrenorul preia programul tău.",
+    enterCode: "Introdu codul de invitație",
+    connect: "Conectează-te cu antrenorul",
+    coachManagesTitle: "Antrenorul tău gestionează programul",
+    coachManagesBody: "Programele, zilele și exercițiile sunt setate acum de antrenorul tău. Cere-i modificări — tu înregistrezi în continuare ca de obicei.",
   },
   builder: {
     title: "Construiește-ți programul",

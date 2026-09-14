@@ -15,7 +15,8 @@ import { SwipeToDelete } from "./swipe-to-delete";
  * can be swiped away (with confirmation); a coach's day cannot, because it is
  * the coach's to change.
  */
-export function WorkoutDayList({ groups }: { groups: ClientProgramGroup[] }) {
+/** `editable` is false for a coached client: their own old programs stay listed but cannot be changed (can_edit_program). */
+export function WorkoutDayList({ groups, editable = true }: { groups: ClientProgramGroup[]; editable?: boolean }) {
   const { t } = useI18n();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -60,7 +61,7 @@ export function WorkoutDayList({ groups }: { groups: ClientProgramGroup[] }) {
 
           <div className="grid gap-3 sm:grid-cols-2">
             {group.days.map((day) =>
-              group.is_own ? (
+              group.is_own && editable ? (
                 <SwipeToDelete
                   key={day.day_id}
                   confirmText={fill(w.deleteDayConfirm, { name: day.day_name })}
@@ -73,7 +74,7 @@ export function WorkoutDayList({ groups }: { groups: ClientProgramGroup[] }) {
               ),
             )}
 
-            {group.is_own ? (
+            {group.is_own && editable ? (
               <Link
                 href="/workout/build"
                 className="flex h-full min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed border-line p-4 text-sm font-semibold text-ink-faint transition hover:border-accent hover:text-accent-ink"
@@ -83,7 +84,7 @@ export function WorkoutDayList({ groups }: { groups: ClientProgramGroup[] }) {
               </Link>
             ) : null}
           </div>
-          {group.is_own && group.days.length > 0 ? (
+          {group.is_own && editable && group.days.length > 0 ? (
             <p className="mt-2 text-[11px] text-ink-faint sm:hidden">{w.swipeHint}</p>
           ) : null}
         </section>

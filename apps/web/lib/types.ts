@@ -120,6 +120,10 @@ export type ProgramExerciseRow = {
   weight_kg: number | null;
   rpe_value: number | null;
   rest_seconds: number | null;
+  /** Order inside the day; the builders swap neighbours on it. */
+  position: number;
+  /** Circuit / superset number this row belongs to (1 = A …), null when standalone. */
+  circuit: number | null;
 };
 
 export type ProgramDetail = {

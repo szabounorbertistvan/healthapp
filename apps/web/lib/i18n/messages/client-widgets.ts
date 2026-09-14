@@ -19,6 +19,9 @@ const en = {
     intensityScale: "1 easy · 10 all-out",
     note: "Note",
     notePlaceholder: "How did the set feel? Grip, tempo, pain, anything to remember…",
+    editSet: "Edit set",
+    couldNotEdit: "Could not save the set",
+    circuitHint: "one set of each, then repeat",
   },
   swipeToDelete: {
     delete: "Delete",
@@ -217,6 +220,9 @@ const ro: typeof en = {
     intensityScale: "1 ușor · 10 la maximum",
     note: "Notă",
     notePlaceholder: "Cum a fost setul? Priză, tempo, durere, orice vrei să ții minte…",
+    editSet: "Editează setul",
+    couldNotEdit: "Nu s-a putut salva setul",
+    circuitHint: "câte un set din fiecare, apoi repetă",
   },
   swipeToDelete: {
     delete: "Șterge",

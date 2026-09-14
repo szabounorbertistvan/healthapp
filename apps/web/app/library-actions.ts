@@ -3,6 +3,9 @@ import { filterExercises, type ExerciseFilter, type ExerciseSummary } from "@hea
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { exerciseLibrary } from "@/lib/exercise-library";
 import { notSignedIn } from "@/lib/action-result";
+import { mutated } from "@/lib/supabase/mutate";
+import { revalidatePath } from "next/cache";
+import type { ActionResult } from "./actions";
 
 // Exercise search (W5), callable from client components.
 //
@@ -18,10 +21,11 @@ export async function searchExerciseLibrary(
 ): Promise<{ results: ExerciseSummary[]; total: number }> {
 
   const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
   let query = supabase
     .from("exercises")
     .select(
-      "id, external_id, name_en, name_ro, category, level, force, mechanic, equipment, primary_muscles, secondary_muscles, instructions_en, images",
+      "id, external_id, name_en, name_ro, category, level, force, mechanic, equipment, primary_muscles, secondary_muscles, instructions_en, images, owner_id",
       { count: "exact" },
     )
     // Without an order, Postgres hands back whichever 40 rows it reaches first —
@@ -38,7 +42,9 @@ export async function searchExerciseLibrary(
 
   const { data, error, count } = await query;
   if (error) return { results: [], total: 0 };
-  return { results: (data ?? []) as ExerciseSummary[], total: count ?? 0 };
+  type Row = ExerciseSummary & { owner_id: string | null };
+  const results = ((data ?? []) as Row[]).map(({ owner_id, ...e }) => ({ ...e, mine: owner_id !== null && owner_id === auth.user?.id }));
+  return { results, total: count ?? 0 };
 }
 
 export type NewExerciseInput = {
@@ -99,4 +105,33 @@ export async function createCustomExercise(
     ok: true,
     exercise: { ...row, external_id: row.external_id ?? row.id ?? name, instructions_en: row.instructions_en ?? "" },
   };
+}
+
+/**
+ * Rename a custom exercise. Only its owner can (policy exercises_owner_update,
+ * and the .eq on owner_id here); a system-library row has no owner, so a
+ * client can never rename "Bench Press" for everyone. Programs reference the
+ * row by id and pick the name up; logged sets reference it by id too, so the
+ * history shows the new name — the lift itself is unchanged.
+ */
+export async function renameExercise(exerciseId: string, name: string): Promise<ActionResult> {
+  const clean = name.trim();
+  if (clean.length < 2) return { ok: false, message: "Give the exercise a name" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const failed = await mutated(
+    await supabase
+      .from("exercises")
+      .update({ name_en: clean, name_ro: clean }, { count: "exact" })
+      .eq("id", exerciseId)
+      .eq("owner_id", userId)
+      .eq("source", "custom"),
+  );
+  if (failed) return failed;
+  revalidatePath("/library");
+  revalidatePath("/exercises");
+  revalidatePath("/workout", "layout");
+  revalidatePath("/programs", "layout");
+  return { ok: true };
 }

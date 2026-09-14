@@ -231,7 +231,7 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
     .select(`id, name, status, intensity_mode, weeks,
       client:users!programs_client_id_fkey(full_name),
       program_days(id, name, week_index, day_index, muscle_groups,
-        program_exercises(id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds,
+        program_exercises(id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit,
           exercise:exercises(name_en, name_ro)))`)
     .eq("id", id)
     .single();
@@ -244,7 +244,7 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
       id: string; name: string; week_index: number; day_index: number; muscle_groups: string[] | null;
       program_exercises: {
         id: string; position: number; target_sets: number; target_reps: string;
-        target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null;
+        target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null; circuit: number | null;
         exercise: { name_en: string; name_ro: string | null };
       }[];
     }[])
@@ -264,6 +264,8 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
           weight_kg: e.target_weight_kg,
           rpe_value: e.target_rpe,
           rest_seconds: e.rest_seconds,
+          position: e.position,
+          circuit: e.circuit ?? null,
         })),
     })),
   };

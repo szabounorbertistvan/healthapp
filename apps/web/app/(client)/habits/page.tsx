@@ -26,7 +26,7 @@ export default async function HabitsPage() {
         />
       ) : (
         <Card>
-          <HabitTicks habits={habits} />
+          <HabitTicks habits={habits} removable />
         </Card>
       )}
 

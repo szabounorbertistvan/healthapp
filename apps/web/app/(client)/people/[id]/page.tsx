@@ -20,12 +20,13 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   if (!profile) notFound();
   const s = t.common.social;
   const st = t.common.streaks;
-  const stats: [string, number][] = [
-    [s.followers, profile.followers],
-    [s.followingCount, profile.following],
-    [s.workouts, profile.workouts],
-    [s.prs, profile.prs],
-    [s.challenges, profile.challenges],
+  // The two follow counts open the lists; the three activity counts are plain numbers.
+  const stats: [string, number, string | null][] = [
+    [s.followers, profile.followers, `/people/${profile.id}/followers`],
+    [s.followingCount, profile.following, `/people/${profile.id}/following`],
+    [s.workouts, profile.workouts, null],
+    [s.prs, profile.prs, null],
+    [s.challenges, profile.challenges, null],
   ];
   return (
     <div className="mx-auto max-w-xl space-y-4">
@@ -43,12 +44,19 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           {!profile.me ? <FollowButton userId={profile.id} following={profile.is_following} /> : null}
         </div>
         <dl className="mt-4 grid grid-cols-3 gap-3 text-center sm:grid-cols-5">
-          {stats.map(([label, value]) => (
-            <div key={label} className="rounded-lg bg-bg px-2 py-2">
-              <dd className="text-lg font-bold tabular-nums">{value}</dd>
-              <dt className="text-[11px] text-ink-faint">{label}</dt>
-            </div>
-          ))}
+          {stats.map(([label, value, href]) =>
+            href ? (
+              <Link key={label} href={href} className="rounded-lg bg-bg px-2 py-2 hover:bg-accent-soft">
+                <dd className="text-lg font-bold tabular-nums">{value}</dd>
+                <dt className="text-[11px] text-ink-faint">{label}</dt>
+              </Link>
+            ) : (
+              <div key={label} className="rounded-lg bg-bg px-2 py-2">
+                <dd className="text-lg font-bold tabular-nums">{value}</dd>
+                <dt className="text-[11px] text-ink-faint">{label}</dt>
+              </div>
+            ),
+          )}
         </dl>
         {streak.longest > 0 ? (
           <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">

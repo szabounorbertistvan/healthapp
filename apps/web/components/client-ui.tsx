@@ -127,7 +127,7 @@ export function Sparkline({
         <span>{first.label}</span>
         <span className={delta <= 0 ? "font-semibold text-accent-ink" : "font-semibold text-warn"}>
           {delta > 0 ? "+" : ""}
-          {Math.round(delta * 10) / 10} kg
+          {Math.round(delta * 100) / 100} kg
         </span>
         <span>{last.label}</span>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { exerciseRef, type ExerciseSummary } from "@healthapp/shared";
-import { searchExerciseLibrary } from "@/app/library-actions";
+import { renameExercise, searchExerciseLibrary } from "@/app/library-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";
 import { NewExerciseForm } from "./new-exercise-form";
@@ -28,6 +28,22 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
+  // Renaming one of the caller's own custom exercises, inline in its row.
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+
+  function saveRename(exercise: ExerciseSummary) {
+    const id = exercise.id;
+    if (!id) return;
+    startTransition(async () => {
+      setRenameError(null);
+      const r = await renameExercise(id, newName);
+      if (!r.ok) { setRenameError(r.message ?? m.couldNotRename); return; }
+      setResults((current) => current.map((e) => (e.id === id ? { ...e, name_en: newName.trim(), name_ro: newName.trim() } : e)));
+      setRenaming(null);
+    });
+  }
 
   // Debounced: the coach types faster than a round-trip, and the library is
   // 873 rows on the server rather than in this bundle.
@@ -148,8 +164,46 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
             className="rounded-lg border border-line bg-bg p-2.5"
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{exercise.name_en}</p>
+              <div className="min-w-0 flex-1">
+                {renaming === exerciseRef(exercise) ? (
+                  <form
+                    className="flex gap-1.5"
+                    onSubmit={(e) => { e.preventDefault(); saveRename(exercise); }}
+                  >
+                    <input
+                      autoFocus
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      aria-label={m.renameExercise}
+                      className="min-w-0 flex-1 rounded border border-accent bg-surface px-2 py-1 text-sm outline-none"
+                    />
+                    <button type="submit" disabled={pending || newName.trim().length < 2} className="rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-accent-fg disabled:opacity-40">
+                      {t.common.actions.save}
+                    </button>
+                    <button type="button" onClick={() => setRenaming(null)} className="rounded-lg px-2 py-1 text-xs font-semibold text-ink-faint hover:text-ink">
+                      {t.common.actions.cancel}
+                    </button>
+                  </form>
+                ) : (
+                  <p className="flex items-center gap-1.5 text-sm font-semibold">
+                    <span className="min-w-0 truncate">{exercise.name_en}</span>
+                    {exercise.mine ? (
+                      <>
+                        <span className="shrink-0 rounded border border-line px-1 text-[9px] font-semibold uppercase tracking-wider text-ink-faint">{m.mine}</span>
+                        <button
+                          type="button"
+                          onClick={() => { setNewName(exercise.name_en); setRenaming(exerciseRef(exercise)); }}
+                          aria-label={m.renameExercise}
+                          title={m.renameExercise}
+                          className="shrink-0 rounded px-1 text-xs text-ink-faint hover:text-accent-ink"
+                        >
+                          ✎
+                        </button>
+                      </>
+                    ) : null}
+                  </p>
+                )}
+                {renaming === exerciseRef(exercise) && renameError ? <p className="mt-1 text-xs text-risk">{renameError}</p> : null}
                 <p className="mt-0.5 text-xs text-ink-faint">
                   {exercise.primary_muscles.join(", ") || "—"}
                   {exercise.equipment ? ` · ${exercise.equipment}` : ""}

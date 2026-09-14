@@ -4,6 +4,7 @@ import { useI18n } from "@/lib/i18n/client";
 import type { WorkoutHistorySession } from "@/lib/types";
 import { Card } from "./ui";
 import { TrainingLoadBadge } from "./training-load";
+import { EditSet } from "./edit-set";
 
 /**
  * Past sessions of one training day, newest first. The most recent one opens
@@ -16,6 +17,10 @@ export function WorkoutHistory({ sessions }: { sessions: WorkoutHistorySession[]
   const [openIds, setOpenIds] = useState<Set<string>>(
     () => new Set(sessions.slice(0, 1).map((s) => s.id)),
   );
+  // Past sets can be corrected too — the same form as the logger. Edits are
+  // kept here until the refresh brings the server's rows back.
+  const [editing, setEditing] = useState<string | null>(null);
+  const [overrides, setOverrides] = useState<Record<string, Partial<WorkoutHistorySession["exercises"][number]["sets"][number]>>>({});
 
   if (sessions.length === 0) {
     return <p className="text-sm text-ink-faint">{d.noHistory}</p>;
@@ -70,20 +75,37 @@ export function WorkoutHistory({ sessions }: { sessions: WorkoutHistorySession[]
                   <div key={exercise.name}>
                     <p className="text-sm font-semibold">{exercise.name}</p>
                     <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                      {exercise.sets.map((s) => (
-                        <li
-                          key={s.id}
-                          title={s.notes ?? undefined}
-                          className={`rounded-md px-2 py-1 text-xs tabular-nums ${
-                            s.is_pr ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft"
-                          }`}
-                        >
-                          {s.weight_kg} kg × {s.reps}
-                          {s.rir !== null ? ` · ${d.rir} ${s.rir}` : ""}
-                          {s.rpe !== null ? ` · ${s.rpe}/10 ${d.intensity}` : ""}
+                      {exercise.sets.map((raw) => {
+                        const s = { ...raw, ...overrides[raw.id] };
+                        return (
+                        <li key={s.id}>
+                          <button
+                            type="button"
+                            title={s.notes ?? t.clientWidgets.setLogger.editSet}
+                            aria-label={`${t.clientWidgets.setLogger.editSet}: ${s.weight_kg} kg × ${s.reps}`}
+                            onClick={() => setEditing(editing === s.id ? null : s.id)}
+                            className={`min-h-8 rounded-md px-2 py-1 text-xs tabular-nums ${
+                              s.is_pr ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
+                            } ${editing === s.id ? "ring-2 ring-accent-ink" : ""}`}
+                          >
+                            {s.weight_kg} kg × {s.reps}
+                            {s.rir !== null ? ` · ${d.rir} ${s.rir}` : ""}
+                            {s.rpe !== null ? ` · ${s.rpe}/10 ${d.intensity}` : ""}
+                          </button>
                         </li>
-                      ))}
+                        );
+                      })}
                     </ul>
+                    {editing && exercise.sets.some((x) => x.id === editing) ? (
+                      <EditSet
+                        set={{ ...exercise.sets.find((x) => x.id === editing)!, ...overrides[editing] }}
+                        asRir={exercise.sets.some((x) => x.rir !== null)}
+                        onDone={(updated) => {
+                          setEditing(null);
+                          if (updated) setOverrides((prev) => ({ ...prev, [updated.id]: updated }));
+                        }}
+                      />
+                    ) : null}
                     {exercise.sets.some((s) => s.notes) ? (
                       <ul className="mt-1.5 space-y-0.5">
                         {exercise.sets

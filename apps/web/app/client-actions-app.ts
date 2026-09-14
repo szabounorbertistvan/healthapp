@@ -9,11 +9,12 @@ import type { MealSlot } from "@/lib/types";
 import { isoDay, mondayOf } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import {
-  estimated1RM, gramsFromSplit, isPersonalRecord, MACRO_KEYS, portionMacros,
-  type Macros, type MacroSplit,
+  estimated1RM, gramsFromSplit, isPersonalRecord, MACRO_KEYS, portionMacros, recomputePrFlags, validateSetEdit,
+  type Macros, type MacroSplit, type SetEdit,
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
 import { liveUser, type LiveUser } from "@/lib/supabase/server";
+import { mutated } from "@/lib/supabase/mutate";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
@@ -173,6 +174,78 @@ async function openSession(
     .eq("client_generated_id", sessionKey)
     .maybeSingle();
   return raced ? (raced.id as string) : { ok: false, message: error.message };
+}
+
+/**
+ * Correct a set that was logged wrong. Only the owner reaches the row
+ * (sets_owner: user_id = auth.uid(), re-checked with .eq below), the values
+ * pass the same rules as logging, and the one stored derivative — is_pr — is
+ * re-derived over the exercise's history so the flags move with the edit.
+ * Volume, training load, the weekly summary, challenges and streaks are all
+ * computed at read time from logged_sets, so they follow automatically.
+ */
+export async function updateLoggedSet(
+  setId: string,
+  edit: SetEdit,
+  dayId?: string | null,
+): Promise<ActionResult & { is_pr?: boolean }> {
+  const invalid = validateSetEdit(edit);
+  if (invalid === "weight") return { ok: false, message: "Weight must be a positive number" };
+  if (invalid === "reps") return { ok: false, message: "Reps must be a whole number above zero" };
+  if (invalid === "rpe") return { ok: false, message: "Intensity must be between 1 and 10" };
+  if (invalid === "rir") return { ok: false, message: "RIR must be between 0 and 10" };
+
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+
+  const { data: row } = await supabase
+    .from("logged_sets")
+    .select("id, exercise_id")
+    .eq("id", setId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!row) return { ok: false, message: "Set not found" };
+
+  const failed = await mutated(
+    await supabase
+      .from("logged_sets")
+      .update(
+        { weight_kg: edit.weight_kg, reps: edit.reps, rpe: edit.rpe, rir: edit.rir, notes: edit.notes?.trim().slice(0, 500) || null },
+        { count: "exact" },
+      )
+      .eq("id", setId)
+      .eq("user_id", userId),
+  );
+  if (failed) return failed;
+
+  // The PR flags of this lift, re-derived in the order the sets arrived.
+  const { data: history } = await supabase
+    .from("logged_sets")
+    .select("id, weight_kg, reps, is_pr, received_at")
+    .eq("user_id", userId)
+    .eq("exercise_id", row.exercise_id)
+    .order("received_at", { ascending: true })
+    .limit(1000);
+  const changes = recomputePrFlags(
+    ((history ?? []) as { id: string; weight_kg: number | null; reps: number | null; is_pr: boolean; received_at: string }[]).map((s) => ({
+      ...s, weight_kg: Number(s.weight_kg ?? 0), reps: s.reps ?? 0,
+    })),
+    estimated1RM,
+  );
+  for (const c of changes) {
+    await supabase.from("logged_sets").update({ is_pr: c.is_pr }).eq("id", c.id).eq("user_id", userId);
+  }
+  const isPr = changes.find((c) => c.id === setId)?.is_pr ?? (history ?? []).find((s) => s.id === setId)?.is_pr ?? false;
+
+  revalidatePath("/today");
+  revalidatePath("/workout", "layout");
+  revalidatePath("/progress");
+  if (dayId) {
+    revalidatePath(`/workout/${dayId}`);
+    revalidatePath(`/workout/${dayId}/log`);
+  }
+  return { ok: true, is_pr: isPr };
 }
 
 /** Completes today's session and hands back its id, so the done screen can offer to share it. */
@@ -356,6 +429,25 @@ export async function addHabit(name: string, targetPerWeek: number): Promise<Act
     active: true,
   });
   if (error) return { ok: false, message: error.message };
+  revalidatePath("/habits");
+  return { ok: true };
+}
+
+/**
+ * Remove a habit. Archived, not deleted: `active = false` takes it off Today
+ * and Habits while its logs — and the adherence weeks they fed — stay
+ * intact. RLS (habits_owner / habits_coach) decides whose habits can be
+ * touched; the .eq on user_id is the app-side belt to that brace.
+ */
+export async function archiveHabit(habitId: string): Promise<ActionResult> {
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const failed = await mutated(
+    await supabase.from("habits").update({ active: false }, { count: "exact" }).eq("id", habitId).eq("user_id", userId),
+  );
+  if (failed) return failed;
+  revalidatePath("/today");
   revalidatePath("/habits");
   return { ok: true };
 }

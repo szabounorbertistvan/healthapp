@@ -92,21 +92,34 @@ export async function searchPeople(query: string): Promise<PersonRow[]> {
   return (data ?? []) as PersonRow[];
 }
 
-/** People the viewer follows / who follow them — for the profile lists. */
-export async function getFollowList(userId: string, which: "followers" | "following"): Promise<PersonRow[]> {
+export const FOLLOW_PAGE_SIZE = 20;
+
+export type FollowPage = { items: PersonRow[]; next_cursor: string | null };
+
+/**
+ * Who follows / is followed by a person, newest first, one page. Served by
+ * social_follow_list() (security definer — users_select would hide the
+ * names) with whether the viewer follows each of them folded in, so a list
+ * of 20 is one round trip and no per-row lookups.
+ */
+export async function getFollowList(
+  userId: string,
+  which: "followers" | "following",
+  before: string | null = null,
+): Promise<FollowPage> {
   const viewer = await currentActorId();
-  if (!viewer) return [];
-  // Live: follows_select only shows edges the viewer is on, so lists are
-  // exact for the viewer's own profile and empty for others — enough for v1.
+  if (!viewer) return { items: [], next_cursor: null };
   const supabase = await supabaseServer();
-  const col = which === "followers" ? "following_id" : "follower_id";
-  const other = which === "followers" ? "follower_id" : "following_id";
-  const { data } = await supabase.from("social_follows").select(other).eq(col, userId);
-  const ids = ((data ?? []) as Record<string, string>[]).map((r) => r[other]!).filter(Boolean);
-  const people = await Promise.all(ids.map((id) => getSocialProfile(id)));
-  return people
-    .filter((p): p is SocialProfile => p !== null)
-    .map((p) => ({ id: p.id, name: p.name, username: p.username, avatar_url: p.avatar_url, is_following: p.is_following }));
+  const { data } = await supabase.rpc("social_follow_list", {
+    p_user: userId, p_which: which, p_limit: FOLLOW_PAGE_SIZE + 1, p_before: before,
+  });
+  type Row = PersonRow & { followed_at: string };
+  const rows = (data ?? []) as Row[];
+  const items = rows.slice(0, FOLLOW_PAGE_SIZE);
+  return {
+    items: items.map(({ followed_at: _f, ...r }) => r),
+    next_cursor: rows.length > FOLLOW_PAGE_SIZE ? items[items.length - 1]!.followed_at : null,
+  };
 }
 
 // ---------- sharing a workout ----------

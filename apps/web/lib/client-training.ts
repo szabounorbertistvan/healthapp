@@ -60,7 +60,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
       .from("programs")
       .select(`id, name, intensity_mode, coach_id, updated_at,
         program_days(id, name, week_index, day_index,
-          program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds,
+          program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit,
             exercise:exercises(name_en, name_ro)))`)
       .eq("client_id", userId)
       .eq("status", "published"),
@@ -71,7 +71,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
 
   type ExJoin = {
     id: string; exercise_id: string; position: number; target_sets: number; target_reps: string;
-    target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null;
+    target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null; circuit: number | null;
     exercise: { name_en: string; name_ro: string | null } | null;
   };
   type DayJoin = { id: string; name: string; day_index: number; program_exercises: ExJoin[] };
@@ -119,6 +119,8 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
               weight_kg: e.target_weight_kg,
               rpe_value: e.target_rpe,
               rest_seconds: e.rest_seconds,
+              position: e.position,
+              circuit: e.circuit ?? null,
             })),
           logged: session?.logged ?? [],
           session_id: session?.id ?? null,
