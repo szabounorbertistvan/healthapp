@@ -107,7 +107,6 @@ export type ProgramExerciseRow = {
   /**
    * The exercises row this targets. logged_sets.exercise_id is NOT NULL, so
    * the client app has to carry it from the program through to the log.
-   * Absent in demo mode, where exercises are plain names.
    */
   exercise_id?: string | null;
   exercise: string;
@@ -199,7 +198,7 @@ export type LoggedSetRow = {
   id: string;
   /**
    * program_exercises.id this set answers. Null for history that predates the
-   * link (and for demo seed rows), which is why readers fall back to the name.
+   * link, which is why readers fall back to the name.
    */
   program_exercise_id: string | null;
   exercise: string;
@@ -469,7 +468,7 @@ export type ClientToday = {
 
 /** A food one tap from being logged again — recently logged, or starred. */
 export type QuickFood = {
-  /** foods.id when known (uuid live, slug in demo); null for a name-only product. */
+  /** foods.id when known; null for a name-only product. */
   food_id: string | null;
   name: string;
   per_100g: Macros;

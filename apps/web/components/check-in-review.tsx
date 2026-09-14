@@ -24,7 +24,7 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
     startTransition(async () => {
       const result = await reviewCheckIn(selected.id, selected.client_id, markOnly ? "" : feedback);
       if (result.ok) {
-        setStatus(result.demo ? m.demoNothingSaved : m.feedbackSent);
+        setStatus(m.feedbackSent);
         const next = queue.filter((c) => c.id !== selected.id);
         setQueue(next);
         setSelectedId(next[0]?.id ?? null);

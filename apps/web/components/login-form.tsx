@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isDemo, supabaseBrowser, enabledOAuthProviders } from "@/lib/supabase/client";
+import { supabaseBrowser, enabledOAuthProviders } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/client";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { usernameAvailable } from "@/app/profile-actions";
@@ -39,10 +39,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done>(null);
   // shown only once the Supabase project has the provider switched on
-  const [googleEnabled, setGoogleEnabled] = useState(isDemo);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
 
   useEffect(() => {
-    if (isDemo) return;
     let cancelled = false;
     enabledOAuthProviders().then((providers) => {
       if (!cancelled) setGoogleEnabled(providers.has("google"));
@@ -82,11 +81,6 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (isDemo) {
-      if (mode === "forgot") setDone({ kind: "reset", email });
-      else router.push("/dashboard");
-      return;
-    }
     const problem = validate();
     if (problem) {
       setError(problem);
@@ -159,10 +153,6 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   // first consent. The coach/client choice cannot travel as user metadata on an
   // OAuth request, so it rides on the callback URL and is claimed there.
   async function google() {
-    if (isDemo) {
-      router.push("/dashboard");
-      return;
-    }
     setBusy(true);
     setError(null);
     const params = new URLSearchParams({ next: "/dashboard", flow: "oauth" });
@@ -205,10 +195,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-xl border border-line bg-surface p-5" noValidate={isDemo}>
-      {isDemo ? (
-        <p className="rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn">{t.login.demoNotice}</p>
-      ) : null}
+    <form onSubmit={submit} className="space-y-3 rounded-xl border border-line bg-surface p-5">
 
       {mode === "signup" ? (
         <>
@@ -267,16 +254,16 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
       ) : null}
 
       <input
-        type="email" autoComplete="email" required={!isDemo} value={email}
+        type="email" autoComplete="email" required value={email}
         onChange={(e) => setEmail(e.target.value)} placeholder={t.login.email}
         className={inputClass}
       />
 
       {mode !== "forgot" ? (
         <input
-          type="password" required={!isDemo} value={password}
+          type="password" required value={password}
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
-          minLength={mode === "signup" && !isDemo ? MIN_PASSWORD : undefined}
+          minLength={mode === "signup" ? MIN_PASSWORD : undefined}
           onChange={(e) => setPassword(e.target.value)} placeholder={t.login.password}
           className={inputClass}
         />
@@ -285,7 +272,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
       {mode === "signup" ? (
         <>
           <input
-            type="password" autoComplete="new-password" required={!isDemo} value={repeat}
+            type="password" autoComplete="new-password" required value={repeat}
             onChange={(e) => setRepeat(e.target.value)} placeholder={t.login.repeatPassword}
             className={inputClass}
           />

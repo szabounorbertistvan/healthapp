@@ -43,7 +43,6 @@ export function SubscribePanel({
   returnPath: string;
 }) {
   const [error, setError] = useState<string | null>(null);
-  const [demo, setDemo] = useState(false);
   const [pending, startTransition] = useTransition();
   const prices = PLAN_PRICES[plan];
   const e = ENTITLEMENTS[plan];
@@ -53,7 +52,6 @@ export function SubscribePanel({
     setError(null);
     startTransition(async () => {
       const result = await startCheckout(plan, interval, returnPath);
-      if (result.demo) return setDemo(true);
       if (result.ok && result.url) window.location.assign(result.url);
       else setError(result.message ?? "Could not start checkout");
     });
@@ -63,7 +61,6 @@ export function SubscribePanel({
     setError(null);
     startTransition(async () => {
       const result = await openBillingPortal(returnPath);
-      if (result.demo) return setDemo(true);
       if (result.ok && result.url) window.location.assign(result.url);
       else setError(result.message ?? "Could not open billing portal");
     });
@@ -131,9 +128,6 @@ export function SubscribePanel({
           </>
         )}
       </div>
-      {demo ? (
-        <p className="mt-2 text-xs text-ink-faint">Demo mode — checkout is disabled.</p>
-      ) : null}
       {error ? <p className="mt-2 text-sm text-risk">{error}</p> : null}
     </div>
   );

@@ -1,4 +1,5 @@
 // Client training reads: programs, days, sessions, PRs, training load.
+import { daysAgoIso, isoDay, mondayOf } from "./dates";
 import "server-only";
 import { cache } from "react";
 import {
@@ -10,17 +11,8 @@ import {
 } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
-import { isDemo, liveUser, supabaseServer } from "./supabase/server";
+import { liveUser, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
-import { demoHasActiveCoach, store } from "./demo-store";
-import { viewingClientId } from "./view-mode";
-import {
-  bestLifts,
-  clientStore,
-  daysAgoIso,
-  isoDay,
-  mondayOf,
-} from "./demo-client-store";
 import type {
   ClientPrRow,
   ClientProgramGroup,
@@ -53,51 +45,6 @@ function sortPrograms<T extends { coach_id: string | null; updated_at: string }>
  * Cached per request: Today, the day page and the set logger all ask.
  */
 export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> => {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const s = store();
-    const candidates = s.programs.filter(
-      (p) => p.client_id === clientId && p.status === "published",
-    );
-    const followed = pickProgram(candidates, demoHasActiveCoach(clientId));
-    const cs = clientStore();
-    return sortPrograms(candidates).map((program) => ({
-      program_id: program.id,
-      program_name: program.name,
-      is_own: program.coach_id === null,
-      followed: program.id === followed?.id,
-      days: program.days.map((day) => {
-        const session = cs.sessions.find(
-          (x) => x.client_id === clientId && x.program_day_id === day.id && x.completed_at === null,
-        );
-        return {
-          day_id: day.id,
-          day_name: day.name,
-          program_id: program.id,
-          program_name: program.name,
-          is_own: program.coach_id === null,
-          intensity_mode: program.intensity_mode,
-          exercises: [...day.exercises]
-            .sort((a, b) => a.position - b.position)
-            .map((e) => ({
-              id: e.id,
-              exercise: e.exercise_name,
-              sets: e.target_sets,
-              reps: e.target_reps,
-              weight: e.target_weight_kg ? `${e.target_weight_kg} kg` : "—",
-              rpe: e.target_rpe?.toString() ?? "—",
-              rest: e.rest_seconds ? `${e.rest_seconds}s` : "—",
-              weight_kg: e.target_weight_kg,
-              rpe_value: e.target_rpe,
-              rest_seconds: e.rest_seconds,
-            })),
-          logged: session ? setsForSession(session.id) : [],
-          session_id: session?.id ?? null,
-          completed: false,
-        };
-      }),
-    }));
-  }
 
   const live = await liveUser();
   if (!live) return [];
@@ -258,25 +205,6 @@ export async function getWorkoutDay(dayId: string): Promise<ClientWorkoutDay | n
   return groups.flatMap((g) => g.days).find((d) => d.day_id === dayId) ?? null;
 }
 
-function setsForSession(sessionId: string): LoggedSetRow[] {
-  return clientStore()
-    .sets.filter((s) => s.session_id === sessionId)
-    .sort((a, b) => a.set_index - b.set_index)
-    .map((s) => ({
-      id: s.id,
-      program_exercise_id: s.program_exercise_id,
-      exercise: s.exercise_name,
-      set_index: s.set_index,
-      weight_kg: s.weight_kg,
-      reps: s.reps,
-      rpe: s.rpe,
-      rir: s.rir,
-      notes: s.notes,
-      is_pr: s.is_pr,
-      at: s.logged_at,
-    }));
-}
-
 /** Group a session's sets under the exercise they belong to, in the order performed. */
 function groupByExercise(sets: LoggedSetRow[]): WorkoutHistorySession["exercises"] {
   const order: string[] = [];
@@ -320,16 +248,6 @@ function summarizeSession(
  * last time's numbers are right there before the next attempt.
  */
 export async function getWorkoutDayHistory(dayId: string, limit = 20): Promise<WorkoutHistorySession[]> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    return clientStore()
-      .sessions.filter(
-        (s) => s.client_id === clientId && s.program_day_id === dayId && s.completed_at !== null,
-      )
-      .sort((a, b) => (a.started_at < b.started_at ? 1 : -1))
-      .slice(0, limit)
-      .map((s) => summarizeSession(s.id, s.started_at, s.completed_at, setsForSession(s.id)));
-  }
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -350,31 +268,6 @@ export async function getWorkoutDayHistory(dayId: string, limit = 20): Promise<W
 
 /** Recent completed sessions, newest first — the training history list. */
 export async function getMySessions(limit = 12): Promise<SessionSummaryRow[]> {
-  if (isDemo) {
-    const clientId = await viewingClientId();
-    const cs = clientStore();
-    return cs.sessions
-      .filter((s) => s.client_id === clientId && s.completed_at !== null)
-      .sort((a, b) => (a.started_at < b.started_at ? 1 : -1))
-      .slice(0, limit)
-      .map((s) => {
-        const sets = cs.sets.filter((x) => x.session_id === s.id);
-        return {
-          id: s.id,
-          day_id: s.program_day_id,
-          day_name: s.day_name,
-          at: s.completed_at ?? s.started_at,
-          sets: sets.length,
-          volume_kg: Math.round(sets.reduce((sum, x) => sum + x.weight_kg * x.reps, 0)),
-          prs: sets.filter((x) => x.is_pr).length,
-          load: loadOf(
-            sets.map((x) => ({ ...x, exercise: x.exercise_name })),
-            s.started_at,
-            s.completed_at,
-          ),
-        };
-      });
-  }
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -414,7 +307,7 @@ export async function getMySessions(limit = 12): Promise<SessionSummaryRow[]> {
  */
 export async function getMyTrainingLoad(): Promise<TrainingLoadSummary> {
   const days14 = Array.from({ length: 14 }, (_, i) => daysAgoIso(13 - i));
-  const entries = isDemo ? demoLoadEntries(await viewingClientId()) : await liveLoadEntries();
+  const entries = await liveLoadEntries();
   const today = isoDay();
   const thisMonday = mondayOf(0);
   const lastMonday = mondayOf(1);
@@ -432,22 +325,6 @@ export async function getMyTrainingLoad(): Promise<TrainingLoadSummary> {
 function shiftIso(day: string, days: number): string {
   const [y, m, d] = day.split("-").map(Number);
   return isoDay(new Date(y, m - 1, d + days));
-}
-
-/** Completed sessions of the last three weeks as (day, score) pairs. */
-function demoLoadEntries(clientId: string | null): { day: string; load: number }[] {
-  const cs = clientStore();
-  const since = daysAgoIso(20);
-  return cs.sessions
-    .filter((s) => s.client_id === clientId && s.completed_at !== null && s.started_at.slice(0, 10) >= since)
-    .map((s) => ({
-      day: s.started_at.slice(0, 10),
-      load: loadOf(
-        cs.sets.filter((x) => x.session_id === s.id).map((x) => ({ ...x, exercise: x.exercise_name })),
-        s.started_at,
-        s.completed_at,
-      ).score,
-    }));
 }
 
 async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
@@ -468,7 +345,6 @@ async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
 }
 
 export async function getMyPrs(): Promise<ClientPrRow[]> {
-  if (isDemo) return bestLifts(await viewingClientId());
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;

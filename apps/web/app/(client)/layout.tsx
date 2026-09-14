@@ -1,38 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { displayName, getProfile } from "@/lib/data";
-import { isDemo } from "@/lib/supabase/server";
-import { DEMO_CLIENT_NAME } from "@/lib/demo-client-store";
 import { ClientNav, ClientTabBar } from "@/components/client-nav";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
-import { ViewSwitcher } from "@/components/view-switcher";
-import { viewableClients } from "@/app/view-actions";
-import { viewingClientId } from "@/lib/view-mode";
 import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
-  // Demo mode has no auth, so the shell renders as the fixed demo client.
-  // Live mode is the real gate: coaches belong in the coach workspace.
-  let name = DEMO_CLIENT_NAME;
-  let clients: { id: string; name: string }[] = [];
-  let activeClientId: string | undefined;
-
-  if (isDemo) {
-    clients = await viewableClients();
-    activeClientId = await viewingClientId();
-    name = clients.find((c) => c.id === activeClientId)?.name ?? DEMO_CLIENT_NAME;
-  } else {
-    const profile = await getProfile();
-    if (!profile) redirect("/");
-    if (profile.role === "coach") redirect("/dashboard");
-    // An account without a username (Google sign-up, or older than the field)
-    // finishes its profile before it sees anything else.
-    if (!profile.username) redirect("/complete-profile");
-    name = displayName(profile);
-  }
+  // Coaches belong in the coach workspace.
+  const profile = await getProfile();
+  if (!profile) redirect("/");
+  if (profile.role === "coach") redirect("/dashboard");
+  // An account without a username (Google sign-up, or older than the field)
+  // finishes its profile before it sees anything else.
+  if (!profile.username) redirect("/complete-profile");
+  const name = displayName(profile);
   const { t } = await getI18n();
 
   return (
@@ -48,14 +32,6 @@ export default async function ClientLayout({ children }: { children: React.React
             <LanguageSelector />
             <ThemeToggle />
           </div>
-          {isDemo ? (
-            <ViewSwitcher surface="client" clients={clients} activeClientId={activeClientId} />
-          ) : null}
-          {isDemo ? (
-            <p className="rounded-lg bg-warn-soft px-3 py-2 text-[11px] leading-snug text-warn">
-              <b>{t.common.demoNotice.title}</b> — {t.common.demoNotice.body}
-            </p>
-          ) : null}
           <SignOutButton />
         </div>
       </aside>

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isDemo, supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import { Logo } from "@/components/logo";
 import { useI18n } from "@/lib/i18n/client";
 import { LanguageSelector } from "@/components/language-selector";
@@ -32,10 +32,6 @@ export default function ResetPasswordPage() {
   const [updated, setUpdated] = useState(false);
 
   useEffect(() => {
-    if (isDemo) {
-      setReady(true);
-      return;
-    }
     if (new URLSearchParams(window.location.search).get("error") === "expired") {
       setReady(false);
       return;
@@ -48,11 +44,6 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     if (password.length < MIN_PASSWORD) return setError(t.login.errPasswordShort);
     if (password !== repeat) return setError(t.login.errPasswordMismatch);
-    if (isDemo) {
-      setUpdated(true);
-      router.push("/dashboard");
-      return;
-    }
     setBusy(true);
     setError(null);
     const { error } = await supabaseBrowser().auth.updateUser({ password });

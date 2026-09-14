@@ -1,7 +1,7 @@
-// Workout streak reads. Everything derives from completed logged_sessions —
-// live through workout_days() (one row per local day, already grouped in
-// SQL; RLS decides whose) and social_streak() (two numbers for someone
-// else's profile); demo from the in-process sessions. The math is
+// Workout streak reads. Everything derives from completed logged_sessions,
+// through workout_days() (one row per local day, already grouped in SQL; RLS
+// decides whose) and social_streak() (two numbers for someone else's
+// profile). The math is
 // packages/shared/streaks, the timezone is users.timezone, and nothing here
 // is ever written: a client cannot hand the server a streak.
 import "server-only";
@@ -22,8 +22,7 @@ import {
   type WorkoutDay,
 } from "@healthapp/shared";
 import { currentActorId } from "./actor";
-import { isDemo, supabaseServer } from "./supabase/server";
-import { clientStore } from "./demo-client-store";
+import { supabaseServer } from "./supabase/server";
 
 export type StreakView = {
   today: string;
@@ -50,12 +49,6 @@ function sharedKey(m: { milestone: number; streak_start: string }): string {
  * rows). Cached per request: Today and the weekly summary both ask.
  */
 const workoutDaysFor = cache(async (userId: string): Promise<{ days: WorkoutDay[]; timezone: string }> => {
-  if (isDemo) {
-    return {
-      days: getActiveWorkoutDays(clientStore().sessions.filter((s) => s.client_id === userId), DEFAULT_TIMEZONE),
-      timezone: DEFAULT_TIMEZONE,
-    };
-  }
   const supabase = await supabaseServer();
   const [{ data: rows }, { data: user }] = await Promise.all([
     supabase.rpc("workout_days", { p_user: userId }),
@@ -100,13 +93,6 @@ async function sharedMilestones(userId: string): Promise<Set<string>> {
         .filter((p): p is { milestone: number; streak_start: string } => typeof p?.milestone === "number" && typeof p?.streak_start === "string")
         .map(sharedKey),
     );
-  if (isDemo) {
-    return keys(
-      clientStore().posts
-        .filter((p) => p.user_id === userId && p.type === "streak" && p.deleted_at === null)
-        .map((p) => p.payload as Payload),
-    );
-  }
   const supabase = await supabaseServer();
   const { data } = await supabase.from("social_posts").select("payload").eq("user_id", userId).eq("type", "streak").is("deleted_at", null);
   return keys(((data ?? []) as { payload: Payload }[]).map((p) => p.payload));
@@ -114,10 +100,6 @@ async function sharedMilestones(userId: string): Promise<Set<string>> {
 
 /** Someone's current and longest streak — the numbers only, for their profile. */
 export async function getUserStreak(userId: string): Promise<StreakStats> {
-  if (isDemo) {
-    const s = await getWorkoutStreak(userId);
-    return { current: s.current, longest: s.longest };
-  }
   const supabase = await supabaseServer();
   const { data } = await supabase.rpc("social_streak", { p_user: userId });
   const row = ((data ?? []) as { current_days: number; longest_days: number }[])[0];

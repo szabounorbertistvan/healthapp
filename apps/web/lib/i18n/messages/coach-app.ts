@@ -69,8 +69,6 @@ const en = {
     proteinShort: "P",
     carbsShort: "C",
     fatShort: "F",
-    demoFootnote:
-      "Demo mode uses a local food table; live search comes from Open Food Facts through the food-search edge function once a backend is connected.",
     back: "← Nutrition",
     newTitle: "New nutrition plan",
   },
@@ -95,16 +93,6 @@ const en = {
     freeForever: "Free forever",
     stripeNote:
       "Payments are handled by Stripe. The annual plan is 12 months minus 15%; cancel anytime from “Manage billing”.",
-    backend: "Backend",
-    demoTitle: "Demo mode.",
-    demoIntro: "To connect a real backend:",
-    step1Before: "Create a Supabase project and apply the migrations in",
-    step1After: ".",
-    step2Copy: "Copy",
-    step2To: "to",
-    step2Fill: "and fill in the project URL and anon key.",
-    step3: "Restart the dev server — auth and live data switch on automatically.",
-    connected: "Connected to Supabase.",
   },
   admin: {
     foods: {
@@ -221,8 +209,6 @@ const ro: typeof en = {
     proteinShort: "P",
     carbsShort: "C",
     fatShort: "G",
-    demoFootnote:
-      "Modul demo folosește un tabel local de alimente; căutarea live vine de la Open Food Facts prin funcția edge food-search după conectarea unui backend.",
     back: "← Nutriție",
     newTitle: "Plan de nutriție nou",
   },
@@ -247,16 +233,6 @@ const ro: typeof en = {
     freeForever: "Gratuit pentru totdeauna",
     stripeNote:
       "Plățile sunt procesate de Stripe. Planul anual înseamnă 12 luni minus 15%; poți anula oricând din „Gestionează facturarea”.",
-    backend: "Backend",
-    demoTitle: "Mod demo.",
-    demoIntro: "Pentru a conecta un backend real:",
-    step1Before: "Creează un proiect Supabase și aplică migrările din",
-    step1After: ".",
-    step2Copy: "Copiază",
-    step2To: "în",
-    step2Fill: "și completează URL-ul proiectului și cheia anon.",
-    step3: "Repornește serverul de dezvoltare — autentificarea și datele live se activează automat.",
-    connected: "Conectat la Supabase.",
   },
   admin: {
     foods: {

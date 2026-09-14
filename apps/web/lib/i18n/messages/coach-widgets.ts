@@ -41,7 +41,7 @@ const en = {
     searchFoods: "Search foods…",
     englishOnly: "EN",
     englishOnlyHint: "Generic ingredients come from the USDA database and are in English for now.",
-    noMatch: "No match. Live search comes from Open Food Facts once a backend is connected.",
+    noMatch: "No match. Search also covers Open Food Facts.",
     addedAt100: "Added at 100 g — adjust in the meal.",
     somethingWentWrong: "Something went wrong",
   },
@@ -111,7 +111,6 @@ const en = {
   },
   checkInReview: {
     allCaughtUp: "All caught up.",
-    demoNothingSaved: "Demo mode — nothing saved.",
     feedbackSent: "Feedback sent, marked reviewed.",
     somethingWentWrong: "Something went wrong",
     thisWeek: "This week",
@@ -132,7 +131,6 @@ const en = {
     markOnly: "Mark reviewed only",
   },
   messageThread: {
-    demoNotPersisted: "Demo mode — message not persisted.",
     couldNotSend: "Could not send",
     noMessages: "No messages yet — say hi.",
     placeholder: "Message…",
@@ -144,17 +142,6 @@ const en = {
     limitReachedTitle: "Client limit reached for your plan",
     generating: "Generating…",
     inviteClient: "Invite client",
-  },
-  addClientButton: {
-    limitReached: "Client limit reached for your plan.",
-    limitReachedTitle: "Client limit reached for your plan",
-    addError: "Could not add the client",
-    nameRequired: "Give the client a name",
-    inviteOnly: "Clients join by accepting an invite — use Invite client.",
-    addClient: "+ Add client",
-    namePlaceholder: "Client name",
-    adding: "Adding…",
-    cancel: "cancel",
   },
 };
 
@@ -199,7 +186,7 @@ const ro: typeof en = {
     searchFoods: "Caută alimente…",
     englishOnly: "EN",
     englishOnlyHint: "Ingredientele generice vin din baza USDA și sunt deocamdată în engleză.",
-    noMatch: "Niciun rezultat. Căutarea live vine din Open Food Facts după conectarea unui backend.",
+    noMatch: "Niciun rezultat. Căutarea acoperă și Open Food Facts.",
     addedAt100: "Adăugat la 100 g — ajustează în masă.",
     somethingWentWrong: "Ceva n-a mers bine",
   },
@@ -269,7 +256,6 @@ const ro: typeof en = {
   },
   checkInReview: {
     allCaughtUp: "Totul e la zi.",
-    demoNothingSaved: "Mod demo — nimic salvat.",
     feedbackSent: "Feedback trimis, marcat ca revizuit.",
     somethingWentWrong: "Ceva n-a mers bine",
     thisWeek: "Săptămâna aceasta",
@@ -290,7 +276,6 @@ const ro: typeof en = {
     markOnly: "Doar marchează ca revizuit",
   },
   messageThread: {
-    demoNotPersisted: "Mod demo — mesajul nu este salvat.",
     couldNotSend: "Mesajul nu a putut fi trimis",
     noMessages: "Niciun mesaj încă — salută.",
     placeholder: "Mesaj…",
@@ -302,17 +287,6 @@ const ro: typeof en = {
     limitReachedTitle: "Ai atins limita de clienți pentru planul tău",
     generating: "Se generează…",
     inviteClient: "Invită un client",
-  },
-  addClientButton: {
-    limitReached: "Ai atins limita de clienți pentru planul tău.",
-    limitReachedTitle: "Ai atins limita de clienți pentru planul tău",
-    addError: "Clientul nu a putut fi adăugat",
-    nameRequired: "Dă-i clientului un nume",
-    inviteOnly: "Clienții intră acceptând o invitație — folosește Invită client.",
-    addClient: "+ Adaugă client",
-    namePlaceholder: "Numele clientului",
-    adding: "Se adaugă…",
-    cancel: "anulează",
   },
 };
 

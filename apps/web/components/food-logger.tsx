@@ -6,26 +6,25 @@ import { lookupBarcode, searchFoods } from "@/app/nutrition-actions";
 import { logFood, toggleFavoriteFood } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
-import { portionsFor, type DemoFood } from "@/lib/demo-foods";
 import { FOOD_GROUP_ICON, foodGroupOf } from "@/lib/food-groups";
 import type { MealSlot, QuickFood, QuickFoods } from "@/lib/types";
 import { BarcodeScanner } from "./barcode-scanner";
 import { ProductCard } from "./product-card";
+import { portionsFor, type FoodItem } from "@/lib/food-portions";
 
-// In demo mode every food id is a slug the store keeps as-is; live, only a
-// real foods.id survives (the server drops anything else), so a product that
-// came straight from Open Food Facts is keyed by name. Mirrored here so the
-// star state the client shows matches the row the server wrote.
-const IS_DEMO = !process.env.NEXT_PUBLIC_SUPABASE_URL;
+// Only a real foods.id survives a write (the server drops anything else), so a
+// product that came straight from Open Food Facts is keyed by name instead.
+// Mirrored here so the star state the client shows matches the row the server
+// actually wrote.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const storableId = (id: string | null | undefined): string | null => (id && (IS_DEMO || UUID_RE.test(id)) ? id : null);
+const storableId = (id: string | null | undefined): string | null => (id && UUID_RE.test(id) ? id : null);
 const keyOf = (foodId: string | null, name: string) => foodId || `name:${name.trim().toLowerCase()}`;
-const nameOf = (food: DemoFood) => food.name_ro || food.name_en;
+const nameOf = (food: FoodItem) => food.name_ro || food.name_en;
 
-function toDemoFood(q: QuickFood): DemoFood {
+function toFoodItem(q: QuickFood): FoodItem {
   return { id: q.food_id ?? "", name_en: q.name, name_ro: q.name, group: q.group ?? "", per_100g: q.per_100g, portions: q.portions };
 }
-function toQuick(food: DemoFood, lastGrams: number | null): QuickFood {
+function toQuick(food: FoodItem, lastGrams: number | null): QuickFood {
   return {
     food_id: storableId(food.id),
     name: nameOf(food),
@@ -61,13 +60,13 @@ export function FoodLogger({
   const fl = t.clientWidgets.foodLogger;
   const router = useRouter();
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<DemoFood[]>([]);
-  const [picked, setPicked] = useState<DemoFood | null>(null);
+  const [results, setResults] = useState<FoodItem[]>([]);
+  const [picked, setPicked] = useState<FoodItem | null>(null);
   const [grams, setGrams] = useState("100");
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
-  const [scanned, setScanned] = useState<{ food: DemoFood; barcode: string } | null>(null);
+  const [scanned, setScanned] = useState<{ food: FoodItem; barcode: string } | null>(null);
   const [pending, startTransition] = useTransition();
   // Stars flip optimistically; the server's list only replaces this on the
   // next full render, so the set here is the source of truth while open.
@@ -87,7 +86,7 @@ export function FoodLogger({
 
   // A food sold by the piece opens on its middle size rather than 100 g, which
   // is a quantity nobody ever ate; a food logged before opens on that portion.
-  function pick(food: DemoFood, lastGrams: number | null = null) {
+  function pick(food: FoodItem, lastGrams: number | null = null) {
     const sizes = portionsFor(food);
     setPicked(food);
     if (lastGrams !== null && lastGrams > 0) {
@@ -100,7 +99,7 @@ export function FoodLogger({
     }
   }
 
-  function toggleStar(food: DemoFood, lastGrams: number | null) {
+  function toggleStar(food: FoodItem, lastGrams: number | null) {
     const foodId = storableId(food.id);
     const key = keyOf(foodId, nameOf(food));
     const was = favKeys.has(key);
@@ -125,12 +124,12 @@ export function FoodLogger({
   const showQuick = q.trim() === "" && (favs.length > 0 || recent.length > 0);
 
   /** "150 g · 248 kcal" for a food logged before, else the per-100 g figure. */
-  const metaFor = (food: DemoFood, lastGrams: number | null) =>
+  const metaFor = (food: FoodItem, lastGrams: number | null) =>
     lastGrams !== null && lastGrams > 0
       ? `${lastGrams} g · ${portionMacros(food.per_100g, lastGrams).kcal} kcal`
       : `${food.per_100g.kcal} kcal/100 g`;
 
-  const row = (food: DemoFood, lastGrams: number | null, keyPrefix: string) => (
+  const row = (food: FoodItem, lastGrams: number | null, keyPrefix: string) => (
     <FoodRow
       key={`${keyPrefix}-${food.id || nameOf(food)}`}
       food={food}
@@ -330,7 +329,7 @@ export function FoodLogger({
                 <section>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-ink">★ {fl.favorites}</p>
                   <ul className="mt-1 divide-y divide-line">
-                    {favs.map((f) => row(toDemoFood(f), f.last_grams, "fav"))}
+                    {favs.map((f) => row(toFoodItem(f), f.last_grams, "fav"))}
                   </ul>
                 </section>
               ) : null}
@@ -338,7 +337,7 @@ export function FoodLogger({
                 <section>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">🕒 {fl.recent}</p>
                   <ul className="mt-1 divide-y divide-line">
-                    {recent.map((r) => row(toDemoFood(r), r.last_grams, "recent"))}
+                    {recent.map((r) => row(toFoodItem(r), r.last_grams, "recent"))}
                   </ul>
                 </section>
               ) : null}
@@ -360,7 +359,7 @@ export function FoodLogger({
 }
 
 /** The small group icon: the table's group when set, else a guess from the name. */
-function GroupIcon({ food }: { food: DemoFood }) {
+function GroupIcon({ food }: { food: FoodItem }) {
   const { t } = useI18n();
   const group = foodGroupOf(food);
   return (
@@ -381,7 +380,7 @@ function GroupIcon({ food }: { food: DemoFood }) {
  * not pick the food, and a button inside a button is invalid HTML anyway.
  */
 function FoodRow({ food, meta, starred, onPick, onStar }: {
-  food: DemoFood;
+  food: FoodItem;
   meta: string;
   starred: boolean;
   onPick: () => void;

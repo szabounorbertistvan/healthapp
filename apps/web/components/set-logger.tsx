@@ -23,8 +23,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
 
   // Grouped by the prescribed row, not the exercise name: a day may program the
   // same lift twice (heavy, then a back-off block) and each block owns its own
-  // count and set numbering. Rows with no link — demo history, sets logged
-  // before program_exercise_id was carried through — fall back to the name.
+  // count and set numbering. Rows with no link — sets logged before
+  // program_exercise_id was carried through — fall back to the name.
   const setsFor = useMemo(() => {
     const byBlock = new Map<string, LoggedSetRow[]>();
     for (const exercise of day.exercises) {

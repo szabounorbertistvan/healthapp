@@ -4,7 +4,6 @@ import { getMyChallenges } from "@/lib/challenges-data";
 import { getMyWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getMyStreak } from "@/lib/streak-data";
 import { hasChosenSolo } from "@/lib/onboarding";
-import { isoDay } from "@/lib/demo-client-store";
 import { Card, EmptyState } from "@/components/ui";
 import { LinkRow, TodayChecklist, WeekCard } from "@/components/today-dashboard";
 import { TrainingLoadSummaryCard } from "@/components/training-load";
@@ -14,6 +13,7 @@ import { timeAgo } from "@/lib/format";
 import { parseDay } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
+import { isoDay } from "@/lib/dates";
 
 /**
  * Today, phone-first, top to bottom: the date, today's checklist (the one

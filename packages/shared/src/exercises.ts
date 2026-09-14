@@ -1,5 +1,5 @@
 // Exercise library (W5). One row shape for the whole app: it matches what
-// import-exercises upserts into `exercises`, so the demo seed in
+// import-exercises upserts into `exercises`, so the seed in
 // supabase/seed/exercises.json and a live database are interchangeable.
 
 import { matchesQuery, normalizeForSearch } from "./text";

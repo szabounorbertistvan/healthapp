@@ -1,6 +1,5 @@
 import { normalizeForSearch } from "@healthapp/shared";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
-import { demoFoods } from "@/lib/demo-foods";
+import { supabaseServer } from "@/lib/supabase/server";
 
 // Reads for /admin/foods — the translation desk for the shared food library.
 
@@ -20,23 +19,6 @@ export async function getFoodsForTranslation(opts: {
 }): Promise<{ rows: TranslatableFood[]; missing: number }> {
   const q = opts.q?.trim() ?? "";
 
-  if (isDemo) {
-    // Demo rows all carry Romanian names, so the "missing" view is empty by
-    // design; the search still works for a look at the screen.
-    const needle = normalizeForSearch(q);
-    const rows = demoFoods
-      .filter((f) => !needle || normalizeForSearch(`${f.name_en} ${f.name_ro}`).includes(needle))
-      .filter((f) => !opts.onlyMissing || !f.name_ro)
-      .slice(0, FOOD_TRANSLATION_PAGE)
-      .map((f) => ({
-        id: f.id,
-        source: "demo",
-        name_en: f.name_en,
-        name_ro: f.name_ro,
-        kcal_100g: f.per_100g.kcal,
-      }));
-    return { rows, missing: 0 };
-  }
 
   const supabase = await supabaseServer();
 

@@ -17,7 +17,10 @@ export function InviteButton({ disabled = false }: { disabled?: boolean }) {
       if (result.ok && result.code) setCode(result.code);
       else if (result.message?.includes("CLIENT_LIMIT_REACHED"))
         setError(m.limitReachedUpgrade);
-      else setError(result.message ?? m.createError);
+      // Anything else is an infrastructure fault, not something a coach can act
+      // on: "function gen_random_bytes(integer) does not exist" was reaching
+      // this span verbatim. The raw text is logged server-side in createInvite.
+      else setError(m.createError);
     });
   }
 

@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { NutritionPlanDetail, PlanMealRow } from "@/lib/types";
-import type { DemoFood } from "@/lib/demo-foods";
 import {
   addPlanFood,
   publishNutritionPlan,
@@ -13,6 +12,7 @@ import {
 import { Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";
+import { type FoodItem } from "@/lib/food-portions";
 
 // W6 · Nutrition plan builder. Targets and plan totals stay visible at all
 // times: the coach is composing against a number, and finding out afterwards
@@ -148,7 +148,7 @@ function MealCard({
   onToggle: () => void;
   onGrams: (rowId: string, grams: number) => void;
   onRemove: (rowId: string) => void;
-  onPick: (food: DemoFood, grams: number) => void;
+  onPick: (food: FoodItem, grams: number) => void;
 }) {
   const { t } = useI18n();
   const m = t.coachWidgets.nutritionBuilder;
@@ -252,11 +252,11 @@ function GramsInput({
   );
 }
 
-function FoodPicker({ onPick }: { onPick: (food: DemoFood, grams: number) => void }) {
+function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => void }) {
   const { t } = useI18n();
   const m = t.coachWidgets.nutritionBuilder;
   const [q, setQ] = useState("");
-  const [foods, setFoods] = useState<DemoFood[]>([]);
+  const [foods, setFoods] = useState<FoodItem[]>([]);
   const [, startTransition] = useTransition();
 
   useEffect(() => {

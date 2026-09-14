@@ -10,7 +10,26 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
-export const isDemo = !url;
+/**
+ * Fail loudly, but only once someone actually needs a client.
+ *
+ * Deliberately not a module-scope throw: CI runs `npm run build` without any
+ * Supabase variables set, and Next evaluates this module while prerendering
+ * the static routes (landing, privacy, terms) that never touch Supabase at
+ * all. Throwing on import would break the build for pages that do not need a
+ * backend. Throwing here means a missing variable surfaces on the first
+ * request that needs data, naming the variable instead of failing somewhere
+ * inside @supabase/ssr with an opaque URL error.
+ */
+function requireConfig() {
+  if (!url || !anonKey) {
+    throw new Error(
+      "Supabase is not configured: set NEXT_PUBLIC_SUPABASE_URL and " +
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY in apps/web/.env.local (copy .env.example).",
+    );
+  }
+  return { url, anonKey };
+}
 
 /**
  * One Supabase client per request.
@@ -23,10 +42,11 @@ export const isDemo = !url;
  * client refreshes once and everyone else sees the result.
  */
 export const supabaseServer = cache(async () => {
+  const config = requireConfig();
   const cookieStore = await cookies();
   return createServerClient(
-    url,
-    anonKey,
+    config.url,
+    config.anonKey,
     {
       cookies: {
         getAll() {
@@ -48,7 +68,6 @@ export const supabaseServer = cache(async () => {
 
 /** The signed-in user's id, or null. Resolved once per request. */
 export const currentUserId = cache(async (): Promise<string | null> => {
-  if (isDemo) return null;
   const supabase = await supabaseServer();
   return userIdFromClient(supabase, (error) => {
     console.error("[auth] getClaims failed, falling back to getUser:", error);
@@ -64,8 +83,8 @@ export type LiveUser = {
  * The live Supabase client plus the signed-in id, or null.
  *
  * Replaces the four-line `supabaseServer` + `currentUserId` + early-return
- * that every read and write used to open with. Demo branches return before
- * they get here; a null here always means "not signed in".
+ * that every read and write used to open with. A null here always means
+ * "not signed in".
  */
 export const liveUser = cache(async (): Promise<LiveUser | null> => {
   const supabase = await supabaseServer();

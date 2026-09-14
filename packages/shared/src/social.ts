@@ -1,5 +1,5 @@
-// Social feed — the rules the database enforces, mirrored here so the demo
-// store, the server actions and the UI agree: who may see a post, what a
+// Social feed — the rules the database enforces, mirrored here so the server
+// actions and the UI agree: who may see a post, what a
 // workout post is allowed to carry, how a page of the feed is cut, how text
 // is validated. Nothing sensitive is derived here: a post's payload is a
 // snapshot the author chose to publish, never a live read of their logs.

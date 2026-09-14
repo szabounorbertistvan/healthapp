@@ -4,7 +4,7 @@
 // @healthapp/shared; this file only adapts row shapes to it.
 import { sessionDurationMin, trainingLoad, type TrainingLoad } from "@healthapp/shared";
 
-/** What a set must carry to be scored — the demo store and the live rows both map onto it. */
+/** What a set must carry to be scored. */
 export type LoadSetInput = {
   weight_kg: number | null;
   reps: number | null;

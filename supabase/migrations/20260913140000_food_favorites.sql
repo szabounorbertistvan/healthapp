@@ -34,3 +34,10 @@ create index food_favorites_user_idx on public.food_favorites (user_id, created_
 alter table public.food_favorites enable row level security;
 create policy food_favorites_owner on public.food_favorites for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- A policy filters rows; it does not confer the right to touch the table, and
+-- the ambient defaults do not reach tables created by `postgres` (see the long
+-- note in 20260826075027). The owner policy is FOR ALL, so the grant is the
+-- four commands it covers — without this every query here fails with
+-- "permission denied for table food_favorites".
+grant select, insert, update, delete on table public.food_favorites to authenticated;

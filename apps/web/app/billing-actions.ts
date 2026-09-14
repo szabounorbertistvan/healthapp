@@ -10,7 +10,7 @@ import {
   type PaidTier,
   type PlanInterval,
 } from "@healthapp/shared";
-import { isDemo, supabaseServer } from "@/lib/supabase/server";
+import { supabaseServer } from "@/lib/supabase/server";
 import type { ActionResult } from "./actions";
 
 function stripeClient(): Stripe | null {
@@ -28,7 +28,6 @@ export async function startCheckout(
   interval: PlanInterval,
   returnPath: string,
 ): Promise<ActionResult & { url?: string }> {
-  if (isDemo) return { ok: true, demo: true };
   const stripe = stripeClient();
   if (!stripe) return { ok: false, message: "Billing is not configured (STRIPE_SECRET_KEY missing)." };
 
@@ -70,7 +69,6 @@ export async function startCheckout(
 
 /** Opens the Stripe customer portal (plan changes, cancellation, invoices). */
 export async function openBillingPortal(returnPath: string): Promise<ActionResult & { url?: string }> {
-  if (isDemo) return { ok: true, demo: true };
   const stripe = stripeClient();
   if (!stripe) return { ok: false, message: "Billing is not configured (STRIPE_SECRET_KEY missing)." };
 
@@ -94,7 +92,6 @@ export async function openBillingPortal(returnPath: string): Promise<ActionResul
 
 /** Admin comp: grant or revoke any tier for free (SQL enforces is_admin). */
 export async function adminSetTier(userId: string, tier: string): Promise<ActionResult> {
-  if (isDemo) return { ok: true, demo: true };
   const supabase = await supabaseServer();
   const { error } = await supabase.rpc("admin_set_tier", {
     target_user: userId,

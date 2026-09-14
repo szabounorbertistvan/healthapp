@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { isDemo } from "@/lib/supabase/server";
 import { displayName, getProfile } from "@/lib/data";
 import { NavLinks, CoachTabBar } from "@/components/nav-links";
 import { LanguageSelector } from "@/components/language-selector";
@@ -8,17 +7,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { TIER_LABEL } from "@/lib/entitlements";
 import { Logo } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
-import { ViewSwitcher } from "@/components/view-switcher";
-import { viewableClients } from "@/app/view-actions";
 import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
-  const clients = isDemo ? await viewableClients() : [];
   if (!profile) redirect("/");
   // the coach web area is for coaches and admins; clients have their own surface
   if (profile.role === "client") redirect("/today");
-  if (!isDemo && !profile.username) redirect("/complete-profile");
+  if (!profile.username) redirect("/complete-profile");
   const { t } = await getI18n();
 
   return (
@@ -36,12 +32,6 @@ export default async function CoachLayout({ children }: { children: React.ReactN
             <LanguageSelector />
             <ThemeToggle />
           </div>
-          {isDemo ? <ViewSwitcher surface="coach" clients={clients} /> : null}
-          {isDemo ? (
-            <p className="rounded-lg bg-warn-soft px-3 py-2 text-[11px] leading-snug text-warn">
-              <b>{t.common.demoNotice.title}</b> — {t.common.demoNotice.body}
-            </p>
-          ) : null}
           <SignOutButton />
         </div>
       </aside>

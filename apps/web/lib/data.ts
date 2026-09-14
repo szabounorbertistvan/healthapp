@@ -1,16 +1,7 @@
-// Server-side data access. Demo mode (no NEXT_PUBLIC_SUPABASE_URL) serves
-// fixtures; live mode goes through Supabase under RLS.
+// Server-side data access. Everything goes through Supabase under RLS.
 import "server-only";
 import { cache } from "react";
-import {
-  demoAdminStats, demoCheckIns, demoClients, demoConversations, demoDashboard,
-  demoMessages, demoNutritionPlans, demoProfile,
-} from "./demo";
-import { isDemo, liveUser, supabaseServer } from "./supabase/server";
-import {
-  demoClientRows, demoDashboardRows, demoRoster, store,
-  type StoredPlan, type StoredProgram,
-} from "./demo-store";
+import { liveUser, supabaseServer } from "./supabase/server";
 import { effectiveTier, portionMacros, sumMacros } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import type {
@@ -19,10 +10,7 @@ import type {
 } from "./types";
 import type { Role, Tier } from "./entitlements";
 
-export { isDemo };
-
 export const getProfile = cache(async (): Promise<Profile | null> => {
-  if (isDemo) return demoProfile;
   const live = await liveUser();
   if (!live) return null;
   const { supabase, userId } = live;
@@ -68,7 +56,6 @@ export function ageFrom(birthYear: number | null): number | null {
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
-  if (isDemo) return demoAdminStats;
   const supabase = await supabaseServer();
   const [{ count: total }, { data: roleRows }, { count: rels }, { data: tierRows }, { data: recent }] =
     await Promise.all([
@@ -127,12 +114,6 @@ export async function searchUsers(query: string): Promise<AdminUserRow[]> {
   const needle = query.replace(/[%_,()"\\]/g, " ").trim();
   if (!needle) return [];
 
-  if (isDemo) {
-    const lower = needle.toLowerCase();
-    return demoAdminStats.recent_users.filter((u) =>
-      u.full_name.toLowerCase().includes(lower),
-    );
-  }
 
   const supabase = await supabaseServer();
   const { data, error } = await supabase
@@ -146,7 +127,6 @@ export async function searchUsers(query: string): Promise<AdminUserRow[]> {
 }
 
 export async function getDashboard(): Promise<DashboardRow[]> {
-  if (isDemo) return demoDashboardRows();
   const supabase = await supabaseServer();
   const { data, error } = await supabase.rpc("coach_dashboard");
   if (error) throw error;
@@ -154,7 +134,6 @@ export async function getDashboard(): Promise<DashboardRow[]> {
 }
 
 export async function getClients(): Promise<ClientRow[]> {
-  if (isDemo) return demoClientRows();
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("trainer_clients")
@@ -205,7 +184,6 @@ async function clientLoad7d(
 }
 
 export async function getCheckIns(): Promise<CheckInRow[]> {
-  if (isDemo) return demoCheckIns;
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("check_ins")
@@ -228,12 +206,6 @@ export async function getCheckIns(): Promise<CheckInRow[]> {
 }
 
 export async function getPrograms(): Promise<ProgramRow[]> {
-  if (isDemo) {
-    return store().programs.map((p) => ({
-      id: p.id, name: p.name, client_name: p.client_name, status: p.status,
-      days: p.days.length, updated_at: p.updated_at,
-    }));
-  }
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("programs")
@@ -248,10 +220,6 @@ export async function getPrograms(): Promise<ProgramRow[]> {
 }
 
 export async function getProgram(id: string): Promise<ProgramDetail | null> {
-  if (isDemo) {
-    const program = store().programs.find((p) => p.id === id);
-    return program ? toProgramDetail(program) : null;
-  }
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("programs")
@@ -297,13 +265,6 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
 }
 
 export async function getNutritionPlans(): Promise<NutritionPlanRow[]> {
-  if (isDemo) {
-    return store().plans.map((p) => ({
-      id: p.id, name: p.name, client_name: p.client_name, status: p.status,
-      kcal_target: p.kcal_target, protein_target_g: p.protein_target_g,
-      carbs_target_g: p.carbs_target_g, fat_target_g: p.fat_target_g,
-    }));
-  }
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("nutrition_plans")
@@ -319,7 +280,6 @@ export async function getNutritionPlans(): Promise<NutritionPlanRow[]> {
 }
 
 export async function getConversations(): Promise<ConversationRow[]> {
-  if (isDemo) return demoConversations;
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("conversations")
@@ -339,7 +299,6 @@ export async function getConversations(): Promise<ConversationRow[]> {
 }
 
 export async function getMessages(conversationId: string): Promise<MessageRow[]> {
-  if (isDemo) return demoMessages[conversationId] ?? [];
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -357,7 +316,6 @@ export async function getMessages(conversationId: string): Promise<MessageRow[]>
 
 /** Clients a program or plan can be assigned to. */
 export async function getRoster(): Promise<{ id: string; name: string }[]> {
-  if (isDemo) return demoRoster();
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("trainer_clients")
@@ -370,43 +328,8 @@ export async function getRoster(): Promise<{ id: string; name: string }[]> {
     .map((c) => ({ id: c.id, name: c.full_name }));
 }
 
-/** Store row -> the shape the program screens already render. */
-function toProgramDetail(program: StoredProgram): ProgramDetail {
-  return {
-    id: program.id,
-    name: program.name,
-    client_name: program.client_name,
-    status: program.status,
-    intensity_mode: program.intensity_mode,
-    week: 1,
-    weeks: program.weeks,
-    days: program.days.map((day) => ({
-      id: day.id,
-      name: day.name,
-      muscle_groups: day.muscle_groups ?? [],
-      exercises: [...day.exercises]
-        .sort((a, b) => a.position - b.position)
-        .map((e) => ({
-          id: e.id,
-          exercise: e.exercise_name,
-          sets: e.target_sets,
-          reps: e.target_reps,
-          weight: e.target_weight_kg ? `${e.target_weight_kg} kg` : "—",
-          rpe: e.target_rpe?.toString() ?? "—",
-          rest: e.rest_seconds ? `${e.rest_seconds}s` : "—",
-          weight_kg: e.target_weight_kg,
-          rpe_value: e.target_rpe,
-          rest_seconds: e.rest_seconds,
-        })),
-    })),
-  };
-}
 
 export async function getNutritionPlan(id: string): Promise<NutritionPlanDetail | null> {
-  if (isDemo) {
-    const plan = store().plans.find((p) => p.id === id);
-    return plan ? toPlanDetail(plan) : null;
-  }
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("nutrition_plans")
@@ -455,27 +378,3 @@ export async function getNutritionPlan(id: string): Promise<NutritionPlanDetail 
 
 type PlanSlot = "breakfast" | "lunch" | "dinner" | "snack";
 
-/**
- * Totals are computed here from per-100g values, never stored — the same
- * functions the client app uses, so both surfaces show one number.
- */
-function toPlanDetail(plan: StoredPlan): NutritionPlanDetail {
-  const meals = [...plan.meals]
-    .sort((a, b) => a.position - b.position)
-    .map((meal) => {
-      const foods = meal.foods.map((food) => ({
-        id: food.id,
-        food_name: food.food_name,
-        grams: food.grams,
-        macros: portionMacros(food.per_100g, food.grams),
-      }));
-      return { id: meal.id, slot: meal.slot, name: meal.name, foods, totals: sumMacros(foods.map((f) => f.macros)) };
-    });
-
-  return {
-    id: plan.id, name: plan.name, client_name: plan.client_name, status: plan.status,
-    kcal_target: plan.kcal_target, protein_target_g: plan.protein_target_g,
-    carbs_target_g: plan.carbs_target_g, fat_target_g: plan.fat_target_g,
-    meals, totals: sumMacros(meals.map((m) => m.totals)),
-  };
-}

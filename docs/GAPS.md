@@ -14,10 +14,10 @@ for it and unused: `supabase/functions/sync-ingest` (offline outbox),
 `supabase/functions/push-dispatch` (`users.push_token` is never written by any
 client), and `packages/shared/src/sync.ts`.
 
-**Live Supabase branches are unproven.** Both builders say so in their own
-header comments — `builder-actions.ts:10` and `nutrition-actions.ts:11`. The demo
-branch is the one that has actually run. Expect column-name and join surprises the
-first time a real database is attached.
+**The coach builders are unproven.** Both say so in their own header comments —
+`builder-actions.ts` and `nutrition-actions.ts`. Since demo mode was removed on
+2026-09-14 there is no fallback behind them: they are the only path, and they
+have not been driven end-to-end. Expect column-name and join surprises.
 
 **Tests cover only domain math.** Vitest is scoped to
 `packages/**/src/**/*.test.ts`. Nothing tests a component, a server action, or a
@@ -88,6 +88,6 @@ writes or reads per-set coach feedback.
 
 - `lib/data.ts:124` — `previous: null // TODO: fetch previous week in one query`,
   so week-over-week deltas on the coach dashboard are absent.
-- `lib/view-mode.ts` admin coach/client switching is demo-only by design; a live
-  equivalent is a real access-control decision about health data and should not
-  be added casually.
+- Admin coach/client view switching no longer exists — `lib/view-mode.ts` went
+  with demo mode on 2026-09-14. A live equivalent is a real access-control
+  decision about health data and should not be added casually.

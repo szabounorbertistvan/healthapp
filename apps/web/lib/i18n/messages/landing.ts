@@ -13,8 +13,6 @@ const en = {
       { title: "Eat", body: "Meal plans, barcode scanning and macros that add up." },
       { title: "Progress", body: "Weight, strength and adherence on one timeline." },
     ],
-    browseCoachDemo: "Browse the coach demo",
-    browseClientDemo: "Browse the client demo",
     forYou: "For you",
     forCoaches: "For coaches",
     clientBenefits: [
@@ -39,7 +37,6 @@ const en = {
       "Română + English · offline logging · your data stays yours (GDPR export & delete built in)",
   },
   login: {
-    demoNotice: "Demo mode — sign-in is skipped. Connect Supabase to enable real auth.",
     email: "Email",
     password: "Password",
     repeatPassword: "Repeat password",
@@ -117,8 +114,6 @@ const ro: typeof en = {
       { title: "Mănâncă", body: "Planuri de mese, scanare de coduri de bare și macro care se adună." },
       { title: "Progresează", body: "Greutate, forță și aderență pe o singură cronologie." },
     ],
-    browseCoachDemo: "Vezi demo-ul pentru antrenori",
-    browseClientDemo: "Vezi demo-ul pentru clienți",
     forYou: "Pentru tine",
     forCoaches: "Pentru antrenori",
     clientBenefits: [
@@ -143,7 +138,6 @@ const ro: typeof en = {
       "Română + English · logare offline · datele rămân ale tale (export și ștergere GDPR incluse)",
   },
   login: {
-    demoNotice: "Mod demo — autentificarea este omisă. Conectează Supabase pentru autentificare reală.",
     email: "Email",
     password: "Parolă",
     repeatPassword: "Repetă parola",
