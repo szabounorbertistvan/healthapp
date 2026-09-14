@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isDemo, supabaseBrowser, enabledOAuthProviders } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/client";
-import { authErrorKey } from "@/lib/auth-errors";
+import { authErrorMessage } from "@/lib/auth-errors";
 import { usernameAvailable } from "@/app/profile-actions";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
@@ -100,7 +100,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
     if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setBusy(false);
-      if (error) setError(t.login[authErrorKey(error)]);
+      if (error) setError(authErrorMessage(error, t.login));
       else router.push("/dashboard");
       return;
     }
@@ -131,7 +131,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
       });
       setBusy(false);
       if (error) {
-        setError(t.login[authErrorKey(error)]);
+        setError(authErrorMessage(error, t.login));
         return;
       }
       // With confirmations on, Supabase hides "already registered" behind a
@@ -151,7 +151,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
       redirectTo: `${origin}/auth/callback?next=/reset-password`,
     });
     setBusy(false);
-    if (error) setError(t.login[authErrorKey(error)]);
+    if (error) setError(authErrorMessage(error, t.login));
     else setDone({ kind: "reset", email });
   }
 

@@ -6,7 +6,7 @@ import { isDemo, supabaseBrowser } from "@/lib/supabase/client";
 import { Logo } from "@/components/logo";
 import { useI18n } from "@/lib/i18n/client";
 import { LanguageSelector } from "@/components/language-selector";
-import { authErrorKey } from "@/lib/auth-errors";
+import { authErrorMessage } from "@/lib/auth-errors";
 
 const MIN_PASSWORD = 8;
 
@@ -58,7 +58,7 @@ export default function ResetPasswordPage() {
     const { error } = await supabaseBrowser().auth.updateUser({ password });
     setBusy(false);
     if (error) {
-      setError(t.login[authErrorKey(error)]);
+      setError(authErrorMessage(error, t.login));
       return;
     }
     setUpdated(true);
