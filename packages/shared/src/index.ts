@@ -14,3 +14,5 @@ export * from "./challenges";
 export * from "./weekly-summary";
 export * from "./social";
 export * from "./streaks";
+export * from "./leaderboard";
+export * from "./program-editing";

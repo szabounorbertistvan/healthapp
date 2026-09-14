@@ -3,11 +3,13 @@ import { getMySessions, getToday, isEmptyAccount } from "@/lib/client-data";
 import { getMyChallenges } from "@/lib/challenges-data";
 import { getMyWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getMyStreak } from "@/lib/streak-data";
+import { getLeaderboard } from "@/lib/leaderboard-data";
 import { hasChosenSolo } from "@/lib/onboarding";
 import { Card, EmptyState } from "@/components/ui";
 import { LinkRow, TodayChecklist, WeekCard } from "@/components/today-dashboard";
 import { TrainingLoadSummaryCard } from "@/components/training-load";
 import { StreakCard } from "@/components/streak";
+import { LeaderboardSummaryCard } from "@/components/leaderboard";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
 import { timeAgo } from "@/lib/format";
 import { parseDay } from "@/lib/week";
@@ -43,11 +45,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     getMyWeeklySummary(weekChoice),
     getMySessions(3),
     getMyStreak(),
+    getLeaderboard("training_load", "week"),
   ]);
   reads.catch(() => {});
   if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
 
-  const [today, challenges, weekly, recent, streakView] = await reads;
+  const [today, challenges, weekly, recent, streakView, board] = await reads;
   if (!today) {
     return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
   }
@@ -94,6 +97,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       />
 
       {streakView ? <StreakCard view={streakView} compact /> : null}
+
+      <LeaderboardSummaryCard board={board} />
 
       <Card className="overflow-hidden p-0">
         <ul className="divide-y divide-line">
