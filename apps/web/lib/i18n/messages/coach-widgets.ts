@@ -44,6 +44,8 @@ const en = {
     noMatch: "No match. Live search comes from Open Food Facts once a backend is connected.",
     addedAt100: "Added at 100 g — adjust in the meal.",
     somethingWentWrong: "Something went wrong",
+    notFound: "Can't find what you're looking for?",
+    createFood: "Create a food",
   },
   exercisePicker: {
     searchPlaceholder: "Search exercises…",
@@ -58,6 +60,7 @@ const en = {
     loadMore: "Show more",
     noMatch: "Nothing matches. Create it as your own exercise below.",
     createExercise: "Create exercise",
+    notFound: "Can't find what you're looking for?",
   },
   newExerciseForm: {
     title: "New exercise",
@@ -202,6 +205,8 @@ const ro: typeof en = {
     noMatch: "Niciun rezultat. Căutarea live vine din Open Food Facts după conectarea unui backend.",
     addedAt100: "Adăugat la 100 g — ajustează în masă.",
     somethingWentWrong: "Ceva n-a mers bine",
+    notFound: "Nu găsești ce cauți?",
+    createFood: "Creează un aliment",
   },
   exercisePicker: {
     searchPlaceholder: "Caută exerciții…",
@@ -216,6 +221,7 @@ const ro: typeof en = {
     loadMore: "Arată mai multe",
     noMatch: "Nimic nu se potrivește. Creează-l ca exercițiu propriu mai jos.",
     createExercise: "Creează exercițiu",
+    notFound: "Nu găsești ce cauți?",
   },
   newExerciseForm: {
     title: "Exercițiu nou",

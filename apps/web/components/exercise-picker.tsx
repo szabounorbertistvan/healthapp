@@ -120,13 +120,25 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
         ) : null}
       </div>
 
-      <p className="text-xs text-ink-faint">
-        {loading
-          ? m.searching
-          : fill(total === 1 ? m.exercisesOne : total < 20 ? m.exercisesFew : m.exercisesMany, {
-              n: total,
-            })}
-        {total > results.length ? ` ${fill(m.showingFirst, { n: results.length })}` : ""}
+      <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs text-ink-faint">
+        <span>
+          {loading
+            ? m.searching
+            : fill(total === 1 ? m.exercisesOne : total < 20 ? m.exercisesFew : m.exercisesMany, {
+                n: total,
+              })}
+          {total > results.length ? ` ${fill(m.showingFirst, { n: results.length })}` : ""}
+        </span>
+        {/* The nudge sits next to the count once something is typed — a
+            match may be listed and still not be the one they mean. */}
+        {!creating && q.trim() && !loading && results.length > 0 ? (
+          <span>
+            {m.notFound}{" "}
+            <button type="button" onClick={() => setCreating(true)} className="font-semibold text-accent-ink hover:underline">
+              {m.createExercise}
+            </button>
+          </span>
+        ) : null}
       </p>
 
       <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">

@@ -1,5 +1,6 @@
 import { demoClients, demoDashboard, demoPrograms, demoProgramDetail, demoNutritionPlans } from "./demo";
 import type { ExerciseSummary } from "@healthapp/shared";
+import type { DemoFood } from "./demo-foods";
 import type { ClientRow, DashboardRow } from "./types";
 import { clientStore, daysAgoIso } from "./demo-client-store";
 import { loadOf } from "./training-load";
@@ -103,13 +104,15 @@ type Store = {
   plans: StoredPlan[];
   /** Exercises created in the app (exercises.owner_id set, source 'custom'). */
   customExercises: ExerciseSummary[];
+  /** Foods created in the app (foods.owner_id set, source 'custom'). */
+  customFoods: DemoFood[];
 };
 
 // Next.js hot-reloads modules in dev; without this the coach loses their work
 // on every file save. The version stamp is what makes that safe: a store kept
 // across a reload that added a field would otherwise be missing it, and every
 // reader would crash on undefined. Bump it whenever Store changes shape.
-const STORE_VERSION = 4;
+const STORE_VERSION = 5;
 
 const globalRef = globalThis as unknown as {
   __voinicDemoStore?: Store & { version?: number };
@@ -252,7 +255,7 @@ function seed(): Store {
     meals: n.id === "n1" ? seedMealsForMaria() : [],
   }));
 
-  return { clients, programs, plans, customExercises: [] };
+  return { clients, programs, plans, customExercises: [], customFoods: [] };
 }
 
 // The plan from WIREFRAMES W6, so the builder opens on something real.

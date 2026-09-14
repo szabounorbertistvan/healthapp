@@ -13,6 +13,7 @@ import {
 import { Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";
+import { NewFoodForm, NotFoundNote } from "@/components/new-food-form";
 
 // W6 · Nutrition plan builder. Targets and plan totals stay visible at all
 // times: the coach is composing against a number, and finding out afterwards
@@ -257,6 +258,7 @@ function FoodPicker({ onPick }: { onPick: (food: DemoFood, grams: number) => voi
   const m = t.coachWidgets.nutritionBuilder;
   const [q, setQ] = useState("");
   const [foods, setFoods] = useState<DemoFood[]>([]);
+  const [creating, setCreating] = useState(false);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -266,6 +268,21 @@ function FoodPicker({ onPick }: { onPick: (food: DemoFood, grams: number) => voi
     return () => clearTimeout(timer);
   }, [q]);
 
+  if (creating) {
+    return (
+      <NewFoodForm
+        initialName={q}
+        primaryLabel={t.clientWidgets.newFoodForm.saveAndLog}
+        onCreated={(food) => {
+          setCreating(false);
+          setFoods((current) => [food, ...current]);
+          onPick(food, 100);
+        }}
+        onCancel={() => setCreating(false)}
+      />
+    );
+  }
+
   return (
     <div className="flex min-h-0 flex-col gap-3">
       <input
@@ -274,6 +291,7 @@ function FoodPicker({ onPick }: { onPick: (food: DemoFood, grams: number) => voi
         placeholder={m.searchFoods}
         className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
       />
+      <NotFoundNote question={m.notFound} action={m.createFood} onClick={() => setCreating(true)} className="" />
       <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {foods.map((food) => (
           <li key={food.id} className="rounded-lg border border-line bg-bg p-2.5">

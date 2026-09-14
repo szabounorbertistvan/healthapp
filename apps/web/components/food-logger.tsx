@@ -11,6 +11,7 @@ import { FOOD_GROUP_ICON, foodGroupOf } from "@/lib/food-groups";
 import type { MealSlot, QuickFood, QuickFoods } from "@/lib/types";
 import { BarcodeScanner } from "./barcode-scanner";
 import { ProductCard } from "./product-card";
+import { NewFoodForm, NotFoundNote } from "./new-food-form";
 
 // In demo mode every food id is a slug the store keeps as-is; live, only a
 // real foods.id survives (the server drops anything else), so a product that
@@ -68,6 +69,7 @@ export function FoodLogger({
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanned, setScanned] = useState<{ food: DemoFood; barcode: string } | null>(null);
+  const [creating, setCreating] = useState(false);
   const [pending, startTransition] = useTransition();
   // Stars flip optimistically; the server's list only replaces this on the
   // next full render, so the set here is the source of truth while open.
@@ -322,7 +324,20 @@ export function FoodLogger({
             </p>
           ) : null}
 
-          {showQuick ? (
+          {creating ? (
+            <div className="mt-2">
+              <NewFoodForm
+                initialName={q}
+                primaryLabel={t.clientWidgets.newFoodForm.saveAndLog}
+                onCreated={(food) => {
+                  // Straight to the grams step: creating a food is one motion, not two.
+                  setCreating(false);
+                  pick(food);
+                }}
+                onCancel={() => setCreating(false)}
+              />
+            </div>
+          ) : showQuick ? (
             // No inner scroll here: a short list that clips inside a card reads
             // as complete on a phone, and the missing rows are never found.
             <div className="mt-2 space-y-3">
@@ -351,6 +366,7 @@ export function FoodLogger({
               ) : null}
             </ul>
           )}
+          {!creating ? <NotFoundNote question={fl.notFound} action={fl.createFood} onClick={() => setCreating(true)} /> : null}
         </>
       )}
 

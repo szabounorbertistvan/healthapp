@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { isDemo, liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
-import { normalizeForSearch } from "@healthapp/shared";
+import { matchesQuery, normalizeForSearch } from "@healthapp/shared";
 import { DEMO_COACH_ID, newId, store, type StoredPlan } from "@/lib/demo-store";
 import { demoFoods, findDemoFoodByBarcode, searchDemoFoods, type DemoFood } from "@/lib/demo-foods";
 import type { ActionResult } from "./actions";
@@ -17,7 +17,11 @@ import { notSignedIn } from "@/lib/action-result";
 // success. See docs/superpowers/specs/2026-09-08-s1-*.
 
 export async function searchFoods(q: string): Promise<DemoFood[]> {
-  if (isDemo) return searchDemoFoods(q).slice(0, 30);
+  if (isDemo) {
+    // Foods made in this session sit ahead of the seed table, like custom exercises do.
+    const own = store().customFoods.filter((f) => !q.trim() || matchesQuery(`${f.name_en} ${f.name_ro}`, q));
+    return [...own, ...searchDemoFoods(q)].slice(0, 30);
+  }
 
   const supabase = await supabaseServer();
   const term = q.trim();
@@ -198,7 +202,7 @@ export async function addPlanFood(input: {
   if (isDemo) {
     const plan = find(input.planId);
     const meal = plan?.meals.find((m) => m.id === input.mealId);
-    const food = demoFoods.find((f) => f.id === input.foodId);
+    const food = store().customFoods.find((f) => f.id === input.foodId) ?? demoFoods.find((f) => f.id === input.foodId);
     if (!plan || !meal || !food) return { ok: false, message: "Meal or food not found" };
     meal.foods.push({
       id: newId("pmf"),
@@ -299,6 +303,64 @@ function find(planId: string): StoredPlan | undefined {
 export type BarcodeResult =
   | { ok: true; food: DemoFood }
   | { ok: false; reason: "invalid" | "not_found" | "upstream" };
+
+export type NewFoodInput = {
+  name: string;
+  /** Per 100 g, the basis the schema uses. */
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  brand?: string | null;
+};
+
+export type CreateFoodResult = { ok: true; food: DemoFood; demo?: boolean } | { ok: false; message: string };
+
+/**
+ * Create a food the search does not have — a home dish, a local product. The
+ * row lands in `foods` with source 'custom' and owner_id set (policy
+ * foods_custom_insert requires exactly that). A coach in the plan builder and
+ * a client in the food logger both call this; the created row comes back so
+ * the caller can log or add it in the same motion.
+ */
+export async function createCustomFood(input: NewFoodInput): Promise<CreateFoodResult> {
+  const name = input.name.trim();
+  if (name.length < 2) return { ok: false, message: "Give the food a name" };
+  const num = (v: number) => (Number.isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : NaN);
+  const per_100g = { kcal: num(input.kcal), protein: num(input.protein), carbs: num(input.carbs), fat: num(input.fat) };
+  if (Object.values(per_100g).some((v) => Number.isNaN(v))) return { ok: false, message: "Macros must be zero or more" };
+  if (per_100g.kcal > 900 || per_100g.protein > 100 || per_100g.carbs > 100 || per_100g.fat > 100) {
+    return { ok: false, message: "Those values are more than 100 g can hold" };
+  }
+  const brand = input.brand?.trim() || null;
+
+  if (isDemo) {
+    const food: DemoFood = { id: newId("cf"), name_en: name, name_ro: name, group: "", brand, per_100g, portions: [] };
+    store().customFoods.unshift(food);
+    return { ok: true, demo: true, food };
+  }
+
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const { data, error } = await supabase
+    .from("foods")
+    .insert({
+      source: "custom",
+      owner_id: userId,
+      name_en: name,
+      name_ro: name,
+      brand,
+      kcal_100g: per_100g.kcal,
+      protein_100g: per_100g.protein,
+      carbs_100g: per_100g.carbs,
+      fat_100g: per_100g.fat,
+    })
+    .select("id")
+    .single();
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, food: { id: data.id, name_en: name, name_ro: name, group: "", brand, per_100g, portions: [] } };
+}
 
 /**
  * Resolve a scanned barcode to a food.
