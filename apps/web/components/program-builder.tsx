@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import type { ProgramDetail } from "@/lib/types";
 import { addProgramDay, duplicateProgramDay, publishProgram, removeProgramDay } from "@/app/builder-actions";
 import { ProgramDayEditor } from "@/components/program-day-editor";
-import { Card } from "@/components/ui";
+import { NavIcon } from "@/components/client-nav";
+import { Card, EmptyState } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";
 
@@ -38,10 +39,10 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={program.status} />
-          <span className="text-sm text-ink-soft">
+          <span className="text-[12.5px] text-ink-soft">
             {program.client_name} ·{" "}
             {fill(
               program.weeks === 1 ? m.weeksOne : program.weeks < 20 ? m.weeksFew : m.weeksMany,
@@ -50,8 +51,8 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
             · {program.intensity_mode.toUpperCase()}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          {error ? <span className="text-sm text-risk">{error}</span> : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The label already carries its own "+", so no icon next to it. */}
           <button
             onClick={() =>
               run(() =>
@@ -59,7 +60,7 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
               )
             }
             disabled={pending}
-            className="rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:border-accent disabled:opacity-50"
+            className="inline-flex h-11 items-center rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
           >
             {m.addDay}
           </button>
@@ -67,26 +68,29 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
             onClick={() => run(() => publishProgram(program.id))}
             disabled={pending || isEmpty || program.status === "published"}
             title={isEmpty ? m.publishHint : undefined}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+            className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
           >
             {program.status === "published" ? m.published : m.publish}
           </button>
         </div>
       </div>
 
+      {/* Its own row rather than squeezed next to the buttons: a server message
+          is a sentence, not a chip. */}
+      {error ? (
+        <Card plain className="mt-3 bg-risk-soft">
+          <p className="text-sm font-semibold text-risk">{error}</p>
+        </Card>
+      ) : null}
+
       {program.status !== "published" ? (
-        <p className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn">
+        <p className="mt-3 rounded-2xl bg-warn-soft px-4 py-3 text-[12.5px] font-medium text-warn">
           {fill(m.draftNotice, { name: program.client_name })}
         </p>
       ) : null}
 
-      <div className="space-y-4">
-        {program.days.length === 0 ? (
-          <Card className="py-10 text-center">
-            <p className="font-semibold">{m.noDaysTitle}</p>
-            <p className="mt-1 text-sm text-ink-soft">{m.noDaysBody}</p>
-          </Card>
-        ) : null}
+      <div className="mt-5 space-y-4 sm:mt-6">
+        {program.days.length === 0 ? <EmptyState plain title={m.noDaysTitle} hint={m.noDaysBody} /> : null}
 
         {program.days.map((day, i) => (
           <ProgramDayEditor
@@ -104,7 +108,7 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
                 <button
                   onClick={() => run(() => duplicateProgramDay(program.id, day.id))}
                   disabled={pending}
-                  className="min-h-9 rounded-lg border border-line px-2.5 hover:border-accent disabled:opacity-50"
+                  className="inline-flex h-9 items-center rounded-full bg-bg px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
                 >
                   {m.duplicate}
                 </button>
@@ -113,9 +117,9 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
                   disabled={pending}
                   title={t.clientApp.workout.deleteDay}
                   aria-label={t.clientApp.workout.deleteDay}
-                  className="min-h-9 rounded-lg border border-line px-2.5 text-ink-faint hover:border-risk hover:text-risk disabled:opacity-50"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-bg text-ink-faint hover:bg-risk-soft hover:text-risk disabled:opacity-50"
                 >
-                  ×
+                  <NavIcon d="M5 7h14M10 11v6M14 11v6M9 7V4h6v3M6 7l1 13h10l1-13" className="h-[17px] w-[17px]" />
                 </button>
               </>
             }
@@ -129,9 +133,9 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
 function StatusBadge({ status }: { status: ProgramDetail["status"] }) {
   const { t } = useI18n();
   const styles =
-    status === "published" ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint";
+    status === "published" ? "bg-accent-soft text-accent-ink" : "bg-surface text-ink-faint";
   return (
-    <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ${styles}`}>
+    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${styles}`}>
       {t.coachWidgets.programBuilder.status[status]}
     </span>
   );

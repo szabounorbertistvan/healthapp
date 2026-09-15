@@ -1,5 +1,5 @@
 import { getMyCoachThread, hasActiveCoach } from "@/lib/client-data";
-import { Card, EmptyState, PageTitle } from "@/components/ui";
+import { Card, EmptyState } from "@/components/ui";
 import { JoinCoach } from "@/components/join-coach";
 import { MessageThread } from "@/components/message-thread";
 import { getI18n } from "@/lib/i18n/server";
@@ -15,13 +15,15 @@ export default async function CoachPage() {
   if (!coached) {
     return (
       <div className="mx-auto max-w-md">
-        <PageTitle title={t.common.nav.coach} />
+        <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
+          {t.common.nav.coach}
+        </h1>
         {/* This is the only way in for a client whose account is no longer
             empty: /welcome carries the same form but today/page.tsx stops
             redirecting there once they have a program or picked solo. */}
-        <Card className="space-y-2">
-          <p className="font-bold">{t.clientApp.coach.noCoachTitle}</p>
-          <p className="text-sm text-ink-soft">{t.clientApp.welcome.withCoachBody}</p>
+        <Card plain className="mt-5 space-y-3 sm:mt-6">
+          <p className="font-display text-lg font-bold tracking-tight">{t.clientApp.coach.noCoachTitle}</p>
+          <p className="text-[13.5px] leading-relaxed text-ink-soft">{t.clientApp.welcome.withCoachBody}</p>
           <JoinCoach autoFocus={false} />
         </Card>
       </div>
@@ -30,19 +32,26 @@ export default async function CoachPage() {
 
   if (!thread) {
     return (
-      <div>
-        <PageTitle title={t.common.nav.coach} />
-        <EmptyState
-          title={t.clientApp.coach.noMessagesTitle}
-          hint={t.clientApp.coach.noMessagesHint}
-        />
+      <div className="mx-auto max-w-3xl">
+        <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
+          {t.common.nav.coach}
+        </h1>
+        <div className="mt-5 sm:mt-6">
+          <EmptyState
+            plain
+            title={t.clientApp.coach.noMessagesTitle}
+            hint={t.clientApp.coach.noMessagesHint}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full max-w-2xl flex-col">
-      <PageTitle title={thread.coach_name} />
+    <div className="mx-auto flex h-full w-full max-w-3xl flex-col">
+      <h1 className="mb-4 font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
+        {thread.coach_name}
+      </h1>
       <MessageThread conversationId={thread.id} initialMessages={thread.messages} />
     </div>
   );

@@ -7,6 +7,7 @@ import { SwipeToDelete } from "@/components/swipe-to-delete";
 import { fill } from "@/lib/i18n";
 import { ProgramDayEditor } from "@/components/program-day-editor";
 import { MuscleGroupPicker, MUSCLE_GROUPS } from "@/components/muscle-group-picker";
+import { NavIcon } from "@/components/client-nav";
 import { Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import type { ProgramDetail } from "@/lib/types";
@@ -33,22 +34,22 @@ export function SoloProgramBuilder({ program, equipment = [] }: { program: Progr
 
   if (!program) {
     return (
-      <Card className="space-y-3">
+      <Card plain className="space-y-3 sm:p-5">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t.clientApp.builder.namePlaceholder}
-          className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+          className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
         />
         <button
           type="button"
           disabled={pending || !name.trim()}
           onClick={() => run(() => createSoloProgram({ name, intensityMode: "rir" }))}
-          className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-40"
+          className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
         >
           {t.clientApp.builder.create}
         </button>
-        {error ? <p className="text-sm text-risk">{error}</p> : null}
+        {error ? <p className="text-sm font-semibold text-risk">{error}</p> : null}
       </Card>
     );
   }
@@ -89,14 +90,14 @@ export function SoloProgramBuilder({ program, equipment = [] }: { program: Progr
         <p className="text-[11px] text-ink-faint sm:hidden">{t.clientApp.workout.swipeHint}</p>
       ) : null}
 
-      <Card className="space-y-3">
+      <Card plain className="space-y-3 sm:p-5">
         <input
           value={dayName}
           onChange={(e) => setDayName(e.target.value)}
           placeholder={t.clientApp.builder.dayNamePlaceholder}
-          className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+          className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
         />
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
           {t.clientApp.builder.muscleGroups}
         </p>
         <MuscleGroupPicker selected={groups} onChange={setGroups} />
@@ -113,8 +114,9 @@ export function SoloProgramBuilder({ program, equipment = [] }: { program: Progr
               return r;
             })
           }
-          className="w-full rounded-lg border border-line px-4 py-2 text-sm font-semibold hover:border-accent disabled:opacity-40"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-line text-sm font-semibold hover:border-accent hover:text-accent-ink disabled:opacity-40"
         >
+          <NavIcon d="M12 5v14M5 12h14" className="h-4 w-4 [stroke-width:2.2]" />
           {t.clientApp.builder.addDay}
         </button>
       </Card>
@@ -123,12 +125,12 @@ export function SoloProgramBuilder({ program, equipment = [] }: { program: Progr
         type="button"
         disabled={pending || program.status === "published" || program.days.every((d) => d.exercises.length === 0)}
         onClick={() => run(() => publishProgram(program.id))}
-        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-40"
+        className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
       >
         {program.status === "published" ? t.clientApp.builder.published : t.clientApp.builder.publish}
       </button>
-      <p className="text-xs text-ink-faint">{t.clientApp.builder.publishHint}</p>
-      {error ? <p className="text-sm text-risk">{error}</p> : null}
+      <p className="text-[12.5px] text-ink-faint">{t.clientApp.builder.publishHint}</p>
+      {error ? <p className="text-sm font-semibold text-risk">{error}</p> : null}
       <HaveACoach />
     </div>
   );
@@ -143,14 +145,20 @@ export function SoloProgramBuilder({ program, equipment = [] }: { program: Progr
 export function HaveACoach() {
   const { t } = useI18n();
   const c = t.clientApp.coachConnect;
+  // Full content width on the Training page, so the two halves must wrap: the
+  // label keeps the row, the pill drops under it when there is no room.
   return (
-    <Card className="flex flex-wrap items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="font-semibold">{c.haveCoach}</p>
-        <p className="text-xs text-ink-soft">{c.haveCoachBody}</p>
+    <Card plain className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 sm:p-5">
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-lg font-bold tracking-tight">{c.haveCoach}</p>
+        <p className="mt-0.5 text-[12.5px] leading-snug text-ink-faint">{c.haveCoachBody}</p>
       </div>
-      <Link href="/coach" className="min-h-11 shrink-0 rounded-lg border border-line px-4 py-2.5 text-sm font-semibold hover:border-accent">
+      <Link
+        href="/coach"
+        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-bg px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+      >
         {c.enterCode}
+        <NavIcon d="m9 6 6 6-6 6" className="h-[15px] w-[15px] [stroke-width:2.2]" />
       </Link>
     </Card>
   );

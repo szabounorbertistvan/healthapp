@@ -5,6 +5,7 @@ import { parseDecimal } from "@healthapp/shared";
 import { addMeasurement } from "@/app/client-actions-app";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
+import { NavIcon } from "./client-nav";
 
 export function MeasurementForm() {
   const { t } = useI18n();
@@ -19,12 +20,13 @@ export function MeasurementForm() {
   const parse = (v: string) => parseDecimal(v);
 
   return (
-    <Card>
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+    <Card plain>
+      <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <NavIcon d="M12 4a2 2 0 1 0 0 4 2 2 0 1 0 0-4M12 8v3M5 11h14l-2.5 9h-9zM8 14h8" className="h-[18px] w-[18px] text-accent-ink" />
         {t.clientWidgets.measurementForm.title}
       </p>
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1">
+      <div className="mt-3.5 flex flex-wrap items-end gap-2.5">
+        <label className="flex flex-col gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
             {t.clientWidgets.measurementForm.weightKg}
           </span>
@@ -32,10 +34,10 @@ export function MeasurementForm() {
             inputMode="decimal"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            className="w-24 rounded-lg border border-line bg-surface px-2 py-2 text-sm tabular-nums outline-none focus:border-accent"
+            className="w-24 rounded-xl border border-line bg-bg px-3 py-2.5 text-sm tabular-nums outline-none focus:border-accent"
           />
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
             {t.clientWidgets.measurementForm.waistCm}
           </span>
@@ -43,7 +45,7 @@ export function MeasurementForm() {
             inputMode="decimal"
             value={waist}
             onChange={(e) => setWaist(e.target.value)}
-            className="w-24 rounded-lg border border-line bg-surface px-2 py-2 text-sm tabular-nums outline-none focus:border-accent"
+            className="w-24 rounded-xl border border-line bg-bg px-3 py-2.5 text-sm tabular-nums outline-none focus:border-accent"
           />
         </label>
         <button
@@ -67,13 +69,13 @@ export function MeasurementForm() {
               router.refresh();
             })
           }
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
+          className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
         >
           {t.common.actions.save}
         </button>
       </div>
-      {error ? <p className="mt-2 text-sm font-semibold text-risk">{error}</p> : null}
-      {saved ? <p className="mt-2 text-sm text-accent-ink">{t.clientWidgets.measurementForm.saved}</p> : null}
+      {error ? <p className="mt-2.5 text-[13px] font-semibold text-risk">{error}</p> : null}
+      {saved ? <p className="mt-2.5 text-[13px] font-semibold text-accent-ink">{t.clientWidgets.measurementForm.saved}</p> : null}
     </Card>
   );
 }

@@ -50,3 +50,4 @@ env.download
 .vercel
 .env*
 !.env.example
+.exercise-images/

@@ -30,7 +30,7 @@ export function WorkoutHistory({ sessions, share }: {
   const [overrides, setOverrides] = useState<Record<string, Partial<WorkoutHistorySession["exercises"][number]["sets"][number]>>>({});
 
   if (sessions.length === 0) {
-    return <p className="text-sm text-ink-faint">{d.noHistory}</p>;
+    return <p className="px-1 text-sm text-ink-faint">{d.noHistory}</p>;
   }
 
   const fmt = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", {
@@ -47,20 +47,20 @@ export function WorkoutHistory({ sessions, share }: {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {sessions.map((session) => {
         const open = openIds.has(session.id);
         return (
-          <Card key={session.id} className="p-0">
+          <Card plain key={session.id} className="p-0">
             <button
               type="button"
               onClick={() => toggle(session.id)}
               aria-expanded={open}
-              className="flex w-full items-center justify-between gap-3 p-4 text-left"
+              className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
             >
               <div className="min-w-0">
-                <p className="font-semibold">{fmt.format(new Date(session.at))}</p>
-                <p className="mt-0.5 text-xs tabular-nums text-ink-faint">
+                <p className="text-[15px] font-semibold">{fmt.format(new Date(session.at))}</p>
+                <p className="mt-0.5 text-[12.5px] tabular-nums text-ink-faint">
                   {session.sets} {d.sets} · {session.volume_kg.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB")} kg {d.volume}
                   {session.prs > 0 ? (
                     <>
@@ -70,18 +70,18 @@ export function WorkoutHistory({ sessions, share }: {
                   ) : null}
                 </p>
               </div>
-              <span className="flex shrink-0 flex-col items-end gap-1">
+              <span className="flex shrink-0 flex-col items-end gap-1.5">
                 <TrainingLoadBadge load={session.load} showLabel={false} />
                 <span className="text-xs font-semibold text-ink-faint">{open ? d.hideSets : d.showSets}</span>
               </span>
             </button>
 
             {open ? (
-              <div className="space-y-3 border-t border-line p-4">
+              <div className="space-y-3.5 border-t border-line/60 px-5 pb-[18px] pt-4">
                 {share && session.sets > 0 ? (
                   <ShareWorkoutButton
                     card={shareCardFromHistory(session, share.dayName, share.profile)}
-                    className="min-h-9 rounded-lg border border-line px-3 text-xs font-semibold hover:border-accent disabled:opacity-50"
+                    className="inline-flex h-9 items-center rounded-full bg-bg px-3.5 text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
                   />
                 ) : null}
                 {session.exercises.map((exercise) => (
@@ -97,8 +97,8 @@ export function WorkoutHistory({ sessions, share }: {
                             title={s.notes ?? t.clientWidgets.setLogger.editSet}
                             aria-label={`${t.clientWidgets.setLogger.editSet}: ${s.weight_kg} kg × ${s.reps}`}
                             onClick={() => setEditing(editing === s.id ? null : s.id)}
-                            className={`min-h-8 rounded-md px-2 py-1 text-xs tabular-nums ${
-                              s.is_pr ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
+                            className={`min-h-8 rounded-[10px] px-2.5 py-1.5 text-xs tabular-nums ${
+                              s.is_pr ? "bg-accent font-semibold text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
                             } ${editing === s.id ? "ring-2 ring-accent-ink" : ""}`}
                           >
                             {s.weight_kg} kg × {s.reps}

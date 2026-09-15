@@ -158,7 +158,7 @@ export function FoodLogger({
       </div>
 
       {picked ? (
-        <div className="rounded-lg border border-line p-3">
+        <div className="rounded-2xl bg-bg p-3.5">
           <div className="flex items-start justify-between gap-2">
             <p className="flex min-w-0 items-center gap-2 font-semibold">
               <GroupIcon food={picked} />
@@ -186,8 +186,8 @@ export function FoodLogger({
                       type="button"
                       title={portion.note}
                       onClick={() => setGrams(String(portion.grams))}
-                      className={`rounded-md px-2.5 py-1.5 text-xs font-semibold ${
-                        active ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
+                      className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
+                        active ? "bg-accent text-accent-fg" : "bg-surface text-ink-soft hover:text-ink"
                       }`}
                     >
                       {portion.label}
@@ -210,7 +210,7 @@ export function FoodLogger({
                 inputMode="decimal"
                 value={grams}
                 onChange={(e) => setGrams(e.target.value)}
-                className="w-24 rounded-lg border border-line bg-surface px-2 py-2 text-sm tabular-nums outline-none focus:border-accent"
+                className="w-24 rounded-xl border border-line bg-surface px-2.5 py-2 text-sm tabular-nums outline-none focus:border-accent"
               />
             </label>
             {preview ? (
@@ -246,7 +246,7 @@ export function FoodLogger({
                 router.refresh();
               })
             }
-            className="mt-3 w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
+            className="mt-3.5 h-11 w-full rounded-2xl bg-accent px-4 text-sm font-bold text-accent-fg disabled:opacity-40"
           >
             {fill(fl.addTo, { slot: fl.slots[slot] })}
           </button>
@@ -295,22 +295,30 @@ export function FoodLogger({
       ) : (
         <>
           <div className="flex gap-2">
-            <input
-              autoFocus
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={fl.searchPlaceholder}
-              className="min-w-0 flex-1 rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
-            />
+            <label className="flex h-[42px] min-w-0 flex-1 items-center gap-2.5 rounded-2xl bg-bg px-3.5 text-ink-faint">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+                <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+              </svg>
+              <input
+                autoFocus
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={fl.searchPlaceholder}
+                className="min-w-0 flex-1 bg-transparent text-[13.5px] text-ink outline-none placeholder:text-ink-faint"
+              />
+            </label>
             <button
               type="button"
               onClick={() => {
                 setScanError(null);
                 setScanning(true);
               }}
-              className="shrink-0 rounded-lg border border-line px-3 py-2 text-sm font-semibold hover:border-accent"
+              className="inline-flex h-[42px] shrink-0 items-center gap-2 rounded-2xl bg-bg px-3.5 text-[13px] font-semibold text-ink-soft hover:text-ink"
               aria-label={fl.scanBarcode}
             >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3M8 8v8M11 8v8M14 8v8M17 8v8" />
+              </svg>
               {fl.scan}
             </button>
           </div>
@@ -342,23 +350,23 @@ export function FoodLogger({
             <div className="mt-2 space-y-3">
               {favs.length > 0 ? (
                 <section>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-ink">★ {fl.favorites}</p>
-                  <ul className="mt-1 divide-y divide-line">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-ink">{fl.favorites}</p>
+                  <ul className="mt-1 divide-y divide-line/60">
                     {favs.map((f) => row(toFoodItem(f), f.last_grams, "fav"))}
                   </ul>
                 </section>
               ) : null}
               {recent.length > 0 ? (
                 <section>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">🕒 {fl.recent}</p>
-                  <ul className="mt-1 divide-y divide-line">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{fl.recent}</p>
+                  <ul className="mt-1 divide-y divide-line/60">
                     {recent.map((r) => row(toFoodItem(r), r.last_grams, "recent"))}
                   </ul>
                 </section>
               ) : null}
             </div>
           ) : (
-            <ul className="mt-2 max-h-64 divide-y divide-line overflow-y-auto">
+            <ul className="mt-2 max-h-64 divide-y divide-line/60 overflow-y-auto">
               {results.map((food) => row(food, null, "result"))}
               {results.length === 0 ? (
                 <li className="py-3 text-sm text-ink-faint">{fl.noMatches}</li>

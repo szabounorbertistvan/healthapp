@@ -3,6 +3,7 @@ import type {
   PostVisibility, TrainingLoad,
 } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
+import type { ExerciseType } from "./exercise-types";
 
 export type Signal = "on_track" | "needs_attention" | "at_risk";
 
@@ -125,6 +126,8 @@ export type ProgramExerciseRow = {
   position: number;
   /** Circuit / superset number this row belongs to (1 = A …), null when standalone. */
   circuit: number | null;
+  /** Visual type of the exercise (exerciseTypeOf), for its thumbnail; client reads only. */
+  type?: ExerciseType | null;
 };
 
 export type ProgramDetail = {
@@ -229,6 +232,8 @@ export type ClientWorkoutDay = {
   /** True when the client built this program themselves (coach_id null). */
   is_own: boolean;
   intensity_mode: "rpe" | "rir" | "simple";
+  /** What the day trains, for its athlete photo (dayTypeOf); null when nothing maps. */
+  type: ExerciseType | null;
   exercises: ProgramExerciseRow[];
   logged: LoggedSetRow[];
   session_id: string | null;

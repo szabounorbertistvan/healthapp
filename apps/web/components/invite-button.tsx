@@ -25,24 +25,24 @@ export function InviteButton({ disabled = false }: { disabled?: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2">
       {code ? (
-        <span className="rounded-lg bg-accent-soft px-3 py-1.5 text-sm font-semibold tracking-widest text-accent-ink">
+        <span className="inline-flex h-9 items-center gap-2 rounded-full bg-accent-soft px-3.5 text-[13px] font-bold tabular-nums tracking-widest text-accent-ink">
           {code}
           <button
-            className="ml-2 text-xs font-normal underline"
+            className="text-[11px] font-semibold uppercase tracking-wider underline underline-offset-2 hover:opacity-80"
             onClick={() => navigator.clipboard.writeText(code)}
           >
             {m.copy}
           </button>
         </span>
       ) : null}
-      {error ? <span className="text-sm text-risk">{error}</span> : null}
+      {error ? <span className="text-[12.5px] text-risk">{error}</span> : null}
       <button
         onClick={onClick}
         disabled={pending || disabled}
         title={disabled ? m.limitReachedTitle : undefined}
-        className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+        className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
       >
         {pending ? m.generating : m.inviteClient}
       </button>

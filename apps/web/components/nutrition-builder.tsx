@@ -10,6 +10,7 @@ import {
   updatePlanFoodGrams,
 } from "@/app/nutrition-actions";
 import { Card } from "@/components/ui";
+import { NavIcon } from "@/components/client-nav";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";
 import { NewFoodForm, NotFoundNote } from "@/components/new-food-form";
@@ -41,24 +42,25 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
           <span
-            className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
-              plan.status === "published" ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint"
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+              plan.status === "published" ? "bg-accent-soft text-accent-ink" : "bg-surface text-ink-faint"
             }`}
           >
             {m.status[plan.status]}
           </span>
-          <span className="text-sm text-ink-soft">{plan.client_name}</span>
+          <span className="min-w-0 truncate text-[13px] text-ink-soft">{plan.client_name}</span>
         </div>
-        <div className="flex items-center gap-2">
-          {error ? <span className="text-sm text-risk">{error}</span> : null}
+        <div className="flex flex-wrap items-center gap-3">
+          {error ? <span className="text-[13px] font-semibold text-risk">{error}</span> : null}
           <button
             onClick={() => run(() => publishNutritionPlan(plan.id))}
             disabled={pending || isEmpty || plan.status === "published"}
             title={isEmpty ? m.publishHint : undefined}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+            className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
           >
+            <NavIcon d="m5 12 5 5 9-10" className="h-4 w-4 [stroke-width:2.2]" />
             {plan.status === "published" ? m.published : m.publish}
           </button>
         </div>
@@ -66,7 +68,7 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
 
       <TargetsCard plan={plan} />
 
-      <div className="mt-4 space-y-4">
+      <div className="mt-4 space-y-3.5">
         {plan.meals.map((meal) => (
           <MealCard
             key={meal.id}
@@ -98,27 +100,26 @@ function TargetsCard({ plan }: { plan: NutritionPlanDetail }) {
   ];
 
   return (
-    <Card>
-      <div className="grid gap-3 sm:grid-cols-4">
+    <Card plain className="sm:p-5">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         {rows.map((row) => {
           // Within 5% of target reads as on plan; the spec's macro score uses
           // the same idea of distance from target rather than a hard equality.
           const delta = row.actual - row.target;
           const onTarget = row.target > 0 && Math.abs(delta) / row.target <= 0.05;
           return (
-            <div key={row.label}>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+            <div key={row.label} className="rounded-2xl bg-bg px-3.5 py-3">
+              <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                 {row.label}
               </p>
-              <p className="mt-0.5 text-lg font-bold tabular-nums">
+              <p className="mt-1.5 font-display text-2xl font-extrabold tabular-nums leading-none">
                 {round(row.actual)}
-                <span className="text-sm font-normal text-ink-faint">
-                  {" "}
+                <span className="ml-1 font-sans text-[12px] font-medium text-ink-faint">
                   / {row.target} {row.unit}
                 </span>
               </p>
               <p
-                className={`text-xs tabular-nums ${
+                className={`mt-1.5 text-[11.5px] font-semibold tabular-nums ${
                   onTarget ? "text-accent-ink" : delta > 0 ? "text-warn" : "text-ink-soft"
                 }`}
               >
@@ -154,41 +155,48 @@ function MealCard({
   const { t } = useI18n();
   const m = t.coachWidgets.nutritionBuilder;
   return (
-    <Card>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="font-bold">
-          {meal.name}{" "}
-          <span className="text-sm font-normal text-ink-faint tabular-nums">
-            {round(meal.totals.kcal)} kcal
-          </span>
-        </p>
+    <Card plain className="sm:p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="truncate font-display text-lg font-bold tracking-tight">{meal.name}</h2>
+          <p className="mt-0.5 text-[12.5px] tabular-nums text-ink-faint">
+            <b className="font-semibold text-ink">{round(meal.totals.kcal)}</b> kcal
+          </p>
+        </div>
         <button
           onClick={onToggle}
-          className="rounded-lg border border-line px-2 py-1 text-xs font-semibold hover:border-accent hover:text-accent-ink"
+          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full bg-bg px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink sm:h-10 sm:px-4"
         >
+          <NavIcon
+            d={open ? "M6 6 18 18M18 6 6 18" : "M12 5v14M5 12h14"}
+            className="h-[15px] w-[15px] [stroke-width:2.2]"
+          />
           {open ? m.closeFoods : m.addFood}
         </button>
       </div>
 
       {/* Foods open inside the meal they will be added to, not in a panel
           elsewhere on the page. */}
-      <div className="flex flex-col gap-4 lg:flex-row">
+      <div className="flex flex-col gap-3.5 lg:flex-row">
         <div className="min-w-0 flex-1">
           {meal.foods.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-sm text-ink-faint">
+            <p className="rounded-2xl bg-bg px-4 py-5 text-center text-[13px] text-ink-faint">
               {m.nothingPlanned}
             </p>
           ) : (
-            <ul className="space-y-1">
+            <ul className="space-y-2">
               {meal.foods.map((food) => (
-                <li key={food.id} className="flex items-center gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate">{food.food_name}</span>
+                <li
+                  key={food.id}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-bg px-4 py-3 text-[14.5px] font-medium"
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium">{food.food_name}</span>
                   <GramsInput
                     grams={food.grams}
                     disabled={pending}
                     onCommit={(grams) => onGrams(food.id, grams)}
                   />
-                  <span className="w-40 shrink-0 text-right text-xs tabular-nums text-ink-faint">
+                  <span className="w-44 shrink-0 text-right text-[12.5px] tabular-nums text-ink-faint">
                     {round(food.macros.kcal)} kcal · {round(food.macros.protein)}P{" "}
                     {round(food.macros.carbs)}C {round(food.macros.fat)}F
                   </span>
@@ -196,9 +204,10 @@ function MealCard({
                     onClick={() => onRemove(food.id)}
                     disabled={pending}
                     title={m.removeFood}
-                    className="rounded px-1.5 text-ink-faint hover:bg-risk-soft hover:text-risk disabled:opacity-50"
+                    aria-label={m.removeFood}
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-ink-faint hover:bg-risk-soft hover:text-risk disabled:opacity-50"
                   >
-                    ×
+                    <NavIcon d="M6 6 18 18M18 6 6 18" className="h-4 w-4" />
                   </button>
                 </li>
               ))}
@@ -207,8 +216,8 @@ function MealCard({
         </div>
 
         {open ? (
-          <div className="flex h-[26rem] w-full shrink-0 flex-col rounded-lg border border-line bg-bg p-3 lg:w-80">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          <div className="flex h-[26rem] w-full shrink-0 flex-col rounded-2xl bg-bg p-3.5 lg:w-80">
+            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
               {fill(m.addTo, { name: meal.name })}
             </p>
             <FoodPicker onPick={onPick} />
@@ -232,7 +241,7 @@ function GramsInput({
   const latest = useRef(value);
 
   return (
-    <span className="flex shrink-0 items-center gap-1">
+    <span className="flex shrink-0 items-center gap-1.5">
       <input
         type="number"
         min={1}
@@ -246,9 +255,9 @@ function GramsInput({
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
         }}
-        className="w-16 rounded border border-line bg-bg px-1.5 py-1 text-sm tabular-nums outline-none focus:border-accent"
+        className="w-16 rounded-xl border border-line bg-surface px-2.5 py-2 text-sm tabular-nums outline-none focus:border-accent"
       />
-      <span className="text-xs text-ink-faint">g</span>
+      <span className="text-[11px] font-medium text-ink-faint">g</span>
     </span>
   );
 }
@@ -285,45 +294,51 @@ function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => voi
 
   return (
     <div className="flex min-h-0 flex-col gap-3">
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder={m.searchFoods}
-        className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
-      />
+      <label className="flex h-[42px] items-center gap-2.5 rounded-2xl bg-surface px-3.5 text-ink-faint">
+        <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+          <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+        </svg>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={m.searchFoods}
+          className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint"
+        />
+      </label>
       <NotFoundNote question={m.notFound} action={m.createFood} onClick={() => setCreating(true)} className="" />
       <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {foods.map((food) => (
-          <li key={food.id} className="rounded-lg border border-line bg-bg p-2.5">
+          <li key={food.id} className="rounded-2xl bg-surface p-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="flex items-baseline gap-1.5 text-sm font-semibold">
+                <p className="flex items-baseline gap-1.5 text-[13px] font-semibold">
                   <span className="min-w-0 truncate">{food.name_ro}</span>
                   {food.english_only ? (
                     <span
-                      className="shrink-0 rounded border border-line px-1 text-[9px] font-semibold uppercase tracking-wider text-ink-faint"
+                      className="shrink-0 rounded-full bg-bg px-1.5 text-[9px] font-semibold uppercase tracking-wider text-ink-faint"
                       title={m.englishOnlyHint}
                     >
                       {m.englishOnly}
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-0.5 text-xs text-ink-faint tabular-nums">
+                <p className="mt-1 text-[11.5px] tabular-nums text-ink-faint">
                   {food.per_100g.kcal} kcal · {food.per_100g.protein}P {food.per_100g.carbs}C{" "}
                   {food.per_100g.fat}F /100g
                 </p>
               </div>
               <button
                 onClick={() => onPick(food, 100)}
-                className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-xs font-semibold hover:border-accent hover:text-accent-ink"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-bg px-3 text-[12.5px] font-semibold text-accent-ink hover:opacity-90"
               >
+                <NavIcon d="M12 5v14M5 12h14" className="h-[15px] w-[15px] [stroke-width:2.2]" />
                 {t.common.actions.add}
               </button>
             </div>
           </li>
         ))}
         {foods.length === 0 ? (
-          <li className="rounded-lg border border-dashed border-line p-4 text-center text-sm text-ink-soft">
+          <li className="rounded-2xl bg-surface px-4 py-6 text-center text-[13px] text-ink-soft">
             {m.noMatch}
           </li>
         ) : null}

@@ -1,5 +1,5 @@
 import { exerciseFacets } from "@/lib/exercise-library";
-import { Card, PageTitle } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { ExercisePicker } from "@/components/exercise-picker";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
@@ -11,25 +11,29 @@ import { getI18n } from "@/lib/i18n/server";
 export default async function LibraryPage() {
   const { t } = await getI18n();
   const facets = exerciseFacets();
+  const l = t.coachApp.library;
 
   return (
-    <div>
-      <PageTitle title={t.coachApp.library.title}>
-        <span className="text-sm text-ink-soft">
-          {fill(t.coachApp.library.facets, {
+    <div className="mx-auto max-w-[1600px]">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
+          {l.title}
+        </h1>
+        <p className="text-[12.5px] text-ink-faint">
+          {fill(l.facets, {
             muscles: facets.muscles.length,
             equipment: facets.equipment.length,
           })}
-        </span>
-      </PageTitle>
+        </p>
+      </div>
 
-      <Card className="flex h-[calc(100vh-12rem)] flex-col">
+      {/* One tall card that scrolls inside itself: the search, the filters and
+          the count stay put while 873 exercises move underneath them. */}
+      <Card plain className="mt-5 flex h-[calc(100vh-15rem)] min-h-[24rem] flex-col sm:mt-6 sm:p-5">
         <ExercisePicker muscles={facets.muscles} equipment={facets.equipment} />
       </Card>
 
-      <p className="mt-3 text-xs text-ink-faint">
-        {t.coachApp.library.source}
-      </p>
+      <p className="mt-3 text-[12.5px] text-ink-faint">{l.source}</p>
     </div>
   );
 }

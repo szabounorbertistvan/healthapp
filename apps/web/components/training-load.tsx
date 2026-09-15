@@ -45,19 +45,17 @@ export function TrainingLoadCard({ load, when }: { load: TrainingLoad; when?: st
   ].filter((x): x is string => x !== null);
 
   return (
-    <Card>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-          {l.title}
-          {when ? <span className="ml-2 normal-case tracking-normal text-ink-faint">· {l.lastSession} {when}</span> : null}
-        </p>
+    <Card plain>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{l.title}</p>
+        {when ? <p className="text-[11px] text-ink-faint">{l.lastSession} · {when}</p> : null}
       </div>
-      <div className="mt-1 flex items-baseline gap-3">
-        <p className="text-4xl font-bold tabular-nums leading-none">{load.score}</p>
+      <div className="mt-2 flex items-baseline gap-3">
+        <p className="font-display text-[40px] font-extrabold tabular-nums leading-none">{load.score}</p>
         <p className={`text-base font-semibold ${tone.text}`}>{l.category[load.category]}</p>
       </div>
       <LoadMeter score={load.score} category={load.category} />
-      <p className="mt-2 text-xs text-ink-soft">{facts.join(" · ")}</p>
+      <p className="mt-2.5 text-[12.5px] tabular-nums text-ink-soft">{facts.join(" · ")}</p>
       <p className="mt-1 text-[11px] text-ink-faint">{l.explainer}</p>
     </Card>
   );

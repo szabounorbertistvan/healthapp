@@ -38,36 +38,36 @@ export function MessageThread({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto py-2">
+      <div className="flex flex-1 flex-col gap-2 overflow-y-auto py-1">
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`max-w-[80%] rounded-xl border px-3 py-2 text-sm ${
+            className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
               m.mine
-                ? "self-end border-accent-soft bg-accent-soft"
-                : "self-start border-line bg-surface"
+                ? "self-end bg-accent-soft text-ink"
+                : "self-start bg-surface text-ink"
             }`}
           >
             {m.body}
           </div>
         ))}
         {messages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-ink-soft">{msgs.noMessages}</p>
+          <p className="py-8 text-center text-[13px] text-ink-faint">{msgs.noMessages}</p>
         ) : null}
       </div>
-      {note ? <p className="pb-1 text-xs text-ink-faint">{note}</p> : null}
-      <div className="flex gap-2 pt-2">
+      {note ? <p className="pb-1 text-[12.5px] text-ink-faint">{note}</p> : null}
+      <div className="flex gap-2 pt-3">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder={msgs.placeholder}
-          className="flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          className="h-11 min-w-0 flex-1 rounded-2xl border border-line bg-surface px-4 text-sm outline-none focus:border-accent"
         />
         <button
           onClick={send}
           disabled={pending || !draft.trim()}
-          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+          className="flex h-11 shrink-0 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
         >
           {t.common.actions.send}
         </button>

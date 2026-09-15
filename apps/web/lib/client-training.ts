@@ -13,6 +13,7 @@ import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
 import { liveUser, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
+import { dayTypeOf, exerciseTypeOf } from "./exercise-types";
 import type {
   ClientPrRow,
   ClientProgramGroup,
@@ -59,9 +60,9 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
     supabase
       .from("programs")
       .select(`id, name, intensity_mode, coach_id, updated_at,
-        program_days(id, name, week_index, day_index,
+        program_days(id, name, week_index, day_index, muscle_groups,
           program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit,
-            exercise:exercises(name_en, name_ro)))`)
+            exercise:exercises(name_en, name_ro, primary_muscles, category)))`)
       .eq("client_id", userId)
       .eq("status", "published"),
     activeCoachId(userId),
@@ -79,9 +80,9 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   type ExJoin = {
     id: string; exercise_id: string; position: number; target_sets: number; target_reps: string;
     target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null; circuit: number | null;
-    exercise: { name_en: string; name_ro: string | null } | null;
+    exercise: { name_en: string; name_ro: string | null; primary_muscles: string[]; category: string | null } | null;
   };
-  type DayJoin = { id: string; name: string; day_index: number; program_exercises: ExJoin[] };
+  type DayJoin = { id: string; name: string; day_index: number; muscle_groups: string[] | null; program_exercises: ExJoin[] };
   type ProgramJoin = SelectableProgram & {
     name: string; intensity_mode: "rpe" | "rir" | "simple"; program_days: DayJoin[] | null;
   };
@@ -105,6 +106,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
       followed: program.id === followed?.id,
       days: days.map((day) => {
         const session = sessions.get(day.id);
+        const ordered = [...day.program_exercises].sort((a, b) => a.position - b.position);
         return {
           day_id: day.id,
           day_name: day.name,
@@ -112,8 +114,11 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
           program_name: program.name,
           is_own: program.coach_id === null,
           intensity_mode: program.intensity_mode,
-          exercises: [...day.program_exercises]
-            .sort((a, b) => a.position - b.position)
+          type: dayTypeOf(
+            day.muscle_groups ?? [],
+            ordered.map((e) => ({ primary_muscles: e.exercise?.primary_muscles ?? [], category: e.exercise?.category ?? null })),
+          ),
+          exercises: ordered
             .map((e) => ({
               id: e.id,
               exercise_id: e.exercise_id,
@@ -128,6 +133,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
               rest_seconds: e.rest_seconds,
               position: e.position,
               circuit: e.circuit ?? null,
+              type: exerciseTypeOf(e.exercise?.primary_muscles ?? [], e.exercise?.category ?? null),
             })),
           logged: session?.logged ?? [],
           session_id: session?.id ?? null,

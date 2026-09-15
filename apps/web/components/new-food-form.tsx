@@ -4,7 +4,7 @@ import { createCustomFood } from "@/app/nutrition-actions";
 import { useI18n } from "@/lib/i18n/client";
 import type { FoodItem } from "@/lib/food-portions";
 
-const inputClass = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm tabular-nums outline-none focus:border-accent";
+const inputClass = "h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm tabular-nums outline-none focus:border-accent";
 const labelClass = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint";
 
 /**
@@ -67,7 +67,7 @@ export function NewFoodForm({
   );
 
   return (
-    <div className="space-y-3 rounded-lg border border-accent bg-surface p-3">
+    <div className="space-y-3 rounded-2xl bg-bg p-3.5">
       <div>
         <p className="text-sm font-bold">{m.title}</p>
         <p className="mt-0.5 text-xs text-ink-faint">{m.body}</p>

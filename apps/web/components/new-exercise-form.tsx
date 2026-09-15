@@ -9,8 +9,8 @@ const LEVELS = ["beginner", "intermediate", "expert"] as const;
 const MECHANICS = ["compound", "isolation"] as const;
 
 const inputClass =
-  "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
-const labelClass = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint";
+  "w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent";
+const labelClass = "text-[11px] font-semibold uppercase tracking-wider text-ink-faint";
 
 /**
  * Create an exercise the library does not have. Lives inside the picker so it
@@ -79,10 +79,10 @@ export function NewExerciseForm({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-accent bg-surface p-3">
+    <div className="space-y-3.5 rounded-2xl border border-accent bg-surface p-4">
       <div>
-        <p className="text-sm font-bold">{m.title}</p>
-        <p className="mt-0.5 text-xs text-ink-faint">{m.body}</p>
+        <p className="font-display text-lg font-bold tracking-tight">{m.title}</p>
+        <p className="mt-0.5 text-[12.5px] text-ink-faint">{m.body}</p>
       </div>
 
       <label className="flex flex-col gap-1">
@@ -134,7 +134,7 @@ export function NewExerciseForm({
                   type="button"
                   aria-pressed={on}
                   onClick={() => toggleSecondary(muscle)}
-                  className={`rounded-md px-2 py-1 text-[11px] font-semibold capitalize ${
+                  className={`inline-flex h-8 items-center rounded-full px-3 text-[11.5px] font-semibold capitalize ${
                     on ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
                   }`}
                 >
@@ -192,7 +192,7 @@ export function NewExerciseForm({
           type="button"
           disabled={pending || !valid}
           onClick={submit}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
+          className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
         >
           {pending ? "…" : canAdd ? m.saveAndAdd : m.save}
         </button>
@@ -200,7 +200,7 @@ export function NewExerciseForm({
           type="button"
           disabled={pending}
           onClick={onCancel}
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-ink-faint hover:text-ink"
+          className="flex h-11 items-center justify-center rounded-2xl px-4 text-sm font-semibold text-ink-faint hover:text-ink"
         >
           {t.common.actions.cancel}
         </button>

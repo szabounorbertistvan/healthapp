@@ -8,6 +8,7 @@ import { getLeaderboard } from "@/lib/leaderboard-data";
 import { hasChosenSolo } from "@/lib/onboarding";
 import { Card, EmptyState } from "@/components/ui";
 import { LinkRow, TodayChecklist, WeekCard } from "@/components/today-dashboard";
+import { NavIcon } from "@/components/client-nav";
 import { TrainingLoadSummaryCard } from "@/components/training-load";
 import { StreakCard } from "@/components/streak";
 import { LeaderboardSummaryCard } from "@/components/leaderboard";
@@ -21,10 +22,11 @@ import { fill } from "@/lib/i18n";
 import { isoDay } from "@/lib/dates";
 
 /**
- * Today, phone-first, top to bottom: the date, today's checklist (the one
- * card that answers "what do I do now"), a word from the coach, the week's
- * score with its parts, the workout streak, links to the rest, and the weekly
- * report folded away for whoever wants the numbers.
+ * Today. Three columns once there is room, one on a phone, in this order: the
+ * date, today's checklist (the one card that answers "what do I do now") and a
+ * word from the coach; the week's score with its parts and the workout streak;
+ * the last workout, the leaderboard, links to the rest, and the weekly report
+ * folded away for whoever wants the numbers.
  */
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { t, locale } = await getI18n();
@@ -55,7 +57,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   const [today, challenges, weekly, recent, streakView, board] = await reads;
   if (!today) {
-    return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
+    return <EmptyState plain title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
   }
 
   const d = t.clientApp.today;
@@ -78,81 +80,98 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const nudge = adherence.signal === "at_risk" ? fill(d.atRiskBody, { time: timeAgo(last, locale) }) : null;
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-4">
+    // Capped at 1600px: a dashboard of cards, three columns wide at most.
+    <div className="mx-auto max-w-[1600px]">
       <header>
-        <h1 className="text-xl font-bold tracking-tight first-letter:uppercase">{weekday}</h1>
-        <p className="text-sm text-ink-faint first-letter:uppercase">{longDate}</p>
+        <h1 className="font-display text-2xl font-extrabold tracking-tight first-letter:uppercase sm:text-[28px]">{weekday}</h1>
+        <p className="mt-1 text-[13px] text-ink-faint first-letter:uppercase">{longDate}</p>
       </header>
 
-      <TodayChecklist doneToday={doneToday} next={next} nutrition={nutrition} habits={habits} checkIn={checkIn} />
+      <div className="mt-4 grid items-start gap-4 sm:mt-6 md:grid-cols-2 md:gap-5 xl:grid-cols-3 xl:gap-6">
+        {/* ---- what to do today ---- */}
+        <div className="space-y-4">
+          <TodayChecklist doneToday={doneToday} next={next} nutrition={nutrition} habits={habits} checkIn={checkIn} />
 
-      {checkIn.last?.coach_feedback ? (
-        <Card className="bg-accent-soft">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{d.fromYourCoach}</p>
-          <p className="mt-1 text-sm leading-snug text-ink-soft">{checkIn.last.coach_feedback}</p>
-        </Card>
-      ) : null}
-
-      <WeekCard
-        adherence={adherence}
-        today={todayIso}
-        workoutDays={workoutDays}
-        done={done}
-        planned={planned}
-        streak={streak}
-        nudge={nudge}
-        load={today.training_load}
-      />
-
-      {streakView ? <StreakCard view={streakView} compact /> : null}
-
-      {lastWorkout ? (
-        <Card>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.shareCard.lastWorkout}</p>
-              <p className="mt-1 truncate font-semibold">{lastWorkout.day_name}</p>
-              <p className="mt-0.5 text-xs tabular-nums text-ink-faint first-letter:uppercase">
-                {lastWorkoutDate} · {lastWorkout.sets} {t.clientApp.workoutDay.sets} · {new Intl.NumberFormat(locale).format(lastWorkout.volume_kg)} kg
-                {lastWorkout.prs > 0 ? <> · <span className="font-semibold text-accent-ink">{lastWorkout.prs} {t.clientApp.workoutDay.prs}</span></> : null}
-              </p>
+          {checkIn.last?.coach_feedback ? (
+            <div className="rounded-3xl bg-accent-soft px-5 py-[18px]">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{d.fromYourCoach}</p>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{checkIn.last.coach_feedback}</p>
             </div>
-            <TrainingLoadBadge load={lastWorkout.load} showLabel={false} />
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link
-              href={lastWorkout.day_id ? `/workout/${lastWorkout.day_id}` : "/workout"}
-              className="min-h-10 rounded-lg border border-line px-4 py-2 text-sm font-semibold hover:border-accent"
-            >
-              {t.common.shareCard.view}
-            </Link>
-            <ShareWorkoutButton
-              sessionId={lastWorkout.id}
-              className="min-h-10 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
-            />
-          </div>
-        </Card>
-      ) : null}
-
-      <LeaderboardSummaryCard board={board} />
-
-      <Card className="overflow-hidden p-0">
-        <ul className="divide-y divide-line">
-          <LinkRow href="/challenges" icon="🏅" label={t.common.challenges.title} meta={`${activeChallenges} ${d.active}`} />
-          <LinkRow href="/feed" icon="💬" label={t.common.social.feed} />
-        </ul>
-      </Card>
-
-      <details id="weekly-report" open={reportOpen} className="group">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 hover:border-accent [&::-webkit-details-marker]:hidden">
-          <span className="text-sm font-semibold">{d.weeklyReport}</span>
-          <span className="text-ink-faint transition-transform group-open:rotate-180" aria-hidden>▾</span>
-        </summary>
-        <div className="mt-4 space-y-4">
-          {weekly ? <WeeklySummaryCard summary={weekly} switchPath="/today" /> : null}
-          <TrainingLoadSummaryCard summary={today.training_load} />
+          ) : null}
         </div>
-      </details>
+
+        {/* ---- the week ---- */}
+        <div className="space-y-4">
+          <WeekCard
+            adherence={adherence}
+            today={todayIso}
+            workoutDays={workoutDays}
+            done={done}
+            planned={planned}
+            streak={streak}
+            nudge={nudge}
+            load={today.training_load}
+          />
+
+          {streakView ? <StreakCard view={streakView} compact /> : null}
+        </div>
+
+        {/* ---- everything else ---- */}
+        <div className="space-y-4">
+          {lastWorkout ? (
+            <Card plain>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.shareCard.lastWorkout}</p>
+                  <p className="mt-1.5 truncate text-[15px] font-semibold">{lastWorkout.day_name}</p>
+                  <p className="mt-0.5 text-[12.5px] tabular-nums text-ink-faint first-letter:uppercase">
+                    {lastWorkoutDate} · {lastWorkout.sets} {t.clientApp.workoutDay.sets} · {new Intl.NumberFormat(locale).format(lastWorkout.volume_kg)} kg
+                    {lastWorkout.prs > 0 ? <> · <span className="font-semibold text-accent-ink">{lastWorkout.prs} {t.clientApp.workoutDay.prs}</span></> : null}
+                  </p>
+                </div>
+                <TrainingLoadBadge load={lastWorkout.load} showLabel={false} />
+              </div>
+              <div className="mt-3.5 flex flex-wrap gap-2">
+                <Link
+                  href={lastWorkout.day_id ? `/workout/${lastWorkout.day_id}` : "/workout"}
+                  className="inline-flex h-[38px] items-center rounded-full bg-bg px-4 text-[13px] font-semibold text-ink-soft hover:text-ink"
+                >
+                  {t.common.shareCard.view}
+                </Link>
+                <ShareWorkoutButton
+                  sessionId={lastWorkout.id}
+                  className="inline-flex h-[38px] items-center rounded-full bg-accent px-4 text-[13px] font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+                />
+              </div>
+            </Card>
+          ) : null}
+
+          <LeaderboardSummaryCard board={board} />
+
+          <Card plain className="overflow-hidden p-0">
+            <ul className="divide-y divide-line/60">
+              <LinkRow
+                href="/challenges"
+                icon="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"
+                label={t.common.challenges.title}
+                meta={`${activeChallenges} ${d.active}`}
+              />
+              <LinkRow href="/feed" icon="M4 5h16v11H9l-5 4z" label={t.common.social.feed} />
+            </ul>
+          </Card>
+
+          <details id="weekly-report" open={reportOpen} className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-3xl bg-surface px-5 py-3.5 hover:bg-accent-soft/40 [&::-webkit-details-marker]:hidden">
+              <span className="text-[14.5px] font-semibold">{d.weeklyReport}</span>
+              <NavIcon d="m6 9 6 6 6-6" className="h-4 w-4 text-ink-faint transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-4 space-y-4">
+              {weekly ? <WeeklySummaryCard summary={weekly} switchPath="/today" /> : null}
+              <TrainingLoadSummaryCard summary={today.training_load} />
+            </div>
+          </details>
+        </div>
+      </div>
     </div>
   );
 }

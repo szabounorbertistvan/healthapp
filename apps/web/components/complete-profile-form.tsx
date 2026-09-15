@@ -7,7 +7,7 @@ import { isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
 
 const inputClass =
-  "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
+  "h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent";
 
 /**
  * Fills in what a sign-up may have skipped: name, username, sex, age. Reached
@@ -72,7 +72,7 @@ export function CompleteProfileForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-xl border border-line bg-surface p-5">
+    <form onSubmit={submit} className="space-y-3.5 rounded-3xl bg-surface p-6">
       <p className="text-sm text-ink-soft">{m.body}</p>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-ink-soft">{m.fullName}</span>
@@ -92,7 +92,7 @@ export function CompleteProfileForm({
           {SEXES.map((option) => (
             <button
               key={option} type="button" aria-pressed={sex === option} onClick={() => setSex(option)}
-              className={`rounded-lg border px-2 py-2 text-sm font-semibold ${
+              className={`h-11 rounded-xl border px-2 text-sm font-semibold ${
                 sex === option ? "border-accent bg-accent-soft text-accent-ink" : "border-line bg-bg hover:border-ink-faint"
               }`}
             >
@@ -112,7 +112,7 @@ export function CompleteProfileForm({
       {error ? <p className="text-sm text-risk" role="alert">{error}</p> : null}
       <button
         type="submit" disabled={pending}
-        className="w-full rounded-lg bg-accent py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+        className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
       >
         {pending ? "…" : m.save}
       </button>

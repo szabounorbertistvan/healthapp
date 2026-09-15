@@ -102,7 +102,7 @@ export function SwipeToDelete({
           data-swipe-action
           tabIndex={open ? 0 : -1}
           onClick={() => setConfirming(true)}
-          className="flex w-full items-center justify-center rounded-r-xl bg-risk text-xs font-bold text-white"
+          className="flex w-full items-center justify-center rounded-r-3xl bg-risk text-xs font-bold text-white"
         >
           {m.delete}
         </button>
@@ -145,7 +145,7 @@ export function SwipeToDelete({
             }}
             aria-label={m.delete}
             title={m.delete}
-            className="absolute right-2 top-2 hidden h-7 w-7 items-center justify-center rounded-md text-ink-faint hover:bg-risk-soft hover:text-risk sm:flex"
+            className="absolute right-3 top-3 hidden h-8 w-8 items-center justify-center rounded-xl text-ink-faint hover:bg-risk-soft hover:text-risk sm:flex"
           >
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" />
@@ -158,7 +158,7 @@ export function SwipeToDelete({
         <div
           role="alertdialog"
           aria-label={m.confirm}
-          className="absolute inset-y-0 right-0 flex flex-col items-start justify-center gap-2 rounded-xl bg-surface/95 p-4 backdrop-blur-sm"
+          className="absolute inset-y-0 right-0 flex flex-col items-start justify-center gap-2 rounded-3xl bg-surface/95 p-4 backdrop-blur-sm"
           style={{ left: REVEAL_PX }}
         >
           <p className="text-sm font-semibold">{confirmText}</p>
@@ -168,7 +168,7 @@ export function SwipeToDelete({
               data-swipe-action
               disabled={busy}
               onClick={confirmDelete}
-              className="rounded-lg bg-risk px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              className="rounded-xl bg-risk px-3.5 py-2 text-xs font-bold text-white disabled:opacity-50"
             >
               {busy ? "…" : m.delete}
             </button>
@@ -177,7 +177,7 @@ export function SwipeToDelete({
               data-swipe-action
               disabled={busy}
               onClick={close}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold hover:border-accent"
+              className="rounded-xl bg-bg px-3.5 py-2 text-xs font-semibold text-ink-soft hover:text-ink"
             >
               {m.keep}
             </button>

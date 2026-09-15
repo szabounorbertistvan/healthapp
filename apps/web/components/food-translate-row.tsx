@@ -41,12 +41,12 @@ export function FoodTranslateRow({
   }
 
   return (
-    <tr className="border-b border-line last:border-0">
-      <td className="px-4 py-2">
-        <p className="text-sm">{nameEn}</p>
-        <p className="text-[11px] tabular-nums text-ink-faint">{Math.round(kcal)} kcal/100 g</p>
+    <tr>
+      <td className="px-5 py-3.5 align-top">
+        <p className="text-sm font-medium">{nameEn}</p>
+        <p className="mt-0.5 text-[11px] tabular-nums text-ink-faint">{Math.round(kcal)} kcal/100 g</p>
       </td>
-      <td className="px-4 py-2">
+      <td className="px-5 py-3.5 align-top">
         <div className="flex items-center gap-2">
           <input
             value={value}
@@ -57,22 +57,22 @@ export function FoodTranslateRow({
             onKeyDown={(e) => e.key === "Enter" && save()}
             placeholder={m.placeholder}
             lang="ro"
-            className="w-full min-w-40 rounded-lg border border-line bg-bg px-2.5 py-1.5 text-sm outline-none focus:border-accent"
+            className="w-full min-w-40 rounded-xl border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <button
             type="button"
             disabled={!dirty || pending}
             onClick={save}
-            className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg disabled:opacity-40"
+            className="inline-flex h-10 shrink-0 items-center rounded-full bg-accent px-4 font-display text-[12.5px] font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
           >
             {m.save}
           </button>
           {state === "saved" && !dirty ? (
-            <span className="text-xs font-semibold text-accent-ink">{m.saved}</span>
+            <span className="shrink-0 text-[12px] font-semibold text-accent-ink">{m.saved}</span>
           ) : null}
         </div>
         {state === "error" ? (
-          <p className="mt-1 text-xs font-semibold text-risk">{message ?? t.common.actions.nothingChanged}</p>
+          <p className="mt-1.5 text-[12px] font-semibold text-risk">{message ?? t.common.actions.nothingChanged}</p>
         ) : null}
       </td>
     </tr>

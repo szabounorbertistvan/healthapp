@@ -34,37 +34,38 @@ export async function LeaderboardCard({
     <li key={r.user_id}>
       <Link
         href={`/people/${r.user_id}`}
-        className={`flex min-h-12 items-center gap-3 rounded-lg px-2 py-1.5 ${
-          r.is_current_user ? "border border-accent bg-accent-soft" : "hover:bg-bg"
-        }`}
+        className={`flex min-h-14 items-center gap-3 px-5 py-2.5 ${r.is_current_user ? "bg-accent-soft" : "hover:bg-bg/60"}`}
         aria-current={r.is_current_user ? "true" : undefined}
       >
-        <span className="w-8 shrink-0 text-center text-sm font-bold tabular-nums" aria-label={`${l.rank} ${r.rank}`}>
+        <span
+          className={`w-7 shrink-0 text-center text-[15px] tabular-nums ${r.rank <= 3 ? "font-bold" : "font-semibold text-ink-faint"}`}
+          aria-label={`${l.rank} ${r.rank}`}
+        >
           {MEDALS[r.rank] ?? r.rank}
         </span>
-        <Avatar name={r.display_name} url={r.avatar_url} size="h-8 w-8" />
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+        <Avatar name={r.display_name} url={r.avatar_url} size="h-9 w-9" />
+        <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
           {r.display_name}
-          {r.is_current_user ? <span className="ml-1.5 text-[11px] font-semibold uppercase text-accent-ink">{l.you}</span> : null}
+          {r.is_current_user ? <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{l.you}</span> : null}
         </span>
-        <span className="shrink-0 text-sm font-bold tabular-nums">
+        <span className="shrink-0 font-display text-[15px] font-bold tabular-nums">
           {formatScore(r.score, locale)}
-          {unit ? <span className="ml-1 text-[11px] font-normal text-ink-faint">{unit}</span> : null}
+          {unit ? <span className="ml-1 font-sans text-[11.5px] font-medium text-ink-faint">{unit}</span> : null}
         </span>
       </Link>
     </li>
   );
 
   return (
-    <Card>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-base font-bold">🏆 {l.metrics[metric]}</p>
-        <p className="text-xs text-ink-faint">{l.periods[period]}</p>
+    <Card plain className="overflow-hidden p-0">
+      <div className="flex items-baseline justify-between gap-3 px-5 pb-3 pt-[18px]">
+        <p className="font-display text-lg font-bold tracking-tight">{l.metrics[metric]}</p>
+        <p className="text-[12.5px] text-ink-faint">{l.periods[period]}</p>
       </div>
       {board.entries.length === 0 ? (
-        <p className="mt-3 rounded-lg border border-dashed border-line px-3 py-6 text-center text-sm text-ink-soft">{l.emptyBoard}</p>
+        <p className="px-5 pb-[18px] text-[13px] text-ink-faint">{l.emptyBoard}</p>
       ) : (
-        <ul className="mt-3 space-y-0.5">
+        <ul className="divide-y divide-line/60 border-t border-line/60">
           {board.entries.map(row)}
           {meBelow && board.me ? (
             <>
@@ -74,7 +75,9 @@ export async function LeaderboardCard({
           ) : null}
         </ul>
       )}
-      {board.me === null && board.entries.length > 0 ? <p className="mt-3 text-xs text-ink-faint">{l.notRanked}</p> : null}
+      {board.me === null && board.entries.length > 0 ? (
+        <p className="border-t border-line/60 px-5 py-3 text-[12.5px] text-ink-faint">{l.notRanked}</p>
+      ) : null}
     </Card>
   );
 }
@@ -84,14 +87,14 @@ export async function LeaderboardSummaryCard({ board }: { board: Leaderboard }) 
   const { t } = await getI18n();
   const l = t.common.leaderboards;
   return (
-    <Card>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">🏆 {l.title}</p>
-      <p className="mt-1 text-sm">
+    <Card plain>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{l.title}</p>
+      <p className="mt-1.5 text-[13.5px] text-ink-soft">
         {board.me
           ? fill(l.yourRank, { rank: board.me.rank, metric: l.metrics.training_load, period: l.periods.week.toLowerCase() })
           : l.startToEnter}
       </p>
-      <Link href="/leaderboards" className="mt-2 inline-block text-xs font-semibold text-accent-ink hover:underline">
+      <Link href="/leaderboards" className="mt-3 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
         {l.viewLeaderboard} →
       </Link>
     </Card>

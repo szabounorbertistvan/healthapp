@@ -26,10 +26,10 @@ export function CheckInForm() {
   const [pending, startTransition] = useTransition();
 
   return (
-    <Card>
-      <div className="space-y-4">
-        <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+    <Card plain>
+      <div className="space-y-5">
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
             {t.clientWidgets.checkInForm.weightKg}
           </span>
           <input
@@ -37,40 +37,46 @@ export function CheckInForm() {
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             placeholder={t.clientWidgets.checkInForm.optional}
-            className="w-32 rounded-lg border border-line bg-surface px-3 py-2 text-sm tabular-nums outline-none focus:border-accent"
+            className="mt-1.5 h-11 w-36 rounded-xl border border-line bg-bg px-3 text-sm tabular-nums outline-none focus:border-accent"
           />
         </label>
 
-        {SCALES.map((scale) => (
-          <div key={scale}>
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm font-semibold">{t.clientWidgets.checkInForm.scales[scale]}</span>
-              <span className="text-sm font-bold tabular-nums text-accent-ink">
-                {scores[scale]}
-              </span>
-            </div>
-            <input
-              type="range"
-              min={1}
-              max={10}
-              value={scores[scale]}
-              onChange={(e) =>
-                setScores((prev) => ({ ...prev, [scale]: Number(e.target.value) }))
-              }
-              className="mt-1 w-full accent-[var(--color-accent)]"
-            />
+        {/* The five scales, each a label + its value + the slider under them. */}
+        <div className="rounded-2xl bg-bg px-4 py-3.5">
+          <div className="divide-y divide-line/60">
+            {SCALES.map((scale) => (
+              <div key={scale} className="py-2.5 first:pt-0 last:pb-0">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-semibold">{t.clientWidgets.checkInForm.scales[scale]}</span>
+                  <span className="font-display text-base font-bold tabular-nums text-accent-ink">
+                    {scores[scale]}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={10}
+                  value={scores[scale]}
+                  aria-label={t.clientWidgets.checkInForm.scales[scale]}
+                  onChange={(e) =>
+                    setScores((prev) => ({ ...prev, [scale]: Number(e.target.value) }))
+                  }
+                  className="mt-2 w-full"
+                />
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+        <label className="block">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
             {t.clientWidgets.checkInForm.coachNote}
           </span>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
-            className="w-full resize-y rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+            className="mt-1.5 w-full resize-y rounded-xl border border-line bg-bg px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-accent"
           />
         </label>
 
@@ -93,12 +99,12 @@ export function CheckInForm() {
               router.refresh();
             })
           }
-          className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-40"
+          className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
         >
           {t.clientWidgets.checkInForm.submit}
         </button>
 
-        {error ? <p className="text-sm font-semibold text-risk">{error}</p> : null}
+        {error ? <p className="text-[13px] font-semibold text-risk">{error}</p> : null}
       </div>
     </Card>
   );

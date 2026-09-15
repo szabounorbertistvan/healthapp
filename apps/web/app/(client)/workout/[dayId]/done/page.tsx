@@ -5,7 +5,6 @@ import { getMyStreak } from "@/lib/streak-data";
 import { getProfile } from "@/lib/data";
 import { shareCardFromSession } from "@/lib/share-card";
 import { shareProfileOf } from "@/lib/share-card-data";
-import { PageTitle } from "@/components/ui";
 import { WorkoutDoneShare } from "@/components/workout-done-share";
 import { ShareWorkoutButton } from "@/components/share-workout";
 import { StreakAfterWorkout } from "@/components/streak";
@@ -36,19 +35,25 @@ export default async function WorkoutDonePage({
   const card = shareCardFromSession(shareable, shareProfileOf(profile));
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <PageTitle title={s.workoutCompleted} />
+    <div className="mx-auto max-w-3xl space-y-4">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{s.workoutCompleted}</h1>
       {streak ? <StreakAfterWorkout view={streak} /> : null}
       <WorkoutDoneShare session={shareable} />
       <div className="flex flex-wrap gap-3">
         <ShareWorkoutButton
           card={card}
-          className="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+          className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
         />
-        <Link href={`/workout/${dayId}`} className="rounded-lg border border-line px-4 py-2.5 text-sm font-semibold hover:border-accent">
+        <Link
+          href={`/workout/${dayId}`}
+          className="inline-flex h-11 items-center rounded-full bg-surface px-5 text-[13px] font-semibold text-ink-soft hover:text-ink"
+        >
           {t.common.shareCard.viewWorkout}
         </Link>
-        <Link href="/today" className="rounded-lg border border-line px-4 py-2.5 text-sm font-semibold hover:border-accent">
+        <Link
+          href="/today"
+          className="inline-flex h-11 items-center rounded-full bg-surface px-5 text-[13px] font-semibold text-ink-soft hover:text-ink"
+        >
           {s.skipToToday}
         </Link>
       </div>

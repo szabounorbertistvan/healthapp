@@ -43,7 +43,7 @@ export function JoinCoach({ redirectTo, autoFocus = true }: { redirectTo?: strin
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="min-h-11 w-full rounded-lg border border-line px-4 py-2.5 text-sm font-semibold hover:border-accent"
+        className="flex h-11 w-full items-center justify-center rounded-2xl bg-bg px-5 text-sm font-semibold text-ink-soft hover:text-ink"
       >
         {w.haveCode}
       </button>
@@ -57,7 +57,7 @@ export function JoinCoach({ redirectTo, autoFocus = true }: { redirectTo?: strin
         value={code}
         onChange={(e) => setCode(e.target.value)}
         placeholder={w.codePlaceholder}
-        className="min-h-11 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm uppercase outline-none focus:border-accent"
+        className="h-11 w-full rounded-xl border border-line bg-bg px-3.5 text-sm uppercase tracking-wider outline-none focus:border-accent"
       />
       <button
         type="button"
@@ -74,11 +74,11 @@ export function JoinCoach({ redirectTo, autoFocus = true }: { redirectTo?: strin
             else router.refresh();
           })
         }
-        className="min-h-11 w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg disabled:opacity-40"
+        className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
       >
         {w.useCode}
       </button>
-      {error ? <p className="text-sm text-risk" role="alert">{error}</p> : null}
+      {error ? <p className="text-[13px] font-semibold text-risk" role="alert">{error}</p> : null}
     </>
   );
 }

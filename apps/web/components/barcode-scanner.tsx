@@ -196,7 +196,7 @@ export function BarcodeScanner({
   const liveCamera = status === "starting" || status === "scanning";
 
   return (
-    <div className="rounded-lg border border-line p-3">
+    <div className="rounded-2xl bg-bg p-3.5">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
           {t.clientWidgets.barcodeScanner.title}
@@ -214,7 +214,7 @@ export function BarcodeScanner({
       </div>
 
       {liveCamera ? (
-        <div className="relative overflow-hidden rounded-lg bg-black">
+        <div className="relative overflow-hidden rounded-2xl bg-black">
           <video
             ref={videoRef}
             playsInline

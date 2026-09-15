@@ -15,7 +15,7 @@ export function TrialBanner({ trialEndsAt, paid }: { trialEndsAt: string | null;
   const days = trialDaysLeft(trialEndsAt);
   if (days === null) return null;
   return (
-    <div className="mb-4 rounded-xl border border-accent bg-accent-soft px-4 py-3 text-sm text-accent-ink">
+    <div className="mb-4 rounded-3xl bg-accent-soft px-5 py-[18px] text-[13.5px] leading-relaxed text-accent-ink">
       {days > 0 ? (
         <>
           <b>Free trial:</b> {days} day{days === 1 ? "" : "s"} left with full access — no card needed.
@@ -67,16 +67,16 @@ export function SubscribePanel({
   }
 
   return (
-    <div className="rounded-xl border-2 border-accent p-4">
-      <div className="flex items-center justify-between">
-        <p className="font-bold">{TIER_LABEL[plan]}</p>
+    <div className="rounded-2xl border border-accent px-4 py-[18px]">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-display text-lg font-bold tracking-tight">{TIER_LABEL[plan]}</p>
         {currentTier === plan ? (
-          <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent-ink">
+          <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
             Current
           </span>
         ) : null}
       </div>
-      <ul className="mt-2 space-y-1 text-sm text-ink-soft">
+      <ul className="mt-2.5 space-y-1 text-[13.5px] text-ink-soft">
         {plan === "coach_pro" ? (
           <>
             <li>Up to <b className="text-ink">{e.maxClients}</b> clients</li>
@@ -96,7 +96,7 @@ export function SubscribePanel({
           <button
             onClick={portal}
             disabled={pending}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+            className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
           >
             {pending ? "Opening…" : "Manage billing"}
           </button>
@@ -105,22 +105,22 @@ export function SubscribePanel({
             <button
               onClick={() => go("monthly")}
               disabled={pending}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+              className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold tabular-nums text-accent-fg hover:opacity-90 disabled:opacity-50"
             >
               €{prices.monthly}/month
             </button>
             <button
               onClick={() => go("annual")}
               disabled={pending}
-              className="rounded-lg border-2 border-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-soft disabled:opacity-50"
+              className="flex h-11 items-center justify-center rounded-2xl border border-accent px-5 font-display text-sm font-bold tabular-nums text-accent-ink hover:bg-accent-soft disabled:opacity-50"
             >
-              €{prices.annual}/year <span className="font-normal">(15% off)</span>
+              €{prices.annual}/year <span className="ml-1 font-sans text-[12.5px] font-medium">(15% off)</span>
             </button>
             {hasStripe ? (
               <button
                 onClick={portal}
                 disabled={pending}
-                className="text-sm text-ink-soft underline disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center rounded-full px-3 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
               >
                 Manage billing
               </button>
@@ -128,7 +128,7 @@ export function SubscribePanel({
           </>
         )}
       </div>
-      {error ? <p className="mt-2 text-sm text-risk">{error}</p> : null}
+      {error ? <p className="mt-2.5 text-[13px] font-semibold text-risk">{error}</p> : null}
     </div>
   );
 }
@@ -154,7 +154,7 @@ export function AdminTierSelect({ userId, tier }: { userId: string; tier: Tier }
         defaultValue={tier}
         disabled={pending}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-lg border border-line bg-surface px-2 py-1 text-sm disabled:opacity-50"
+        className="h-9 rounded-xl border border-line bg-surface px-2.5 text-[13px] outline-none focus:border-accent disabled:opacity-50"
       >
         {GRANTABLE.map((t) => (
           <option key={t} value={t}>{TIER_LABEL[t]}</option>

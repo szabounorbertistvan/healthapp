@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 /*
-  Voinic palette — near-black + gold, warm neutrals.
+  Voinic palette — near-black + gold. The light theme sits on a cool
+  graphite grey (steel), so the gold stays the only warm thing on the page;
+  the dark theme keeps the warm near-black of the brand.
 
   Dark is the brand look and the fallback. By default the app follows the
   device: with no `bg-theme` cookie the root layout renders no `data-theme`
@@ -45,38 +47,38 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     color-scheme: light;
-    --color-bg: #f7f5f0;
+    --color-bg: #eceff3;
     --color-surface: #ffffff;
-    --color-ink: #16161a;
-    --color-ink-soft: #4a4944;
-    --color-ink-faint: #7a786f;
-    --color-line: #e4dfd3;
+    --color-ink: #121519;
+    --color-ink-soft: #464d56;
+    --color-ink-faint: #737b85;
+    --color-line: #dee3ea;
     --color-accent: #c9a227;
     --color-accent-fg: #16161a;
     --color-accent-ink: #7f5c0b;
-    --color-accent-soft: #f6eed6;
-    --color-warn: #c2621a;
-    --color-warn-soft: #f9e7d9;
-    --color-risk: #c04545;
-    --color-risk-soft: #f7e2e2;
+    --color-accent-soft: #f4ebd6;
+    --color-warn: #b5601c;
+    --color-warn-soft: #fae7d8;
+    --color-risk: #bc4242;
+    --color-risk-soft: #f8e1e1;
   }
 }
 :root[data-theme="light"] {
   color-scheme: light;
-  --color-bg: #f7f5f0;
+  --color-bg: #eceff3;
   --color-surface: #ffffff;
-  --color-ink: #16161a;
-  --color-ink-soft: #4a4944;
-  --color-ink-faint: #7a786f;
-  --color-line: #e4dfd3;
+  --color-ink: #121519;
+  --color-ink-soft: #464d56;
+  --color-ink-faint: #737b85;
+  --color-line: #dee3ea;
   --color-accent: #c9a227;
   --color-accent-fg: #16161a;
   --color-accent-ink: #7f5c0b;
-  --color-accent-soft: #f6eed6;
-  --color-warn: #c2621a;
-  --color-warn-soft: #f9e7d9;
-  --color-risk: #c04545;
-  --color-risk-soft: #f7e2e2;
+  --color-accent-soft: #f4ebd6;
+  --color-warn: #b5601c;
+  --color-warn-soft: #fae7d8;
+  --color-risk: #bc4242;
+  --color-risk-soft: #f8e1e1;
 }
 
 body {

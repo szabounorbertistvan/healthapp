@@ -61,7 +61,7 @@ const en = {
     noSessions: "No completed sessions yet.",
   },
   workoutDay: {
-    backToTraining: "← Training",
+    backToTraining: "Training",
     start: "Start workout",
     continueWorkout: "Continue workout",
     logToday: "Log today's sets",
@@ -148,6 +148,7 @@ const en = {
     weightTrend: "Weight trend",
     noPrs: "Log some sets and your best lifts appear here.",
     est1Rm: "est. 1RM",
+    measurements: "Measurements",
     noMeasurementsTitle: "No measurements yet",
     noMeasurementsHint: "Add your first weigh-in above.",
     date: "Date",
@@ -279,7 +280,7 @@ const ro: typeof en = {
     noSessions: "Încă nicio sesiune finalizată.",
   },
   workoutDay: {
-    backToTraining: "← Antrenament",
+    backToTraining: "Antrenament",
     start: "Începe antrenamentul",
     continueWorkout: "Continuă antrenamentul",
     logToday: "Înregistrează seturile de azi",
@@ -366,6 +367,7 @@ const ro: typeof en = {
     weightTrend: "Trend greutate",
     noPrs: "Înregistrează câteva seturi și cele mai bune ridicări apar aici.",
     est1Rm: "1RM estimat",
+    measurements: "Măsurători",
     noMeasurementsTitle: "Încă nu ai măsurători",
     noMeasurementsHint: "Adaugă prima cântărire mai sus.",
     date: "Data",

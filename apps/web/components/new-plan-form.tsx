@@ -54,8 +54,8 @@ export function NewPlanForm({
   }
 
   const field =
-    "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
-  const label = "mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint";
+    "w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent";
+  const label = "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-ink-faint";
 
   return (
     <form onSubmit={submit} className="max-w-md space-y-4">
@@ -89,36 +89,36 @@ export function NewPlanForm({
           max={10000}
           value={kcal}
           onChange={(e) => setKcal(Number(e.target.value))}
-          className={field}
+          className={`${field} tabular-nums`}
         />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div>
           <label className={label}>{m.proteinG}</label>
-          <input type="number" min={0} value={protein} onChange={(e) => setProtein(Number(e.target.value))} className={field} />
+          <input type="number" min={0} value={protein} onChange={(e) => setProtein(Number(e.target.value))} className={`${field} tabular-nums`} />
         </div>
         <div>
           <label className={label}>{m.carbsG}</label>
-          <input type="number" min={0} value={carbs} onChange={(e) => setCarbs(Number(e.target.value))} className={field} />
+          <input type="number" min={0} value={carbs} onChange={(e) => setCarbs(Number(e.target.value))} className={`${field} tabular-nums`} />
         </div>
         <div>
           <label className={label}>{m.fatG}</label>
-          <input type="number" min={0} value={fat} onChange={(e) => setFat(Number(e.target.value))} className={field} />
+          <input type="number" min={0} value={fat} onChange={(e) => setFat(Number(e.target.value))} className={`${field} tabular-nums`} />
         </div>
       </div>
 
-      <p className={`text-xs tabular-nums ${mismatch ? "text-warn" : "text-ink-faint"}`}>
+      <p className={`text-[12.5px] tabular-nums ${mismatch ? "text-warn" : "text-ink-faint"}`}>
         {fill(m.macrosAddUp, { kcal: impliedKcal })}
         {mismatch ? m.macrosMismatch : ""}
       </p>
 
-      {error ? <p className="text-sm text-risk">{error}</p> : null}
+      {error ? <p className="text-[13px] font-semibold text-risk">{error}</p> : null}
 
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+        className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
       >
         {pending ? m.creating : m.createDraft}
       </button>

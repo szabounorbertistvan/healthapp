@@ -80,6 +80,35 @@ Re-running resets the passwords instead of duplicating anything; override
 `SEED_PASSWORD` / `SEED_DOMAIN` for different credentials. Tiers are left to
 `handle_new_profile()`, which stamps the 30-day trial.
 
+## Two weeks of demo data
+
+`supabase/seed/demo-data.sql` fills those accounts with something to look at:
+paste it into the dashboard SQL editor after `accounts.sql`, `exercises.sql` and
+`foods.sql` (it checks for all three and fails loudly). It adds a second coach
+(`trainer2@`) and three more clients (`client2@`, `client3@`, `client4@`, same
+password), then gives every client a published program, a published nutrition
+plan, habits and **fourteen days of history** — sessions and sets with
+week-over-week progression and PRs, food logs snapshotted off the plan,
+measurements, check-ins, the coach conversation, feedback, badges, challenge
+entries and social posts — and finally runs the real
+`compute_adherence_snapshots()` for the last two weeks.
+
+Everything is relative to the day you run it, and the four clients are tuned to
+land on different signals, so the coach dashboard has all three colours:
+
+| Account | Coach | Intensity mode | Signal |
+|---|---|---|---|
+| `client@healthapp.test` (Maria) | Andrei | RIR | on track |
+| `client2@healthapp.test` (Ioana) | Andrei | RPE | needs attention |
+| `client3@healthapp.test` (Radu) | Andrei | simple | at risk (quiet for 9 days) |
+| `client4@healthapp.test` (Alex) | Cristina | RIR | on track |
+
+Re-running resets those accounts: it deletes the history it owns (sessions,
+food, habits, measurements, check-ins, messages, posts) and re-creates it from
+today's date. Programs and plans go by deterministic id, so anything you built
+by hand survives. No session is written for today — the Today screen is meant to
+show a workout still to do.
+
 ## Design notes (why it looks like this)
 
 - **RLS is the security model.** Apps hit tables directly; every coach-access

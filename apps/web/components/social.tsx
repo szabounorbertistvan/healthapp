@@ -12,9 +12,22 @@ import { useI18n } from "@/lib/i18n/client";
 import { parseDay } from "@/lib/week";
 import { durationLabel } from "@/lib/share-card";
 import type { FeedPost, KudosGiver, PostComment, ShareableSession } from "@/lib/types";
+import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
 
 // ---------- small pieces ----------
+
+// 24-box stroke paths, the client app's icon vocabulary. Emoji that carries
+// data (avatars, badge art) stays; decorative emoji became one of these.
+// Kept module-local on purpose: every export of a "use client" module becomes a
+// client reference, so a server component must not import these strings.
+const FLAME = "M12 22c4 0 7-3 7-7 0-3-2-5-3-7-1 2-2 3-3 3 0-3-1-6-4-8 0 4-4 6-4 12 0 4 3 7 7 7z";
+const TROPHY = "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4";
+const COMMENT = "M4 5h16v11H9l-5 4z";
+const DUMBBELL = "M6.5 6.5v11M9.5 8.5v7M14.5 8.5v7M17.5 6.5v11M9.5 12h5";
+const TREND = "m2 17 6.5-6.5 5 5L22 7M16 7h6v6";
+const CHECK = "m5 12 5 5 9-10";
+const CLOSE = "M6 6l12 12M18 6L6 18";
 
 export function Avatar({ name, url, size = "h-9 w-9" }: { name: string; url: string | null; size?: string }) {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
@@ -49,19 +62,31 @@ function useSocialFormat() {
   };
 }
 
+/** The eyebrow every payload block shares: an icon and a small caps label. */
+function BlockLabel({ icon, children, tone = "text-accent-ink" }: { icon: string; children: React.ReactNode; tone?: string }) {
+  return (
+    <p className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${tone}`}>
+      <NavIcon d={icon} className="h-[15px] w-[15px]" />
+      {children}
+    </p>
+  );
+}
+
 export function VisibilityPicker({ value, onChange }: { value: PostVisibility; onChange: (v: PostVisibility) => void }) {
   const { t } = useI18n();
   const s = t.common.social;
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="text-ink-faint">{s.visibilityLabel}</span>
-      <div className="inline-flex overflow-hidden rounded-lg border border-line font-semibold">
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{s.visibilityLabel}</span>
+      <div className="inline-flex gap-1 rounded-full bg-bg p-1">
         {(["public", "followers", "private"] as const).map((v) => (
           <button
             key={v}
             type="button"
             onClick={() => onChange(v)}
-            className={`px-2.5 py-1.5 ${value === v ? "bg-accent text-accent-fg" : "text-ink-soft hover:text-ink"}`}
+            className={`h-8 rounded-full px-3 text-[12.5px] font-semibold transition-colors ${
+              value === v ? "bg-accent text-accent-fg" : "text-ink-soft hover:text-ink"
+            }`}
           >
             {s.visibility[v]}
           </button>
@@ -81,49 +106,62 @@ function PostBody({ post }: { post: FeedPost }) {
   return (
     <>
       {p?.kind === "workout" ? (
-        <div className="mt-2 rounded-lg bg-bg p-3">
-          <p className="font-bold">🏋️ {p.name}</p>
-          <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-soft">
+        <div className="mt-3 rounded-2xl bg-bg px-4 py-3.5">
+          <p className="flex items-center gap-2 font-display text-[15px] font-bold tracking-tight">
+            <NavIcon d={DUMBBELL} className="h-[18px] w-[18px] text-accent" />
+            <span className="min-w-0 truncate">{p.name}</span>
+          </p>
+          <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] tabular-nums text-ink-faint">
             {f.duration(p.duration_min) ? <span>{f.duration(p.duration_min)}</span> : null}
             <span>{fill(s.exercisesCount, { count: p.exercises })}</span>
             <span>{fill(s.setsCount, { count: p.sets })}</span>
             <span>{fill(s.volume, { kg: f.n(p.volume_kg) })}</span>
           </p>
-          <p className="mt-2 text-sm font-semibold text-accent-ink">🔥 {fill(s.trainingLoad, { load: p.load })}</p>
-          {p.prs > 0 ? <p className="mt-0.5 text-xs text-ink-soft">🏆 {p.prs} {s.prs}</p> : null}
+          <p className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-accent-ink">
+            <NavIcon d={FLAME} className="h-4 w-4" />
+            {fill(s.trainingLoad, { load: p.load })}
+          </p>
+          {p.prs > 0 ? (
+            <p className="mt-1 flex items-center gap-1.5 text-[12.5px] text-ink-soft">
+              <NavIcon d={TROPHY} className="h-4 w-4 text-ink-faint" />
+              <span className="tabular-nums">{p.prs}</span> {s.prs}
+            </p>
+          ) : null}
         </div>
       ) : null}
       {p?.kind === "pr" ? (
-        <div className="mt-2 rounded-lg bg-accent-soft p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">🏆 {s.newPr}</p>
-          <p className="mt-1 font-bold">{p.exercise}</p>
-          <p className="text-sm tabular-nums text-ink-soft">
+        <div className="mt-3 rounded-2xl bg-accent-soft px-4 py-3.5">
+          <BlockLabel icon={TROPHY}>{s.newPr}</BlockLabel>
+          <p className="mt-1.5 font-display text-[15px] font-bold tracking-tight">{p.exercise}</p>
+          <p className="mt-0.5 text-[13px] tabular-nums text-ink-soft">
             {f.n(p.weight_kg)} kg × {p.reps} <span className="text-ink-faint">· {s.personalBest}</span>
           </p>
         </div>
       ) : null}
       {p?.kind === "challenge_completed" ? (
-        <div className="mt-2 rounded-lg bg-accent-soft p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">🏆 {s.challengeCompleted}</p>
-          <p className="mt-1 font-bold">{locale === "ro" ? p.title_ro : p.title_en}</p>
-          <p className="text-sm tabular-nums text-ink-soft">
+        <div className="mt-3 rounded-2xl bg-accent-soft px-4 py-3.5">
+          <BlockLabel icon={TROPHY}>{s.challengeCompleted}</BlockLabel>
+          <p className="mt-1.5 font-display text-[15px] font-bold tracking-tight">{locale === "ro" ? p.title_ro : p.title_en}</p>
+          <p className="mt-0.5 text-[13px] tabular-nums text-ink-soft">
             {f.n(p.value)} / {f.n(p.target)} {t.common.challenges.unit[p.type as keyof typeof t.common.challenges.unit] ?? ""}
           </p>
         </div>
       ) : null}
       {p?.kind === "streak" ? (
-        <div className="mt-2 rounded-lg bg-accent-soft p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">🔥 {t.common.streaks.title}</p>
-          <p className="mt-1 font-bold">{fill(t.common.streaks.milestoneTitle, { count: p.milestone })}</p>
-          <p className="text-sm text-ink-soft">{fill(t.common.streaks.postBody, { count: p.streak_days })}</p>
+        <div className="mt-3 rounded-2xl bg-accent-soft px-4 py-3.5">
+          <BlockLabel icon={FLAME}>{t.common.streaks.title}</BlockLabel>
+          <p className="mt-1.5 font-display text-[15px] font-bold tracking-tight">{fill(t.common.streaks.milestoneTitle, { count: p.milestone })}</p>
+          <p className="mt-0.5 text-[13px] text-ink-soft">{fill(t.common.streaks.postBody, { count: p.streak_days })}</p>
         </div>
       ) : null}
       {p?.kind === "progress" ? (
-        <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">📈 {s.progressUpdate}</p>
+        <div className="mt-3">
+          <BlockLabel icon={TREND}>{s.progressUpdate}</BlockLabel>
+        </div>
       ) : null}
-      {post.text ? <p className="mt-2 whitespace-pre-wrap break-words text-sm">{post.text}</p> : null}
+      {post.text ? <p className="mt-2.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed">{post.text}</p> : null}
       {p?.kind === "progress" && typeof p.weight_kg === "number" ? (
-        <p className="mt-1 text-xs tabular-nums text-ink-soft">{f.n(p.weight_kg)} kg</p>
+        <p className="mt-1 text-[12.5px] tabular-nums text-ink-faint">{f.n(p.weight_kg)} kg</p>
       ) : null}
     </>
   );
@@ -139,28 +177,33 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
   const s = t.common.social;
 
   return (
-    <Card>
+    <Card plain>
       <div className="flex items-start gap-3">
         <Link href={`/people/${post.user_id}`} className="shrink-0">
-          <Avatar name={post.author_name} url={post.author_avatar} />
+          <Avatar name={post.author_name} url={post.author_avatar} size="h-10 w-10" />
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <Link href={`/people/${post.user_id}`} className="truncate font-semibold hover:text-accent-ink">
+            <Link href={`/people/${post.user_id}`} className="truncate text-[14.5px] font-semibold hover:text-accent-ink">
               {post.author_name}
             </Link>
-            <span className="shrink-0 text-xs text-ink-faint">{f.when(post.created_at)}</span>
+            <span className="shrink-0 text-[12px] text-ink-faint">{f.when(post.created_at)}</span>
           </div>
-          <p className="text-[11px] text-ink-faint">{s.visibility[post.visibility]}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{s.visibility[post.visibility]}</p>
         </div>
       </div>
 
       <PostBody post={post} />
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3 text-xs">
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line/60 pt-2.5 text-[12.5px]">
         <Kudos post={post} />
-        <Link href={`/feed/${post.id}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-semibold text-ink-soft hover:bg-bg">
-          💬 <span className="tabular-nums">{post.comment_count}</span> <span className="hidden sm:inline">{s.comments}</span>
+        <Link
+          href={`/feed/${post.id}`}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 font-semibold text-ink-soft hover:bg-bg hover:text-ink"
+        >
+          <NavIcon d={COMMENT} className="h-[17px] w-[17px]" />
+          <span className="tabular-nums">{post.comment_count}</span>
+          <span className="hidden sm:inline">{s.comments}</span>
         </Link>
         {post.mine && detail ? (
           <button
@@ -173,7 +216,7 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
                 router.refresh();
               })
             }
-            className="order-last ml-auto text-ink-faint hover:text-risk"
+            className="order-last ml-auto inline-flex min-h-11 items-center px-2 font-semibold text-ink-faint hover:text-risk"
           >
             {s.deletePost}
           </button>
@@ -241,7 +284,10 @@ function Kudos({ post }: { post: FeedPost }) {
     <>
       <span className="inline-flex items-center">
         {post.mine ? (
-          <span className="inline-flex min-h-9 items-center gap-1.5 px-2 font-semibold text-ink-soft" aria-hidden>🔥 {s.kudos}</span>
+          <span className="inline-flex min-h-11 items-center gap-1.5 px-2.5 font-semibold text-ink-soft" aria-hidden>
+            <NavIcon d={FLAME} className="h-[17px] w-[17px]" />
+            {s.kudos}
+          </span>
         ) : (
           <button
             type="button"
@@ -249,11 +295,12 @@ function Kudos({ post }: { post: FeedPost }) {
             aria-pressed={state.my_kudos}
             aria-busy={pending}
             title={state.my_kudos ? s.removeKudos : s.kudos}
-            className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-semibold transition-colors ${
-              state.my_kudos ? "bg-accent-soft text-accent-ink" : "text-ink-soft hover:bg-bg"
+            className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 font-semibold transition-colors ${
+              state.my_kudos ? "bg-accent-soft text-accent-ink" : "text-ink-soft hover:bg-bg hover:text-ink"
             } ${pending ? "opacity-70" : ""}`}
           >
-            🔥 <span>{s.kudos}</span>
+            <NavIcon d={FLAME} className="h-[17px] w-[17px]" />
+            <span>{s.kudos}</span>
           </button>
         )}
         <button
@@ -262,13 +309,13 @@ function Kudos({ post }: { post: FeedPost }) {
           disabled={state.kudos_count === 0}
           aria-label={fill(s.kudosCount, { count: state.kudos_count })}
           title={s.seeKudos}
-          className={`min-h-9 rounded-lg px-1.5 font-semibold tabular-nums ${state.kudos_count > 0 ? "text-ink hover:bg-bg" : "text-ink-faint"}`}
+          className={`min-h-11 rounded-full px-2 font-semibold tabular-nums ${state.kudos_count > 0 ? "text-ink hover:bg-bg" : "text-ink-faint"}`}
         >
           {state.kudos_count}
         </button>
       </span>
       {line ? (
-        <button type="button" onClick={openList} className="order-last ml-auto min-w-0 truncate text-left text-ink-faint hover:text-ink">
+        <button type="button" onClick={openList} className="order-last ml-auto min-w-0 truncate text-left text-[12px] text-ink-faint hover:text-ink">
           {line}
         </button>
       ) : null}
@@ -314,20 +361,21 @@ function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void 
       onClick={(e) => { if (e.target === e.currentTarget) ref.current?.close(); }}
       onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); ref.current?.close(); } }}
       aria-label={s.kudos}
-      className="app-dialog m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-line bg-bg p-0 text-ink shadow-2xl"
+      className="app-dialog m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl bg-surface p-0 text-ink"
     >
-      <div className="p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="font-bold">🔥 {s.kudos}</p>
+      <div className="p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
+            <NavIcon d={FLAME} className="h-[19px] w-[19px] text-accent" />
+            {s.kudos}
+          </p>
           <button
             type="button"
             onClick={() => ref.current?.close()}
             aria-label={t.common.actions.close}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft hover:bg-surface hover:text-ink"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-bg text-ink-soft hover:text-ink"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
+            <NavIcon d={CLOSE} className="h-4 w-4 [stroke-width:2.2]" />
           </button>
         </div>
         {items === null ? (
@@ -335,11 +383,11 @@ function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void 
         ) : items.length === 0 ? (
           <p className="py-6 text-center text-sm text-ink-faint">{s.noKudosYet}</p>
         ) : (
-          <ul className="max-h-[60vh] space-y-1 overflow-y-auto">
+          <ul className="max-h-[60vh] divide-y divide-line/60 overflow-y-auto">
             {items.map((k) => (
               <li key={k.user_id}>
-                <Link href={`/people/${k.user_id}`} className="flex min-h-11 items-center gap-3 rounded-lg px-1 hover:bg-surface">
-                  <Avatar name={k.name} url={k.avatar_url} size="h-8 w-8" />
+                <Link href={`/people/${k.user_id}`} className="flex min-h-12 items-center gap-3 rounded-xl px-1 hover:bg-bg">
+                  <Avatar name={k.name} url={k.avatar_url} size="h-9 w-9" />
                   <span className="min-w-0 truncate text-sm font-semibold">{k.name}</span>
                 </Link>
               </li>
@@ -351,7 +399,7 @@ function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void 
             type="button"
             onClick={more}
             disabled={pending}
-            className="mt-3 min-h-11 w-full rounded-lg border border-line text-sm font-semibold text-ink-soft hover:border-accent disabled:opacity-50"
+            className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-bg text-[13px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
           >
             {s.loadMore}
           </button>
@@ -372,26 +420,27 @@ export function Comments({ postId, comments }: { postId: string; comments: PostC
   const [error, setError] = useState<string | null>(null);
   const s = t.common.social;
   return (
-    <Card>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-        💬 {comments.length === 1 ? s.commentOne : fill(s.commentsCount, { count: comments.length })}
+    <Card plain>
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <NavIcon d={COMMENT} className="h-[15px] w-[15px]" />
+        {comments.length === 1 ? s.commentOne : fill(s.commentsCount, { count: comments.length })}
       </p>
-      <ul className="mt-3 space-y-3">
+      <ul className="mt-3.5 space-y-3.5">
         {comments.map((c) => (
           <li key={c.id} className="flex items-start gap-2.5">
-            <Avatar name={c.author_name} url={c.author_avatar} size="h-7 w-7" />
+            <Avatar name={c.author_name} url={c.author_avatar} size="h-8 w-8" />
             <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between gap-2 text-xs">
-                <span className="truncate font-semibold">{c.author_name}</span>
-                <span className="shrink-0 text-ink-faint">{f.when(c.created_at)}</span>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="truncate text-[13px] font-semibold">{c.author_name}</span>
+                <span className="shrink-0 text-[12px] text-ink-faint">{f.when(c.created_at)}</span>
               </div>
-              <p className="whitespace-pre-wrap break-words text-sm">{c.body}</p>
+              <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed">{c.body}</p>
               {c.mine ? (
                 <button
                   type="button"
                   disabled={pending}
                   onClick={() => startTransition(async () => { await deleteComment(c.id, postId); router.refresh(); })}
-                  className="mt-0.5 text-[11px] text-ink-faint hover:text-risk"
+                  className="mt-1 text-[11px] font-semibold text-ink-faint hover:text-risk"
                 >
                   {s.deleteComment}
                 </button>
@@ -418,9 +467,13 @@ export function Comments({ postId, comments }: { postId: string; comments: PostC
           onChange={(e) => setBody(e.target.value.slice(0, COMMENT_MAX))}
           placeholder={s.writeComment}
           maxLength={COMMENT_MAX}
-          className="min-h-11 min-w-0 flex-1 rounded-lg border border-line bg-bg px-3 text-sm"
+          className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent"
         />
-        <button type="submit" disabled={pending || body.trim().length === 0} className="min-h-11 shrink-0 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-40">
+        <button
+          type="submit"
+          disabled={pending || body.trim().length === 0}
+          className="flex h-11 shrink-0 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
+        >
           {s.send}
         </button>
       </form>
@@ -443,7 +496,7 @@ export function Composer() {
   const [error, setError] = useState<string | null>(null);
   const s = t.common.social;
   return (
-    <Card>
+    <Card plain>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -464,20 +517,21 @@ export function Composer() {
           placeholder={s.composerPlaceholder}
           maxLength={POST_TEXT_MAX}
           rows={2}
-          className="w-full resize-none rounded-lg border border-line bg-bg px-3 py-2 text-sm"
+          className="w-full resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-sm outline-none focus:border-accent"
         />
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
           <VisibilityPicker value={visibility} onChange={setVisibility} />
           <span className="text-[11px] tabular-nums text-ink-faint">{text.length}/{POST_TEXT_MAX}</span>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-          <label className="inline-flex min-h-9 items-center gap-1.5 text-ink-soft">
-            <input type="checkbox" checked={progress} onChange={(e) => setProgress(e.target.checked)} className="accent-[var(--color-accent)]" />
-            📈 {s.progressUpdate}
+        <div className="mt-2.5 flex flex-wrap items-center gap-3 text-[12.5px]">
+          <label className="inline-flex min-h-11 items-center gap-2 font-semibold text-ink-soft">
+            <input type="checkbox" checked={progress} onChange={(e) => setProgress(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
+            <NavIcon d={TREND} className="h-4 w-4 text-ink-faint" />
+            {s.progressUpdate}
           </label>
           {progress ? (
-            <label className="inline-flex min-h-9 items-center gap-1.5 text-ink-soft">
-              <input type="checkbox" checked={includeWeight} onChange={(e) => setIncludeWeight(e.target.checked)} className="accent-[var(--color-accent)]" />
+            <label className="inline-flex min-h-11 items-center gap-2 font-semibold text-ink-soft">
+              <input type="checkbox" checked={includeWeight} onChange={(e) => setIncludeWeight(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
               {s.progressWeightOptIn}
               {includeWeight ? (
                 <input
@@ -485,12 +539,16 @@ export function Composer() {
                   onChange={(e) => setWeight(e.target.value)}
                   inputMode="decimal"
                   placeholder="kg"
-                  className="w-20 rounded-lg border border-line bg-bg px-2 py-1 text-sm"
+                  className="h-9 w-20 rounded-xl border border-line bg-bg px-2.5 text-sm tabular-nums outline-none focus:border-accent"
                 />
               ) : null}
             </label>
           ) : null}
-          <button type="submit" disabled={pending || text.trim().length === 0} className="ml-auto min-h-11 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-40">
+          <button
+            type="submit"
+            disabled={pending || text.trim().length === 0}
+            className="ml-auto flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
+          >
             {s.post}
           </button>
         </div>
@@ -519,9 +577,9 @@ export function FollowButton({ userId, following, compact = false }: { userId: s
           router.refresh();
         })
       }
-      className={`min-h-9 shrink-0 rounded-lg px-3 text-xs font-semibold disabled:opacity-50 ${
-        state ? "border border-line text-ink-soft hover:border-risk hover:text-risk" : "bg-accent text-accent-fg hover:opacity-90"
-      } ${compact ? "" : "min-h-11 px-4 text-sm"}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full font-semibold disabled:opacity-50 ${
+        state ? "bg-bg text-ink-soft hover:text-risk" : "bg-accent text-accent-fg hover:opacity-90"
+      } ${compact ? "h-9 px-4 text-[12.5px]" : "h-11 px-5 font-display text-sm font-bold"}`}
     >
       {state ? s.following : s.follow}
     </button>
@@ -548,22 +606,28 @@ export function SharePanel({ session, onShare, onSharePr }: {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <p className="text-lg font-bold">🏋️ {session.name}</p>
-        <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-ink-soft">
+      <Card plain>
+        <p className="flex items-center gap-2.5 font-display text-lg font-bold tracking-tight">
+          <NavIcon d={DUMBBELL} className="h-[21px] w-[21px] text-accent" />
+          <span className="min-w-0 truncate">{session.name}</span>
+        </p>
+        <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] tabular-nums text-ink-faint">
           {f.duration(session.duration_min) ? <span>{f.duration(session.duration_min)}</span> : null}
           <span>{fill(s.exercisesCount, { count: session.exercises })}</span>
           <span>{fill(s.setsCount, { count: session.sets })}</span>
           <span>{fill(s.volume, { kg: f.n(session.volume_kg) })}</span>
         </p>
-        <p className="mt-2 font-semibold text-accent-ink">🔥 {fill(s.trainingLoad, { load: session.load })}</p>
+        <p className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold text-accent-ink">
+          <NavIcon d={FLAME} className="h-[17px] w-[17px]" />
+          {fill(s.trainingLoad, { load: session.load })}
+        </p>
         {!shared ? (
           <div className="mt-4 space-y-3">
             <input
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, POST_TEXT_MAX))}
               placeholder={s.composerPlaceholder}
-              className="min-h-11 w-full rounded-lg border border-line bg-bg px-3 text-sm"
+              className="h-11 w-full rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent"
             />
             <VisibilityPicker value={visibility} onChange={setVisibility} />
             <button
@@ -578,29 +642,35 @@ export function SharePanel({ session, onShare, onSharePr }: {
                   router.refresh();
                 })
               }
-              className="min-h-11 w-full rounded-lg bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-50 sm:w-auto"
+              className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50 sm:w-auto"
             >
               {s.shareToFeed}
             </button>
           </div>
         ) : (
-          <p className="mt-4 text-sm font-semibold text-accent-ink">✓ {s.shared}</p>
+          <p className="mt-4 flex items-center gap-1.5 text-sm font-semibold text-accent-ink">
+            <NavIcon d={CHECK} className="h-4 w-4 [stroke-width:2.4]" />
+            {s.shared}
+          </p>
         )}
         {error ? <p className="mt-2 text-xs text-risk">{error}</p> : null}
       </Card>
 
       {session.prs.length > 0 ? (
-        <Card>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">🏆 {s.newPr}</p>
-          <ul className="mt-2 space-y-2">
+        <Card plain>
+          <BlockLabel icon={TROPHY}>{s.newPr}</BlockLabel>
+          <ul className="mt-2.5 divide-y divide-line/60">
             {session.prs.map((pr) => (
-              <li key={pr.set_id} className="flex items-center justify-between gap-3">
+              <li key={pr.set_id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">{pr.exercise}</p>
-                  <p className="text-xs tabular-nums text-ink-soft">{f.n(pr.weight_kg)} kg × {pr.reps}</p>
+                  <p className="truncate text-[14px] font-semibold">{pr.exercise}</p>
+                  <p className="mt-0.5 text-[12.5px] tabular-nums text-ink-faint">{f.n(pr.weight_kg)} kg × {pr.reps}</p>
                 </div>
                 {sharedPrs.has(pr.set_id) ? (
-                  <span className="shrink-0 text-xs font-semibold text-accent-ink">✓ {s.prShared}</span>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold text-accent-ink">
+                    <NavIcon d={CHECK} className="h-4 w-4 [stroke-width:2.4]" />
+                    {s.prShared}
+                  </span>
                 ) : (
                   <button
                     type="button"
@@ -613,7 +683,7 @@ export function SharePanel({ session, onShare, onSharePr }: {
                         router.refresh();
                       })
                     }
-                    className="min-h-9 shrink-0 rounded-lg border border-line px-3 text-xs font-semibold hover:border-accent disabled:opacity-50"
+                    className="inline-flex h-9 shrink-0 items-center rounded-full bg-bg px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
                   >
                     {s.sharePr}
                   </button>

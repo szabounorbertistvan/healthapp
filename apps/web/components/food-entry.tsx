@@ -60,7 +60,7 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
 
   if (editing) {
     return (
-      <li className={`py-2 ${pending ? "opacity-60" : ""}`}>
+      <li className={`py-2.5 ${pending ? "opacity-60" : ""}`}>
         <p className="text-sm font-semibold">{entry.food_name}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input
@@ -75,7 +75,7 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
                 setEditing(false);
               }
             }}
-            className="w-24 rounded-lg border border-line bg-surface px-2 py-1.5 text-sm tabular-nums outline-none focus:border-accent"
+            className="w-24 rounded-xl border border-line bg-surface px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-accent"
           />
           <span className="text-xs text-ink-faint">g</span>
           <span className="text-xs tabular-nums text-ink-faint">
@@ -85,7 +85,7 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
             type="button"
             disabled={pending || !valid}
             onClick={save}
-            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg disabled:opacity-40"
+            className="rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg disabled:opacity-40"
           >
             {t.common.actions.save}
           </button>
@@ -107,15 +107,15 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
   }
 
   return (
-    <li className={`py-2 text-sm ${pending ? "opacity-60" : ""}`}>
+    <li className={`py-2.5 text-sm ${pending ? "opacity-60" : ""}`}>
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 truncate font-medium">{entry.food_name}</span>
         <span className="shrink-0 tabular-nums">
-          <b>{entry.macros.kcal}</b>
-          <span className="ml-1 text-xs text-ink-faint">kcal</span>
+          <b className="font-semibold">{entry.macros.kcal}</b>
+          <span className="ml-1 text-xs font-medium text-ink-faint">kcal</span>
         </span>
       </div>
-      <div className="mt-0.5 flex items-center justify-between gap-3 text-xs text-ink-faint">
+      <div className="mt-1 flex items-center justify-between gap-3 text-xs text-ink-faint">
         <span className="tabular-nums">
           {entry.grams} g · {initial(t.common.macros.protein)} {entry.macros.protein} ·{" "}
           {initial(t.common.macros.carbs)} {entry.macros.carbs} · {initial(t.common.macros.fat)} {entry.macros.fat}
@@ -127,7 +127,7 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
                 type="button"
                 disabled={pending}
                 onClick={remove}
-                className="rounded-md bg-risk px-2 py-0.5 font-semibold text-white"
+                className="rounded-lg bg-risk px-2 py-0.5 font-semibold text-white"
               >
                 {t.common.actions.delete}
               </button>

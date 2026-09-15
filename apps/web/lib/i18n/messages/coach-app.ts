@@ -47,7 +47,7 @@ const en = {
     daysUpdated: "{days} days · updated {ago}",
   },
   programBuilderPage: {
-    back: "← Programs",
+    back: "Programs",
     newTitle: "New program",
   },
   library: {
@@ -69,7 +69,7 @@ const en = {
     proteinShort: "P",
     carbsShort: "C",
     fatShort: "F",
-    back: "← Nutrition",
+    back: "Nutrition",
     newTitle: "New nutrition plan",
   },
   checkIns: {
@@ -80,7 +80,7 @@ const en = {
   messages: {
     emptyTitle: "No conversations",
     emptyHint: "A conversation opens automatically when a client accepts your invite.",
-    back: "← Messages",
+    back: "Messages",
     conversation: "Conversation",
   },
   settings: {
@@ -95,6 +95,26 @@ const en = {
       "Payments are handled by Stripe. The annual plan is 12 months minus 15%; cancel anytime from “Manage billing”.",
   },
   admin: {
+    exercises: {
+      title: "Exercise library · translations",
+      link: "Translate exercises",
+      intro:
+        "The exercise library comes from the public-domain Free Exercise DB, in English. Write the Romanian name a client would search for and the steps in Romanian; both are saved on the exercise and shown everywhere in Romanian.",
+      searchPlaceholder: "Search by the English or Romanian name…",
+      onlyMissing: "Only untranslated",
+      showAll: "Show all",
+      missingCount: "{n} exercises still without a Romanian name",
+      namePlaceholder: "Name in Romanian",
+      instructionsPlaceholder: "Steps in Romanian, one per line",
+      saved: "Saved",
+      couldNotSave: "Could not save",
+      noResults: "No exercise for “{q}”.",
+      allDone: "Every exercise has a Romanian name.",
+      showing: "{first}–{last} of {total}",
+      pageOf: "{page} / {pages}",
+      previous: "Previous page",
+      next: "Next page",
+    },
     foods: {
       title: "Food library · translations",
       link: "Translate foods",
@@ -187,7 +207,7 @@ const ro: typeof en = {
     daysUpdated: "{days} zile · actualizat {ago}",
   },
   programBuilderPage: {
-    back: "← Programe",
+    back: "Programe",
     newTitle: "Program nou",
   },
   library: {
@@ -209,7 +229,7 @@ const ro: typeof en = {
     proteinShort: "P",
     carbsShort: "C",
     fatShort: "G",
-    back: "← Nutriție",
+    back: "Nutriție",
     newTitle: "Plan de nutriție nou",
   },
   checkIns: {
@@ -220,7 +240,7 @@ const ro: typeof en = {
   messages: {
     emptyTitle: "Nicio conversație",
     emptyHint: "O conversație se deschide automat când un client acceptă invitația ta.",
-    back: "← Mesaje",
+    back: "Mesaje",
     conversation: "Conversație",
   },
   settings: {
@@ -235,6 +255,26 @@ const ro: typeof en = {
       "Plățile sunt procesate de Stripe. Planul anual înseamnă 12 luni minus 15%; poți anula oricând din „Gestionează facturarea”.",
   },
   admin: {
+    exercises: {
+      title: "Bibliotecă exerciții · traduceri",
+      link: "Tradu exerciții",
+      intro:
+        "Biblioteca de exerciții vine din Free Exercise DB, domeniu public, în engleză. Scrie numele în română pe care l-ar căuta un client și pașii în română; ambele se salvează pe exercițiu și apar peste tot în română.",
+      searchPlaceholder: "Caută după numele în engleză sau română…",
+      onlyMissing: "Doar cele netraduse",
+      showAll: "Arată toate",
+      missingCount: "{n} exerciții încă fără nume în română",
+      namePlaceholder: "Nume în română",
+      instructionsPlaceholder: "Pașii în română, câte unul pe rând",
+      saved: "Salvat",
+      couldNotSave: "Nu s-a putut salva",
+      noResults: "Niciun exercițiu pentru „{q}”.",
+      allDone: "Toate exercițiile au nume în română.",
+      showing: "{first}–{last} din {total}",
+      pageOf: "{page} / {pages}",
+      previous: "Pagina anterioară",
+      next: "Pagina următoare",
+    },
     foods: {
       title: "Bibliotecă alimente · traduceri",
       link: "Tradu alimente",

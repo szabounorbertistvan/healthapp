@@ -45,54 +45,49 @@ export function NewProgramForm({
   }
 
   const field =
-    "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
+    "h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent";
+  const legend = "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-ink-faint";
 
   return (
-    <form onSubmit={submit} className="max-w-md space-y-4">
-      <div>
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
-          {m.programName}
-        </label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={m.namePlaceholder}
-          className={field}
-          autoFocus
-        />
-      </div>
+    <form onSubmit={submit} className="space-y-5">
+      {/* Two columns once there is room; one on a phone. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className={legend}>{m.programName}</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={m.namePlaceholder}
+            className={field}
+            autoFocus
+          />
+        </div>
 
-      <div>
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
-          {m.client}
-        </label>
-        <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={field}>
-          {roster.map((client) => (
-            <option key={client.id} value={client.id}>
-              {client.name}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div>
+          <label className={legend}>{m.client}</label>
+          <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={field}>
+            {roster.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
-            {m.weeks}
-          </label>
+        <div>
+          <label className={legend}>{m.weeks}</label>
           <input
             type="number"
             min={1}
             max={52}
             value={weeks}
             onChange={(e) => setWeeks(Number(e.target.value))}
-            className={field}
+            className={`${field} tabular-nums`}
           />
         </div>
-        <div className="flex-1">
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
-            {m.intensity}
-          </label>
+
+        <div>
+          <label className={legend}>{m.intensity}</label>
           <select
             value={intensityMode}
             onChange={(e) => setIntensityMode(e.target.value as "rir" | "rpe" | "simple")}
@@ -105,16 +100,20 @@ export function NewProgramForm({
         </div>
       </div>
 
-      {error ? <p className="text-sm text-risk">{error}</p> : null}
+      {error ? (
+        <p className="rounded-2xl bg-risk-soft px-4 py-3 text-sm font-semibold text-risk">{error}</p>
+      ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
-      >
-        {pending ? m.creating : m.createDraft}
-      </button>
-      <p className="text-xs text-ink-faint">{m.draftNote}</p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
+        >
+          {pending ? m.creating : m.createDraft}
+        </button>
+        <p className="text-[12.5px] text-ink-faint">{m.draftNote}</p>
+      </div>
     </form>
   );
 }

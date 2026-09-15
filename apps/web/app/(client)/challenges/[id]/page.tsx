@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getChallenge } from "@/lib/challenges-data";
-import { Card, PageTitle } from "@/components/ui";
+import { Card } from "@/components/ui";
 import {
   ChallengeProgressBar, ChallengeStatusBadge, JoinLeaveButton, Leaderboard,
 } from "@/components/challenges";
@@ -19,47 +19,55 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
   const completed = c.status === "completed";
 
   return (
-    <div className="space-y-4">
-      <Link href="/challenges" className="text-xs font-semibold text-ink-faint hover:text-accent-ink">
+    // The challenge on the left, its leaderboard beside it once there is room.
+    <div className="mx-auto max-w-[1600px]">
+      <Link
+        href="/challenges"
+        className="inline-flex h-9 items-center rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+      >
         {ch.back}
       </Link>
-      <PageTitle title={c.title}>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{c.title}</h1>
         <ChallengeStatusBadge status={c.status} />
-      </PageTitle>
+      </div>
 
-      <Card>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.type[c.type]}</p>
-        {c.description ? <p className="mt-1 text-sm text-ink-soft">{c.description}</p> : null}
+      <div className="mt-5 grid items-start gap-4 sm:mt-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)] xl:gap-6">
+        <Card plain>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.type[c.type]}</p>
+          {c.description ? <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{c.description}</p> : null}
 
-        <div className="mt-4">
-          <ChallengeNumbers challenge={c} />
-          <div className="mt-2">
-            <ChallengeProgressBar pct={c.joined ? c.pct : 0} completed={completed} height="h-3" />
+          <div className="mt-4">
+            <ChallengeNumbers challenge={c} />
+            <div className="mt-2.5">
+              <ChallengeProgressBar pct={c.joined ? c.pct : 0} completed={completed} height="h-2.5" />
+            </div>
+            {completed ? (
+              <>
+                <p className="mt-3.5 font-display text-lg font-bold tracking-tight text-accent-ink">{ch.completed}</p>
+                {c.joined ? <div className="mt-3"><ShareChallenge challengeId={c.id} /></div> : null}
+              </>
+            ) : !c.joined ? (
+              <p className="mt-2.5 text-[12.5px] text-ink-faint">{ch.notJoined}</p>
+            ) : null}
           </div>
-          {completed ? (
-            <>
-              <p className="mt-3 text-base font-bold text-accent-ink">{ch.completed}</p>
-              {c.joined ? <div className="mt-3"><ShareChallenge challengeId={c.id} /></div> : null}
-            </>
-          ) : !c.joined ? (
-            <p className="mt-2 text-xs text-ink-faint">{ch.notJoined}</p>
-          ) : null}
-        </div>
 
-        <ChallengeDeadline challenge={c} />
+          <ChallengeDeadline challenge={c} />
 
-        <div className="mt-4">
-          <JoinLeaveButton challenge={c} />
-        </div>
-      </Card>
+          <div className="mt-4">
+            <JoinLeaveButton challenge={c} />
+          </div>
+        </Card>
 
-      {c.leaderboard ? (
-        <Leaderboard rows={c.leaderboard} type={c.type} />
-      ) : (
-        <p className="text-xs text-ink-faint">
-          {c.participants === 1 ? ch.participantsOne : fill(ch.participants, { count: c.participants })}
-        </p>
-      )}
+        {c.leaderboard ? (
+          <Leaderboard rows={c.leaderboard} type={c.type} />
+        ) : (
+          <p className="text-[12.5px] tabular-nums text-ink-faint">
+            {c.participants === 1 ? ch.participantsOne : fill(ch.participants, { count: c.participants })}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

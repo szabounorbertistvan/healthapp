@@ -8,8 +8,14 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { parseDay } from "@/lib/week";
 import type { StreakView } from "@/lib/streak-data";
+import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
 import { VisibilityPicker } from "./social";
+
+const FLAME = "M12 22c4 0 7-3 7-7 0-3-2-5-3-7-1 2-2 3-3 3 0-3-1-6-4-8 0 4-4 6-4 12 0 4 3 7 7 7z";
+const TROPHY = "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4";
+const CHECK = "m5 12 5 5 9-10";
+const CHEVRON = "m9 6 6 6-6 6";
 
 function useStreakText() {
   const { t, locale } = useI18n();
@@ -28,7 +34,7 @@ function useStreakText() {
 // ---------- the card ----------
 
 /**
- * 🔥 12 day streak / 12 consecutive workout days / Best: 31 days — or the
+ * A flame, 12 day streak, 12 consecutive workout days, Best: 31 days — or the
  * nudge to start one. `compact` is the Today variant: one row, link to the
  * streak page; the full card also carries the calendar.
  */
@@ -38,27 +44,30 @@ export function StreakCard({ view, compact = false }: { view: StreakView; compac
   const none = current === 0;
 
   return (
-    <Card>
+    <Card plain>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.s.title}</p>
-          <p className="mt-1 text-lg font-bold leading-tight">🔥 {none ? x.s.startTitle : x.dayStreak(current)}</p>
-          <p className="mt-0.5 text-sm text-ink-soft">
+          <p className="mt-1.5 flex items-center gap-2.5 font-display text-xl font-extrabold leading-tight">
+            <NavIcon d={FLAME} className="h-[22px] w-[22px] text-accent" />
+            {none ? x.s.startTitle : x.dayStreak(current)}
+          </p>
+          <p className="mt-0.5 text-[13px] text-ink-soft">
             {none ? x.s.startBody : activeToday ? x.consecutive(current) : activeYesterday ? x.s.keepGoing : x.consecutive(current)}
           </p>
         </div>
         {longest > 0 ? (
           <div className="shrink-0 text-right">
-            <p className="text-[11px] text-ink-faint">🏆 {x.s.longestStreak}</p>
-            <p className="text-sm font-semibold tabular-nums">{longest} {longest === 1 ? x.s.day : x.s.days}</p>
+            <p className="text-[11px] text-ink-faint">{x.s.longestStreak}</p>
+            <p className="text-[13.5px] font-semibold tabular-nums">{longest} {longest === 1 ? x.s.day : x.s.days}</p>
           </div>
         ) : null}
       </div>
       {!none && view.next_milestone !== null && view.next_milestone > current ? (
-        <p className="mt-2 text-xs text-ink-faint">{fill(x.s.nextMilestone, { count: view.next_milestone - current, milestone: view.next_milestone })}</p>
+        <p className="mt-2 text-[12.5px] text-ink-faint">{fill(x.s.nextMilestone, { count: view.next_milestone - current, milestone: view.next_milestone })}</p>
       ) : null}
       {compact ? (
-        <Link href="/streak" className="mt-3 inline-block text-xs font-semibold text-accent-ink hover:underline">
+        <Link href="/streak" className="mt-3 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
           {x.s.viewStreak} →
         </Link>
       ) : (
@@ -89,7 +98,10 @@ export function StreakCalendar({ calendar }: { calendar: CalendarDay[][] }) {
     `${x.date(d.day)} — ${d.workouts === 0 ? x.s.restDay : d.workouts === 1 ? x.s.workout : fill(x.s.workouts, { count: d.workouts })}`;
 
   return (
-    <div>
+    // Capped so the squares stay squares on a desktop card; below that the
+    // twelve columns stretch to fill, which is what keeps a 375px phone from
+    // scrolling sideways.
+    <div className="max-w-[380px]">
       <div className="flex gap-1">
         <div className="grid shrink-0 grid-rows-7 gap-1 pr-1 text-[9px] leading-none text-ink-faint">
           {weekdays.map((w, i) => (
@@ -108,7 +120,7 @@ export function StreakCalendar({ calendar }: { calendar: CalendarDay[][] }) {
               aria-pressed={picked?.day === d.day}
               onClick={() => setPicked(d)}
               onMouseEnter={() => setPicked(d)}
-              className={`h-4 min-w-3 rounded-[3px] ${
+              className={`h-4 min-w-3 rounded-[4px] ${
                 d.future
                   ? "bg-transparent"
                   : d.workouts > 0
@@ -119,7 +131,7 @@ export function StreakCalendar({ calendar }: { calendar: CalendarDay[][] }) {
           ))}
         </div>
       </div>
-      <p className="mt-2 min-h-4 text-xs text-ink-soft" aria-live="polite">
+      <p className="mt-2.5 min-h-4 text-[12.5px] text-ink-soft" aria-live="polite">
         {picked && !picked.future ? label(picked) : " "}
       </p>
     </div>
@@ -142,18 +154,33 @@ export function StreakAfterWorkout({ view }: { view: StreakView }) {
     status.event === "started" ? x.s.streakStarted : fill(x.s.streakExtended, { count: summary.current });
   const milestone = status.milestone !== null ? view.milestones.find((m) => m.milestone === status.milestone && m.current) ?? null : null;
   return (
-    <Card className="bg-accent-soft">
-      <p className="text-lg font-bold">🔥 {headline}</p>
-      {status.event === "record" ? <p className="mt-0.5 text-sm font-semibold text-accent-ink">🏆 {x.s.newLongest}</p> : null}
+    <Card plain className="bg-accent-soft">
+      <p className="flex items-center gap-2.5 font-display text-lg font-bold tracking-tight">
+        <NavIcon d={FLAME} className="h-[21px] w-[21px] text-accent-ink" />
+        {headline}
+      </p>
+      {status.event === "record" ? (
+        <p className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold text-accent-ink">
+          <NavIcon d={TROPHY} className="h-4 w-4" />
+          {x.s.newLongest}
+        </p>
+      ) : null}
       {milestone ? (
-        <div className="mt-3 border-t border-line/60 pt-3">
-          <p className="font-bold">🏆 {x.milestone(milestone.milestone)}</p>
-          <p className="text-sm text-ink-soft">{x.consecutive(milestone.milestone)}</p>
+        <div className="mt-3.5 border-t border-line/60 pt-3.5">
+          <p className="flex items-center gap-2 text-sm font-bold">
+            <NavIcon d={TROPHY} className="h-[17px] w-[17px] text-accent-ink" />
+            {x.milestone(milestone.milestone)}
+          </p>
+          <p className="mt-0.5 text-[13px] text-ink-soft">{x.consecutive(milestone.milestone)}</p>
           {milestone.milestone >= STREAK_SHARE_MIN ? <ShareMilestone milestone={milestone.milestone} streakStart={milestone.streak_start} shared={milestone.shared} /> : null}
         </div>
       ) : null}
-      <Link href="/streak" className="mt-3 inline-block text-xs font-semibold text-accent-ink hover:underline">
-        {x.s.viewStreak} →
+      <Link
+        href="/streak"
+        className="mt-3.5 inline-flex h-9 items-center gap-1.5 rounded-full bg-bg px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+      >
+        {x.s.viewStreak}
+        <NavIcon d={CHEVRON} className="h-3.5 w-3.5 [stroke-width:2.4]" />
       </Link>
     </Card>
   );
@@ -164,17 +191,20 @@ export function StreakAfterWorkout({ view }: { view: StreakView }) {
 export function MilestoneList({ view }: { view: StreakView }) {
   const x = useStreakText();
   return (
-    <Card>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">🏆 {x.s.milestones}</p>
+    <Card plain>
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <NavIcon d={TROPHY} className="h-[15px] w-[15px]" />
+        {x.s.milestones}
+      </p>
       {view.milestones.length === 0 ? (
-        <p className="mt-2 text-sm text-ink-soft">{x.s.noMilestones}</p>
+        <p className="mt-2 text-[13px] text-ink-faint">{x.s.noMilestones}</p>
       ) : (
-        <ul className="mt-2 divide-y divide-line">
+        <ul className="mt-2 divide-y divide-line/60">
           {view.milestones.map((m) => (
-            <li key={`${m.milestone}-${m.streak_start}`} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5">
+            <li key={`${m.milestone}-${m.streak_start}`} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3">
               <div className="min-w-0">
-                <p className="font-semibold">{x.milestone(m.milestone)}</p>
-                <p className="text-xs text-ink-faint">{fill(x.s.reachedOn, { date: x.date(m.reached_on) })}</p>
+                <p className="text-[14px] font-semibold">{x.milestone(m.milestone)}</p>
+                <p className="mt-0.5 text-[12.5px] tabular-nums text-ink-faint">{fill(x.s.reachedOn, { date: x.date(m.reached_on) })}</p>
               </div>
               {m.milestone >= STREAK_SHARE_MIN ? <ShareMilestone milestone={m.milestone} streakStart={m.streak_start} shared={m.shared} inline /> : null}
             </li>
@@ -196,13 +226,22 @@ function ShareMilestone({ milestone, streakStart, shared, inline = false }: { mi
   const [error, setError] = useState<string | null>(null);
   const s = t.common.social;
 
-  if (done) return <span className="text-xs font-semibold text-accent-ink">✓ {s.shared}</span>;
+  if (done) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-accent-ink">
+        <NavIcon d={CHECK} className="h-4 w-4 [stroke-width:2.4]" />
+        {s.shared}
+      </span>
+    );
+  }
   if (!open) {
     return (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`rounded-lg border border-line font-semibold hover:border-accent ${inline ? "min-h-9 px-3 text-xs" : "mt-3 min-h-11 px-4 text-sm"}`}
+        className={`inline-flex items-center justify-center rounded-full bg-bg font-semibold text-ink-soft hover:text-ink ${
+          inline ? "h-9 px-4 text-[12.5px]" : "mt-3 h-11 px-5 text-sm"
+        }`}
       >
         {s.shareToFeed}
       </button>
@@ -223,7 +262,7 @@ function ShareMilestone({ milestone, streakStart, shared, inline = false }: { mi
             router.refresh();
           })
         }
-        className="min-h-11 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-50"
+        className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
       >
         {s.shareToFeed}
       </button>

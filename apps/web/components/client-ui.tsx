@@ -21,15 +21,15 @@ export function MacroBar({
   const width = Math.min(Math.max(ratio, 0), 1) * 100;
   return (
     <div>
-      <div className="flex items-baseline justify-between text-xs">
-        <span className="font-semibold text-ink-soft">{label}</span>
-        <span className="tabular-nums text-ink-faint">
-          <b className="text-ink">{Math.round(value)}</b>
+      <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
+        <span className="min-w-0 truncate font-semibold text-ink-soft">{label}</span>
+        <span className="shrink-0 tabular-nums text-ink-faint">
+          <b className="font-bold text-ink">{Math.round(value)}</b>
           {target > 0 ? ` / ${Math.round(target)}` : ""}
           {unit}
         </span>
       </div>
-      <div className="mt-1 h-2 overflow-hidden rounded-full bg-bg">
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-bg">
         <div
           className={`h-full rounded-full ${over ? "bg-warn" : "bg-accent"}`}
           style={{ width: `${width}%` }}
@@ -51,18 +51,18 @@ export function MacroPanel({
   const { t } = useI18n();
   const remaining = Math.max(0, Math.round(target.kcal - totals.kcal));
   return (
-    <Card>
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+    <Card plain>
+      <div className="mb-3.5 flex items-baseline justify-between gap-2">
+        <p className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
           {title ?? t.common.macros.todayTitle}
         </p>
         {target.kcal > 0 ? (
-          <p className="text-xs text-ink-faint">
-            <b className="tabular-nums text-ink">{remaining}</b> {t.common.macros.kcalLeft}
+          <p className="shrink-0 text-[12.5px] text-ink-faint">
+            <b className="font-bold tabular-nums text-ink">{remaining}</b> {t.common.macros.kcalLeft}
           </p>
         ) : null}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3.5 sm:grid-cols-2">
         <MacroBar label={t.common.macros.calories} value={totals.kcal} target={target.kcal} unit=" kcal" />
         <MacroBar label={t.common.macros.protein} value={totals.protein} target={target.protein} />
         <MacroBar label={t.common.macros.carbs} value={totals.carbs} target={target.carbs} />
@@ -85,7 +85,7 @@ export function Sparkline({
 }) {
   const { t } = useI18n();
   if (points.length < 2) {
-    return <p className="text-sm text-ink-faint">{t.common.charts.notEnoughData}</p>;
+    return <p className="text-[13px] text-ink-faint">{t.common.charts.notEnoughData}</p>;
   }
   const values = points.map((p) => p.value);
   const min = Math.min(...values);
@@ -117,15 +117,15 @@ export function Sparkline({
           d={path}
           fill="none"
           stroke="var(--color-accent)"
-          strokeWidth="1.5"
+          strokeWidth="2"
           vectorEffect="non-scaling-stroke"
           strokeLinejoin="round"
           strokeLinecap="round"
         />
       </svg>
-      <div className="mt-1 flex justify-between text-xs text-ink-faint">
+      <div className="mt-2 flex items-baseline justify-between gap-2 text-[11.5px] tabular-nums text-ink-faint">
         <span>{first.label}</span>
-        <span className={delta <= 0 ? "font-semibold text-accent-ink" : "font-semibold text-warn"}>
+        <span className={delta <= 0 ? "font-bold text-accent-ink" : "font-bold text-warn"}>
           {delta > 0 ? "+" : ""}
           {Math.round(delta * 100) / 100} kg
         </span>

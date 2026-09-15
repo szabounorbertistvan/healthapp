@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getWorkoutDay } from "@/lib/client-data";
-import { PageTitle } from "@/components/ui";
+import { NavIcon } from "@/components/client-nav";
 import { SetLogger } from "@/components/set-logger";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -17,16 +17,25 @@ export default async function WorkoutLogPage({
   if (!day) notFound();
 
   return (
-    <div>
-      <Link href={`/workout/${day.day_id}`} className="text-xs font-semibold text-ink-faint hover:text-accent-ink">
-        ← {day.day_name}
+    <div className="mx-auto max-w-[1600px]">
+      <Link
+        href={`/workout/${day.day_id}`}
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-faint hover:text-accent-ink"
+      >
+        <NavIcon d="m15 6-6 6 6 6" className="h-3.5 w-3.5" />
+        {day.day_name}
       </Link>
-      <PageTitle title={t.clientApp.workoutDay.logToday}>
-        <span className="text-xs text-ink-faint">
+      <div className="mt-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
           {day.program_name} · {day.intensity_mode.toUpperCase()}
-        </span>
-      </PageTitle>
-      <SetLogger day={day} />
+        </p>
+        <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">
+          {t.clientApp.workoutDay.logToday}
+        </h1>
+      </div>
+      <div className="mt-5">
+        <SetLogger day={day} />
+      </div>
     </div>
   );
 }

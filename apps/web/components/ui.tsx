@@ -16,9 +16,10 @@ export function SignalBadge({ signal }: { signal: Signal }) {
   );
 }
 
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+/** `plain` is the redesigned surface: larger radius, no border — the client app's cards. */
+export function Card({ children, className = "", plain = false }: { children: React.ReactNode; className?: string; plain?: boolean }) {
   return (
-    <div className={`rounded-xl border border-line bg-surface p-4 ${className}`}>
+    <div className={`${plain ? "rounded-3xl" : "rounded-xl border border-line"} bg-surface p-4 ${className}`}>
       {children}
     </div>
   );
@@ -42,9 +43,10 @@ export function PageTitle({ title, children }: { title: string; children?: React
   );
 }
 
-export function EmptyState({ title, hint }: { title: string; hint: string }) {
+/** `plain` matches the redesigned client cards (no border, larger radius). */
+export function EmptyState({ title, hint, plain = false }: { title: string; hint: string; plain?: boolean }) {
   return (
-    <Card className="py-10 text-center">
+    <Card plain={plain} className="py-10 text-center">
       <p className="font-semibold">{title}</p>
       <p className="mt-1 text-sm text-ink-soft">{hint}</p>
     </Card>

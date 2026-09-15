@@ -2,7 +2,6 @@ import Link from "next/link";
 import { LEADERBOARD_METRICS, LEADERBOARD_PERIODS } from "@healthapp/shared";
 import { getLeaderboard, metricOf, periodOf } from "@/lib/leaderboard-data";
 import { LeaderboardCard } from "@/components/leaderboard";
-import { PageTitle } from "@/components/ui";
 import { getI18n } from "@/lib/i18n/server";
 
 /**
@@ -21,30 +20,33 @@ export default async function LeaderboardsPage({ searchParams }: { searchParams:
   const href = (m: string, p: string) => `/leaderboards?metric=${m}&period=${p}`;
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <PageTitle title={`🏆 ${l.title}`} />
+    // One board at a time: a readable column, not a lonely strip on an ultrawide.
+    <div className="mx-auto max-w-3xl">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{l.title}</h1>
 
-      <div className="inline-flex overflow-hidden rounded-lg border border-line text-xs font-semibold" role="group" aria-label={l.periodLabel}>
+      <div className="mt-4 inline-flex gap-1 rounded-full bg-surface p-1" role="group" aria-label={l.periodLabel}>
         {LEADERBOARD_PERIODS.map((p) => (
           <Link
             key={p}
             href={href(metric, p)}
             aria-current={p === period ? "page" : undefined}
-            className={`min-h-9 px-3 py-2 ${p === period ? "bg-accent text-accent-fg" : "text-ink-soft hover:text-ink"}`}
+            className={`flex h-9 items-center rounded-full px-4 text-[12.5px] font-semibold ${
+              p === period ? "bg-accent text-accent-fg" : "text-ink-soft hover:text-ink"
+            }`}
           >
             {l.periods[p]}
           </Link>
         ))}
       </div>
 
-      <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" aria-label={l.title}>
+      <nav className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" aria-label={l.title}>
         {LEADERBOARD_METRICS.map((m) => (
           <Link
             key={m}
             href={href(m, period)}
             aria-current={m === metric ? "page" : undefined}
-            className={`min-h-9 shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold ${
-              m === metric ? "border-accent bg-accent-soft text-accent-ink" : "border-line text-ink-soft hover:border-accent"
+            className={`flex h-9 shrink-0 items-center rounded-full px-4 text-[12.5px] font-semibold ${
+              m === metric ? "bg-accent-soft text-accent-ink" : "bg-surface text-ink-soft hover:text-ink"
             }`}
           >
             {l.metrics[m]}
@@ -52,7 +54,9 @@ export default async function LeaderboardsPage({ searchParams }: { searchParams:
         ))}
       </nav>
 
-      <LeaderboardCard board={board} metric={metric} period={period} />
+      <div className="mt-4">
+        <LeaderboardCard board={board} metric={metric} period={period} />
+      </div>
     </div>
   );
 }

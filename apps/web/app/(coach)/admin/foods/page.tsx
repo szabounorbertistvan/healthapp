@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/data";
 import { FOOD_TRANSLATION_PAGE, getFoodsForTranslation } from "@/lib/food-admin-data";
-import { Card, PageTitle } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { NavIcon } from "@/components/client-nav";
+import { AdminTabs } from "@/components/admin-tabs";
 import { FoodTranslateRow } from "@/components/food-translate-row";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
@@ -34,55 +36,61 @@ export default async function AdminFoodsPage({
   }).toString()}`;
 
   return (
-    <div>
-      <PageTitle title={m.title}>
-        <Link href="/admin" className="text-sm text-ink-soft hover:underline">
-          ← {t.common.nav.admin}
-        </Link>
-      </PageTitle>
+    <div className="mx-auto max-w-[1600px]">
+      <AdminTabs current="foods" />
+      <h1 className="mt-4 font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
+        {m.title}
+      </h1>
+      <p className="mt-2 max-w-2xl text-[13px] text-ink-soft">{m.intro}</p>
 
-      <p className="mb-4 max-w-2xl text-sm text-ink-soft">{m.intro}</p>
-
-      <Card className="overflow-x-auto p-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+      <Card plain className="mt-5 overflow-x-auto p-0 sm:mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider tabular-nums text-ink-faint">
             {fill(m.missingCount, { n: missing })}
           </p>
-          <form action="/admin/foods" method="GET" className="flex items-center gap-2">
+          <form action="/admin/foods" method="GET" className="flex flex-wrap items-center gap-2">
             {!onlyMissing ? <input type="hidden" name="all" value="1" /> : null}
-            <input
-              type="search"
-              name="q"
-              defaultValue={q}
-              placeholder={m.searchPlaceholder}
-              aria-label={m.searchPlaceholder}
-              className="w-64 rounded-lg border border-line bg-bg px-3 py-1.5 text-sm outline-none focus:border-accent"
-            />
+            <label className="flex h-[42px] w-64 min-w-0 items-center gap-2.5 rounded-2xl bg-bg px-3.5 text-ink-faint">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+                <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+              </svg>
+              <input
+                type="search"
+                name="q"
+                defaultValue={q}
+                placeholder={m.searchPlaceholder}
+                aria-label={m.searchPlaceholder}
+                className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint"
+              />
+            </label>
             <button
               type="submit"
-              className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg hover:opacity-90"
+              className="flex h-[42px] items-center justify-center rounded-2xl bg-accent px-4 font-display text-[13px] font-bold text-accent-fg hover:opacity-90"
             >
               {t.coachApp.admin.searchButton}
             </button>
-            <Link href={toggleHref} className="text-xs text-ink-soft hover:underline">
+            <Link
+              href={toggleHref}
+              className="inline-flex h-[42px] items-center rounded-full bg-bg px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+            >
               {onlyMissing ? m.showAll : m.onlyMissing}
             </Link>
           </form>
         </div>
 
         {rows.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-ink-soft">
+          <p className="px-5 py-8 text-[13px] text-ink-soft">
             {q ? fill(m.noResults, { q }) : fill(m.missingCount, { n: missing })}
           </p>
         ) : (
-          <table className="mt-3 w-full text-sm">
+          <table className="mt-4 w-full text-sm">
             <thead>
-              <tr className="border-b-2 border-line text-left text-[11px] uppercase tracking-wider text-ink-faint">
-                <th className="px-4 py-2">{m.thEnglish}</th>
-                <th className="px-4 py-2">{m.thRomanian}</th>
+              <tr className="border-b border-line/60 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                <th className="px-5 py-2.5 font-semibold">{m.thEnglish}</th>
+                <th className="px-5 py-2.5 font-semibold">{m.thRomanian}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-line/60">
               {rows.map((food) => (
                 <FoodTranslateRow
                   key={food.id}
@@ -96,7 +104,9 @@ export default async function AdminFoodsPage({
           </table>
         )}
         {rows.length >= FOOD_TRANSLATION_PAGE ? (
-          <p className="px-4 py-3 text-xs text-ink-faint">{fill(m.capped, { n: FOOD_TRANSLATION_PAGE })}</p>
+          <p className="px-5 py-3.5 text-[12.5px] tabular-nums text-ink-faint">
+            {fill(m.capped, { n: FOOD_TRANSLATION_PAGE })}
+          </p>
         ) : null}
       </Card>
     </div>

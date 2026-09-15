@@ -29,8 +29,8 @@ export function ProductCard({
   const name = food.name_ro || food.name_en;
 
   return (
-    <div className="rounded-lg border border-line">
-      <div className="border-b border-line p-3">
+    <div className="overflow-hidden rounded-2xl bg-bg">
+      <div className="border-b border-line/60 p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-bold leading-tight">{name}</p>
@@ -47,7 +47,7 @@ export function ProductCard({
         </div>
       </div>
 
-      <div className="p-3">
+      <div className="p-3.5">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
           {t.clientWidgets.productCard.per100g}
         </p>

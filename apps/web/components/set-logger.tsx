@@ -6,6 +6,7 @@ import { finishWorkout, logSet } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
+import { NavIcon } from "./client-nav";
 import { EditSet } from "./edit-set";
 import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
 
@@ -47,41 +48,45 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg">
+        <div className="h-2.5 flex-1 overflow-hidden rounded-md bg-surface">
           <div
-            className="h-full rounded-full bg-accent transition-all"
+            className="h-full rounded-md bg-accent transition-all"
             style={{ width: `${totalTarget ? (logged.length / totalTarget) * 100 : 0}%` }}
           />
         </div>
-        <span className="text-xs tabular-nums text-ink-faint">
+        <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-ink-faint">
           {fill(t.clientWidgets.setLogger.setsProgress, { done: logged.length, total: totalTarget })}
         </span>
       </div>
 
       {pr ? (
-        <Card className="border-accent bg-accent-soft">
-          <p className="text-sm font-bold text-accent-ink">
+        <div className="rounded-3xl bg-accent-soft px-5 py-[18px]">
+          <p className="font-display text-base font-bold text-accent-ink">
             {fill(t.clientWidgets.setLogger.personalRecord, { name: pr })}
           </p>
-          <p className="mt-0.5 text-xs text-accent-ink">
+          <p className="mt-1 text-[12.5px] text-accent-ink">
             {t.clientWidgets.setLogger.personalRecordDetail}
           </p>
-        </Card>
+        </div>
       ) : null}
       {error ? (
-        <Card className="border-risk bg-risk-soft">
+        <Card plain className="bg-risk-soft">
           <p className="text-sm font-semibold text-risk">{error}</p>
         </Card>
       ) : null}
 
+      {/* As many columns as fit, never a block under 420px — one on a phone,
+          several across a wide window. A circuit stays one cell. */}
+      <div className="grid gap-3.5 sm:grid-cols-[repeat(auto-fill,minmax(420px,1fr))]">
       {circuitSegments(day.exercises).map((seg, si) => (
         <div
           key={seg.circuit ?? `solo-${si}`}
-          className={seg.circuit !== null ? "space-y-3 rounded-xl border-l-4 border-accent bg-accent-soft/30 p-2 pl-3" : "space-y-4"}
+          className={seg.circuit !== null ? "space-y-2.5 rounded-[20px] border-l-[3px] border-accent bg-accent-soft/55 p-2 pl-[9px]" : ""}
         >
           {seg.label ? (
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
-              🔗 {fill(t.coachWidgets.programBuilder.circuitName, { label: seg.label })} · {t.clientWidgets.setLogger.circuitHint}
+            <p className="flex items-center gap-1.5 px-2.5 pt-1 text-[10.5px] font-bold uppercase tracking-wider text-accent-ink">
+              <NavIcon d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" className="h-[13px] w-[13px]" />
+              {fill(t.coachWidgets.programBuilder.circuitName, { label: seg.label })} · {t.clientWidgets.setLogger.circuitHint}
             </p>
           ) : null}
       {seg.exercises.map((exercise) => {
@@ -148,6 +153,7 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
       })}
         </div>
       ))}
+      </div>
 
       <button
         type="button"
@@ -160,7 +166,7 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
             else router.push(result.sessionId ? `/workout/${day.day_id}/done?session=${result.sessionId}` : "/today");
           })
         }
-        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-40"
+        className="flex h-12 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-[15px] font-bold text-accent-fg disabled:opacity-40"
       >
         {t.clientWidgets.setLogger.finishWorkout}
       </button>
@@ -227,18 +233,18 @@ function ExerciseBlock({
   }
 
   return (
-    <Card>
+    <Card plain className="h-full">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate font-bold">{name}</p>
-          <p className="mt-0.5 text-xs text-ink-faint">
+          <p className="truncate font-display text-lg font-bold tracking-tight">{name}</p>
+          <p className="mt-1 text-[12.5px] tabular-nums text-ink-faint">
             {targetSets}×{targetReps}
             {targetRpe !== null ? ` · ${asRir ? m.rir : m.rpe} ${targetRpe}` : ""}
             {targetWeight ? ` · ${targetWeight} kg` : ""} · {m.rest} {rest}
           </p>
         </div>
         <span
-          className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${
+          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold tabular-nums ${
             complete ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint"
           }`}
         >
@@ -258,8 +264,8 @@ function ExerciseBlock({
                 aria-label={`${m.editSet}: ${s.weight_kg} kg × ${s.reps}`}
                 disabled={s.id.startsWith("tmp_")}
                 onClick={() => setEditing(editing === s.id ? null : s.id)}
-                className={`min-h-8 rounded-md px-2 py-1 text-xs tabular-nums ${
-                  s.is_pr ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
+                className={`min-h-8 rounded-[10px] px-2.5 py-1.5 text-xs tabular-nums ${
+                  s.is_pr ? "bg-accent font-semibold text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
                 } ${editing === s.id ? "ring-2 ring-accent-ink" : ""}`}
               >
                 {s.weight_kg} kg × {s.reps}
@@ -292,7 +298,7 @@ function ExerciseBlock({
           type="button"
           disabled={pending}
           onClick={submit}
-          className="ml-auto rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
+          className="ml-auto flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg disabled:opacity-40"
         >
           {m.logSet}
         </button>
@@ -328,7 +334,7 @@ function ExerciseBlock({
           maxLength={500}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={m.notePlaceholder}
-          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none focus:border-accent"
         />
       </label>
     </Card>
@@ -353,7 +359,7 @@ function Field({
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-20 rounded-lg border border-line bg-surface px-2 py-2 text-sm tabular-nums outline-none focus:border-accent"
+        className="h-11 w-20 rounded-xl border border-line bg-surface px-2.5 text-sm tabular-nums outline-none focus:border-accent"
       />
     </label>
   );

@@ -12,8 +12,8 @@ const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
 /**
  * The food diary for one day. `?day=yyyy-mm-dd` picks the day (today when
  * absent or malformed), so the week strip is plain links and back/forward
- * work. Layout follows eat&track: week strip → goal/consumed/left ring →
- * macros → one card per meal with "add foods" inside it.
+ * work. Layout: week strip across the top → the day's summary (goal, consumed,
+ * what is left, macro rings) → one card per meal with "add foods" inside it.
  */
 export default async function FoodPage({
   searchParams,
@@ -40,12 +40,12 @@ export default async function FoodPage({
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
+    <div className="mx-auto max-w-[1600px]">
       <WeekStrip selected={day} today={today} loggedDays={loggedDays} />
 
       {/* Phone: summary then meals. Desktop: summary pinned left, meals right. */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
-        <div className="lg:sticky lg:top-6">
+      <div className="mt-5 grid gap-4 sm:mt-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-6">
+        <div className="lg:sticky lg:top-7">
           <NutritionSummary
             totals={nutrition.totals}
             target={nutrition.target}
@@ -53,7 +53,7 @@ export default async function FoodPage({
             planName={nutrition.plan_name}
           />
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {SLOTS.map((slot) => (
             <MealCard
               key={slot}

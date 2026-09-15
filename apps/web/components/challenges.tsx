@@ -8,7 +8,20 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { parseDay } from "@/lib/week";
 import type { ChallengeCard as ChallengeCardRow, LeaderboardRow } from "@/lib/types";
+import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
+
+const CHEVRON = "m9 6 6 6-6 6";
+const CLOCK = "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 7v5l3 2";
+const PEOPLE = "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2 20a7 7 0 0 1 14 0M17 11a3 3 0 0 0 0-6M18 20h4a6 6 0 0 0-3-5.2";
+
+/** One 24-box icon per challenge type — what the challenge counts. */
+const TYPE_ICON: Record<ChallengeCardRow["type"], string> = {
+  workouts: "M2 10v4M22 10v4M5 8v8M19 8v8M8 6v12M16 6v12M8 12h8",
+  training_load: "M4 18a8 8 0 1 1 16 0M12 18l4-5",
+  volume: "M4 19h16M7 19V9M12 19V5M17 19v-6",
+  active_days: "M8 3v3M16 3v3M5 6h14v14H5zM4 10h16M9 15l2 2 4-4",
+};
 
 const STATUS_TONE: Record<ChallengeStatus, string> = {
   active: "bg-accent-soft text-accent-ink",
@@ -20,7 +33,7 @@ const STATUS_TONE: Record<ChallengeStatus, string> = {
 export function ChallengeStatusBadge({ status }: { status: ChallengeStatus }) {
   const { t } = useI18n();
   return (
-    <span className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${STATUS_TONE[status]}`}>
+    <span className={`inline-block shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${STATUS_TONE[status]}`}>
       {t.common.challenges.status[status]}
     </span>
   );
@@ -68,22 +81,25 @@ export function ChallengeCard({ challenge: c }: { challenge: ChallengeCardRow })
   const ch = t.common.challenges;
   const completed = c.status === "completed";
   return (
-    <Link href={`/challenges/${c.id}`} className="block">
-      <Card className="hover:border-accent">
+    <Link href={`/challenges/${c.id}`} className="block h-full">
+      <Card plain className="flex h-full flex-col transition hover:bg-accent-soft/40">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate font-bold">{c.title}</p>
-            <p className="mt-0.5 text-xs text-ink-faint">{ch.type[c.type]}</p>
+          <div className="flex min-w-0 items-center gap-3">
+            <NavIcon d={TYPE_ICON[c.type]} className="h-11 w-11 shrink-0 text-accent-ink" />
+            <div className="min-w-0">
+              <h3 className="truncate font-display text-lg font-bold tracking-tight">{c.title}</h3>
+              <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.type[c.type]}</p>
+            </div>
           </div>
           <ChallengeStatusBadge status={c.status} />
         </div>
-        {c.description ? <p className="mt-2 text-sm text-ink-soft">{c.description}</p> : null}
-        <div className="mt-3">
-          <div className="flex items-baseline justify-between gap-2 text-xs">
+        {c.description ? <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{c.description}</p> : null}
+        <div className="mt-3.5">
+          <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
             <span className="tabular-nums">
               {c.joined ? (
                 <>
-                  <b className="text-ink">{n(c.progress)}</b>
+                  <b className="font-display text-base font-extrabold text-ink">{n(c.progress)}</b>
                   <span className="text-ink-faint"> / {n(c.target)} {unit(c.type)}</span>
                 </>
               ) : (
@@ -98,13 +114,26 @@ export function ChallengeCard({ challenge: c }: { challenge: ChallengeCardRow })
             <ChallengeProgressBar pct={c.joined ? c.pct : 0} completed={completed} />
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-ink-faint">
-          <span>{deadlineText(c, t, date)}</span>
-          <span className="tabular-nums">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12.5px] text-ink-faint">
+          <span className="flex items-center gap-1.5">
+            <NavIcon d={CLOCK} className="h-[18px] w-[18px] text-accent-ink" />
+            {deadlineText(c, t, date)}
+          </span>
+          <span className="flex items-center gap-1.5 tabular-nums">
+            <NavIcon d={PEOPLE} className="h-[18px] w-[18px] text-accent-ink" />
             {c.participants === 1 ? ch.participantsOne : fill(ch.participants, { count: c.participants })}
           </span>
         </div>
-        {completed ? <p className="mt-3 text-sm font-semibold text-accent-ink">{ch.completed}</p> : null}
+        <div className="mt-auto flex items-center justify-between gap-3 pt-3.5">
+          {completed ? (
+            <p className="text-[13px] font-semibold text-accent-ink">{ch.completed}</p>
+          ) : (
+            <span />
+          )}
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink" aria-hidden>
+            <NavIcon d={CHEVRON} className="h-3.5 w-3.5 [stroke-width:2.2]" />
+          </span>
+        </div>
       </Card>
     </Link>
   );
@@ -134,7 +163,7 @@ export function JoinLeaveButton({ challenge: c }: { challenge: ChallengeCardRow 
           type="button"
           disabled={pending}
           onClick={() => run(() => leaveChallenge(c.id))}
-          className="w-full rounded-lg border border-line px-4 py-3 text-sm font-semibold text-ink-soft hover:border-risk hover:text-risk disabled:opacity-50 sm:w-auto"
+          className="flex h-11 w-full items-center justify-center rounded-2xl bg-bg px-5 text-sm font-semibold text-ink-soft hover:text-risk disabled:opacity-50 sm:w-auto"
         >
           {ch.leave}
         </button>
@@ -143,7 +172,7 @@ export function JoinLeaveButton({ challenge: c }: { challenge: ChallengeCardRow 
     );
   }
   if (!c.can_join) {
-    return <p className="text-sm text-ink-faint">{ch.endedCannotJoin}</p>;
+    return <p className="text-[13px] text-ink-faint">{ch.endedCannotJoin}</p>;
   }
   return (
     <div>
@@ -151,7 +180,7 @@ export function JoinLeaveButton({ challenge: c }: { challenge: ChallengeCardRow 
         type="button"
         disabled={pending}
         onClick={() => run(() => joinChallenge(c.id))}
-        className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50 sm:w-auto"
+        className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50 sm:w-auto"
       >
         {ch.join}
       </button>
@@ -166,28 +195,28 @@ export function Leaderboard({ rows, type }: { rows: LeaderboardRow[]; type: Chal
   const ch = t.common.challenges;
   const mine = rows.find((r) => r.me);
   return (
-    <Card className="p-0">
-      <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
+    <Card plain className="overflow-hidden p-0">
+      <div className="flex items-baseline justify-between gap-3 px-5 pb-3 pt-[18px]">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.leaderboard}</p>
         {mine ? (
-          <p className="text-xs tabular-nums text-ink-soft">{fill(ch.yourRank, { rank: mine.rank, total: rows.length })}</p>
+          <p className="text-[12.5px] tabular-nums text-ink-soft">{fill(ch.yourRank, { rank: mine.rank, total: rows.length })}</p>
         ) : null}
       </div>
-      <ol>
+      <ol className="divide-y divide-line/60 border-t border-line/60">
         {rows.map((r) => (
           <li
             key={r.user_id}
-            className={`flex items-center gap-3 border-b border-line px-4 py-2.5 text-sm last:border-0 ${r.me ? "bg-accent-soft" : ""}`}
+            className={`flex min-h-12 items-center gap-3 px-5 py-3 text-[14px] ${r.me ? "bg-accent-soft" : ""}`}
           >
             <span className={`w-7 shrink-0 tabular-nums ${r.rank <= 3 ? "font-bold text-accent-ink" : "text-ink-faint"}`}>
               #{r.rank}
             </span>
             <span className="min-w-0 flex-1 truncate font-semibold">
               {r.name}
-              {r.me ? <span className="ml-1.5 text-xs font-medium text-accent-ink">({ch.you})</span> : null}
+              {r.me ? <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{ch.you}</span> : null}
             </span>
-            <span className="shrink-0 tabular-nums text-ink-soft">
-              <b className="text-ink">{n(r.value)}</b> {unit(type)}
+            <span className="shrink-0 tabular-nums text-ink-faint">
+              <b className="font-display text-[15px] font-bold text-ink">{n(r.value)}</b> {unit(type)}
             </span>
           </li>
         ))}

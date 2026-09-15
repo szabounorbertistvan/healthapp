@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { displayName, getProfile } from "@/lib/data";
-import { ClientNav, ClientTabBar } from "@/components/client-nav";
+import { ClientNav, ClientTabBar, NavIcon } from "@/components/client-nav";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Logo } from "@/components/logo";
+import { Logo, LogoMark } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { SignOutButton } from "@/components/sign-out-button";
 
@@ -21,13 +21,17 @@ export default async function ClientLayout({ children }: { children: React.React
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-52 shrink-0 flex-col border-r border-line bg-surface p-4 sm:flex">
-        <Link href="/" className="mb-2 flex items-center gap-2 px-2">
+      {/* The sidebar sits on the page ground, no border: the cards are the
+          only surfaces, so the eye has one kind of edge to read. */}
+      <aside className="hidden w-60 shrink-0 flex-col px-3.5 pb-5 pt-6 sm:flex">
+        <Link href="/" className="flex items-center gap-2 px-2.5">
           <Logo size="sm" />
         </Link>
-        <p className="mb-5 px-2 text-xs text-ink-faint">{name}</p>
-        <ClientNav />
-        <div className="mt-auto space-y-3 pt-6">
+        <p className="px-2.5 pt-2 text-xs text-ink-faint">{name}</p>
+        <div className="mt-4">
+          <ClientNav />
+        </div>
+        <div className="mt-auto space-y-3 px-1 pt-6">
           <div className="flex items-center gap-2">
             <LanguageSelector />
             <ThemeToggle />
@@ -40,25 +44,27 @@ export default async function ClientLayout({ children }: { children: React.React
             and the tab bar has no room to spare, so the phone gets its own slim
             header carrying both. Without it a client on the surface they
             actually use could never switch language or sign out. */}
-        <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-5 py-2 sm:hidden">
-          <span className="truncate text-sm font-bold tracking-tight">{name}</span>
-          <div className="flex shrink-0 items-center gap-2">
+        <header className="flex h-14 items-center justify-between gap-3 px-3 pl-4 sm:hidden">
+          <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold tracking-tight">
+            <LogoMark className="h-6 w-6" />
+            <span className="truncate">{name}</span>
+          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
             {/* The tab bar is full, so the feed gets the header — one tap from any client screen. */}
             <Link
               href="/feed"
               aria-label={t.common.social.feed}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg hover:border-accent"
+              title={t.common.social.feed}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft hover:text-ink"
             >
-              💬
+              <NavIcon d="M4 5h16v11H9l-5 4z" className="h-[18px] w-[18px]" />
             </Link>
             <LanguageSelector />
             <ThemeToggle />
-            {/* Text link kept, but with a 44px hit area; the negative margin
-                lets the padding reach the header edge without moving the label. */}
-            <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg text-ink-soft hover:border-accent hover:text-ink disabled:opacity-50" />
+            <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg text-ink-soft hover:text-ink disabled:opacity-50" />
           </div>
         </header>
-        <main className="flex-1 p-5 pb-28 sm:p-8 sm:pb-8">{children}</main>
+        <main className="flex-1 px-4 pb-28 pt-1 sm:px-10 sm:pb-12 sm:pt-7">{children}</main>
       </div>
       <ClientTabBar />
     </div>

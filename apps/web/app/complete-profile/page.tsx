@@ -25,7 +25,7 @@ export default async function CompleteProfilePage() {
         <Link href="/" className="mb-6 flex items-center justify-center gap-2">
           <Logo size="md" />
         </Link>
-        <h1 className="mb-3 text-center text-xl font-bold tracking-tight">
+        <h1 className="mb-3 text-center font-display text-2xl font-extrabold tracking-tight">
           {t.clientApp.completeProfile.title}
         </h1>
         <CompleteProfileForm initialName={profile.full_name} next={home} />

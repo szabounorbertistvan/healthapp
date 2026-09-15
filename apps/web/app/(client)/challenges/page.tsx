@@ -1,5 +1,5 @@
 import { getMyChallenges } from "@/lib/challenges-data";
-import { EmptyState, PageTitle } from "@/components/ui";
+import { EmptyState } from "@/components/ui";
 import { ChallengeCard } from "@/components/challenges";
 import { getI18n } from "@/lib/i18n/server";
 import type { ChallengeStatus } from "@healthapp/shared";
@@ -15,21 +15,27 @@ export default async function ChallengesPage() {
   const groups: ChallengeStatus[] = ["active", "upcoming", "completed", "ended"];
 
   return (
-    <div>
-      <PageTitle title={ch.title} />
+    // A list of cards: as many columns as fit, never a card under 380px.
+    <div className="mx-auto max-w-[1600px]">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{ch.title}</h1>
       {cards.length === 0 ? (
-        <EmptyState title={ch.empty} hint={ch.emptyHint} />
+        <div className="mt-5 sm:mt-6">
+          <EmptyState title={ch.empty} hint={ch.emptyHint} />
+        </div>
       ) : (
-        <div className="space-y-6">
+        <div className="mt-5 space-y-6 sm:mt-6">
           {groups.map((status) => {
             const items = cards.filter((c) => c.status === status);
             if (items.length === 0) return null;
             return (
               <section key={status}>
-                <h2 className="mb-3 text-sm font-bold">
-                  {ch.sections[status]} <span className="font-medium text-ink-faint">· {items.length}</span>
-                </h2>
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">{ch.sections[status]}</h2>
+                  <span className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold tabular-nums text-ink-faint">
+                    {items.length}
+                  </span>
+                </div>
+                <div className="grid items-start gap-3 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] sm:gap-4">
                   {items.map((c) => (
                     <ChallengeCard key={c.id} challenge={c} />
                   ))}

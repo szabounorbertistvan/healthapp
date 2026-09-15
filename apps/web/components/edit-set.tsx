@@ -85,7 +85,7 @@ export function EditSet({
       />
       {error ? <p className="text-xs text-risk">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={pending} onClick={save} className="min-h-11 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-40">
+        <button type="button" disabled={pending} onClick={save} className="min-h-11 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-40">
           {t.common.actions.save}
         </button>
         <button type="button" disabled={pending} onClick={() => onDone(null)} className="min-h-11 rounded-lg px-3 text-sm font-semibold text-ink-faint hover:text-ink">
