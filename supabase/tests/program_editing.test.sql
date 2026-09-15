@@ -27,9 +27,12 @@ update public.users set role = 'coach' where id = 'c0000000-0000-0000-0000-00000
 
 insert into public.trainer_clients (coach_id, client_id, status, started_at) values
   ('c0000000-0000-0000-0000-0000000000c3', 'a0000000-0000-0000-0000-0000000000a3', 'active', now());
--- an invite the solo client will claim later
+-- an invite the solo client will claim later, and a second one they must
+-- then be refused (accept_invite consumes a code — the same code twice is
+-- INVALID_CODE, so only a fresh code exercises ALREADY_HAS_COACH)
 insert into public.trainer_clients (coach_id, status, invite_code, invite_expires_at) values
-  ('c0000000-0000-0000-0000-0000000000c3', 'invited', 'JOINME01', now() + interval '30 days');
+  ('c0000000-0000-0000-0000-0000000000c3', 'invited', 'JOINME01', now() + interval '30 days'),
+  ('c0000000-0000-0000-0000-0000000000c3', 'invited', 'JOINME02', now() + interval '30 days');
 
 insert into public.exercises (id, name_en, name_ro, source) values
   ('e0000000-0000-0000-0000-0000000000e3', 'Bench Press', 'Împins la piept', 'free-exercise-db'),
@@ -121,7 +124,7 @@ $$, '42501', null, 'a solo client cannot touch someone else''s program');
 
 -- the solo client connects to the coach with the invitation code…
 select lives_ok($$ select public.accept_invite('JOINME01') $$, 'a valid invitation code connects the client to the coach');
-select throws_ok($$ select public.accept_invite('JOINME01') $$, 'P0001', 'ALREADY_HAS_COACH', 'a second code is refused once coached');
+select throws_ok($$ select public.accept_invite('JOINME02') $$, 'P0001', 'ALREADY_HAS_COACH', 'a second code is refused once coached');
 select pg_temp.authenticate_as('d0000000-0000-0000-0000-0000000000b3');
 select throws_ok($$ select public.accept_invite('NOPE0000') $$, 'P0001', 'INVALID_CODE', 'an unknown code is refused');
 select pg_temp.authenticate_as('b0000000-0000-0000-0000-0000000000b3');
