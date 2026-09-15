@@ -209,11 +209,12 @@ function Audience({
 }: {
   title: string;
   items: readonly { title: string; body: string }[];
-  columns: 2 | 3;
-  figure: { src: string; width: number; height: number };
-  side: "left" | "right";
+  columns: 2 | 3 | 4;
+  /** Omit to run the section full width, with no athlete beside it. */
+  figure?: { src: string; width: number; height: number };
+  side?: "left" | "right";
 }) {
-  const image = (
+  const image = figure ? (
     <div className={`flex items-end justify-center ${side === "left" ? "" : "sm:order-last"}`}>
       <Image
         src={figure.src}
@@ -225,17 +226,21 @@ function Audience({
         className="h-auto max-h-[280px] w-auto max-w-full select-none sm:max-h-[400px]"
       />
     </div>
-  );
+  ) : null;
   return (
     <section
       className={`mt-11 grid items-end gap-[18px] sm:mt-[72px] sm:gap-11 ${
-        side === "left" ? "sm:grid-cols-[340px_minmax(0,1fr)]" : "sm:grid-cols-[minmax(0,1fr)_340px]"
+        !figure ? "" : side === "left" ? "sm:grid-cols-[340px_minmax(0,1fr)]" : "sm:grid-cols-[minmax(0,1fr)_340px]"
       }`}
     >
       {image}
-      <div className={`pb-2.5 ${side === "left" ? "" : "sm:order-first"}`}>
+      <div className={`pb-2.5 ${figure && side === "right" ? "sm:order-first" : ""}`}>
         <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h2>
-        <div className={`mt-5 grid gap-3.5 ${columns === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+        <div
+          className={`mt-5 grid gap-3.5 ${
+            columns === 2 ? "sm:grid-cols-2" : columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"
+          }`}
+        >
           {items.map((b) => (
             <div key={b.title} className="rounded-[22px] bg-surface p-5">
               <p className="font-display text-base font-bold">{b.title}</p>
