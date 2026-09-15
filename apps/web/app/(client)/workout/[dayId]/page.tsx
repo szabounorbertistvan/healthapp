@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getWorkoutDay, getWorkoutDayHistory } from "@/lib/client-data";
+import { getProfile } from "@/lib/data";
+import { shareProfileOf } from "@/lib/share-card-data";
 import { Card, PageTitle } from "@/components/ui";
 import { WorkoutHistory } from "@/components/workout-history";
 import { TrainingLoadCard } from "@/components/training-load";
@@ -22,7 +24,8 @@ export default async function WorkoutDayPage({
 }) {
   const { t, locale } = await getI18n();
   const { dayId } = await params;
-  const [day, history] = await Promise.all([getWorkoutDay(dayId), getWorkoutDayHistory(dayId)]);
+  // getProfile is request-cached (the layout already read it) — no extra round trip.
+  const [day, history, profile] = await Promise.all([getWorkoutDay(dayId), getWorkoutDayHistory(dayId), getProfile()]);
   if (!day) notFound();
   const d = t.clientApp.workoutDay;
   const inProgress = day.logged.length > 0;
@@ -84,7 +87,7 @@ export default async function WorkoutDayPage({
             {history.length === 1 ? d.sessionOne : fill(d.sessionsCount, { count: history.length })}
           </span>
         </div>
-        <WorkoutHistory sessions={history} />
+        <WorkoutHistory sessions={history} share={{ dayName: day.day_name, profile: shareProfileOf(profile) }} />
       </div>
     </div>
   );

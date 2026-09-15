@@ -17,6 +17,7 @@ export type Profile = {
    * carry sign-up metadata; both are sent to /complete-profile.
    */
   username: string | null;
+  avatar_url: string | null;
   sex: Sex | null;
   birth_year: number | null;
   role: Role;

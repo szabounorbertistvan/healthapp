@@ -2,16 +2,23 @@
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import type { WorkoutHistorySession } from "@/lib/types";
+import { shareCardFromHistory, type ShareCardProfile } from "@/lib/share-card";
 import { Card } from "./ui";
 import { TrainingLoadBadge } from "./training-load";
 import { EditSet } from "./edit-set";
+import { ShareWorkoutButton } from "./share-workout";
 
 /**
  * Past sessions of one training day, newest first. The most recent one opens
  * expanded — "what did I do last time" is the question this screen answers —
- * and older ones unfold on tap.
+ * and older ones unfold on tap. Each open session can be shared as an external
+ * card, built from that session's rows (already on screen), never the latest.
  */
-export function WorkoutHistory({ sessions }: { sessions: WorkoutHistorySession[] }) {
+export function WorkoutHistory({ sessions, share }: {
+  sessions: WorkoutHistorySession[];
+  /** What the card needs beyond the row: the day's name and the author. Omit to hide Share. */
+  share?: { dayName: string; profile: ShareCardProfile | null };
+}) {
   const { t, locale } = useI18n();
   const d = t.clientApp.workoutDay;
   const [openIds, setOpenIds] = useState<Set<string>>(
@@ -71,6 +78,12 @@ export function WorkoutHistory({ sessions }: { sessions: WorkoutHistorySession[]
 
             {open ? (
               <div className="space-y-3 border-t border-line p-4">
+                {share && session.sets > 0 ? (
+                  <ShareWorkoutButton
+                    card={shareCardFromHistory(session, share.dayName, share.profile)}
+                    className="min-h-9 rounded-lg border border-line px-3 text-xs font-semibold hover:border-accent disabled:opacity-50"
+                  />
+                ) : null}
                 {session.exercises.map((exercise) => (
                   <div key={exercise.name}>
                     <p className="text-sm font-semibold">{exercise.name}</p>

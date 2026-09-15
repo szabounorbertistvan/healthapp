@@ -15,7 +15,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   if (!live) return null;
   const { supabase, userId } = live;
   const [{ data: user }, { data: sub }] = await Promise.all([
-    supabase.from("users").select("id, full_name, username, sex, birth_year, role").eq("id", userId).single(),
+    supabase.from("users").select("id, full_name, username, avatar_url, sex, birth_year, role").eq("id", userId).single(),
     supabase.from("subscriptions")
       .select("tier, status, trial_ends_at, stripe_customer_id")
       .eq("user_id", userId).maybeSingle(),
@@ -26,6 +26,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     id: user.id,
     full_name: user.full_name ?? "Coach",
     username: (user.username as string | null) ?? null,
+    avatar_url: (user.avatar_url as string | null) ?? null,
     sex: (user.sex as Profile["sex"]) ?? null,
     birth_year: (user.birth_year as number | null) ?? null,
     role,

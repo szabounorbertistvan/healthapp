@@ -10,6 +10,7 @@ import {
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { parseDay } from "@/lib/week";
+import { durationLabel } from "@/lib/share-card";
 import type { FeedPost, KudosGiver, PostComment, ShareableSession } from "@/lib/types";
 import { Card } from "./ui";
 
@@ -44,7 +45,7 @@ function useSocialFormat() {
       if (h < 24) return fill(s.hoursAgo, { h });
       return dtf.format(new Date(iso));
     },
-    duration: (min: number | null) => (min === null ? null : min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`),
+    duration: durationLabel,
   };
 }
 

@@ -118,6 +118,19 @@ Plain threaded messaging — no realtime subscription yet, reads are server-rend
 that match a suggestion by name unfolds the same text). Streaks and badges have tables and RLS but no award logic —
 those are service-role engine tables with no insert policy, and nothing writes them.
 
+**External workout sharing** (Instagram Stories etc.). A completed session
+becomes a 1080×1920 (Story) or 1080×1080 (Square) PNG drawn on a canvas in
+the browser — nothing is stored. `lib/share-card.ts` (pure: the card is the
+feed's `workoutPostPayload` snapshot + PR lines + author; `layoutShareCard`
+places every element, absent stats leave no block) and `lib/share-card-render.ts`
+(canvas painter, brand fonts via `--font-exo2` / `--font-inter`, Web Share API
+with Save Image fallback). `lib/share-card-data.ts` builds the card server-side
+through `getShareableSession` (owner-scoped); `app/share-card-actions.ts` is the
+one action, taking a session id only. `components/share-workout.tsx` is the
+button + preview dialog (format, Edit Stats, Show/Hide profile). Entries: the
+done page (the session just finished), history rows on the day page, and
+Today's "Last workout".
+
 ---
 
 ## Accounts, billing, admin

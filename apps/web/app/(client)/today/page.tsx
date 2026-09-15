@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMySessions, getToday, isEmptyAccount } from "@/lib/client-data";
 import { getMyChallenges } from "@/lib/challenges-data";
@@ -11,6 +12,8 @@ import { TrainingLoadSummaryCard } from "@/components/training-load";
 import { StreakCard } from "@/components/streak";
 import { LeaderboardSummaryCard } from "@/components/leaderboard";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
+import { ShareWorkoutButton } from "@/components/share-workout";
+import { TrainingLoadBadge } from "@/components/training-load";
 import { timeAgo } from "@/lib/format";
 import { parseDay } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
@@ -65,6 +68,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(todayDate);
   const longDate = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(todayDate);
   const doneToday = recent.find((s) => s.at.slice(0, 10) === todayIso) ?? null;
+  // getMySessions is newest-completed first: [0] is the last finished workout.
+  const lastWorkout = recent[0] ?? null;
+  const lastWorkoutDate = lastWorkout
+    ? new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short" }).format(new Date(lastWorkout.at))
+    : null;
   const workoutDays = today.training_load.daily.filter((x) => x.load > 0).map((x) => x.day);
   const activeChallenges = challenges.filter((c) => c.joined && c.status === "active").length;
   const nudge = adherence.signal === "at_risk" ? fill(d.atRiskBody, { time: timeAgo(last, locale) }) : null;
@@ -97,6 +105,34 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       />
 
       {streakView ? <StreakCard view={streakView} compact /> : null}
+
+      {lastWorkout ? (
+        <Card>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.shareCard.lastWorkout}</p>
+              <p className="mt-1 truncate font-semibold">{lastWorkout.day_name}</p>
+              <p className="mt-0.5 text-xs tabular-nums text-ink-faint first-letter:uppercase">
+                {lastWorkoutDate} · {lastWorkout.sets} {t.clientApp.workoutDay.sets} · {new Intl.NumberFormat(locale).format(lastWorkout.volume_kg)} kg
+                {lastWorkout.prs > 0 ? <> · <span className="font-semibold text-accent-ink">{lastWorkout.prs} {t.clientApp.workoutDay.prs}</span></> : null}
+              </p>
+            </div>
+            <TrainingLoadBadge load={lastWorkout.load} showLabel={false} />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href={lastWorkout.day_id ? `/workout/${lastWorkout.day_id}` : "/workout"}
+              className="min-h-10 rounded-lg border border-line px-4 py-2 text-sm font-semibold hover:border-accent"
+            >
+              {t.common.shareCard.view}
+            </Link>
+            <ShareWorkoutButton
+              sessionId={lastWorkout.id}
+              className="min-h-10 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
+            />
+          </div>
+        </Card>
+      ) : null}
 
       <LeaderboardSummaryCard board={board} />
 
