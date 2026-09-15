@@ -134,27 +134,31 @@ export default async function LandingPage() {
         ))}
       </section>
 
-      <Audience
-        title={l.forYou}
-        items={l.clientBenefits}
-        columns={2}
-        figure={{ src: "/brand/athletes/client.webp", width: 430, height: 1200 }}
-        side="left"
-      />
-      <Audience
-        title={l.forCoaches}
-        items={l.coachBenefits}
-        columns={3}
-        figure={{ src: "/brand/athletes/coach.webp", width: 699, height: 1200 }}
-        side="right"
-      />
+      {/* The two audiences as one band rather than two stacked sections: each
+          half keeps its own list, and its athlete stands in the outer corner
+          with their feet on the card's edge, so the pair brackets the copy. */}
+      <section className="mt-11 grid overflow-hidden rounded-3xl bg-surface sm:mt-[72px] md:grid-cols-2">
+        <Audience
+          title={l.forYou}
+          items={l.clientBenefits}
+          figure={{ src: "/brand/athletes/client.webp", width: 430, height: 1200 }}
+          side="left"
+        />
+        <Audience
+          title={l.forCoaches}
+          items={l.coachBenefits}
+          figure={{ src: "/brand/athletes/coach.webp", width: 699, height: 1200 }}
+          side="right"
+          divider
+        />
+      </section>
 
       <section className="mt-11 text-center sm:mt-[72px]">
         <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{l.pricingTitle}</h2>
         <div className="mt-6 grid gap-3.5 text-left sm:grid-cols-3">
-          <PricingTier name={l.pricingFree} body={l.pricingFreeBody} />
-          <PricingTier name={l.pricingPremium} body={l.pricingPremiumBody} highlighted />
-          <PricingTier name={l.pricingCoach} body={l.pricingCoachBody} />
+          <PricingTier name={l.pricingFree} body={l.pricingFreeBody} icon={TIER_ICONS[0]} />
+          <PricingTier name={l.pricingPremium} body={l.pricingPremiumBody} icon={TIER_ICONS[1]} highlighted />
+          <PricingTier name={l.pricingCoach} body={l.pricingCoachBody} icon={TIER_ICONS[2]} />
         </div>
         <p className="mt-5 text-[12.5px] text-ink-faint">{l.pricingFootnote}</p>
       </section>
@@ -197,67 +201,122 @@ const PILLAR_ICONS = [
 ];
 
 /**
- * One audience: its figure on the side the copy is not on, so the athlete
- * faces the text. On a phone the figure goes first and the cards stack.
+ * One half of the audience band: the heading, its promises as plain rows (they
+ * are inside a card already — a card inside a card reads as noise), and the
+ * athlete standing in the outer corner. The figures are decorative, so a phone
+ * drops them and keeps the words.
  */
 function Audience({
   title,
   items,
-  columns,
   figure,
   side,
+  divider = false,
 }: {
   title: string;
   items: readonly { title: string; body: string }[];
-  columns: 2 | 3 | 4;
-  /** Omit to run the section full width, with no athlete beside it. */
-  figure?: { src: string; width: number; height: number };
-  side?: "left" | "right";
+  figure: { src: string; width: number; height: number };
+  side: "left" | "right";
+  /** The second half carries the hairline, so the two never double it. */
+  divider?: boolean;
 }) {
-  const image = figure ? (
-    <div className={`flex items-end justify-center ${side === "left" ? "" : "sm:order-last"}`}>
+  return (
+    <div
+      className={`relative flex min-h-[380px] flex-col p-6 sm:min-h-[440px] sm:p-8 ${
+        divider ? "border-t border-line/60 md:border-l md:border-t-0" : ""
+      }`}
+    >
+      {/* On the right half the heading sits at the outer edge too, so the two
+          titles bookend the band instead of both hugging the middle. */}
+      <h2
+        className={`font-display text-2xl font-extrabold tracking-tight sm:text-[26px] ${
+          side === "right" ? "sm:text-right" : ""
+        }`}
+      >
+        {title}
+      </h2>
+      <ul
+        className={`mt-5 space-y-4 sm:space-y-5 ${
+          side === "left" ? "sm:pl-[34%] lg:pl-[38%]" : "sm:pr-[34%] lg:pr-[38%]"
+        }`}
+      >
+        {items.map((b) => (
+          <li key={b.title}>
+            <p className="font-display text-[15px] font-bold">{b.title}</p>
+            <p className="mt-1 text-[13.5px] leading-relaxed text-ink-soft">{b.body}</p>
+          </li>
+        ))}
+      </ul>
       <Image
         src={figure.src}
         alt=""
         aria-hidden
         width={figure.width}
         height={figure.height}
-        sizes="(min-width: 640px) 21rem, 60vw"
-        className="h-auto max-h-[280px] w-auto max-w-full select-none sm:max-h-[400px]"
+        sizes="18rem"
+        className={`pointer-events-none absolute bottom-0 hidden h-auto max-h-[340px] w-auto select-none sm:block lg:max-h-[400px] ${
+          side === "left" ? "left-2 lg:left-4" : "right-2 lg:right-4"
+        }`}
       />
     </div>
-  ) : null;
-  return (
-    <section
-      className={`mt-11 grid items-end gap-[18px] sm:mt-[72px] sm:gap-11 ${
-        !figure ? "" : side === "left" ? "sm:grid-cols-[340px_minmax(0,1fr)]" : "sm:grid-cols-[minmax(0,1fr)_340px]"
-      }`}
-    >
-      {image}
-      <div className={`pb-2.5 ${figure && side === "right" ? "sm:order-first" : ""}`}>
-        <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h2>
-        <div
-          className={`mt-5 grid gap-3.5 ${
-            columns === 2 ? "sm:grid-cols-2" : columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"
-          }`}
-        >
-          {items.map((b) => (
-            <div key={b.title} className="rounded-[22px] bg-surface p-5">
-              <p className="font-display text-base font-bold">{b.title}</p>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{b.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 
-function PricingTier({ name, body, highlighted = false }: { name: string; body: string; highlighted?: boolean }) {
+const TIER_ICON = "h-6 w-6";
+const TIER_ICONS = [
+  // check in a circle - everything you get without paying
+  <svg key="free" viewBox="0 0 24 24" className={TIER_ICON} {...STROKE} aria-hidden>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8.4 12.2 2.4 2.4 4.8-5.1" />
+  </svg>,
+  // star - the upgrade
+  <svg key="premium" viewBox="0 0 24 24" className={TIER_ICON} {...STROKE} aria-hidden>
+    <path d="m12 3.6 2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.85 1-5.85L3.5 9.75l5.9-.85z" />
+  </svg>,
+  // two people - the coach and their roster
+  <svg key="coach" viewBox="0 0 24 24" className={TIER_ICON} {...STROKE} aria-hidden>
+    <circle cx="9.2" cy="8" r="3.2" />
+    <path d="M3.5 19.5c0-3.1 2.6-5.2 5.7-5.2s5.7 2.1 5.7 5.2" />
+    <path d="M16.4 5.9a3.1 3.1 0 0 1 0 5.9M17.4 14.6c1.9.7 3.1 2.4 3.1 4.6" />
+  </svg>,
+];
+
+/**
+ * One price plan. The icon tile, the hairline and the type scale are the
+ * pillars', so the two rows of cards read as the same family; the middle plan
+ * is lifted by its ground alone, no border and no badge.
+ */
+function PricingTier({
+  name,
+  body,
+  icon,
+  highlighted = false,
+}: {
+  name: string;
+  body: string;
+  icon: React.ReactNode;
+  highlighted?: boolean;
+}) {
   return (
-    <div className={`rounded-3xl p-6 ${highlighted ? "bg-accent-soft" : "bg-surface"}`}>
-      <p className={`font-display text-[19px] font-extrabold ${highlighted ? "text-accent-ink" : ""}`}>{name}</p>
-      <p className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">{body}</p>
+    <div
+      className={`flex flex-col rounded-3xl p-6 transition sm:p-7 ${
+        highlighted ? "bg-accent-soft" : "bg-surface hover:bg-accent-soft/40"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-accent-ink ${
+            highlighted ? "bg-surface" : "bg-bg"
+          }`}
+        >
+          {icon}
+        </span>
+        <p className={`min-w-0 font-display text-[19px] font-extrabold ${highlighted ? "text-accent-ink" : ""}`}>
+          {name}
+        </p>
+      </div>
+      <span aria-hidden className="mt-4 block h-px w-7 bg-accent" />
+      <p className="mt-3.5 text-[13.5px] leading-relaxed text-ink-soft">{body}</p>
     </div>
   );
 }
