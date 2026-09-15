@@ -17,7 +17,8 @@ export default async function WorkoutPage() {
   const hasOwn = groups.some((g) => g.is_own);
 
   return (
-    <div>
+    // Phone-first, like the day page: one column of wide cards, never a 1400px card.
+    <div className="mx-auto w-full max-w-2xl">
       <PageTitle title={t.common.nav.training}>
         <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold">
           <Link href="/exercises" className="text-accent-ink hover:underline">
@@ -45,7 +46,7 @@ export default async function WorkoutPage() {
           </Link>
         </>
       ) : (
-        <WorkoutDayList groups={groups} editable={!coached} />
+        <WorkoutDayList groups={groups} sessions={sessions} editable={!coached} />
       )}
 
       {/* A solo client can connect to a coach later — the same invitation code flow as onboarding. */}
@@ -55,7 +56,7 @@ export default async function WorkoutPage() {
       {sessions.length === 0 ? (
         <p className="text-sm text-ink-faint">{t.clientApp.workout.noSessions}</p>
       ) : (
-        <Card className="p-0">
+        <Card plain className="p-0">
           {/* Rows, not a table: five px-4 columns need ~440px in Romanian,
               which on a 375px phone meant a sideways-scrolling page. Same
               name + subline shape WorkoutHistory uses on the day page. */}
@@ -63,7 +64,7 @@ export default async function WorkoutPage() {
             {sessions.map((s) => (
               <li
                 key={s.id}
-                className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-0"
+                className="flex items-center justify-between gap-3 border-b border-line/60 px-5 py-3.5 last:border-0"
               >
                 <div className="min-w-0">
                   <p className="truncate font-semibold">

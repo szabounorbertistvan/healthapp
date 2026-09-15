@@ -7,6 +7,7 @@ import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo, LogoMark, Wordmark } from "@/components/logo";
 import { LoginModal } from "@/components/login-modal";
+import { Athlete, type AthleteName } from "@/components/athlete";
 
 export default async function LandingPage() {
   const [{ t }, profile] = await Promise.all([getI18n(), getProfile()]);
@@ -32,28 +33,37 @@ export default async function LandingPage() {
         </nav>
       </header>
 
-      {/* Hero — the logo lockup as it appears in the brand: mark, wordmark, tagline. */}
-      <section className="py-16 text-center sm:py-24">
-        <LogoMark className="mx-auto h-36 w-36 sm:h-44 sm:w-44" />
-        <Wordmark className="mx-auto mt-8 h-10 sm:h-12" />
-        <p className="mt-3 flex items-center justify-center gap-3 font-display text-xs font-semibold uppercase tracking-[0.28em] text-accent-ink sm:text-sm">
-          <span className="h-px w-8 bg-accent" aria-hidden />
-          {APP_TAGLINE}
-          <span className="h-px w-8 bg-accent" aria-hidden />
-        </p>
+      {/* Hero — the logo lockup as it appears in the brand (mark, wordmark,
+          tagline) beside the two brand athletes. Copy is centred on the phone,
+          where the pair sits below it, and left-aligned once there is room for
+          two columns. */}
+      <section className="grid items-center gap-10 py-12 text-center sm:grid-cols-[1fr_minmax(0,26rem)] sm:py-20 sm:text-left lg:grid-cols-[1fr_minmax(0,30rem)]">
+        <div>
+          <LogoMark className="mx-auto h-28 w-28 sm:mx-0 sm:h-36 sm:w-36" />
+          <Wordmark className="mx-auto mt-6 h-9 sm:mx-0 sm:h-11" />
+          <p className="mt-3 flex items-center justify-center gap-3 font-display text-xs font-semibold uppercase tracking-[0.28em] text-accent-ink sm:justify-start sm:text-sm">
+            <span className="h-px w-8 bg-accent" aria-hidden />
+            {APP_TAGLINE}
+            <span className="h-px w-8 bg-accent" aria-hidden />
+          </p>
 
-        <h1 className="mx-auto mt-12 max-w-2xl text-balance font-display text-3xl font-bold tracking-tight sm:text-4xl">
-          {l.heroTitle}
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl text-ink-soft">{fill(l.heroBody, { app: APP_NAME })}</p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          {appHref ? (
-            <Link href={appHref} className="rounded-xl bg-accent px-6 py-3 font-semibold text-accent-fg hover:opacity-90">
-              {l.openApp}
-            </Link>
-          ) : (
-            <LoginModal label={l.startFree} mode="signup" className="rounded-xl bg-accent px-6 py-3 font-semibold text-accent-fg hover:opacity-90" />
-          )}
+          <h1 className="mx-auto mt-10 max-w-2xl text-balance font-display text-3xl font-bold tracking-tight sm:mx-0 sm:text-4xl">
+            {l.heroTitle}
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-ink-soft sm:mx-0">{fill(l.heroBody, { app: APP_NAME })}</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3 sm:justify-start">
+            {appHref ? (
+              <Link href={appHref} className="rounded-xl bg-accent px-6 py-3 font-semibold text-accent-fg hover:opacity-90">
+                {l.openApp}
+              </Link>
+            ) : (
+              <LoginModal label={l.startFree} mode="signup" className="rounded-xl bg-accent px-6 py-3 font-semibold text-accent-fg hover:opacity-90" />
+            )}
+          </div>
+        </div>
+        {/* The pair, full-length, standing on the page — a cutout, nothing behind them. */}
+        <div className="mx-auto h-[24rem] w-full max-w-sm sm:h-[30rem] sm:max-w-none lg:h-[34rem]">
+          <Athlete name="hero" priority sizes="(min-width: 1024px) 30rem, (min-width: 640px) 26rem, 100vw" className="h-full w-full object-contain object-bottom sm:object-right-bottom" />
         </div>
       </section>
 
@@ -68,8 +78,9 @@ export default async function LandingPage() {
         ))}
       </section>
 
-      <Benefits title={l.forYou} items={l.clientBenefits} columns={2} />
-      <Benefits title={l.forCoaches} items={l.coachBenefits} columns={3} />
+      {/* She stands left of her cards, he right of his — each faces the copy. */}
+      <Benefits title={l.forYou} items={l.clientBenefits} columns={2} athlete="client" side="left" />
+      <Benefits title={l.forCoaches} items={l.coachBenefits} columns={3} athlete="coach" side="right" />
 
       <section className="rounded-2xl border border-line bg-surface p-8 text-center">
         <h2 className="text-xl font-bold">{l.pricingTitle}</h2>
@@ -117,20 +128,43 @@ const PILLAR_ICONS = [
   </svg>,
 ];
 
+/** `athlete` stands beside the cards from `lg` up, on the given `side`; below that the cards take the full width. */
 function Benefits({
-  title, items, columns,
-}: { title: string; items: readonly { title: string; body: string }[]; columns: 2 | 3 }) {
+  title, items, columns, athlete, side = "right",
+}: {
+  title: string;
+  items: readonly { title: string; body: string }[];
+  columns: 2 | 3;
+  athlete?: AthleteName;
+  side?: "left" | "right";
+}) {
+  const photo = athlete ? (
+    <div className="hidden h-[26rem] w-[14rem] lg:block">
+      <Athlete name={athlete} sizes="14rem" className="h-full w-full object-contain object-bottom" />
+    </div>
+  ) : null;
+  const cards = (
+    <div className={`grid gap-4 ${columns === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+      {items.map((b) => (
+        <div key={b.title} className="rounded-xl border border-line bg-surface p-5">
+          <p className="font-bold">{b.title}</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{b.body}</p>
+        </div>
+      ))}
+    </div>
+  );
   return (
     <section className="py-10">
       <h2 className="mb-5 text-lg font-bold">{title}</h2>
-      <div className={`grid gap-4 ${columns === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-        {items.map((b) => (
-          <div key={b.title} className="rounded-xl border border-line bg-surface p-5">
-            <p className="font-bold">{b.title}</p>
-            <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{b.body}</p>
-          </div>
-        ))}
-      </div>
+      {athlete ? (
+        <div className={`grid items-end gap-8 ${side === "left" ? "lg:grid-cols-[auto_1fr]" : "lg:grid-cols-[1fr_auto]"}`}>
+          {side === "left" ? photo : null}
+          {cards}
+          {side === "right" ? photo : null}
+        </div>
+      ) : (
+        cards
+      )}
     </section>
   );
 }

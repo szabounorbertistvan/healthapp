@@ -16,9 +16,10 @@ export function SignalBadge({ signal }: { signal: Signal }) {
   );
 }
 
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+/** `plain` is the redesigned surface: larger radius, no border — the client app's cards. */
+export function Card({ children, className = "", plain = false }: { children: React.ReactNode; className?: string; plain?: boolean }) {
   return (
-    <div className={`rounded-xl border border-line bg-surface p-4 ${className}`}>
+    <div className={`${plain ? "rounded-3xl" : "rounded-xl border border-line"} bg-surface p-4 ${className}`}>
       {children}
     </div>
   );

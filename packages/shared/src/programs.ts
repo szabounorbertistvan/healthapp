@@ -24,3 +24,19 @@ export function pickProgram<T extends SelectableProgram>(
   }
   return newestFirst.find((p) => p.coach_id === null) ?? null;
 }
+
+/**
+ * Rough length of a training day, in whole minutes: every set costs its rest
+ * plus ~40 s of work. Coaches never type a duration, so this is the only
+ * number the client app can show before the first session; the training-load
+ * engine measures the real one afterwards. `rest_seconds` null = 90 s, the
+ * builder's default.
+ */
+export function estimateDayMinutes(
+  exercises: readonly { sets: number; rest_seconds: number | null }[],
+  secondsPerSet = 40,
+  defaultRest = 90,
+): number {
+  const seconds = exercises.reduce((sum, e) => sum + e.sets * ((e.rest_seconds ?? defaultRest) + secondsPerSet), 0);
+  return Math.max(1, Math.round(seconds / 60));
+}
