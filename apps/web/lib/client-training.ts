@@ -67,7 +67,14 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
     activeCoachId(userId),
     recentSessionsFor(supabase, userId),
   ]);
-  if (error || !rows) return [];
+  // An empty list is a legitimate answer (a client with no program yet), so a
+  // failed query must not be dressed up as one: returning [] here once made a
+  // schema drift (app selecting a column production did not have) look to the
+  // client like their program had been deleted.
+  if (error) {
+    throw new Error(`Failed to load programs for client ${userId}: ${error.message}`);
+  }
+  if (!rows) return [];
 
   type ExJoin = {
     id: string; exercise_id: string; position: number; target_sets: number; target_reps: string;

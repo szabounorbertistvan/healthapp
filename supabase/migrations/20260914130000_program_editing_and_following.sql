@@ -136,7 +136,7 @@ create or replace function public.social_follow_list(
   p_before timestamptz default null
 )
 returns table (id uuid, name text, username text, avatar_url text, is_following boolean, followed_at timestamptz)
-language plpgsql stable security definer set search_path = public as $
+language plpgsql stable security definer set search_path = public as $$
 #variable_conflict use_column
 begin
   if p_which not in ('followers', 'following') then
