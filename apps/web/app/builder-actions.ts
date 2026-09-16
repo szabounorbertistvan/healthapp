@@ -378,7 +378,42 @@ export async function addSoloProgramDay(
   return { ok: true };
 }
 
-/** The client's own draft-or-published program, if they have started one. */
+/**
+ * Every program the client built for themselves, newest first.
+ *
+ * This used to be a single id, which quietly meant a solo client could own
+ * exactly one program for ever: the builder only ever opened the most recently
+ * touched row, so creating a second one made the first unreachable. Someone
+ * training on their own needs a block per goal — a push/pull split beside a
+ * deload week — and nothing in the schema ever stopped that.
+ */
+export async function getMySoloPrograms(): Promise<
+  { id: string; name: string; status: string; days: number; updated_at: string }[]
+> {
+  const live = await liveUser();
+  if (!live) return [];
+  const { supabase, userId } = live;
+  const { data, error } = await supabase
+    .from("programs")
+    .select("id, name, status, updated_at, program_days(id)")
+    .eq("client_id", userId)
+    .is("coach_id", null)
+    .order("updated_at", { ascending: false });
+  if (error) {
+    console.error("solo programs read failed:", error.message);
+    return [];
+  }
+  type Row = { id: string; name: string; status: string; updated_at: string; program_days: { id: string }[] };
+  return ((data ?? []) as Row[]).map((p) => ({
+    id: p.id,
+    name: p.name,
+    status: p.status,
+    days: p.program_days?.length ?? 0,
+    updated_at: p.updated_at,
+  }));
+}
+
+/** The client's most recently touched own program, if they have started one. */
 export async function getMySoloProgramId(): Promise<string | null> {
   const live = await liveUser();
   if (!live) return null;

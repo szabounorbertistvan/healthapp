@@ -79,9 +79,12 @@ export function MacroPanel({
 export function Sparkline({
   points,
   height = 64,
+  unit = "kg",
 }: {
   points: { label: string; value: number }[];
   height?: number;
+  /** The delta's unit. Waist is drawn by the same component, in cm. */
+  unit?: string;
 }) {
   const { t } = useI18n();
   if (points.length < 2) {
@@ -127,7 +130,7 @@ export function Sparkline({
         <span>{first.label}</span>
         <span className={delta <= 0 ? "font-bold text-accent-ink" : "font-bold text-warn"}>
           {delta > 0 ? "+" : ""}
-          {Math.round(delta * 100) / 100} kg
+          {Math.round(delta * 100) / 100} {unit}
         </span>
         <span>{last.label}</span>
       </div>
@@ -150,6 +153,65 @@ export function AdherenceMeter({ overall, reason }: { overall: number; reason: s
         <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />
       </div>
       <p className="mt-2 text-xs leading-snug text-ink-soft">{reason}</p>
+    </div>
+  );
+}
+
+/**
+ * Weekly totals as bars. Deliberately not a line: a line drawn through weeks
+ * off invents a slope between two numbers that were never connected, while a
+ * missing bar reads as exactly what it is — a week without training.
+ *
+ * The scale is the tallest bar, so this answers "how does my week compare with
+ * my other weeks", not "how much is a lot" — which is the question someone
+ * looking at their own volume is actually asking.
+ */
+export function WeeklyBars({
+  buckets,
+  unit = "kg",
+}: {
+  buckets: { week_start: string; value: number; count: number }[];
+  unit?: string;
+}) {
+  const { t } = useI18n();
+  const p = t.clientApp.progress;
+  const peak = Math.max(...buckets.map((b) => b.value), 0);
+  if (peak === 0) return <p className="text-[13px] text-ink-faint">{p.noVolumeYet}</p>;
+
+  return (
+    <div>
+      <div className="flex h-28 items-end gap-1.5">
+        {buckets.map((b) => {
+          const pct = (b.value / peak) * 100;
+          const label =
+            b.count === 0
+              ? p.restWeek
+              : b.count === 1
+                ? p.oneSessionInWeek
+                : fill(p.sessionsInWeek, { count: b.count });
+          return (
+            <div
+              key={b.week_start}
+              className="group relative flex h-full flex-1 items-end"
+              title={`${b.week_start} · ${Math.round(b.value).toLocaleString()} ${unit} · ${label}`}
+            >
+              {/* A week with no sessions still gets a hairline, so the gap is
+                  visible as a gap rather than as the edge of the chart. */}
+              <div
+                className={`w-full rounded-t-md ${b.count === 0 ? "bg-line" : "bg-accent"}`}
+                style={{ height: b.count === 0 ? "2px" : `${Math.max(pct, 4)}%` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex items-baseline justify-between gap-2 text-[11.5px] tabular-nums text-ink-faint">
+        <span>{buckets[0]?.week_start.slice(5)}</span>
+        <span className="font-bold text-accent-ink">
+          {Math.round(peak).toLocaleString()} {unit}
+        </span>
+        <span>{buckets[buckets.length - 1]?.week_start.slice(5)}</span>
+      </div>
     </div>
   );
 }

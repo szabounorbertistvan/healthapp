@@ -16,6 +16,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { liveUser, type LiveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
+import { getMyPlanMeals } from "@/lib/client-nutrition";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -301,6 +302,49 @@ export async function logFood(input: {
     client_generated_id: crypto.randomUUID(),
     client_ts: new Date().toISOString(),
   });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/food");
+  revalidatePath("/today");
+  return { ok: true };
+}
+
+/**
+ * "Ate as planned" — log every food the coach put in this meal, in one tap.
+ *
+ * The plan is re-read on the server rather than posted from the browser: the
+ * macros that land in food_logs must be the coach's numbers, not whatever a
+ * client sent. client_generated_id is derived from (user, day, slot, position)
+ * instead of being random, so the unique constraint turns a double tap — or a
+ * retry on a flaky connection — into a no-op rather than a second dinner.
+ */
+export async function logPlannedMeal(slot: MealSlot, day?: string): Promise<ActionResult> {
+  const date = day ?? isoDay();
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+
+  // Resolved for the day being logged, so logging Saturday from the diary
+  // writes Saturday's planned meal rather than today's.
+  const meal = (await getMyPlanMeals(date)).find((m) => m.slot === slot);
+  if (!meal || meal.foods.length === 0) return { ok: false, message: "No planned meal for this slot" };
+
+  const { error } = await supabase.from("food_logs").upsert(
+    meal.foods.map((f, i) => ({
+      user_id: userId,
+      date,
+      slot,
+      food_id: asUuid(f.food_id),
+      food_name: f.name,
+      grams: f.grams,
+      kcal: f.macros.kcal,
+      protein_g: f.macros.protein,
+      carbs_g: f.macros.carbs,
+      fat_g: f.macros.fat,
+      client_generated_id: uuidFrom(`planned:${userId}:${date}:${slot}:${i}`),
+      client_ts: new Date().toISOString(),
+    })),
+    { onConflict: "client_generated_id", ignoreDuplicates: true },
+  );
   if (error) return { ok: false, message: error.message };
   revalidatePath("/food");
   revalidatePath("/today");
@@ -645,4 +689,25 @@ export async function toggleFavoriteFood(input: {
   if (error) return { ok: false, message: error.message };
   revalidatePath("/food");
   return { ok: true, favorite: true };
+}
+
+/**
+ * Mark the notifications the client has just seen. `notifications` allows the
+ * owner an update (policy notifications_mark_read) and nothing else, so this
+ * cannot create or delete one.
+ */
+export async function markNotificationsRead(): Promise<ActionResult> {
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const { error } = await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .is("read_at", null);
+  // Not mutated(): zero rows here means "nothing was unread", the ordinary case
+  // when the panel is opened twice, not a write an RLS policy silently ate.
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
 }

@@ -3,6 +3,8 @@ import { isoDay } from "./dates";
 import { portionsFor } from "./food-portions";
 import "server-only";
 import {
+  isoWeekday,
+  mealsForWeekday,
   pickProgram,
   portionMacros,
   sumMacros,
@@ -87,8 +89,20 @@ export async function getMyFoodDays(from: string, to: string): Promise<string[]>
 }
 
 /** The published plan as a template — what the coach wants eaten, per meal. */
-export async function getMyPlanMeals(): Promise<
-  { id: string; slot: MealSlot; name: string; foods: { name: string; grams: number; macros: Macros }[] }[]
+/**
+ * The plan for one day. `day` defaults to today because every caller but the
+ * food diary wants today; the diary passes the date it is showing, so browsing
+ * back to Saturday shows Saturday's plan rather than today's.
+ */
+export async function getMyPlanMeals(day?: string): Promise<
+  {
+    id: string;
+    slot: MealSlot;
+    name: string;
+    /** `per100g` and `food_id` are what logPlannedMeal needs to write a food_log
+        that can still be re-costed exactly when the portion is edited later. */
+    foods: { food_id: string | null; name: string; grams: number; per100g: Macros; macros: Macros }[];
+  }[]
 > {
   const live = await liveUser();
   if (!live) return [];
@@ -96,8 +110,8 @@ export async function getMyPlanMeals(): Promise<
   const [{ data: rows }, coachId] = await Promise.all([
     supabase
       .from("nutrition_plans")
-      .select(`id, coach_id, updated_at, planned_meals(id, slot, name, position,
-        planned_meal_foods(id, grams, food:foods(name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g)))`)
+      .select(`id, coach_id, updated_at, planned_meals(id, slot, name, position, day_index,
+        planned_meal_foods(id, grams, food:foods(id, name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g)))`)
       .eq("client_id", userId)
       .eq("status", "published"),
     activeCoachId(userId),
@@ -109,28 +123,38 @@ export async function getMyPlanMeals(): Promise<
   if (!data) return [];
   type FoodJoin = {
     grams: number;
-    food: { name_ro: string | null; name_en: string; kcal_100g: number; protein_100g: number; carbs_100g: number; fat_100g: number } | null;
+    food: { id: string; name_ro: string | null; name_en: string; kcal_100g: number; protein_100g: number; carbs_100g: number; fat_100g: number } | null;
   };
-  type MealJoin = { id: string; slot: MealSlot; name: string; position: number; planned_meal_foods: FoodJoin[] };
-  return ((data.planned_meals as unknown as MealJoin[]) ?? [])
-    .sort((a, b) => a.position - b.position)
+  type MealJoin = {
+    id: string; slot: MealSlot; name: string; position: number; day_index: number;
+    planned_meal_foods: FoodJoin[];
+  };
+  // day_index has meant "0 = every day, 1..7 = that weekday" since the first
+  // nutrition migration; until now nothing read it, so Monday and Sunday showed
+  // the same food. mealsForWeekday resolves it the same way everywhere.
+  return mealsForWeekday(
+    (data.planned_meals as unknown as MealJoin[]) ?? [],
+    isoWeekday(day ?? isoDay()),
+  )
     .map((m) => ({
       id: m.id,
       slot: m.slot,
       name: m.name,
-      foods: m.planned_meal_foods.map((f) => ({
-        name: f.food?.name_ro ?? f.food?.name_en ?? "—",
-        grams: f.grams,
-        macros: portionMacros(
-          {
-            kcal: f.food?.kcal_100g ?? 0,
-            protein: f.food?.protein_100g ?? 0,
-            carbs: f.food?.carbs_100g ?? 0,
-            fat: f.food?.fat_100g ?? 0,
-          },
-          f.grams,
-        ),
-      })),
+      foods: m.planned_meal_foods.map((f) => {
+        const per100g = {
+          kcal: f.food?.kcal_100g ?? 0,
+          protein: f.food?.protein_100g ?? 0,
+          carbs: f.food?.carbs_100g ?? 0,
+          fat: f.food?.fat_100g ?? 0,
+        };
+        return {
+          food_id: f.food?.id ?? null,
+          name: f.food?.name_ro ?? f.food?.name_en ?? "—",
+          grams: f.grams,
+          per100g,
+          macros: portionMacros(per100g, f.grams),
+        };
+      }),
     }));
 }
 

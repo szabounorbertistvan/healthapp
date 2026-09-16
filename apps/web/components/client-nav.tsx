@@ -20,6 +20,7 @@ const items: { href: string; key: NavKey; icon: string }[] = [
   { href: "/feed", key: "feed", icon: "M4 5h16v11H9l-5 4z" },
   { href: "/coach", key: "coach", icon: "M12 4a4 4 0 1 0 0 8 4 4 0 1 0 0-8M4 21a8 8 0 0 1 16 0" },
   { href: "/billing", key: "billing", icon: "M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 10h18" },
+  { href: "/account", key: "account", icon: "M12 4a4 4 0 1 0 0 8 4 4 0 1 0 0-8M4 21a8 8 0 0 1 16 0M19 3v4M17 5h4" },
 ];
 
 /** A stroke icon from the nav set, or any 24-box path. */

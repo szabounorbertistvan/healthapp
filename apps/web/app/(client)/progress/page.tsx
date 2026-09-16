@@ -1,10 +1,11 @@
 import { getMyMeasurements, getMyPrs, getMySessions } from "@/lib/client-data";
 import { Card, EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
-import { Sparkline } from "@/components/client-ui";
+import { Sparkline, WeeklyBars } from "@/components/client-ui";
 import { MeasurementForm } from "@/components/measurement-form";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { weeklyTotals } from "@healthapp/shared";
 
 /**
  * Progress is a dashboard, not a column: four figures across the top, then the
@@ -15,16 +16,26 @@ import { getI18n } from "@/lib/i18n/server";
 export default async function ProgressPage() {
   const { t, locale } = await getI18n();
   const [measurements, prs, sessions] = await Promise.all([
-    getMyMeasurements(),
+    // The whole history, not the default 12 rows: this is the one screen whose
+    // job is the long view, and a trend cut off at twelve weigh-ins is a
+    // different trend.
+    getMyMeasurements(MEASUREMENT_HISTORY),
     getMyPrs(),
-    getMySessions(60),
+    getMySessions(200),
   ]);
 
   const weights = measurements
     .filter((m) => m.weight_kg !== null)
     .map((m) => ({ label: m.taken_on.slice(5), value: m.weight_kg as number }));
+  const waists = measurements
+    .filter((m) => m.waist_cm !== null)
+    .map((m) => ({ label: m.taken_on.slice(5), value: m.waist_cm as number }));
   const latest = weights.at(-1);
   const totalVolume = sessions.reduce((sum, s) => sum + s.volume_kg, 0);
+  const volumeByWeek = weeklyTotals(
+    sessions.map((session) => ({ at: session.at, value: session.volume_kg })),
+    12,
+  );
 
   return (
     <div className="mx-auto max-w-[1600px]">
@@ -54,8 +65,28 @@ export default async function ProgressPage() {
             </div>
           </Card>
 
+          {/* Waist moves when the scale does not — the reason to log it at all,
+              so it gets its own chart rather than only a table column. */}
+          {waists.length >= 2 ? (
+            <Card plain>
+              <SectionLabel icon={ICON.ruler}>{t.clientApp.progress.waistTrend}</SectionLabel>
+              <div className="mt-3.5">
+                <Sparkline points={waists} unit="cm" />
+              </div>
+            </Card>
+          ) : null}
+
           <MeasurementForm />
         </div>
+
+        {/* ---- the work behind the numbers ---- */}
+        <Card plain>
+          <SectionLabel icon={ICON.volume}>{t.clientApp.progress.weeklyVolume}</SectionLabel>
+          <p className="mt-1.5 text-[12.5px] text-ink-faint">{t.clientApp.progress.weeklyVolumeHint}</p>
+          <div className="mt-3.5">
+            <WeeklyBars buckets={volumeByWeek} />
+          </div>
+        </Card>
 
         {/* ---- best lifts ---- */}
         <Card plain className="overflow-hidden p-0">
@@ -126,6 +157,10 @@ export default async function ProgressPage() {
     </div>
   );
 }
+
+/** Far past anyone's weigh-in count, but bounded: an unbounded select is how a
+    read that is fine for a year becomes a timeout in the third. */
+const MEASUREMENT_HISTORY = 500;
 
 /** The 24-box icon paths this screen uses. */
 const ICON = {

@@ -7,6 +7,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo, LogoMark } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { SignOutButton } from "@/components/sign-out-button";
+import { NotificationBell } from "@/components/notification-bell";
+import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   // Coaches belong in the coach workspace.
@@ -17,7 +19,12 @@ export default async function ClientLayout({ children }: { children: React.React
   // finishes its profile before it sees anything else.
   if (!profile.username) redirect("/complete-profile");
   const name = displayName(profile);
-  const { t } = await getI18n();
+  // One wave: the shell's two reads go out together with the dictionary.
+  const [{ t }, notifications, unread] = await Promise.all([
+    getI18n(),
+    getMyNotifications(),
+    getUnreadNotificationCount(),
+  ]);
 
   return (
     <div className="flex min-h-screen">
@@ -33,6 +40,7 @@ export default async function ClientLayout({ children }: { children: React.React
         </div>
         <div className="mt-auto space-y-3 px-1 pt-6">
           <div className="flex items-center gap-2">
+            <NotificationBell notifications={notifications} unread={unread} placement="up" />
             <LanguageSelector />
             <ThemeToggle />
           </div>
@@ -59,6 +67,7 @@ export default async function ClientLayout({ children }: { children: React.React
             >
               <NavIcon d="M4 5h16v11H9l-5 4z" className="h-[18px] w-[18px]" />
             </Link>
+            <NotificationBell notifications={notifications} unread={unread} />
             <LanguageSelector />
             <ThemeToggle />
             <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg text-ink-soft hover:text-ink disabled:opacity-50" />

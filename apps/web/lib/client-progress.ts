@@ -58,14 +58,30 @@ export async function getMyCheckInState(): Promise<ClientCheckInState> {
   const live = await liveUser();
   if (!live) return { week_start: weekStart, submitted: false, last: null };
   const { supabase, userId } = live;
-  const { data } = await supabase
-    .from("check_ins")
-    .select("week_start, weight_kg, note, coach_reviewed_at")
-    .eq("user_id", userId)
-    .order("week_start", { ascending: false })
-    .limit(2);
+  // The coach's reply to a check-in is written by reviewCheckIn() into
+  // coach_feedback, which has no foreign key to check_ins (reference_id is
+  // polymorphic), so PostgREST cannot embed it. Fetching the client's newest
+  // check-in feedback by client_id instead of by check-in id keeps this to one
+  // wave — it runs alongside the check-ins read rather than after it — and the
+  // reference_id comparison below discards it unless it belongs to `last`.
+  const [{ data }, { data: feedback }] = await Promise.all([
+    supabase
+      .from("check_ins")
+      .select("id, week_start, weight_kg, note, coach_reviewed_at")
+      .eq("user_id", userId)
+      .order("week_start", { ascending: false })
+      .limit(2),
+    supabase
+      .from("coach_feedback")
+      .select("reference_id, body")
+      .eq("client_id", userId)
+      .eq("reference_type", "check_in")
+      .order("created_at", { ascending: false })
+      .limit(1),
+  ]);
   const rows = data ?? [];
   const last = rows[0] ?? null;
+  const newest = feedback?.[0] ?? null;
   return {
     week_start: weekStart,
     submitted: rows.some((r) => r.week_start === weekStart),
@@ -74,7 +90,7 @@ export async function getMyCheckInState(): Promise<ClientCheckInState> {
           week_start: last.week_start,
           weight_kg: last.weight_kg,
           note: last.note,
-          coach_feedback: null,
+          coach_feedback: newest && newest.reference_id === last.id ? newest.body : null,
           reviewed: last.coach_reviewed_at !== null,
         }
       : null,

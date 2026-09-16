@@ -4,7 +4,7 @@
 This is the honest diff against what is in the repo, so a future session doesn't
 assume a feature exists because the spec (or the landing page) says it does.
 
-Verified 2026-08-26.
+Verified 2026-08-26; landing-page claims re-audited and several entries closed 2026-09-16.
 
 ## Structural
 
@@ -37,19 +37,15 @@ and check-in day — nothing asks.
 
 ## Nutrition
 
-**1. A plan is a single day, repeated forever.** `planned_meals.day_index` exists
-in the schema — `0 = every day, 1..7 = specific weekday`
-([nutrition.sql:52](../supabase/migrations/20260823000400_nutrition.sql)) — but
-**nothing in the app writes or reads it**. `createNutritionPlan` always inserts
-the four slots at the default `0`, and `getMyPlanMeals` does not filter by
-weekday. Monday and Sunday show the client identical food. Spec W6 also lists
-"duplicate day" for the plan builder; only the *program* builder has it
-(`duplicateProgramDay`).
-
-*Cheapest fix:* keep `day_index = 0` meaning "default day", let the coach add
-weekday overrides 1–7, and have `getMyPlanMeals` fetch `day_index in (0,
-todayWeekday)` preferring the specific row. Purely additive — existing plans keep
-working.
+**1. ~~A plan is a single day, repeated forever~~ — closed 2026-09-16.**
+`planned_meals.day_index` (`0 = every day, 1..7 = ISO weekday`) is now written
+and read. The coach's builder offers "different on one day", which copies a meal
+with its foods onto that weekday; the everyday version keeps covering the rest.
+The client's diary resolves the day it is showing — browsing back to Saturday
+shows Saturday's plan — and "ate as planned" logs the same resolution. The rule
+is `mealsForWeekday` in `packages/shared/src/meal-days.ts`, with tests, because
+the diary, the coach preview and the log must not disagree. Spec W6's
+"duplicate day" for the plan builder is still only in the *program* builder.
 
 **2. No recipes or composite foods.** A meal is a flat list of raw ingredient
 rows. A coach who wants "chicken bowl" in five plans re-adds chicken + rice + oil
@@ -57,10 +53,13 @@ rows. A coach who wants "chicken bowl" in five plans re-adds chicken + rice + oi
 ingredients or logs as one item. See [DISHFINDER.md](DISHFINDER.md) — the sibling
 project already holds 52k ingredient-indexed recipes.
 
-**3. No "ate as planned".** Spec C2 promises one tap to log a whole planned meal
-(and the landing page advertises it in `lib/i18n/messages/landing.ts:17`). No such
-action exists; the client re-logs every planned food by hand. Also missing from
-the C8 quick-actions row: recents, favourites, copy-yesterday.
+**3. ~~No "ate as planned"~~ — closed 2026-09-16.** `logPlannedMeal` in
+`app/client-actions-app.ts` re-reads the published plan server-side and logs the
+whole slot in one tap; the button sits in `components/meal-card.tsx` and only
+shows while the slot is still empty. Idempotent — `client_generated_id` is
+derived from (user, day, slot, position), so a double tap upserts rather than
+duplicating. Still missing from the C8 quick-actions row: recents, favourites,
+copy-yesterday.
 
 **4. One live plan per client.** `getMyPlanMeals` takes the single most recent
 `published` plan. No date ranges, no history, no training-day vs rest-day
@@ -72,10 +71,12 @@ funnels to search and stops there.
 
 ## Engagement
 
-**Streaks and badges have tables and RLS but no logic.** They are service-role
-engine tables with no insert policy, and nothing anywhere writes them. Same for
-`adherence_snapshots` — the formula exists in `packages/shared`, the scheduled
-job that materialises weekly snapshots does not.
+**Badges have a table and RLS but no logic** — nothing writes `badges`, and no
+screen reads it. Streaks *are* live, but derived on the fly from completed
+sessions (`lib/streak-data.ts`, `packages/shared/src/streaks.ts`), not from the
+`streaks` table. `adherence_snapshots` is the same story as badges: the formula
+exists in `packages/shared`, the scheduled job that materialises weekly
+snapshots does not.
 
 ## Coaching
 
@@ -83,8 +84,54 @@ job that materialises weekly snapshots does not.
 Messages and the kitchen-style live surfaces are all server-rendered reads
 refreshed by `router.refresh()`.
 
-**`coach_feedback` is unused by the UI** — the table and policies exist; no screen
-writes or reads per-set coach feedback.
+**`coach_feedback` is half-wired.** The coach *does* write it: `reviewCheckIn`
+(`app/actions.ts`) inserts a `check_in` row when the coach types a reply. Until
+2026-09-16 no client screen ever read it — `getMyCheckInState` returned
+`coach_feedback: null` hardcoded, so every reply a coach wrote was discarded on
+arrival while the UI that displays it sat there in `/check-in` and `/today`.
+Now read (one extra parallel query, no extra wave). **Per-set and per-session
+feedback still do not exist** — nothing writes `reference_type` `set`,
+`session` or `set_video`, so the landing page no longer claims it.
+
+## Paid tiers and the landing page
+
+**`ENTITLEMENTS` is a table of intentions, not of shipped features**
+(`packages/shared/src/entitlements.ts`). Only `maxClients` has code behind it —
+`create_invite` raises `CLIENT_LIMIT_REACHED` at 3 / 30. `progressPhotos`,
+`advancedAnalytics` and `customExerciseVideos` are read by nothing: **no client
+screen gates on an entitlement at all**. So a paying `premium` client gets
+nothing a free one does not, and `coach_pro` buys only the bigger roster.
+The landing page and the checkout panel now mark those three with a "soon"
+badge instead of a tick (2026-09-16).
+
+**No offline anything.** No service worker, no IndexedDB, no outbox — the web
+app simply fails without a connection, and `sync-ingest` / `packages/shared/src/sync.ts`
+remain unused. The landing page claimed "offline logging" until 2026-09-16.
+
+**~~No GDPR export or account deletion~~ — closed 2026-09-16.** `/account` carries
+both: `downloadMyData` (lib/data-export.ts) hands the browser one JSON file with
+every row the account owns, and `requestAccountDeletion` calls the
+`request_account_deletion()` RPC that has sat unused since migration
+`20260823001200`. The purge job is migration `20260916110000_account_purge.sql`:
+`purge_deleted_accounts()` on a daily cron, plus a tightened
+`request_account_deletion()` that also replaces the searchable username.
+**That migration has not been applied to the live project yet** — until it is,
+a deleted account is still only hidden. Covered by
+`supabase/tests/account_purge.test.sql`, which also pins the case that made a
+naive delete impossible: a coach's custom exercise sitting inside a client's
+program (`program_exercises.exercise_id` has no cascade), so the job reassigns
+those exercises to the system library instead of letting them cascade.
+
+**~~No client settings screen~~ — `/account` shipped 2026-09-16** with name,
+username and time zone. Still missing, because nothing in the app reads them:
+`weight_unit`, `length_unit`, `check_in_weekday` and `notification_prefs` have
+columns and no consumer, so the screen deliberately shows no switch for them.
+
+**`/get-the-app` is orphaned** — nothing links to it, and it described an Expo
+app that does not exist. Rewritten 2026-09-16 to describe the web app.
+
+**`ClientToday.unread_from_coach` is hardcoded `0`** (`lib/client-today.ts`) and
+read by no component — dead either way.
 
 ## Known small ones
 

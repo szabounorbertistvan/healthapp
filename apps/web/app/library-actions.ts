@@ -1,5 +1,5 @@
 "use server";
-import { filterExercises, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
+import { filterExercises, youtubeVideoId, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { exerciseLibrary } from "@/lib/exercise-library";
 import { notSignedIn } from "@/lib/action-result";
@@ -25,7 +25,7 @@ export async function searchExerciseLibrary(
   let query = supabase
     .from("exercises")
     .select(
-      "id, external_id, name_en, name_ro, category, level, force, mechanic, equipment, primary_muscles, secondary_muscles, instructions_en, images, owner_id",
+      "id, external_id, name_en, name_ro, category, level, force, mechanic, equipment, primary_muscles, secondary_muscles, instructions_en, images, video_url, owner_id",
       { count: "exact" },
     )
     // Without an order, Postgres hands back whichever 40 rows it reaches first —
@@ -124,6 +124,39 @@ export async function renameExercise(exerciseId: string, name: string): Promise<
     await supabase
       .from("exercises")
       .update({ name_en: clean, name_ro: clean }, { count: "exact" })
+      .eq("id", exerciseId)
+      .eq("owner_id", userId)
+      .eq("source", "custom"),
+  );
+  if (failed) return failed;
+  revalidatePath("/library");
+  revalidatePath("/exercises");
+  revalidatePath("/workout", "layout");
+  revalidatePath("/programs", "layout");
+  return { ok: true };
+}
+
+/**
+ * Point one of your own exercises at a demo video. Only YouTube links are
+ * accepted and only the id is kept, because the stored value ends up inside an
+ * <iframe src>; passing an arbitrary string through would let a link decide
+ * what loads in the app. An empty string clears the video.
+ *
+ * Scoped like renameExercise — `owner_id = you` and `source = 'custom'` — so a
+ * coach can annotate their own rows and never the shared library.
+ */
+export async function setExerciseVideo(exerciseId: string, url: string): Promise<ActionResult> {
+  const clean = url.trim();
+  const id = clean ? youtubeVideoId(clean) : null;
+  if (clean && !id) return { ok: false, message: "Paste a YouTube link" };
+
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const failed = await mutated(
+    await supabase
+      .from("exercises")
+      .update({ video_url: id ? `https://youtu.be/${id}` : null }, { count: "exact" })
       .eq("id", exerciseId)
       .eq("owner_id", userId)
       .eq("source", "custom"),

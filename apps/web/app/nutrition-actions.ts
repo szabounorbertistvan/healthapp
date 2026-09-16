@@ -368,3 +368,77 @@ function toFoodItem(row: FoodRow): FoodItem {
     portions: (row.portions ?? []) as FoodItem["portions"],
   };
 }
+
+/**
+ * Give one meal a weekday of its own.
+ *
+ * `planned_meals.day_index` has meant "0 = every day, 1..7 = that ISO weekday"
+ * since the first nutrition migration and nothing ever wrote anything but 0, so
+ * a plan was one day repeated for ever. This copies a meal — with its foods —
+ * onto a specific weekday, leaving the everyday version untouched as the
+ * fallback for the other six days.
+ *
+ * Copying rather than moving is deliberate: a coach who wants "Sunday is
+ * different" still wants the default to keep applying Monday to Saturday, and
+ * moving the only meal in a slot would empty six days to fill one.
+ */
+export async function addMealDayVariant(
+  planId: string,
+  mealId: string,
+  dayIndex: number,
+): Promise<ActionResult & { id?: string }> {
+  if (!Number.isInteger(dayIndex) || dayIndex < 1 || dayIndex > 7) {
+    return { ok: false, message: "Pick a weekday" };
+  }
+  const supabase = await supabaseServer();
+
+  const { data: source, error: readError } = await supabase
+    .from("planned_meals")
+    .select("slot, name, position, plan_id, planned_meal_foods(food_id, grams)")
+    .eq("id", mealId)
+    .eq("plan_id", planId)
+    .single();
+  if (readError || !source) return { ok: false, message: readError?.message ?? "Meal not found" };
+
+  const { data: created, error } = await supabase
+    .from("planned_meals")
+    .insert({
+      plan_id: planId,
+      slot: source.slot,
+      name: source.name,
+      position: source.position,
+      day_index: dayIndex,
+    })
+    .select("id")
+    .single();
+  if (error) return { ok: false, message: error.message };
+
+  const foods = (source.planned_meal_foods ?? []) as { food_id: string; grams: number }[];
+  if (foods.length > 0) {
+    const { error: foodError } = await supabase.from("planned_meal_foods").insert(
+      foods.map((f) => ({ planned_meal_id: created.id, food_id: f.food_id, grams: f.grams })),
+    );
+    // The variant exists but is empty — say so rather than reporting success on
+    // a meal the coach would then have to notice was blank.
+    if (foodError) return { ok: false, message: foodError.message, id: created.id };
+  }
+
+  revalidatePath(`/nutrition/${planId}`);
+  return { ok: true, id: created.id };
+}
+
+/** Drop a weekday variant. The everyday meal (day_index 0) is not deletable here. */
+export async function removeMealDayVariant(planId: string, mealId: string): Promise<ActionResult> {
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase
+      .from("planned_meals")
+      .delete({ count: "exact" })
+      .eq("id", mealId)
+      .eq("plan_id", planId)
+      .neq("day_index", 0),
+  );
+  if (failed) return failed;
+  revalidatePath(`/nutrition/${planId}`);
+  return { ok: true };
+}

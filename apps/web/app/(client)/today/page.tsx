@@ -98,6 +98,28 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
               <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{checkIn.last.coach_feedback}</p>
             </div>
           ) : null}
+
+          {/* Messages the coach sent and this client has not opened. Until now
+              unread_from_coach was hardcoded 0 and read by nothing, so a coach
+              could write and the client would never learn of it from Today. */}
+          {today.unread_from_coach > 0 ? (
+            <Link
+              href="/coach"
+              className="flex items-center justify-between gap-3 rounded-3xl bg-surface px-5 py-[18px] transition hover:bg-accent-soft/40"
+            >
+              <span className="min-w-0">
+                <span className="block text-[13.5px] font-bold">
+                  {today.unread_from_coach === 1
+                    ? d.unreadMessageOne
+                    : fill(d.unreadMessages, { count: today.unread_from_coach })}
+                </span>
+                <span className="mt-0.5 block text-[12.5px] text-ink-faint">{d.openConversation}</span>
+              </span>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent font-display text-[12px] font-bold tabular-nums text-accent-fg">
+                {today.unread_from_coach > 9 ? "9+" : today.unread_from_coach}
+              </span>
+            </Link>
+          ) : null}
         </div>
 
         {/* ---- the week ---- */}

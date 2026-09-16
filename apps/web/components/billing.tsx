@@ -10,6 +10,15 @@ import {
 } from "@healthapp/shared";
 import { adminSetTier, openBillingPortal, startCheckout } from "@/app/billing-actions";
 
+/** Marks a plan line that is promised but not built yet. */
+function Soon() {
+  return (
+    <span className="whitespace-nowrap rounded-full bg-ink/[0.07] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]">
+      soon
+    </span>
+  );
+}
+
 export function TrialBanner({ trialEndsAt, paid }: { trialEndsAt: string | null; paid: boolean }) {
   if (paid) return null;
   const days = trialDaysLeft(trialEndsAt);
@@ -76,18 +85,20 @@ export function SubscribePanel({
           </span>
         ) : null}
       </div>
+      {/* Only the client limit is enforced anywhere (create_invite raises
+          CLIENT_LIMIT_REACHED); the other ENTITLEMENTS flags have no code
+          behind them yet. This is the screen where someone hands over money,
+          so what has not shipped says so rather than sitting under a tick. */}
       <ul className="mt-2.5 space-y-1 text-[13.5px] text-ink-soft">
         {plan === "coach_pro" ? (
           <>
             <li>Up to <b className="text-ink">{e.maxClients}</b> clients</li>
-            <li>✓ Advanced analytics</li>
-            <li>✓ Custom exercise videos</li>
+            <li className="text-ink-faint">Advanced analytics <Soon /></li>
           </>
         ) : (
           <>
-            <li>✓ Progress photos</li>
-            <li>✓ Charts, habits &amp; streaks</li>
-            <li>✓ Full training &amp; nutrition tracking</li>
+            <li>✓ Everything in the free plan</li>
+            <li className="text-ink-faint">Progress photos <Soon /></li>
           </>
         )}
       </ul>

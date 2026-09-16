@@ -15,7 +15,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   if (!live) return null;
   const { supabase, userId } = live;
   const [{ data: user }, { data: sub }] = await Promise.all([
-    supabase.from("users").select("id, full_name, username, avatar_url, sex, birth_year, role").eq("id", userId).single(),
+    supabase.from("users").select("id, full_name, username, avatar_url, sex, birth_year, timezone, role").eq("id", userId).single(),
     supabase.from("subscriptions")
       .select("tier, status, trial_ends_at, stripe_customer_id")
       .eq("user_id", userId).maybeSingle(),
@@ -29,6 +29,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     avatar_url: (user.avatar_url as string | null) ?? null,
     sex: (user.sex as Profile["sex"]) ?? null,
     birth_year: (user.birth_year as number | null) ?? null,
+    timezone: (user.timezone as string | null) ?? "Europe/Bucharest",
     role,
     tier: effectiveTier(sub ? { ...sub, tier: sub.tier as Tier } : null, role),
     trial_ends_at: sub?.trial_ends_at ?? null,
@@ -343,7 +344,7 @@ export async function getNutritionPlan(id: string): Promise<NutritionPlanDetail 
     .from("nutrition_plans")
     .select(`id, name, status, kcal_target, protein_target_g, carbs_target_g, fat_target_g,
       client:users!nutrition_plans_client_id_fkey(full_name),
-      planned_meals(id, slot, name, position,
+      planned_meals(id, slot, name, position, day_index,
         planned_meal_foods(id, grams,
           food:foods(name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g)))`)
     .eq("id", id)
@@ -355,7 +356,7 @@ export async function getNutritionPlan(id: string): Promise<NutritionPlanDetail 
     food: { name_ro: string | null; name_en: string; kcal_100g: number;
       protein_100g: number; carbs_100g: number; fat_100g: number } | null;
   };
-  type MealJoin = { id: string; slot: PlanSlot; name: string; position: number; planned_meal_foods: FoodJoin[] };
+  type MealJoin = { id: string; slot: PlanSlot; name: string; position: number; day_index: number; planned_meal_foods: FoodJoin[] };
 
   const meals = (data.planned_meals as unknown as MealJoin[])
     .sort((a, b) => a.position - b.position)
@@ -372,7 +373,10 @@ export async function getNutritionPlan(id: string): Promise<NutritionPlanDetail 
           row.grams,
         ),
       }));
-      return { id: meal.id, slot: meal.slot, name: meal.name, foods, totals: sumMacros(foods.map((f) => f.macros)) };
+      return {
+        id: meal.id, slot: meal.slot, name: meal.name, day_index: meal.day_index,
+        foods, totals: sumMacros(foods.map((f) => f.macros)),
+      };
     });
 
   return {

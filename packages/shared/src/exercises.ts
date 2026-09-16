@@ -19,6 +19,8 @@ export type ExerciseSummary = {
   secondary_muscles: string[];
   instructions_en: string;
   images: string[];
+  /** A coach's demo link. Only YouTube for now — see youtubeEmbedUrl(). */
+  video_url?: string | null;
   /** True for a custom exercise the signed-in user created — theirs to rename. */
   mine?: boolean;
 };

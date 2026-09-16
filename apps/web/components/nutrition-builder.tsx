@@ -3,8 +3,10 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { NutritionPlanDetail, PlanMealRow } from "@/lib/types";
 import {
+  addMealDayVariant,
   addPlanFood,
   publishNutritionPlan,
+  removeMealDayVariant,
   removePlanFood,
   searchFoods,
   updatePlanFoodGrams,
@@ -83,6 +85,8 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
                 addPlanFood({ planId: plan.id, mealId: meal.id, foodId: food.id, grams }),
               )
             }
+            onAddVariant={(dayIndex) => run(() => addMealDayVariant(plan.id, meal.id, dayIndex))}
+            onRemoveVariant={() => run(() => removeMealDayVariant(plan.id, meal.id))}
           />
         ))}
       </div>
@@ -143,6 +147,8 @@ function MealCard({
   onGrams,
   onRemove,
   onPick,
+  onAddVariant,
+  onRemoveVariant,
 }: {
   meal: PlanMealRow;
   open: boolean;
@@ -151,6 +157,8 @@ function MealCard({
   onGrams: (rowId: string, grams: number) => void;
   onRemove: (rowId: string) => void;
   onPick: (food: FoodItem, grams: number) => void;
+  onAddVariant: (dayIndex: number) => void;
+  onRemoveVariant: () => void;
 }) {
   const { t } = useI18n();
   const m = t.coachWidgets.nutritionBuilder;
@@ -159,8 +167,18 @@ function MealCard({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="truncate font-display text-lg font-bold tracking-tight">{meal.name}</h2>
-          <p className="mt-0.5 text-[12.5px] tabular-nums text-ink-faint">
-            <b className="font-semibold text-ink">{round(meal.totals.kcal)}</b> kcal
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12.5px] tabular-nums text-ink-faint">
+            <span>
+              <b className="font-semibold text-ink">{round(meal.totals.kcal)}</b> kcal
+            </span>
+            {/* Which days this meal is for. A plan used to be one day repeated
+                for ever, so saying "every day" out loud is what makes the
+                weekday variants underneath legible. */}
+            <span className="rounded-full bg-bg px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider">
+              {meal.day_index === 0
+                ? m.everyDay
+                : fill(m.onlyOn, { day: m.weekdays[meal.day_index - 1] ?? "?" })}
+            </span>
           </p>
         </div>
         <button
@@ -174,6 +192,8 @@ function MealCard({
           {open ? m.closeFoods : m.addFood}
         </button>
       </div>
+
+      <DayVariants meal={meal} pending={pending} onAdd={onAddVariant} onRemove={onRemoveVariant} />
 
       {/* Foods open inside the meal they will be added to, not in a panel
           elsewhere on the page. */}
@@ -350,4 +370,80 @@ function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => voi
 
 function round(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+/**
+ * The weekday row under a meal. On the everyday meal it offers a copy for one
+ * day; on a variant it offers only removal — a variant that could be re-dayed
+ * would let a coach strand two meals on the same slot and day, and
+ * mealsForWeekday would then silently pick one.
+ */
+function DayVariants({
+  meal,
+  pending,
+  onAdd,
+  onRemove,
+}: {
+  meal: PlanMealRow;
+  pending: boolean;
+  onAdd: (dayIndex: number) => void;
+  onRemove: () => void;
+}) {
+  const { t } = useI18n();
+  const m = t.coachWidgets.nutritionBuilder;
+  const [open, setOpen] = useState(false);
+
+  if (meal.day_index !== 0) {
+    return (
+      <div className="mb-3">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={onRemove}
+          className="text-[12.5px] font-semibold text-ink-faint hover:text-risk disabled:opacity-50"
+        >
+          {m.removeVariant}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-3">
+      {open ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {m.weekdays.map((label, i) => (
+            <button
+              key={label}
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                onAdd(i + 1);
+                setOpen(false);
+              }}
+              className="inline-flex h-8 items-center rounded-full bg-bg px-3 text-[12.5px] font-semibold text-ink-soft hover:bg-accent-soft hover:text-accent-ink disabled:opacity-50"
+            >
+              {label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="ml-1 text-[12.5px] font-semibold text-ink-faint hover:text-ink"
+          >
+            {t.common.actions.cancel}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          title={m.addVariantHint}
+          className="text-[12.5px] font-semibold text-accent-ink hover:underline"
+        >
+          {m.addVariant}
+        </button>
+      )}
+    </div>
+  );
 }

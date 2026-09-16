@@ -44,7 +44,7 @@ export async function getToday(): Promise<ClientToday | null> {
   const weekStart = mondayOf(0);
 
   // One wave: activity, streak and profile do not depend on the other reads.
-  const [days, nutrition, habits, checkIn, training_load, activity, streak, profile] =
+  const [days, nutrition, habits, checkIn, training_load, activity, streak, profile, unreadFromCoach] =
     await Promise.all([
       getMyProgramDays(),
       getMyDayNutrition(),
@@ -54,6 +54,7 @@ export async function getToday(): Promise<ClientToday | null> {
       liveActivity(weekStart),
       getWorkoutStreak(clientId),
       getProfile(),
+      unreadCoachMessages(clientId),
     ]);
 
   const plannedSessions = days.length;
@@ -90,9 +91,25 @@ export async function getToday(): Promise<ClientToday | null> {
     habits,
     check_in: checkIn,
     last_activity: activity.lastActivity,
-    unread_from_coach: 0,
+    unread_from_coach: unreadFromCoach,
     training_load,
   };
+}
+
+/**
+ * Messages waiting from the coach. RLS already limits `messages` to the
+ * conversations this person is in, so "not mine and not read" is the whole
+ * filter — no join to conversations, and one head request rather than rows.
+ */
+async function unreadCoachMessages(clientId: string): Promise<number> {
+  const live = await liveUser();
+  if (!live) return 0;
+  const { count } = await live.supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .neq("sender_id", clientId)
+    .is("read_at", null);
+  return count ?? 0;
 }
 
 /** Everything the adherence engine and the Today header need about the week. */

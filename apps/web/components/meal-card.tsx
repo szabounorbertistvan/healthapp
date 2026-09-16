@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { Macros } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -8,6 +9,7 @@ import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
 import { FoodEntry } from "./food-entry";
 import { FoodLogger } from "./food-logger";
+import { logPlannedMeal } from "@/app/client-actions-app";
 
 /** A 24-box icon per slot: a cup, the midday sun, a moon, a piece of fruit. */
 const SLOT_ICON: Record<MealSlot, string> = {
@@ -40,7 +42,9 @@ export function MealCard({
 }) {
   const { t } = useI18n();
   const f = t.clientApp.food;
+  const router = useRouter();
   const [adding, setAdding] = useState(false);
+  const [logging, startLogging] = useTransition();
   const kcal = Math.round(entries.reduce((sum, e) => sum + e.macros.kcal, 0));
 
   return (
@@ -93,6 +97,24 @@ export function MealCard({
               </li>
             ))}
           </ul>
+          {/* One tap for the whole meal. It is offered only while the slot is
+              still empty: once something is logged here the coach's list is a
+              reference, and a second tap would be a second dinner. */}
+          {entries.length === 0 ? (
+            <button
+              type="button"
+              disabled={logging}
+              onClick={() =>
+                startLogging(async () => {
+                  const result = await logPlannedMeal(slot, day);
+                  if (result.ok) router.refresh();
+                })
+              }
+              className="mt-2.5 inline-flex h-9 items-center rounded-full bg-accent px-3.5 font-display text-[12.5px] font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
+            >
+              {logging ? f.ateAsPlannedDone : f.ateAsPlanned}
+            </button>
+          ) : null}
         </div>
       ) : null}
 

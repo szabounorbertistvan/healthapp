@@ -23,6 +23,7 @@ const en = {
     feed: "Feed",
     coach: "Coach",
     billing: "Billing",
+    account: "Account",
   },
   moreSheet: {
     title: "All sections",
@@ -61,6 +62,23 @@ const en = {
     system: "Theme: follows your device",
     dark: "Theme: dark",
     light: "Theme: light",
+  },
+  notifications: {
+    label: "Notifications",
+    title: "Notifications",
+    empty: "Nothing new.",
+    emptyHint: "Reminders about your streak and your weekly check-in land here.",
+    markAllRead: "Mark all as read",
+    unreadCount: "{count} unread",
+  },
+  exerciseVideo: {
+    title: "Demo video",
+    add: "Add a YouTube link",
+    placeholder: "https://youtu.be/…",
+    save: "Save link",
+    remove: "Remove",
+    invalid: "That is not a YouTube link.",
+    frameTitle: "Exercise demo",
   },
   actions: {
     save: "Save",
@@ -386,6 +404,7 @@ const ro: typeof en = {
     feed: "Feed",
     coach: "Antrenor",
     billing: "Abonament",
+    account: "Cont",
   },
   moreSheet: {
     title: "Toate secțiunile",
@@ -424,6 +443,23 @@ const ro: typeof en = {
     system: "Temă: urmează telefonul",
     dark: "Temă: întunecată",
     light: "Temă: luminoasă",
+  },
+  notifications: {
+    label: "Notificări",
+    title: "Notificări",
+    empty: "Nimic nou.",
+    emptyHint: "Aici ajung memento-urile despre seria ta și check-in-ul săptămânal.",
+    markAllRead: "Marchează toate ca citite",
+    unreadCount: "{count} necitite",
+  },
+  exerciseVideo: {
+    title: "Video demonstrativ",
+    add: "Adaugă un link YouTube",
+    placeholder: "https://youtu.be/…",
+    save: "Salvează linkul",
+    remove: "Șterge",
+    invalid: "Nu e un link de YouTube.",
+    frameTitle: "Demonstrație exercițiu",
   },
   actions: {
     save: "Salvează",

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getProgram } from "@/lib/data";
 import { hasActiveCoach } from "@/lib/client-data";
 import { exerciseFacets } from "@/lib/exercise-library";
-import { getMySoloProgramId } from "@/app/builder-actions";
+import { getMySoloPrograms } from "@/app/builder-actions";
 import { SoloProgramBuilder } from "@/components/solo-program-builder";
 import { NavIcon } from "@/components/client-nav";
 import { Card } from "@/components/ui";
@@ -14,8 +14,12 @@ import { getI18n } from "@/lib/i18n/server";
  * them and the policies (can_edit_program) refuse any write that reaches the
  * database anyway. A solo client edits freely and is shown the way to a coach.
  */
-export default async function BuildProgramPage() {
-  const { t } = await getI18n();
+export default async function BuildProgramPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ program?: string }>;
+}) {
+  const [{ t }, params] = await Promise.all([getI18n(), searchParams]);
   const coached = await hasActiveCoach();
   if (coached) {
     const c = t.clientApp.coachConnect;
@@ -37,8 +41,12 @@ export default async function BuildProgramPage() {
       </div>
     );
   }
-  const programId = await getMySoloProgramId();
-  const program = programId ? await getProgram(programId) : null;
+  const programs = await getMySoloPrograms();
+  // ?program= picks which one the builder is editing; without it, the most
+  // recently touched. An id that is not theirs simply falls back — the reader
+  // only ever returns this client's own rows, so there is nothing to leak.
+  const openId = programs.find((p) => p.id === params.program)?.id ?? programs[0]?.id ?? null;
+  const program = openId ? await getProgram(openId) : null;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -54,7 +62,11 @@ export default async function BuildProgramPage() {
       </div>
 
       <div className="mt-5 sm:mt-6">
-        <SoloProgramBuilder program={program} equipment={exerciseFacets().equipment} />
+        <SoloProgramBuilder
+          program={program}
+          programs={programs}
+          equipment={exerciseFacets().equipment}
+        />
       </div>
     </div>
   );

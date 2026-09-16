@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { PLAN_PRICES, TRIAL_DAYS } from "@healthapp/shared";
 import { getProfile } from "@/lib/data";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { getI18n } from "@/lib/i18n/server";
@@ -153,14 +154,37 @@ export default async function LandingPage() {
         />
       </section>
 
-      <section className="mt-11 text-center sm:mt-[72px]">
-        <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{l.pricingTitle}</h2>
-        <div className="mt-6 grid gap-3.5 text-left sm:grid-cols-3">
-          <PricingTier name={l.pricingFree} body={l.pricingFreeBody} icon={TIER_ICONS[0]} />
-          <PricingTier name={l.pricingPremium} body={l.pricingPremiumBody} icon={TIER_ICONS[1]} highlighted />
-          <PricingTier name={l.pricingCoach} body={l.pricingCoachBody} icon={TIER_ICONS[2]} />
+      {/* Four plans, not three: the coach's free tier and the coach's Pro tier
+          are different products and used to share one line, which is exactly
+          where "what does Pro actually give me" got lost. Each card now spells
+          out what it unlocks, and the two Pro cards are the lit ones. */}
+      <section className="mt-11 sm:mt-[72px]">
+        <div className="text-center">
+          <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{l.pricingTitle}</h2>
+          <p className="mx-auto mt-3 max-w-[62ch] text-[13.5px] leading-relaxed text-ink-soft sm:text-[15px]">
+            {fill(l.pricingLead, { days: TRIAL_DAYS })}
+          </p>
         </div>
-        <p className="mt-5 text-[12.5px] text-ink-faint">{l.pricingFootnote}</p>
+        <div className="mt-6 grid gap-3.5 text-left sm:mt-7 sm:grid-cols-2 lg:grid-cols-4">
+          {l.pricingTiers.map((tier, i) => (
+            <PricingTier
+              key={tier.name}
+              name={tier.name}
+              audience={tier.audience === "coach" ? l.pricingForCoaches : l.pricingForClients}
+              price={PRICED[i] ? `€${PRICED[i]!.monthly}` : "€0"}
+              per={PRICED[i] ? l.pricingPerMonth : ` ${l.pricingFreeForever}`}
+              annual={PRICED[i] ? fill(l.pricingAnnual, { annual: PRICED[i]!.annual }) : null}
+              lead={PRICED[i] ? fill(l.pricingPlus, { plan: l.pricingTiers[i - 1]!.name }) : null}
+              items={tier.items}
+              soon={tier.soon}
+              soonLabel={l.pricingSoon}
+              note={tier.note}
+              icon={TIER_ICONS[i]}
+              highlighted={Boolean(PRICED[i])}
+            />
+          ))}
+        </div>
+        <p className="mt-5 text-center text-[12.5px] text-ink-faint">{l.pricingFootnote}</p>
       </section>
 
       <footer className="mt-11 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-7 text-[12.5px] text-ink-faint sm:mt-[72px]">
@@ -279,21 +303,60 @@ const TIER_ICONS = [
     <path d="M3.5 19.5c0-3.1 2.6-5.2 5.7-5.2s5.7 2.1 5.7 5.2" />
     <path d="M16.4 5.9a3.1 3.1 0 0 1 0 5.9M17.4 14.6c1.9.7 3.1 2.4 3.1 4.6" />
   </svg>,
+  // the roster plus its numbers - a full house read as a chart
+  <svg key="coachPro" viewBox="0 0 24 24" className={TIER_ICON} {...STROKE} aria-hidden>
+    <circle cx="8" cy="7.4" r="3" />
+    <path d="M2.8 18.4c0-2.9 2.4-4.9 5.2-4.9 1 0 2 .26 2.8.72" />
+    <path d="M14 20v-4M17.5 20v-7M21 20v-10" />
+  </svg>,
 ];
 
 /**
+ * Price per plan, keyed by the tier's position in `pricingTiers`. Null is a free
+ * plan. The amounts come from the billing module the checkout uses, so the
+ * landing page cannot quote a figure Stripe would not charge.
+ */
+const PRICED = [
+  null,
+  PLAN_PRICES.premium,
+  null,
+  PLAN_PRICES.coach_pro,
+] as const;
+
+/**
  * One price plan. The icon tile, the hairline and the type scale are the
- * pillars', so the two rows of cards read as the same family; the middle plan
- * is lifted by its ground alone, no border and no badge.
+ * pillars', so the two rows of cards read as the same family; the paid plans
+ * are lifted by their ground alone, no border and no badge. The body is the
+ * point of the card: what this plan unlocks, one line each, with the paid ones
+ * saying out loud which plan they build on.
  */
 function PricingTier({
   name,
-  body,
+  audience,
+  price,
+  per,
+  annual,
+  lead,
+  items,
+  soon,
+  soonLabel,
+  note,
   icon,
   highlighted = false,
 }: {
   name: string;
-  body: string;
+  audience: string;
+  price: string;
+  per: string;
+  /** The yearly alternative; free plans have none. */
+  annual: string | null;
+  /** "Everything in Free, plus:" — only the paid plans carry it. */
+  lead: string | null;
+  items: readonly string[];
+  /** Promised, not shipped — these rows are marked, never silently mixed in. */
+  soon: readonly string[];
+  soonLabel: string;
+  note: string;
   icon: React.ReactNode;
   highlighted?: boolean;
 }) {
@@ -311,12 +374,53 @@ function PricingTier({
         >
           {icon}
         </span>
-        <p className={`min-w-0 font-display text-[19px] font-extrabold ${highlighted ? "text-accent-ink" : ""}`}>
-          {name}
-        </p>
+        <div className="min-w-0">
+          <p className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-ink-faint">{audience}</p>
+          <p className={`min-w-0 font-display text-[19px] font-extrabold ${highlighted ? "text-accent-ink" : ""}`}>
+            {name}
+          </p>
+        </div>
       </div>
+
+      <p className="mt-4 flex flex-wrap items-baseline gap-1">
+        <span className="font-display text-[26px] font-extrabold tabular-nums tracking-tight">{price}</span>
+        <span className="text-[13px] text-ink-soft">{per}</span>
+      </p>
+      {annual ? <p className="mt-1 text-[12.5px] text-ink-faint">{annual}</p> : null}
+
       <span aria-hidden className="mt-4 block h-px w-7 bg-accent" />
-      <p className="mt-3.5 text-[13.5px] leading-relaxed text-ink-soft">{body}</p>
+
+      {lead ? <p className="mt-3.5 font-display text-[13px] font-bold">{lead}</p> : null}
+      <ul className={`space-y-2 text-[13.5px] leading-relaxed text-ink-soft ${lead ? "mt-2" : "mt-3.5"}`}>
+        {items.map((item) => (
+          <li key={item} className="flex gap-2.5">
+            <svg viewBox="0 0 24 24" className="mt-[3px] h-4 w-4 shrink-0 text-accent-ink" {...STROKE} aria-hidden>
+              <path d="m5 12.5 4.2 4.2L19 7" />
+            </svg>
+            <span className="min-w-0">{item}</span>
+          </li>
+        ))}
+        {/* What the plan will unlock but does not yet. A hollow mark instead of
+            the tick, the copy dimmed, and the word said out loud — a visitor
+            must never pay for one of these thinking it is already there. */}
+        {soon.map((item) => (
+          <li key={item} className="flex gap-2.5 text-ink-faint">
+            <svg viewBox="0 0 24 24" className="mt-[3px] h-4 w-4 shrink-0" {...STROKE} aria-hidden>
+              <circle cx="12" cy="12" r="7.5" />
+            </svg>
+            <span className="min-w-0">
+              {item}{" "}
+              <span className="whitespace-nowrap rounded-full bg-ink/[0.07] px-1.5 py-0.5 align-[1px] font-display text-[10px] font-bold uppercase tracking-[0.12em]">
+                {soonLabel}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* The plan's own small print, pushed to the floor so the four cards end
+          on the same line however uneven their feature lists are. */}
+      <p className="mt-auto pt-4 text-[12px] leading-relaxed text-ink-faint">{note}</p>
     </div>
   );
 }

@@ -21,6 +21,8 @@ export type Profile = {
   avatar_url: string | null;
   sex: Sex | null;
   birth_year: number | null;
+  /** IANA zone. The scheduled reminder jobs fire on this clock, not on UTC. */
+  timezone: string;
   role: Role;
   /** Effective tier — includes an active 30-day trial, not just paid tiers. */
   tier: Tier;
@@ -164,6 +166,8 @@ export type PlanMealRow = {
   id: string;
   slot: "breakfast" | "lunch" | "dinner" | "snack";
   name: string;
+  /** 0 = every day, 1..7 = that ISO weekday only (1 = Monday). */
+  day_index: number;
   foods: PlanFoodRow[];
   totals: { kcal: number; protein: number; carbs: number; fat: number };
 };

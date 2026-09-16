@@ -27,7 +27,9 @@ export default async function FoodPage({
 
   const [nutrition, planMeals, loggedDays, quick] = await Promise.all([
     getMyDayNutrition(day),
-    getMyPlanMeals(),
+    // The plan for the day being shown, not for today: browsing back to
+    // Saturday must show Saturday's meals.
+    getMyPlanMeals(day),
     getMyFoodDays(week[0], week[6]),
     getMyQuickFoods(),
   ]);
