@@ -3,12 +3,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import type { PostVisibility } from "@healthapp/shared";
-import { kudosSummary, toggleKudosState, POST_TEXT_MAX, COMMENT_MAX } from "@healthapp/shared";
+import { displayToKg, kudosSummary, toggleKudosState, POST_TEXT_MAX, COMMENT_MAX } from "@healthapp/shared";
 import {
   addComment, createProgressPost, createTextPost, deleteComment, deletePost, follow, loadKudos, toggleKudos, unfollow,
 } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
+import { useUnits } from "@/lib/units/client";
 import { parseDay } from "@/lib/week";
 import { durationLabel } from "@/lib/share-card";
 import type { FeedPost, KudosGiver, PostComment, ShareableSession } from "@/lib/types";
@@ -486,6 +487,7 @@ export function Comments({ postId, comments }: { postId: string; comments: PostC
 
 export function Composer() {
   const { t } = useI18n();
+  const u = useUnits();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [text, setText] = useState("");
@@ -503,7 +505,13 @@ export function Composer() {
           setError(null);
           startTransition(async () => {
             const r = progress
-              ? await createProgressPost(text, visibility, includeWeight ? Number(weight.replace(",", ".")) : null)
+              // The box is in the reader's unit; social_posts stores kilograms
+              // like every other weight, so the feed cannot mix the two.
+              ? await createProgressPost(
+                  text,
+                  visibility,
+                  includeWeight ? displayToKg(Number(weight.replace(",", ".")), u.weightUnit) : null,
+                )
               : await createTextPost(text, visibility);
             if (!r.ok) setError(r.message ?? "Error");
             else { setText(""); setWeight(""); setIncludeWeight(false); }
@@ -538,7 +546,7 @@ export function Composer() {
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
                   inputMode="decimal"
-                  placeholder="kg"
+                  placeholder={u.weightUnit}
                   className="h-9 w-20 rounded-xl border border-line bg-bg px-2.5 text-sm tabular-nums outline-none focus:border-accent"
                 />
               ) : null}

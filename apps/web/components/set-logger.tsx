@@ -1,13 +1,14 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { circuitSegments, parseDecimal } from "@healthapp/shared";
+import { circuitSegments, displayToKg, kgToDisplay, parseDecimal } from "@healthapp/shared";
 import { finishWorkout, logSet } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
 import { EditSet } from "./edit-set";
+import { useUnits } from "@/lib/units/client";
 import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
 
 /**
@@ -18,6 +19,7 @@ import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
  */
 export function SetLogger({ day }: { day: ClientWorkoutDay }) {
   const { t } = useI18n();
+  const u = useUnits();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [logged, setLogged] = useState(day.logged);
@@ -118,7 +120,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
                   exerciseId: exercise.exercise_id ?? null,
                   programExerciseId: exercise.id,
                   setIndex: done + 1,
-                  weightKg: entry.weight,
+                  // entry.weight is in the unit on screen; the column is kg.
+                  weightKg: displayToKg(entry.weight, u.weightUnit),
                   reps: entry.reps,
                   rpe: entry.intensity,
                   rir: entry.rir,
@@ -135,7 +138,7 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
                     program_exercise_id: exercise.id,
                     exercise: exercise.exercise,
                     set_index: done + 1,
-                    weight_kg: entry.weight,
+                    weight_kg: displayToKg(entry.weight, u.weightUnit),
                     reps: entry.reps,
                     rpe: entry.intensity,
                     rir: entry.rir,
@@ -203,6 +206,7 @@ function ExerciseBlock({
   onEdited: (set: Pick<LoggedSetRow, "id" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">) => void;
 }) {
   const { t } = useI18n();
+  const u = useUnits();
   const m = t.clientWidgets.setLogger;
   // program_exercises.target_rpe holds whatever the coach typed under the
   // program's own scale: RIR for an RIR program, RPE otherwise (the builder
@@ -210,7 +214,11 @@ function ExerciseBlock({
   // reserve and saves it to logged_sets.rir; the slider is always the felt
   // intensity 1..10 (logged_sets.rpe), pre-set from the target — RIR 2 ≈ 8/10.
   const asRir = intensityMode === "rir";
-  const [weight, setWeight] = useState(targetWeight?.toString() ?? "");
+  // The coach's target is stored in kilograms; the box is in the reader's unit,
+  // so pre-filling it raw would put 100 into a pound field and log 45 kg.
+  const [weight, setWeight] = useState(
+    targetWeight === null ? "" : String(kgToDisplay(targetWeight, u.weightUnit)),
+  );
   const [reps, setReps] = useState(parseInt(targetReps, 10) ? String(parseInt(targetReps, 10)) : "");
   const [rir, setRir] = useState(asRir && targetRpe !== null ? String(targetRpe) : "");
   const [intensity, setIntensity] = useState<number>(
@@ -240,7 +248,7 @@ function ExerciseBlock({
           <p className="mt-1 text-[12.5px] tabular-nums text-ink-faint">
             {targetSets}×{targetReps}
             {targetRpe !== null ? ` · ${asRir ? m.rir : m.rpe} ${targetRpe}` : ""}
-            {targetWeight ? ` · ${targetWeight} kg` : ""} · {m.rest} {rest}
+            {targetWeight ? ` · ${kgToDisplay(targetWeight, u.weightUnit)} ${u.weightUnit}` : ""} · {m.rest} {rest}
           </p>
         </div>
         <span
@@ -261,14 +269,14 @@ function ExerciseBlock({
               <button
                 type="button"
                 title={s.notes ?? m.editSet}
-                aria-label={`${m.editSet}: ${s.weight_kg} kg × ${s.reps}`}
+                aria-label={`${m.editSet}: ${kgToDisplay(s.weight_kg, u.weightUnit)} ${u.weightUnit} × ${s.reps}`}
                 disabled={s.id.startsWith("tmp_")}
                 onClick={() => setEditing(editing === s.id ? null : s.id)}
                 className={`min-h-8 rounded-[10px] px-2.5 py-1.5 text-xs tabular-nums ${
                   s.is_pr ? "bg-accent font-semibold text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
                 } ${editing === s.id ? "ring-2 ring-accent-ink" : ""}`}
               >
-                {s.weight_kg} kg × {s.reps}
+                {kgToDisplay(s.weight_kg, u.weightUnit)} {u.weightUnit} × {s.reps}
                 {s.rir !== null ? ` · ${m.rir} ${s.rir}` : ""}
                 {s.rpe !== null ? ` · ${s.rpe}/10` : ""}
                 {s.is_pr ? ` · ${m.pr}` : ""}
@@ -291,7 +299,7 @@ function ExerciseBlock({
       })() : null}
 
       <div className="mt-3 flex flex-wrap items-end gap-2">
-        <Field label={m.kg} value={weight} onChange={setWeight} />
+        <Field label={u.weightUnit} value={weight} onChange={setWeight} />
         <Field label={m.reps} value={reps} onChange={setReps} />
         {asRir ? <Field label={m.rir} value={rir} onChange={setRir} /> : null}
         <button

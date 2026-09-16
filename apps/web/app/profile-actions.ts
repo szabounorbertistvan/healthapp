@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
+import { isLengthUnit, isWeightUnit, type LengthUnit, type WeightUnit } from "@healthapp/shared";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
 import type { ActionResult } from "./actions";
@@ -77,6 +78,11 @@ export async function updateAccount(input: {
   fullName: string;
   username: string;
   timezone: string;
+  /** 0 = Sunday … 6 = Saturday, matching users.check_in_weekday. */
+  checkInWeekday: number;
+  leaderboardVisibility: "public" | "followers" | "private";
+  weightUnit: WeightUnit;
+  lengthUnit: LengthUnit;
 }): Promise<ActionResult> {
   const fullName = input.fullName.trim();
   const username = input.username.trim();
@@ -86,6 +92,15 @@ export async function updateAccount(input: {
   // Reject anything Postgres would not accept as a zone rather than storing a
   // string that makes every scheduled job skip this user for ever.
   if (!isValidTimeZone(timezone)) return { ok: false, message: "Unknown time zone" };
+  if (!Number.isInteger(input.checkInWeekday) || input.checkInWeekday < 0 || input.checkInWeekday > 6) {
+    return { ok: false, message: "Pick a check-in day" };
+  }
+  if (!LEADERBOARD_VISIBILITY.includes(input.leaderboardVisibility)) {
+    return { ok: false, message: "Unknown visibility" };
+  }
+  if (!isWeightUnit(input.weightUnit) || !isLengthUnit(input.lengthUnit)) {
+    return { ok: false, message: "Unknown unit" };
+  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -101,7 +116,18 @@ export async function updateAccount(input: {
   const failed = await mutated(
     await supabase
       .from("users")
-      .update({ full_name: fullName, username, timezone }, { count: "exact" })
+      .update(
+        {
+          full_name: fullName,
+          username,
+          timezone,
+          check_in_weekday: input.checkInWeekday,
+          leaderboard_visibility: input.leaderboardVisibility,
+          weight_unit: input.weightUnit,
+          length_unit: input.lengthUnit,
+        },
+        { count: "exact" },
+      )
       .eq("id", userId),
   );
   if (failed) {
@@ -124,6 +150,9 @@ export async function saveLocalePreference(locale: "ro" | "en"): Promise<ActionR
   );
   return failed ?? { ok: true };
 }
+
+/** Mirrors the check constraint added with the leaderboards migration. */
+const LEADERBOARD_VISIBILITY = ["public", "followers", "private"] as const;
 
 function isValidTimeZone(tz: string): boolean {
   try {

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { ChallengeStatus } from "@healthapp/shared";
-import { joinChallenge, leaveChallenge } from "@/app/challenge-actions";
+import { deleteChallenge, joinChallenge, leaveChallenge } from "@/app/challenge-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { parseDay } from "@/lib/week";
@@ -156,23 +156,44 @@ export function JoinLeaveButton({ challenge: c }: { challenge: ChallengeCardRow 
     });
   }
 
+  // Deleting is offered on your own challenge only, and beside leaving rather
+  // than instead of it: the creator is a participant too.
+  const ownerControls = c.mine ? (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => run(() => deleteChallenge(c.id))}
+      className="text-[12.5px] font-semibold text-ink-faint hover:text-risk disabled:opacity-50"
+    >
+      {ch.deleteChallenge}
+    </button>
+  ) : null;
+
   if (c.joined) {
     return (
       <div>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => run(() => leaveChallenge(c.id))}
-          className="flex h-11 w-full items-center justify-center rounded-2xl bg-bg px-5 text-sm font-semibold text-ink-soft hover:text-risk disabled:opacity-50 sm:w-auto"
-        >
-          {ch.leave}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => run(() => leaveChallenge(c.id))}
+            className="flex h-11 items-center justify-center rounded-2xl bg-bg px-5 text-sm font-semibold text-ink-soft hover:text-risk disabled:opacity-50"
+          >
+            {ch.leave}
+          </button>
+          {ownerControls}
+        </div>
         {error ? <p className="mt-2 text-xs text-risk">{error}</p> : null}
       </div>
     );
   }
   if (!c.can_join) {
-    return <p className="text-[13px] text-ink-faint">{ch.endedCannotJoin}</p>;
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-[13px] text-ink-faint">{ch.endedCannotJoin}</p>
+        {ownerControls}
+      </div>
+    );
   }
   return (
     <div>
@@ -184,6 +205,7 @@ export function JoinLeaveButton({ challenge: c }: { challenge: ChallengeCardRow 
       >
         {ch.join}
       </button>
+      {ownerControls ? <div className="mt-2">{ownerControls}</div> : null}
       {error ? <p className="mt-2 text-xs text-risk">{error}</p> : null}
     </div>
   );

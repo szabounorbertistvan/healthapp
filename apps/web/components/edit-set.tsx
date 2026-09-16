@@ -1,9 +1,10 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { parseDecimal } from "@healthapp/shared";
+import { displayToKg, kgToDisplay, parseDecimal } from "@healthapp/shared";
 import { updateLoggedSet } from "@/app/client-actions-app";
 import { useI18n } from "@/lib/i18n/client";
+import { useUnits } from "@/lib/units/client";
 import type { LoggedSetRow } from "@/lib/types";
 
 type Editable = Pick<LoggedSetRow, "id" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">;
@@ -31,10 +32,12 @@ export function EditSet({
   onDone: (updated: Editable | null) => void;
 }) {
   const { t } = useI18n();
+  const u = useUnits();
   const m = t.clientWidgets.setLogger;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [weight, setWeight] = useState(String(set.weight_kg));
+  // Shown and typed in the reader's unit; the row stays kilograms.
+  const [weight, setWeight] = useState(String(kgToDisplay(set.weight_kg, u.weightUnit)));
   const [reps, setReps] = useState(String(set.reps));
   const [rir, setRir] = useState(set.rir === null ? "" : String(set.rir));
   const [rpe, setRpe] = useState(set.rpe === null ? "" : String(set.rpe));
@@ -43,7 +46,10 @@ export function EditSet({
 
   function save() {
     const edit = {
-      weight_kg: parseDecimal(weight) ?? NaN,
+      weight_kg: (() => {
+        const typed = parseDecimal(weight);
+        return typed === null ? NaN : displayToKg(typed, u.weightUnit);
+      })(),
       reps: Number(reps),
       rpe: rpe.trim() === "" ? null : parseDecimal(rpe),
       rir: asRir && rir.trim() !== "" ? parseDecimal(rir) : null,
@@ -65,7 +71,7 @@ export function EditSet({
     <div className="mt-3 space-y-2 rounded-lg border border-accent bg-surface p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{m.editSet}</p>
       <div className={`grid gap-2 ${asRir ? "grid-cols-4" : "grid-cols-3"}`}>
-        <label className="flex flex-col gap-0.5"><span className={label}>{m.kg}</span>
+        <label className="flex flex-col gap-0.5"><span className={label}>{u.weightUnit}</span>
           <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} className={field} /></label>
         <label className="flex flex-col gap-0.5"><span className={label}>{m.reps}</span>
           <input inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className={field} /></label>

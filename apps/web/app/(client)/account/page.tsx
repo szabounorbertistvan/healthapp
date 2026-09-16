@@ -5,10 +5,9 @@ import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/acc
 
 /**
  * The client's account screen. It carries only controls that change something:
- * `users.weight_unit`, `length_unit`, `check_in_weekday` and `notification_prefs`
- * exist in the schema but nothing in the app reads them yet, so a switch for
- * them here would be a dead knob — they arrive when the code that honours them
- * does. Language and theme already live in the header, so they are not repeated.
+ * `notification_prefs` is the one column still without a control: nothing reads
+ * it, so a switch here would be a dead knob. Language and theme already live in
+ * the header, so they are not repeated.
  */
 export default async function AccountPage() {
   const [{ t }, profile] = await Promise.all([getI18n(), getProfile()]);
@@ -24,6 +23,10 @@ export default async function AccountPage() {
           fullName={profile.full_name}
           username={profile.username ?? ""}
           timezone={profile.timezone}
+          checkInWeekday={profile.check_in_weekday}
+          leaderboardVisibility={profile.leaderboard_visibility}
+          weightUnit={profile.weight_unit}
+          lengthUnit={profile.length_unit}
         />
 
         <DataExportCard />

@@ -123,15 +123,43 @@ program (`program_exercises.exercise_id` has no cascade), so the job reassigns
 those exercises to the system library instead of letting them cascade.
 
 **~~No client settings screen~~ — `/account` shipped 2026-09-16** with name,
-username and time zone. Still missing, because nothing in the app reads them:
-`weight_unit`, `length_unit`, `check_in_weekday` and `notification_prefs` have
-columns and no consumer, so the screen deliberately shows no switch for them.
+username, time zone, check-in weekday and leaderboard visibility. The last one
+mattered most: `users.leaderboard_visibility` defaults to `'public'` in SQL and
+the migration that added it says "No UI", so every client was ranked publicly
+without ever choosing to be.
+
+**Units shipped 2026-09-16.** `weight_unit` / `length_unit` are honoured
+everywhere a weight or a circumference is shown or typed. The rule is in
+`packages/shared/src/units.ts` with tests: storage stays metric and conversion
+happens only at the edges, so no sum, chart or leaderboard has to know which
+unit a row was entered in. The client shell carries a `UnitsProvider`
+(`lib/units/client.tsx`) shaped like the i18n one; server components read the
+unit off the profile instead.
+
+The inputs mattered more than the displays — the set logger, the set editor,
+the weigh-in, the check-in, the feed's weight box and the program builder all
+convert on the way in, and the logger's pre-filled coach target converts on the
+way out, which would otherwise have put 100 into a pound box and logged 45 kg.
+
+Still without a control: `notification_prefs`. **Coach surfaces remain metric** —
+the coach shell has no UnitsProvider, so the default applies there.
 
 **`/get-the-app` is orphaned** — nothing links to it, and it described an Expo
 app that does not exist. Rewritten 2026-09-16 to describe the web app.
 
 **`ClientToday.unread_from_coach` is hardcoded `0`** (`lib/client-today.ts`) and
 read by no component — dead either way.
+
+**Challenges and leaderboards, 2026-09-16.** Clients can now create their own
+challenges (`createChallenge`): the schema and its policies supported it from
+the start — `creator_id`, `visibility`, `challenges_owner_insert` — only the
+form was missing, so the four seeded platform challenges were all anyone could
+join. Leaderboards gained a `following` scope, which needed migration
+`20260916120000_leaderboard_following.sql` because `social_leaderboard()`
+validated `p_scope` against `'global'` alone. The scope narrows the visible set
+and never widens it: someone private stays off the board even if you follow
+them. **Not applied to the live project yet.** `club` and `gym` scopes are still
+unbuilt.
 
 ## Known small ones
 

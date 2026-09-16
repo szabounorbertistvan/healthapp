@@ -1,14 +1,17 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { parseDecimal } from "@healthapp/shared";
+import { displayToCm, displayToKg, parseDecimal } from "@healthapp/shared";
 import { addMeasurement } from "@/app/client-actions-app";
+import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
+import { useUnits } from "@/lib/units/client";
 import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
 
 export function MeasurementForm() {
   const { t } = useI18n();
+  const u = useUnits();
   const router = useRouter();
   const [weight, setWeight] = useState("");
   const [waist, setWaist] = useState("");
@@ -16,7 +19,9 @@ export function MeasurementForm() {
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  // As typed: 21,25 and 21.25 are both 21.25, and nothing is rounded on the way to the row.
+  // As typed: 21,25 and 21.25 are both 21.25, and nothing is rounded on the way
+  // to the row. The unit conversion happens after parsing and before the write,
+  // because the column is metric whatever the person typed in.
   const parse = (v: string) => parseDecimal(v);
 
   return (
@@ -28,7 +33,7 @@ export function MeasurementForm() {
       <div className="mt-3.5 flex flex-wrap items-end gap-2.5">
         <label className="flex flex-col gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
-            {t.clientWidgets.measurementForm.weightKg}
+            {fill(t.clientWidgets.measurementForm.weightKg, { unit: u.weightUnit })}
           </span>
           <input
             inputMode="decimal"
@@ -39,7 +44,7 @@ export function MeasurementForm() {
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
-            {t.clientWidgets.measurementForm.waistCm}
+            {fill(t.clientWidgets.measurementForm.waistCm, { unit: u.lengthUnit })}
           </span>
           <input
             inputMode="decimal"
@@ -55,9 +60,11 @@ export function MeasurementForm() {
             startTransition(async () => {
               setError(null);
               setSaved(false);
+              const typedWeight = parse(weight);
+              const typedWaist = parse(waist);
               const result = await addMeasurement({
-                weightKg: parse(weight),
-                waistCm: parse(waist),
+                weightKg: typedWeight === null ? null : displayToKg(typedWeight, u.weightUnit),
+                waistCm: typedWaist === null ? null : displayToCm(typedWaist, u.lengthUnit),
               });
               if (!result.ok) {
                 setError(result.message ?? t.clientWidgets.measurementForm.couldNotSave);

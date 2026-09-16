@@ -4,6 +4,7 @@ import type { Delta, Insight } from "@healthapp/shared";
 import type { WeeklySummary } from "@/lib/weekly-data";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
+import { useUnits } from "@/lib/units/client";
 import { parseDay } from "@/lib/week";
 import { Card } from "./ui";
 
@@ -109,6 +110,7 @@ export function WeeklySummaryCard({ summary: s, switchPath, compact = false }: {
   compact?: boolean;
 }) {
   const { t } = useI18n();
+  const u = useUnits();
   const f = useWeeklyFormat();
   const w = t.common.weekly;
   const cur = s.current;
@@ -201,10 +203,30 @@ export function WeeklySummaryCard({ summary: s, switchPath, compact = false }: {
         <Section title={w.progress}>
           {hasProgress ? (
             <>
-              {p.weight ? <Row label={w.weight} value={f.signed(p.weight.delta)} unit="kg" previous={`${f.n1(p.weight.start)} → ${f.n1(p.weight.end)}`} /> : null}
-              {p.waist ? <Row label={w.waist} value={f.signed(p.waist.delta)} unit="cm" previous={`${f.n1(p.waist.start)} → ${f.n1(p.waist.end)}`} /> : null}
+              {p.weight ? (
+                <Row
+                  label={w.weight}
+                  value={f.signed(u.weightValue(p.weight.delta))}
+                  unit={u.weightUnit}
+                  previous={`${f.n1(u.weightValue(p.weight.start))} → ${f.n1(u.weightValue(p.weight.end))}`}
+                />
+              ) : null}
+              {p.waist ? (
+                <Row
+                  label={w.waist}
+                  value={f.signed(u.lengthValue(p.waist.delta))}
+                  unit={u.lengthUnit}
+                  previous={`${f.n1(u.lengthValue(p.waist.start))} → ${f.n1(u.lengthValue(p.waist.end))}`}
+                />
+              ) : null}
               {Object.entries(p.others).map(([name, ch]) => (
-                <Row key={name} label={name} value={f.signed(ch.delta)} unit="cm" previous={`${f.n1(ch.start)} → ${f.n1(ch.end)}`} />
+                <Row
+                  key={name}
+                  label={name}
+                  value={f.signed(u.lengthValue(ch.delta))}
+                  unit={u.lengthUnit}
+                  previous={`${f.n1(u.lengthValue(ch.start))} → ${f.n1(u.lengthValue(ch.end))}`}
+                />
               ))}
             </>
           ) : (

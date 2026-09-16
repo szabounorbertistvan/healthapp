@@ -11,6 +11,7 @@ export * from "./sync";
 export * from "./exercises";
 export * from "./video";
 export * from "./text";
+export * from "./units";
 export * from "./training-load";
 export * from "./challenges";
 export * from "./weekly-summary";
