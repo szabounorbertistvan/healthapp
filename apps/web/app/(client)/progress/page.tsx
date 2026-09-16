@@ -1,5 +1,8 @@
 import { getMyMeasurements, getMyPrs, getMySessions } from "@/lib/client-data";
 import { getProfile } from "@/lib/data";
+import { getMyPhotos } from "@/lib/photos-data";
+import { cloudinaryConfigured } from "@/lib/cloudinary";
+import { ProgressPhotos } from "@/components/progress-photos";
 import { Card, EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { Sparkline, WeeklyBars } from "@/components/client-ui";
@@ -16,7 +19,7 @@ import { cmToDisplay, formatWeight, kgToDisplay, weeklyTotals } from "@healthapp
  */
 export default async function ProgressPage() {
   const { t, locale } = await getI18n();
-  const [profile, measurements, prs, sessions] = await Promise.all([
+  const [profile, measurements, prs, sessions, photos] = await Promise.all([
     getProfile(),
     // The whole history, not the default 12 rows: this is the one screen whose
     // job is the long view, and a trend cut off at twelve weigh-ins is a
@@ -24,6 +27,7 @@ export default async function ProgressPage() {
     getMyMeasurements(MEASUREMENT_HISTORY),
     getMyPrs(),
     getMySessions(200),
+    getMyPhotos(),
   ]);
   // This is a server component, so units come off the profile rather than the
   // client-side UnitsProvider the charts use.
@@ -90,6 +94,10 @@ export default async function ProgressPage() {
           ) : null}
 
           <MeasurementForm />
+
+          {/* Photos sit with the weigh-in, not in a gallery of their own: they
+              answer the same question the scale does, on the weeks it lies. */}
+          <ProgressPhotos photos={photos} configured={cloudinaryConfigured()} />
         </div>
 
         {/* ---- the work behind the numbers ---- */}

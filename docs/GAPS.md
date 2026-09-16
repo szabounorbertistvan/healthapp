@@ -99,7 +99,10 @@ feedback still do not exist** — nothing writes `reference_type` `set`,
 (`packages/shared/src/entitlements.ts`). Only `maxClients` has code behind it —
 `create_invite` raises `CLIENT_LIMIT_REACHED` at 3 / 30. `progressPhotos`,
 `advancedAnalytics` and `customExerciseVideos` are read by nothing: **no client
-screen gates on an entitlement at all**. So a paying `premium` client gets
+screen gates on an entitlement at all**. Two of the three have since shipped as
+*free* features — coach exercise videos (YouTube links) on 2026-09-16 and
+progress photos the same day — because neither is something a competitor
+charges for; the flag stays in the table as an intention nobody honours. So a paying `premium` client gets
 nothing a free one does not, and `coach_pro` buys only the bigger roster.
 The landing page and the checkout panel now mark those three with a "soon"
 badge instead of a tick (2026-09-16).
@@ -160,6 +163,23 @@ validated `p_scope` against `'global'` alone. The scope narrows the visible set
 and never widens it: someone private stays off the board even if you follow
 them. **Not applied to the live project yet.** `club` and `gym` scopes are still
 unbuilt.
+
+**Progress photos shipped 2026-09-16.** Storage is Cloudinary
+(`lib/cloudinary.ts`), not Supabase Storage. Assets are `type: authenticated`
+and delivered through signed URLs that expire after 30 minutes, because a
+public `upload` asset is readable for ever by anyone who gets the URL. Uploads
+are signed per asset — the browser posts straight to Cloudinary with a
+signature this server issued for one folder and one public_id, so an image
+never crosses a server action's body limit and cannot land anywhere else.
+`progress_photos.storage_path` holds the public_id, never a URL, since a signed
+URL is a dead link by the time anyone reads it back.
+
+Account deletion removes the assets too (`destroyUserPhotos`), at request time
+rather than at purge time: the SQL job cannot reach object storage, the request
+cannot be cancelled, and holding someone's body photos for the 30-day window
+after they asked for deletion serves nobody. Needs
+`CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET`, all server-side; without
+them the section renders a "not configured" note instead of a broken upload.
 
 ## Known small ones
 

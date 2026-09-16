@@ -8,6 +8,7 @@ import type { Sex } from "@/lib/types";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 import { exportMyData } from "@/lib/data-export";
+import { cloudinaryConfigured, destroyUserPhotos } from "@/lib/cloudinary";
 
 // Profile fields the account carries beyond the auth row: username, sex, year
 // of birth. Sign-up collects them as user metadata (handle_new_user copies them
@@ -169,9 +170,21 @@ function isValidTimeZone(tz: string): boolean {
  * one transaction, and the purge job removes the rows after the 30-day window.
  */
 export async function requestAccountDeletion(): Promise<ActionResult & { purgeAfter?: string }> {
-  const supabase = await supabaseServer();
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
   const { data, error } = await supabase.rpc("request_account_deletion");
   if (error) return { ok: false, message: error.message };
+
+  // Progress photos live in Cloudinary, which the SQL purge job cannot reach.
+  // Best effort, loudly logged: a silent leftover here is the worst kind.
+  if (cloudinaryConfigured()) {
+    try {
+      await destroyUserPhotos(userId);
+    } catch (photoError) {
+      console.error("progress photos not removed on deletion:", (photoError as Error).message);
+    }
+  }
   revalidatePath("/", "layout");
   return { ok: true, purgeAfter: (data as { purge_after?: string } | null)?.purge_after };
 }
