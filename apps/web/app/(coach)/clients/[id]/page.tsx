@@ -2,13 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClients } from "@/lib/data";
 import { getClientWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
+import { getClientFitnessScore } from "@/lib/fitness-score-data";
 import { SignalBadge } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
+import { FitnessScoreCoachCard } from "@/components/fitness-score";
 import { getI18n } from "@/lib/i18n/server";
 
 /**
- * One client, from the coach's side: their weekly summary. Every number is
+ * One client, from the coach's side: their weekly summary and 28-day fitness
+ * score. Every number is
  * read under RLS — a coach sees exactly what is_active_coach_of() allows —
  * and computed by the same code the client's own Today uses.
  */
@@ -25,7 +28,11 @@ export default async function CoachClientPage({
   // The roster and the summary go out together: the summary is filtered by
   // client id and RLS answers it, so it never needed the roster first. A client
   // the coach cannot see still 404s below — the wasted summary read is empty.
-  const [clients, summary] = await Promise.all([getClients(), getClientWeeklySummary(id, choice)]);
+  const [clients, summary, fitness] = await Promise.all([
+    getClients(),
+    getClientWeeklySummary(id, choice),
+    getClientFitnessScore(id),
+  ]);
   const client = clients.find((c) => c.client_id === id && c.status === "active");
   if (!client) notFound();
 
@@ -66,7 +73,8 @@ export default async function CoachClientPage({
         </div>
       </div>
 
-      <div className="mt-4 sm:mt-6">
+      <div className="mt-4 space-y-4 sm:mt-6">
+        <FitnessScoreCoachCard view={fitness} />
         {summary ? (
           <WeeklySummaryCard summary={summary} switchPath={`/clients/${id}`} />
         ) : (

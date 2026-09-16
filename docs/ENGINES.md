@@ -118,6 +118,21 @@ Plain threaded messaging — no realtime subscription yet, reads are server-rend
 that match a suggestion by name unfolds the same text). Streaks and badges have tables and RLS but no award logic —
 those are service-role engine tables with no insert policy, and nothing writes them.
 
+**Fitness score** — one 0..100 activity number over the last 28 local days,
+an aggregation of signals that already exist: `0.35 · training load +
+0.25 · consistency + 0.20 · frequency + 0.20 · volume`. Training load is the
+mean per-session score from `training-load.ts` on the same saturating curve;
+consistency is active workout days / 16 (the streak day rule, in
+`users.timezone`); frequency is completed sessions / 16; volume is total kg /
+50,000 (an app reference, not a physiological claim). Fewer than 3 completed
+workouts in the window is "building" — no number is shown. Math and the
+previous-block trend: `packages/shared/src/fitness-score.ts`; the one read:
+[lib/fitness-score-data.ts](../apps/web/lib/fitness-score-data.ts) (sessions +
+sets under RLS, so a coach sees a client's and nobody sees anyone else's);
+UI: `components/fitness-score.tsx`, Today card, `/fitness-score`, the coach's
+client page. Derived, never stored; no migration, no RPC. It is an
+application activity metric, not a health or fitness assessment.
+
 **External workout sharing** (Instagram Stories etc.). A completed session
 becomes a 1080×1920 (Story) or 1080×1080 (Square) PNG drawn on a canvas in
 the browser — nothing is stored. `lib/share-card.ts` (pure: the card is the

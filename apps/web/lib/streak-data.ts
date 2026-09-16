@@ -50,14 +50,25 @@ function sharedKey(m: { milestone: number; streak_start: string }): string {
  */
 const workoutDaysFor = cache(async (userId: string): Promise<{ days: WorkoutDay[]; timezone: string }> => {
   const supabase = await supabaseServer();
-  const [{ data: rows }, { data: user }] = await Promise.all([
+  const [{ data: rows }, timezone] = await Promise.all([
     supabase.rpc("workout_days", { p_user: userId }),
-    supabase.from("users").select("timezone").eq("id", userId).maybeSingle(),
+    userTimezone(userId),
   ]);
   return {
     days: ((rows ?? []) as WorkoutDay[]).map((r) => ({ day: r.day, workouts: Number(r.workouts) })),
-    timezone: (user?.timezone as string | null) ?? DEFAULT_TIMEZONE,
+    timezone,
   };
+});
+
+/**
+ * users.timezone — the calendar every local-day rule (streaks, fitness score)
+ * counts on. Falls back to the app default when the row is unreadable or the
+ * column is empty. Cached per request: the streak and the fitness score both ask.
+ */
+export const userTimezone = cache(async (userId: string): Promise<string> => {
+  const supabase = await supabaseServer();
+  const { data: user } = await supabase.from("users").select("timezone").eq("id", userId).maybeSingle();
+  return (user?.timezone as string | null) ?? DEFAULT_TIMEZONE;
 });
 
 /** Current streak of a user the caller may read (self, or a coach's client) — for the weekly summary. */

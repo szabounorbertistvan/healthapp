@@ -4,6 +4,7 @@ import { getMySessions, getToday, isEmptyAccount } from "@/lib/client-data";
 import { getMyChallenges } from "@/lib/challenges-data";
 import { getMyWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getMyStreak } from "@/lib/streak-data";
+import { getMyFitnessScore } from "@/lib/fitness-score-data";
 import { getLeaderboard } from "@/lib/leaderboard-data";
 import { hasChosenSolo } from "@/lib/onboarding";
 import { Card, EmptyState } from "@/components/ui";
@@ -11,6 +12,7 @@ import { LinkRow, TodayChecklist, WeekCard } from "@/components/today-dashboard"
 import { NavIcon } from "@/components/client-nav";
 import { TrainingLoadSummaryCard } from "@/components/training-load";
 import { StreakCard } from "@/components/streak";
+import { FitnessScoreCard } from "@/components/fitness-score";
 import { LeaderboardSummaryCard } from "@/components/leaderboard";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
 import { ShareWorkoutButton } from "@/components/share-workout";
@@ -24,8 +26,8 @@ import { isoDay } from "@/lib/dates";
 /**
  * Today. Three columns once there is room, one on a phone, in this order: the
  * date, today's checklist (the one card that answers "what do I do now") and a
- * word from the coach; the week's score with its parts and the workout streak;
- * the last workout, the leaderboard, links to the rest, and the weekly report
+ * word from the coach; the week's score with its parts, the workout streak
+ * and the 28-day fitness score; the last workout, the leaderboard, links to the rest, and the weekly report
  * folded away for whoever wants the numbers.
  */
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
@@ -51,11 +53,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     getMySessions(3),
     getMyStreak(),
     getLeaderboard("training_load", "week"),
+    getMyFitnessScore(),
   ]);
   reads.catch(() => {});
   if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
 
-  const [today, challenges, weekly, recent, streakView, board] = await reads;
+  const [today, challenges, weekly, recent, streakView, board, fitness] = await reads;
   if (!today) {
     return <EmptyState plain title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
   }
@@ -136,6 +139,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           />
 
           {streakView ? <StreakCard view={streakView} compact /> : null}
+
+          {fitness ? <FitnessScoreCard view={fitness} /> : null}
         </div>
 
         {/* ---- everything else ---- */}

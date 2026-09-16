@@ -54,8 +54,12 @@ const EXERCISES_SCALE = 5;
 /** Sessions shorter than a minute or longer than six hours were not timed. */
 export const MAX_SESSION_MIN = 360;
 
-/** 0..100 along 1 − e^(−x/scale): fast early growth, saturating late. */
-function saturate(x: number, scale: number): number {
+/**
+ * 0..100 along 1 − e^(−x/scale): fast early growth, saturating late. `scale`
+ * is the input at which the curve reaches ~63. Exported so the fitness score
+ * (fitness-score.ts) normalises with the same shape instead of a second curve.
+ */
+export function saturate(x: number, scale: number): number {
   if (x <= 0) return 0;
   return 100 * (1 - Math.exp(-x / scale));
 }
