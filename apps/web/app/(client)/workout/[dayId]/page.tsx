@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getWorkoutDay, getWorkoutDayHistory } from "@/lib/client-data";
+import { getWorkoutDay, getWorkoutDayHistory, hasActiveCoach } from "@/lib/client-data";
 import { getProfile } from "@/lib/data";
 import { shareProfileOf } from "@/lib/share-card-data";
 import { Card } from "@/components/ui";
@@ -29,8 +29,10 @@ export default async function WorkoutDayPage({
   const { t, locale } = await getI18n();
   const { dayId } = await params;
   // getProfile is request-cached (the layout already read it) — no extra round trip.
-  const [day, history, profile] = await Promise.all([getWorkoutDay(dayId), getWorkoutDayHistory(dayId), getProfile()]);
+  const [day, history, profile, coached] = await Promise.all([getWorkoutDay(dayId), getWorkoutDayHistory(dayId), getProfile(), hasActiveCoach()]);
   if (!day) notFound();
+  // A solo client edits their own days in the builder; a coached one edits nothing (can_edit_program).
+  const editHref = day.is_own && !coached ? `/workout/build?program=${day.program_id}` : null;
   const d = t.clientApp.workoutDay;
   const inProgress = day.logged.length > 0;
   // History is newest first, so [0] is the last time this day was trained.
@@ -53,10 +55,21 @@ export default async function WorkoutDayPage({
     // Capped: this is a page to read, not a grid of cards — on an ultrawide the
     // two columns would otherwise run 1 500 px each.
     <div className="mx-auto max-w-[1600px]">
-      <Link href="/workout" className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-faint hover:text-accent-ink">
-        <NavIcon d="m15 6-6 6 6 6" className="h-3.5 w-3.5" />
-        {t.common.nav.training}
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/workout" className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-faint hover:text-accent-ink">
+          <NavIcon d="m15 6-6 6 6 6" className="h-3.5 w-3.5" />
+          {t.common.nav.training}
+        </Link>
+        {editHref ? (
+          <Link
+            href={editHref}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-surface px-3.5 text-xs font-semibold text-ink-soft hover:text-accent-ink"
+          >
+            <NavIcon d="M4 20h4l10-10-4-4L4 16zM13 7l4 4" className="h-3.5 w-3.5" />
+            {d.editDay}
+          </Link>
+        ) : null}
+      </div>
 
       <div className="mt-3 grid gap-5 xl:grid-cols-2 xl:items-start xl:gap-8">
         {/* ---- the plan ---- */}

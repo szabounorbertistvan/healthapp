@@ -148,16 +148,21 @@ export function SoloProgramBuilder({
             })
           }
         >
-          <ProgramDayEditor
-            program={program}
-            day={day}
-            index={i}
-            total={program.days.length}
-            muscles={[...MUSCLE_GROUPS]}
-            equipment={equipment}
-            run={run}
-            pending={pending}
-          />
+          {/* The trash sits in the day header, where the coach builder keeps
+              it too; SwipeToDelete's floating one would land on "+ Exercise". */}
+          {(trigger) => (
+            <ProgramDayEditor
+              program={program}
+              day={day}
+              index={i}
+              total={program.days.length}
+              muscles={[...MUSCLE_GROUPS]}
+              equipment={equipment}
+              run={run}
+              pending={pending}
+              actions={trigger}
+            />
+          )}
         </SwipeToDelete>
       ))}
       {program.days.length > 0 ? (

@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/client";
 
 const REVEAL_PX = 88;
@@ -11,7 +11,9 @@ const DRAG_THRESHOLD_PX = 8;
  * (`touch-action: pan-y`), and a swipe never fires the card's own click — the
  * card is usually a link, and a drag that ends in a navigation is the classic
  * mobile-list bug. A small trash button at the top right does the same for
- * mouse users, who cannot swipe.
+ * mouse users, who cannot swipe — or, when `children` is a function, the
+ * caller receives that button and places it itself, for cards whose top
+ * right corner is already taken (the day editor's header).
  */
 export function SwipeToDelete({
   children,
@@ -20,7 +22,7 @@ export function SwipeToDelete({
   disabled = false,
   className = "",
 }: {
-  children: ReactNode;
+  children: ReactNode | ((trigger: ReactNode) => ReactNode);
   onDelete: () => void | Promise<void>;
   /** The question shown before deleting, e.g. Delete “Legs A”? */
   confirmText: string;
@@ -86,17 +88,59 @@ export function SwipeToDelete({
     }
   }
 
-  return (
-    // The clipping box extends REVEAL_PX to the left of the card (negative
-    // margin + matching padding), so a card slid fully open keeps its title
-    // visible instead of losing its left edge inside its own border — on a
-    // phone that edge is the screen edge, exactly as a native list behaves.
-    <div
-      className={`relative overflow-hidden ${className}`}
-      style={{ touchAction: "pan-y", marginLeft: -REVEAL_PX, paddingLeft: REVEAL_PX }}
+  function toggle() {
+    if (open) close();
+    else {
+      setOpen(true);
+      setOffset(-REVEAL_PX);
+    }
+  }
+
+  const trash = (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" />
+    </svg>
+  );
+  const placed = typeof children === "function";
+  // The header variant matches the coach builder's day chrome (h-9 round, bg-bg).
+  const trigger = (
+    <button
+      type="button"
+      data-swipe-action
+      disabled={disabled}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggle();
+      }}
+      aria-label={m.delete}
+      title={m.delete}
+      className={
+        placed
+          ? "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-bg text-ink-faint hover:bg-risk-soft hover:text-risk disabled:opacity-50"
+          : "absolute right-3 top-3 hidden h-8 w-8 items-center justify-center rounded-xl text-ink-faint hover:bg-risk-soft hover:text-risk sm:flex"
+      }
     >
-      {/* the red tray behind the card */}
-      <div className="absolute inset-y-0 right-0 flex w-22 items-stretch" aria-hidden={!open}>
+      {trash}
+    </button>
+  );
+
+  return (
+    // On a phone the clipping box extends REVEAL_PX to the left of the card
+    // (negative margin + matching padding), so a card slid fully open keeps
+    // its title visible instead of losing its left edge inside its own border
+    // — that edge is the screen edge, exactly as a native list behaves. From
+    // `sm` up the cards sit in a grid, where that strip is the neighbouring
+    // card: there the card stays put and the tray lays over its right edge.
+    <div
+      className={`relative -ml-22 overflow-hidden pl-22 sm:ml-0 sm:pl-0 ${className}`}
+      style={{ touchAction: "pan-y" }}
+    >
+      {/* the red tray behind the card (over it from `sm`, where the card does not move) */}
+      <div
+        className={`absolute inset-y-0 right-0 flex w-22 items-stretch sm:z-10 ${open || offset !== 0 ? "" : "invisible"}`}
+        aria-hidden={!open}
+      >
         <button
           type="button"
           data-swipe-action
@@ -126,40 +170,23 @@ export function SwipeToDelete({
             close();
           }
         }}
-        className="relative select-none"
+        // h-full: a wrapper stretched by a grid row must pass its height on to
+        // the card, or the tray (inset-y-0 on the wrapper) shows below it.
+        className="relative h-full select-none [transform:translateX(var(--swipe-x))] sm:[transform:none]"
         style={{
-          transform: `translateX(${offset}px)`,
+          "--swipe-x": `${offset}px`,
           transition: start.current ? "none" : "transform 160ms ease-out",
-        }}
+        } as CSSProperties}
       >
-        {children}
-        {!disabled && !open ? (
-          <button
-            type="button"
-            data-swipe-action
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setOpen(true);
-              setOffset(-REVEAL_PX);
-            }}
-            aria-label={m.delete}
-            title={m.delete}
-            className="absolute right-3 top-3 hidden h-8 w-8 items-center justify-center rounded-xl text-ink-faint hover:bg-risk-soft hover:text-risk sm:flex"
-          >
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" />
-            </svg>
-          </button>
-        ) : null}
+        {placed ? children(trigger) : children}
+        {!placed && !disabled && !open ? trigger : null}
       </div>
 
       {confirming ? (
         <div
           role="alertdialog"
           aria-label={m.confirm}
-          className="absolute inset-y-0 right-0 flex flex-col items-start justify-center gap-2 rounded-3xl bg-surface/95 p-4 backdrop-blur-sm"
-          style={{ left: REVEAL_PX }}
+          className="absolute inset-y-0 left-22 right-0 z-10 flex flex-col items-start justify-center gap-2 rounded-3xl bg-surface/95 p-4 backdrop-blur-sm sm:left-0"
         >
           <p className="text-sm font-semibold">{confirmText}</p>
           <div className="flex gap-2">
