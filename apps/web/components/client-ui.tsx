@@ -2,6 +2,7 @@
 import type { Macros } from "@healthapp/shared";
 import { Card } from "./ui";
 import { useI18n } from "@/lib/i18n/client";
+import { useUnits } from "@/lib/units/client";
 import { fill } from "@/lib/i18n";
 
 /** A macro against its target. Over-target fills to 100% and turns amber. */
@@ -79,17 +80,24 @@ export function MacroPanel({
 export function Sparkline({
   points,
   height = 64,
-  unit = "kg",
+  kind = "weight",
 }: {
+  /** Values are stored units — kg or cm; the chart converts them itself. */
   points: { label: string; value: number }[];
   height?: number;
-  /** The delta's unit. Waist is drawn by the same component, in cm. */
-  unit?: string;
+  /** Which stored unit `value` is in. Waist is drawn by the same component. */
+  kind?: "weight" | "length";
 }) {
   const { t } = useI18n();
+  const u = useUnits();
   if (points.length < 2) {
     return <p className="text-[13px] text-ink-faint">{t.common.charts.notEnoughData}</p>;
   }
+  // Converted once, here: the axis, the delta and the label must agree, and
+  // converting the delta separately is how they stop agreeing.
+  const unit = kind === "weight" ? u.weightUnit : u.lengthUnit;
+  const convert = kind === "weight" ? u.weightValue : u.lengthValue;
+  points = points.map((p) => ({ ...p, value: convert(p.value) }));
   const values = points.map((p) => p.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -168,13 +176,15 @@ export function AdherenceMeter({ overall, reason }: { overall: number; reason: s
  */
 export function WeeklyBars({
   buckets,
-  unit = "kg",
 }: {
+  /** `value` is kilograms of volume; the chart converts it. */
   buckets: { week_start: string; value: number; count: number }[];
-  unit?: string;
 }) {
   const { t } = useI18n();
+  const u = useUnits();
   const p = t.clientApp.progress;
+  const unit = u.weightUnit;
+  buckets = buckets.map((b) => ({ ...b, value: u.weightValue(b.value) }));
   const peak = Math.max(...buckets.map((b) => b.value), 0);
   if (peak === 0) return <p className="text-[13px] text-ink-faint">{p.noVolumeYet}</p>;
 

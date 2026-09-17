@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import type { LengthUnit, WeightUnit } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
@@ -16,15 +17,31 @@ export function ProfileForm({
   fullName,
   username,
   timezone,
+  checkInWeekday,
+  leaderboardVisibility,
+  weightUnit,
+  lengthUnit,
 }: {
   fullName: string;
   username: string;
   timezone: string;
+  checkInWeekday: number;
+  leaderboardVisibility: "public" | "followers" | "private";
+  weightUnit: WeightUnit;
+  lengthUnit: LengthUnit;
 }) {
   const { t } = useI18n();
   const a = t.clientApp.account;
   const router = useRouter();
-  const [form, setForm] = useState({ fullName, username, timezone });
+  const [form, setForm] = useState({
+    fullName,
+    username,
+    timezone,
+    checkInWeekday,
+    leaderboardVisibility,
+    weightUnit,
+    lengthUnit,
+  });
   const [state, setState] = useState<"idle" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -92,6 +109,69 @@ export function ProfileForm({
           {fill(a.useDetected, { zone: detected })}
         </button>
       ) : null}
+
+      {/* Display only. The columns stay metric, so switching to pounds cannot
+          rewrite a single stored number — see packages/shared/src/units.ts. */}
+      <div className="mt-3.5 grid gap-3.5 sm:grid-cols-2">
+        <label className="block text-[13px] font-semibold text-ink-soft">
+          {a.weightUnit}
+          <select
+            className={FIELD}
+            value={form.weightUnit}
+            onChange={(e) => setForm({ ...form, weightUnit: e.target.value as WeightUnit })}
+          >
+            <option value="kg">kg</option>
+            <option value="lb">lb</option>
+          </select>
+        </label>
+        <label className="block text-[13px] font-semibold text-ink-soft">
+          {a.lengthUnit}
+          <select
+            className={FIELD}
+            value={form.lengthUnit}
+            onChange={(e) => setForm({ ...form, lengthUnit: e.target.value as LengthUnit })}
+          >
+            <option value="cm">cm</option>
+            <option value="in">in</option>
+          </select>
+        </label>
+      </div>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-faint">{a.unitsHint}</p>
+
+      <label className="mt-3.5 block text-[13px] font-semibold text-ink-soft">
+        {a.checkInDay}
+        <select
+          className={FIELD}
+          value={form.checkInWeekday}
+          onChange={(e) => setForm({ ...form, checkInWeekday: Number(e.target.value) })}
+        >
+          {a.weekdayNames.map((day, i) => (
+            <option key={day} value={i}>
+              {day}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-faint">{a.checkInDayHint}</p>
+
+      {/* Leaderboard visibility defaults to "public" in SQL and had no control
+          anywhere, so everyone was on the boards without ever choosing to be.
+          It belongs on the account screen, not buried in the leaderboard. */}
+      <label className="mt-3.5 block text-[13px] font-semibold text-ink-soft">
+        {a.leaderboards}
+        <select
+          className={FIELD}
+          value={form.leaderboardVisibility}
+          onChange={(e) =>
+            setForm({ ...form, leaderboardVisibility: e.target.value as typeof form.leaderboardVisibility })
+          }
+        >
+          <option value="public">{a.visibilityPublic}</option>
+          <option value="followers">{a.visibilityFollowers}</option>
+          <option value="private">{a.visibilityPrivate}</option>
+        </select>
+      </label>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-faint">{a.leaderboardsHint}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button onClick={save} disabled={pending} className={BUTTON}>

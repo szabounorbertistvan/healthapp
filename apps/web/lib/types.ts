@@ -2,6 +2,7 @@ import type {
   AdherenceResult, ChallengeStatus, ChallengeType, LoadTrend, Macros, PostPayload, PostType,
   PostVisibility, TrainingLoad,
 } from "@healthapp/shared";
+import type { LengthUnit, WeightUnit } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
 import type { ExerciseType } from "./exercise-types";
 
@@ -23,6 +24,13 @@ export type Profile = {
   birth_year: number | null;
   /** IANA zone. The scheduled reminder jobs fire on this clock, not on UTC. */
   timezone: string;
+  /** 0 = Sunday … 6 = Saturday. detect_checkin_due() fires on this day. */
+  check_in_weekday: number;
+  /** Display units. Everything is stored metric; these convert at the edges. */
+  weight_unit: WeightUnit;
+  length_unit: LengthUnit;
+  /** Who may see this person on a leaderboard. Defaults to public in SQL. */
+  leaderboard_visibility: "public" | "followers" | "private";
   role: Role;
   /** Effective tier — includes an active 30-day trial, not just paid tiers. */
   tier: Tier;
@@ -314,6 +322,8 @@ export type ChallengeCard = {
   status: ChallengeStatus;
   days_remaining: number;
   can_join: boolean;
+  /** True when the viewer created it — only then is deleting offered. */
+  mine: boolean;
 };
 
 export type LeaderboardRow = {

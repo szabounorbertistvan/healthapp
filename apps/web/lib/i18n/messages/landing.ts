@@ -26,6 +26,46 @@ const en = {
       { title: "Build once, coach everywhere", body: "Program and meal builders on the web; your clients get them on their phone the moment you hit publish." },
       { title: "Feedback in context", body: "Reply on the weekly check-in and your client reads it on their Today screen — not in a WhatsApp thread three days later." },
     ],
+    everythingTitle: "Everything, free while we build",
+    everythingLead:
+      "No plans, no paywall, no trial clock. When something is worth charging for, it will say so here — until then this is the whole app.",
+    /** Not "For you" / "For coaches" again: the athlete band above already uses
+        those, and two identical headings one under the other read as a repeat
+        rather than as detail. */
+    everythingIfYouTrain: "If you train",
+    everythingIfYouCoach: "If you coach",
+    /**
+     * Written for the no-pricing view, deliberately not derived from
+     * `pricingTiers`: those lists describe what a *plan* includes, so they
+     * carry roster caps ("up to 3 clients", "up to 30") that contradict each
+     * other the moment the plans are taken away. These describe what the app
+     * does. When pricing comes back, both lists stay — they answer different
+     * questions.
+     */
+    benefits: {
+      client: {
+        items: [
+          "Your coach's programs, logged set by set — targets pre-filled, rest timer, PRs found for you",
+          "Nutrition: barcode scanning, meal plans, and one tap for a meal you ate as planned",
+          "Progress photos, compared side by side, private to you and your coach",
+          "Habits, a streak calendar, monthly challenges and leaderboards you can opt out of",
+          "Weight, waist, strength and adherence on one timeline",
+        ],
+        soon: [] as string[],
+      },
+      coach: {
+        items: [
+          "Program and meal-plan builders on the web — on your client's phone the moment you publish",
+          "On Track / Needs Attention / At Risk on every client, with the reason spelled out",
+          "Weekly check-in review, and your reply lands on their Today screen",
+          "Meal plans that differ by weekday, not one day repeated forever",
+          "Your own exercises with a YouTube demo link, so clients see your cues",
+        ],
+        soon: [
+          "Adherence and retention across the whole roster, not one client at a time",
+        ],
+      },
+    },
     pricingTitle: "Simple pricing",
     pricingLead:
       "Two Pro plans — one for the person training, one for the person coaching. Both are free for your first {days} days, no card asked.",
@@ -175,6 +215,35 @@ const ro: typeof en = {
       { title: "Construiește o dată, antrenează peste tot", body: "Constructori de programe și mese pe web; clienții le primesc pe telefon în momentul în care publici." },
       { title: "Feedback în context", body: "Răspunzi la check-in-ul săptămânal, iar clientul îl citește pe ecranul lui de azi — nu într-o conversație de WhatsApp trei zile mai târziu." },
     ],
+    everythingTitle: "Tot, gratuit cât construim",
+    everythingLead:
+      "Fără planuri, fără paywall, fără cronometru. Când ceva va merita plătit, o să scrie aici — până atunci asta e toată aplicația.",
+    everythingIfYouTrain: "Dacă te antrenezi",
+    everythingIfYouCoach: "Dacă antrenezi pe alții",
+    benefits: {
+      client: {
+        items: [
+          "Programele antrenorului tău, logate set cu set — ținte precompletate, cronometru de pauză, recorduri găsite pentru tine",
+          "Nutriție: scanare de coduri de bare, planuri de mese și o singură apăsare pentru o masă mâncată conform planului",
+          "Poze de progres, comparate alăturat, private pentru tine și antrenorul tău",
+          "Obiceiuri, calendarul seriei, provocări lunare și clasamente din care poți ieși",
+          "Greutate, talie, forță și aderență pe o singură cronologie",
+        ],
+        soon: [] as string[],
+      },
+      coach: {
+        items: [
+          "Constructori de programe și de mese pe web — pe telefonul clientului în momentul în care publici",
+          "Pe drumul bun / Necesită atenție / În pericol pe fiecare client, cu motivul explicat",
+          "Revizuirea check-in-ului săptămânal, iar răspunsul tău ajunge pe ecranul lui de azi",
+          "Planuri de mese care diferă pe zile, nu o zi repetată la infinit",
+          "Exercițiile tale cu link demonstrativ de YouTube, ca să-ți vadă indicațiile",
+        ],
+        soon: [
+          "Aderență și retenție pe tot portofoliul, nu client cu client",
+        ],
+      },
+    },
     pricingTitle: "Prețuri simple",
     pricingLead:
       "Două planuri Pro — unul pentru cine se antrenează, unul pentru cine antrenează. Ambele sunt gratuite primele {days} de zile, fără card.",

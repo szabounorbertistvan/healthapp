@@ -1,8 +1,8 @@
 "use client";
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import {
-  DEFAULT_TARGETS, circuitLabel, circuitSegments, exerciseRef, nextCircuit, parseDecimal,
-  type ExerciseSummary, type ExerciseTargets,
+  DEFAULT_TARGETS, circuitLabel, circuitSegments, displayToKg, exerciseRef, kgToDisplay,
+  nextCircuit, parseDecimal, type ExerciseSummary, type ExerciseTargets,
 } from "@healthapp/shared";
 import {
   addProgramExercise, moveProgramDay, moveProgramExercise, removeProgramExercise, renameProgramDay,
@@ -12,6 +12,7 @@ import { ExercisePicker } from "@/components/exercise-picker";
 import { NavIcon } from "@/components/client-nav";
 import { Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
+import { useUnits } from "@/lib/units/client";
 import { fill } from "@/lib/i18n";
 import type { ProgramDetail, ProgramExerciseRow } from "@/lib/types";
 
@@ -261,6 +262,7 @@ function ExerciseCard({
   onRemove: () => void;
 }) {
   const { t } = useI18n();
+  const u = useUnits();
   const m = t.coachWidgets.programBuilder;
   const [values, setValues] = useState<ExerciseTargets>({
     target_sets: row.sets, target_reps: row.reps, target_weight_kg: row.weight_kg, target_rpe: row.rpe_value, rest_seconds: row.rest_seconds,
@@ -297,7 +299,18 @@ function ExerciseCard({
         <label className="flex flex-col gap-1"><span className={label}>{intensityLabel}</span>
           <input inputMode="decimal" value={values.target_rpe ?? ""} disabled={disabled} onChange={(e) => change({ ...latest.current, target_rpe: num(e.target.value) })} onBlur={commit} onKeyDown={enter} className={cell} /></label>
         <label className="flex flex-col gap-1"><span className={label}>{m.colKg}</span>
-          <input inputMode="decimal" value={values.target_weight_kg ?? ""} disabled={disabled} onChange={(e) => change({ ...latest.current, target_weight_kg: num(e.target.value) })} onBlur={commit} onKeyDown={enter} className={cell} /></label>
+          <input
+            inputMode="decimal"
+            value={values.target_weight_kg === null || values.target_weight_kg === undefined ? "" : kgToDisplay(values.target_weight_kg, u.weightUnit)}
+            disabled={disabled}
+            onChange={(e) => {
+              const typed = num(e.target.value);
+              change({ ...latest.current, target_weight_kg: typed === null ? null : displayToKg(typed, u.weightUnit) });
+            }}
+            onBlur={commit}
+            onKeyDown={enter}
+            className={cell}
+          /></label>
         <label className="flex flex-col gap-1"><span className={label}>{m.colRest}</span>
           <input type="number" step={15} min={0} max={600} inputMode="numeric" value={values.rest_seconds ?? ""} disabled={disabled} onChange={(e) => change({ ...latest.current, rest_seconds: e.target.value === "" ? null : Number(e.target.value) })} onBlur={commit} onKeyDown={enter} className={cell} /></label>
         <label className="flex flex-col gap-1"><span className={label}>{m.circuit}</span>
@@ -333,6 +346,10 @@ function AddExerciseForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
+  // A coach renders this outside the client shell, where the provider's default
+  // (metric) applies; a solo client sees their own unit. Either way the
+  // prescription is stored in kilograms.
+  const u = useUnits();
   const m = t.coachWidgets.programBuilder;
   const [sets, setSets] = useState(String(DEFAULT_TARGETS.target_sets));
   const [reps, setReps] = useState(DEFAULT_TARGETS.target_reps);
@@ -351,7 +368,7 @@ function AddExerciseForm({
         {field(m.colSets, sets, setSets)}
         {field(m.colReps, reps, setReps, "text")}
         {field(intensityLabel, rpe, setRpe, "decimal")}
-        {field(m.colKg, kg, setKg, "decimal")}
+        {field(u.weightUnit, kg, setKg, "decimal")}
         {field(m.colRest, rest, setRest)}
         <label className="flex flex-col gap-1"><span className={label}>{m.circuit}</span>
           <select value={circuit} onChange={(e) => setCircuit(e.target.value)} className={cell}>
@@ -370,7 +387,10 @@ function AddExerciseForm({
                 target_sets: Number(sets),
                 target_reps: reps.trim(),
                 target_rpe: parseDecimal(rpe),
-                target_weight_kg: parseDecimal(kg),
+                target_weight_kg: (() => {
+                  const typed = parseDecimal(kg);
+                  return typed === null ? null : displayToKg(typed, u.weightUnit);
+                })(),
                 rest_seconds: rest.trim() === "" ? null : Number(rest),
               },
               circuit === "" ? null : circuit === "new" ? next : Number(circuit),

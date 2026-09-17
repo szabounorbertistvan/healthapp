@@ -1,4 +1,6 @@
+import { kgToDisplay } from "@healthapp/shared";
 import { getMyCheckInState } from "@/lib/client-data";
+import { getProfile } from "@/lib/data";
 import { Card } from "@/components/ui";
 import { CheckInForm } from "@/components/check-in-form";
 import { getI18n } from "@/lib/i18n/server";
@@ -10,8 +12,12 @@ import { fill } from "@/lib/i18n";
  * accent block Today uses for the same voice.
  */
 export default async function CheckInPage() {
-  const { t } = await getI18n();
-  const state = await getMyCheckInState();
+  const [{ t }, state, profile] = await Promise.all([
+    getI18n(),
+    getMyCheckInState(),
+    getProfile(),
+  ]);
+  const weightUnit = profile?.weight_unit ?? "kg";
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -43,7 +49,9 @@ export default async function CheckInPage() {
               {state.last.weight_kg !== null ? (
                 <p className="mt-2 text-sm text-ink-soft">
                   {t.clientApp.checkIn.weightLabel}{" "}
-                  <b className="font-semibold tabular-nums text-ink">{state.last.weight_kg} kg</b>
+                  <b className="font-semibold tabular-nums text-ink">
+                    {kgToDisplay(state.last.weight_kg, weightUnit)} {weightUnit}
+                  </b>
                 </p>
               ) : null}
               {state.last.note ? (

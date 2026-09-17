@@ -17,12 +17,13 @@ import { weekOf } from "./weekly-summary";
 
 export type LeaderboardMetric = "training_load" | "volume" | "workouts" | "active_days" | "streak";
 export type LeaderboardPeriod = "week" | "month" | "all";
-export type LeaderboardScope = "global";
+/** "following" ranks only the people the viewer follows, plus themselves. */
+export type LeaderboardScope = "global" | "following";
 export type LeaderboardVisibility = "public" | "followers" | "private";
 
 export const LEADERBOARD_METRICS: readonly LeaderboardMetric[] = ["training_load", "volume", "workouts", "active_days", "streak"];
 export const LEADERBOARD_PERIODS: readonly LeaderboardPeriod[] = ["week", "month", "all"];
-export const LEADERBOARD_SCOPES: readonly LeaderboardScope[] = ["global"];
+export const LEADERBOARD_SCOPES: readonly LeaderboardScope[] = ["global", "following"];
 export const LEADERBOARD_TOP = 10;
 
 export function isLeaderboardMetric(x: unknown): x is LeaderboardMetric {

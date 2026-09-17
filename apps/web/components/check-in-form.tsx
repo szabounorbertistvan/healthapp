@@ -1,9 +1,11 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { parseDecimal } from "@healthapp/shared";
+import { displayToKg, parseDecimal } from "@healthapp/shared";
 import { submitCheckIn } from "@/app/client-actions-app";
+import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
+import { useUnits } from "@/lib/units/client";
 import { Card } from "./ui";
 
 const SCALES = ["sleep", "energy", "stress", "hunger", "recovery"] as const;
@@ -12,6 +14,7 @@ type ScaleKey = (typeof SCALES)[number];
 
 export function CheckInForm() {
   const { t } = useI18n();
+  const u = useUnits();
   const router = useRouter();
   const [weight, setWeight] = useState("");
   const [scores, setScores] = useState<Record<ScaleKey, number>>({
@@ -30,7 +33,7 @@ export function CheckInForm() {
       <div className="space-y-5">
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-            {t.clientWidgets.checkInForm.weightKg}
+            {fill(t.clientWidgets.checkInForm.weightKg, { unit: u.weightUnit })}
           </span>
           <input
             inputMode="decimal"
@@ -86,7 +89,9 @@ export function CheckInForm() {
           onClick={() =>
             startTransition(async () => {
               setError(null);
-              const parsed = parseDecimal(weight);
+              // Typed in the reader's unit; check_ins.weight_kg is metric.
+              const typed = parseDecimal(weight);
+              const parsed = typed === null ? null : displayToKg(typed, u.weightUnit);
               const result = await submitCheckIn({
                 weightKg: parsed,
                 ...scores,

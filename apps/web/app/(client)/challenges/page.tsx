@@ -1,6 +1,7 @@
 import { getMyChallenges } from "@/lib/challenges-data";
 import { EmptyState } from "@/components/ui";
 import { ChallengeCard } from "@/components/challenges";
+import { ChallengeCreate } from "@/components/challenge-create";
 import { getI18n } from "@/lib/i18n/server";
 import type { ChallengeStatus } from "@healthapp/shared";
 
@@ -18,12 +19,14 @@ export default async function ChallengesPage() {
     // A list of cards: as many columns as fit, never a card under 380px.
     <div className="mx-auto max-w-[1600px]">
       <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{ch.title}</h1>
+
+      <ChallengeCreate />
       {cards.length === 0 ? (
-        <div className="mt-5 sm:mt-6">
+        <div className="mt-4">
           <EmptyState title={ch.empty} hint={ch.emptyHint} />
         </div>
       ) : (
-        <div className="mt-5 space-y-6 sm:mt-6">
+        <div className="mt-4 space-y-6">
           {groups.map((status) => {
             const items = cards.filter((c) => c.status === status);
             if (items.length === 0) return null;

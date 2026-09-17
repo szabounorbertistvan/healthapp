@@ -33,12 +33,19 @@ type Row = {
   start_date: string;
   end_date: string;
   visibility: "public" | "private";
+  /** null for the platform-seeded challenges. */
+  creator_id?: string | null;
 };
 
 /** Everything one person's standing in a challenge is built from. */
 type Standing = { joined: boolean; completed_at: string | null; participants: number; activity: ChallengeActivity };
 
-async function toCard(row: Row, standing: Standing, today: string): Promise<ChallengeCard | null> {
+async function toCard(
+  row: Row,
+  standing: Standing,
+  today: string,
+  viewerId?: string,
+): Promise<ChallengeCard | null> {
   if (!isChallengeType(row.type)) return null;
   const { locale } = await getI18n();
   const target = Number(row.target_value);
@@ -62,6 +69,7 @@ async function toCard(row: Row, standing: Standing, today: string): Promise<Chal
     status: challengeStatus(window, today, completed),
     days_remaining: daysRemaining(row.end_date, today),
     can_join: !standing.joined && canJoin(window, today),
+    mine: Boolean(viewerId && row.creator_id === viewerId),
   };
 }
 
@@ -159,6 +167,7 @@ export async function getMyChallenges(): Promise<ChallengeCard[]> {
         row,
         { joined: mine !== null, completed_at: mine?.completed_at ?? null, participants: members.length, activity: activities[i] },
         today,
+        userId,
       ),
     ),
   );
@@ -203,6 +212,7 @@ export async function getChallenge(id: string): Promise<ChallengeDetail | null> 
       activity: activities.get(userId)?.activity ?? { sessions: [], active_days: [] },
     },
     today,
+    userId,
   );
   if (!card) return null;
   await livePersistCompletion(supabase, id, userId, card);

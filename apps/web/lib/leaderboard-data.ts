@@ -31,6 +31,11 @@ type Row = {
 export function metricOf(input: string | undefined): LeaderboardMetric {
   return isLeaderboardMetric(input) ? input : "training_load";
 }
+/** Unknown or missing scope falls back to the global board. */
+export function scopeOf(input: string | undefined): LeaderboardScope {
+  return input === "following" ? "following" : "global";
+}
+
 export function periodOf(input: string | undefined): LeaderboardPeriod {
   return isLeaderboardPeriod(input) ? input : "week";
 }

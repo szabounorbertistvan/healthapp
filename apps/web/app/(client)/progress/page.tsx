@@ -1,11 +1,15 @@
 import { getMyMeasurements, getMyPrs, getMySessions } from "@/lib/client-data";
+import { getProfile } from "@/lib/data";
+import { getMyPhotos } from "@/lib/photos-data";
+import { cloudinaryConfigured } from "@/lib/cloudinary";
+import { ProgressPhotos } from "@/components/progress-photos";
 import { Card, EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { Sparkline, WeeklyBars } from "@/components/client-ui";
 import { MeasurementForm } from "@/components/measurement-form";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
-import { weeklyTotals } from "@healthapp/shared";
+import { cmToDisplay, formatWeight, kgToDisplay, weeklyTotals } from "@healthapp/shared";
 
 /**
  * Progress is a dashboard, not a column: four figures across the top, then the
@@ -15,14 +19,20 @@ import { weeklyTotals } from "@healthapp/shared";
  */
 export default async function ProgressPage() {
   const { t, locale } = await getI18n();
-  const [measurements, prs, sessions] = await Promise.all([
+  const [profile, measurements, prs, sessions, photos] = await Promise.all([
+    getProfile(),
     // The whole history, not the default 12 rows: this is the one screen whose
     // job is the long view, and a trend cut off at twelve weigh-ins is a
     // different trend.
     getMyMeasurements(MEASUREMENT_HISTORY),
     getMyPrs(),
     getMySessions(200),
+    getMyPhotos(),
   ]);
+  // This is a server component, so units come off the profile rather than the
+  // client-side UnitsProvider the charts use.
+  const weightUnit = profile?.weight_unit ?? "kg";
+  const lengthUnit = profile?.length_unit ?? "cm";
 
   const weights = measurements
     .filter((m) => m.weight_kg !== null)
@@ -47,11 +57,18 @@ export default async function ProgressPage() {
         <Stat
           icon={ICON.scale}
           label={t.clientApp.progress.currentWeight}
-          value={latest ? String(latest.value) : "—"}
-          unit={latest ? "kg" : undefined}
+          value={latest ? String(kgToDisplay(latest.value, weightUnit)) : "—"}
+          unit={latest ? weightUnit : undefined}
         />
         <Stat icon={ICON.sessions} label={t.clientApp.progress.sessionsLogged} value={String(sessions.length)} />
-        <Stat icon={ICON.volume} label={t.clientApp.progress.totalVolume} value={String(Math.round(totalVolume / 1000))} unit="t" />
+        {/* Tonnes only make sense in metric, so the total is shown in whatever
+            unit the person reads — a big number with separators, no decimal. */}
+        <Stat
+          icon={ICON.volume}
+          label={t.clientApp.progress.totalVolume}
+          value={formatWeight(totalVolume, weightUnit, { locale, big: true }).replace(` ${weightUnit}`, "")}
+          unit={weightUnit}
+        />
         <Stat icon={ICON.trophy} label={t.clientApp.progress.personalRecords} value={String(prs.length)} accent />
       </div>
 
@@ -71,12 +88,16 @@ export default async function ProgressPage() {
             <Card plain>
               <SectionLabel icon={ICON.ruler}>{t.clientApp.progress.waistTrend}</SectionLabel>
               <div className="mt-3.5">
-                <Sparkline points={waists} unit="cm" />
+                <Sparkline points={waists} kind="length" />
               </div>
             </Card>
           ) : null}
 
           <MeasurementForm />
+
+          {/* Photos sit with the weigh-in, not in a gallery of their own: they
+              answer the same question the scale does, on the weeks it lies. */}
+          <ProgressPhotos photos={photos} configured={cloudinaryConfigured()} />
         </div>
 
         {/* ---- the work behind the numbers ---- */}
@@ -102,8 +123,8 @@ export default async function ProgressPage() {
                   <span className="min-w-0 truncate text-[14px] font-semibold">{pr.exercise}</span>
                   <span className="shrink-0 text-right">
                     <span className="font-display text-[17px] font-extrabold tabular-nums leading-none">
-                      {pr.best}
-                      <span className="ml-1 font-sans text-[12px] font-medium text-ink-faint">kg</span>
+                      {kgToDisplay(pr.best, weightUnit)}
+                      <span className="ml-1 font-sans text-[12px] font-medium text-ink-faint">{weightUnit}</span>
                     </span>
                     <span className="mt-0.5 block text-[11.5px] text-ink-faint">
                       {t.clientApp.progress.est1Rm} · {timeAgo(pr.at, locale)}
@@ -132,8 +153,12 @@ export default async function ProgressPage() {
                 <thead>
                   <tr className="border-b border-line/60 text-left text-[11px] uppercase tracking-wider text-ink-faint">
                     <th className="px-5 py-3 font-semibold">{t.clientApp.progress.date}</th>
-                    <th className="px-5 py-3 text-right font-semibold">{t.clientApp.progress.weight}</th>
-                    <th className="px-5 py-3 text-right font-semibold">{t.clientApp.progress.waist}</th>
+                    <th className="px-5 py-3 text-right font-semibold">
+                      {t.clientApp.progress.weight} ({weightUnit})
+                    </th>
+                    <th className="px-5 py-3 text-right font-semibold">
+                      {t.clientApp.progress.waist} ({lengthUnit})
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/60">
@@ -141,10 +166,10 @@ export default async function ProgressPage() {
                     <tr key={m.id}>
                       <td className="whitespace-nowrap px-5 py-3 tabular-nums text-ink-soft">{m.taken_on}</td>
                       <td className="whitespace-nowrap px-5 py-3 text-right font-semibold tabular-nums">
-                        {m.weight_kg !== null ? `${m.weight_kg} kg` : "—"}
+                        {m.weight_kg !== null ? kgToDisplay(m.weight_kg, weightUnit) : "—"}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-right font-semibold tabular-nums">
-                        {m.waist_cm !== null ? `${m.waist_cm} cm` : "—"}
+                        {m.waist_cm !== null ? cmToDisplay(m.waist_cm, lengthUnit) : "—"}
                       </td>
                     </tr>
                   ))}

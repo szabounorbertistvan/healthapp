@@ -99,7 +99,10 @@ feedback still do not exist** — nothing writes `reference_type` `set`,
 (`packages/shared/src/entitlements.ts`). Only `maxClients` has code behind it —
 `create_invite` raises `CLIENT_LIMIT_REACHED` at 3 / 30. `progressPhotos`,
 `advancedAnalytics` and `customExerciseVideos` are read by nothing: **no client
-screen gates on an entitlement at all**. So a paying `premium` client gets
+screen gates on an entitlement at all**. Two of the three have since shipped as
+*free* features — coach exercise videos (YouTube links) on 2026-09-16 and
+progress photos the same day — because neither is something a competitor
+charges for; the flag stays in the table as an intention nobody honours. So a paying `premium` client gets
 nothing a free one does not, and `coach_pro` buys only the bigger roster.
 The landing page and the checkout panel now mark those three with a "soon"
 badge instead of a tick (2026-09-16).
@@ -123,15 +126,60 @@ program (`program_exercises.exercise_id` has no cascade), so the job reassigns
 those exercises to the system library instead of letting them cascade.
 
 **~~No client settings screen~~ — `/account` shipped 2026-09-16** with name,
-username and time zone. Still missing, because nothing in the app reads them:
-`weight_unit`, `length_unit`, `check_in_weekday` and `notification_prefs` have
-columns and no consumer, so the screen deliberately shows no switch for them.
+username, time zone, check-in weekday and leaderboard visibility. The last one
+mattered most: `users.leaderboard_visibility` defaults to `'public'` in SQL and
+the migration that added it says "No UI", so every client was ranked publicly
+without ever choosing to be.
+
+**Units shipped 2026-09-16.** `weight_unit` / `length_unit` are honoured
+everywhere a weight or a circumference is shown or typed. The rule is in
+`packages/shared/src/units.ts` with tests: storage stays metric and conversion
+happens only at the edges, so no sum, chart or leaderboard has to know which
+unit a row was entered in. The client shell carries a `UnitsProvider`
+(`lib/units/client.tsx`) shaped like the i18n one; server components read the
+unit off the profile instead.
+
+The inputs mattered more than the displays — the set logger, the set editor,
+the weigh-in, the check-in, the feed's weight box and the program builder all
+convert on the way in, and the logger's pre-filled coach target converts on the
+way out, which would otherwise have put 100 into a pound box and logged 45 kg.
+
+Still without a control: `notification_prefs`. **Coach surfaces remain metric** —
+the coach shell has no UnitsProvider, so the default applies there.
 
 **`/get-the-app` is orphaned** — nothing links to it, and it described an Expo
 app that does not exist. Rewritten 2026-09-16 to describe the web app.
 
 **`ClientToday.unread_from_coach` is hardcoded `0`** (`lib/client-today.ts`) and
 read by no component — dead either way.
+
+**Challenges and leaderboards, 2026-09-16.** Clients can now create their own
+challenges (`createChallenge`): the schema and its policies supported it from
+the start — `creator_id`, `visibility`, `challenges_owner_insert` — only the
+form was missing, so the four seeded platform challenges were all anyone could
+join. Leaderboards gained a `following` scope, which needed migration
+`20260916120000_leaderboard_following.sql` because `social_leaderboard()`
+validated `p_scope` against `'global'` alone. The scope narrows the visible set
+and never widens it: someone private stays off the board even if you follow
+them. **Not applied to the live project yet.** `club` and `gym` scopes are still
+unbuilt.
+
+**Progress photos shipped 2026-09-16.** Storage is Cloudinary
+(`lib/cloudinary.ts`), not Supabase Storage. Assets are `type: authenticated`
+and delivered through signed URLs that expire after 30 minutes, because a
+public `upload` asset is readable for ever by anyone who gets the URL. Uploads
+are signed per asset — the browser posts straight to Cloudinary with a
+signature this server issued for one folder and one public_id, so an image
+never crosses a server action's body limit and cannot land anywhere else.
+`progress_photos.storage_path` holds the public_id, never a URL, since a signed
+URL is a dead link by the time anyone reads it back.
+
+Account deletion removes the assets too (`destroyUserPhotos`), at request time
+rather than at purge time: the SQL job cannot reach object storage, the request
+cannot be cancelled, and holding someone's body photos for the 30-day window
+after they asked for deletion serves nobody. Needs
+`CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET`, all server-side; without
+them the section renders a "not configured" note instead of a broken upload.
 
 ## Known small ones
 

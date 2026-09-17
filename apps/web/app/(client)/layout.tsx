@@ -8,6 +8,7 @@ import { Logo, LogoMark } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { SignOutButton } from "@/components/sign-out-button";
 import { NotificationBell } from "@/components/notification-bell";
+import { UnitsProvider } from "@/lib/units/client";
 import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,7 @@ export default async function ClientLayout({ children }: { children: React.React
   ]);
 
   return (
+    <UnitsProvider weight={profile.weight_unit} length={profile.length_unit}>
     <div className="flex min-h-screen">
       {/* The sidebar sits on the page ground, no border: the cards are the
           only surfaces, so the eye has one kind of edge to read. */}
@@ -77,5 +79,6 @@ export default async function ClientLayout({ children }: { children: React.React
       </div>
       <ClientTabBar />
     </div>
+    </UnitsProvider>
   );
 }

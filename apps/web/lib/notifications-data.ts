@@ -24,6 +24,28 @@ export type NotificationRow = {
   read: boolean;
 };
 
+/**
+ * Where a notification points.
+ *
+ * Two dialects share this table. The catalog in PRODUCT_SPEC §8 — the rows the
+ * cron jobs write — carries `payload.screen`. The social triggers do not: kudos
+ * writes `post_id`, a follow writes `follower_id` (see the kudos and following
+ * migrations), so those are resolved by category instead. Anything unrecognised
+ * renders as a plain row rather than a link that 404s.
+ */
+function hrefFor(category: string, payload: Record<string, unknown> | null): string | null {
+  const postId = typeof payload?.post_id === "string" ? payload.post_id : null;
+  const followerId = typeof payload?.follower_id === "string" ? payload.follower_id : null;
+  const actorId = typeof payload?.actor_id === "string" ? payload.actor_id : null;
+
+  if (category === "new_kudos" && postId) return `/feed/${postId}`;
+  if (category === "new_follower" && (followerId ?? actorId)) return `/people/${followerId ?? actorId}`;
+  if (category === "new_comment" && postId) return `/feed/${postId}`;
+
+  const screen = typeof payload?.screen === "string" ? payload.screen : null;
+  return (screen && SCREEN_HREF[screen]) || null;
+}
+
 /** Deep-link targets the catalog uses, mapped to the routes that exist today. */
 const SCREEN_HREF: Record<string, string> = {
   today: "/today",
@@ -57,16 +79,14 @@ export async function getMyNotifications(limit = 20): Promise<NotificationRow[]>
 
   type Row = {
     id: string; category: string; title: string; body: string | null;
-    payload: { screen?: string } | null; created_at: string; read_at: string | null;
+    payload: Record<string, unknown> | null; created_at: string; read_at: string | null;
   };
   return ((data ?? []) as Row[]).map((n) => ({
     id: n.id,
     category: n.category,
     title: n.title,
     body: n.body,
-    // An unknown screen becomes null rather than a broken link: the catalog is
-    // written in SQL and can name a route the web app has not built yet.
-    href: (n.payload?.screen && SCREEN_HREF[n.payload.screen]) || null,
+    href: hrefFor(n.category, n.payload),
     created_at: n.created_at,
     read: n.read_at !== null,
   }));
