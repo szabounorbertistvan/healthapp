@@ -14,7 +14,7 @@ export default async function PostPage({ params }: { params: Promise<{ postId: s
   if (!data) notFound();
   return (
     // One post and its comments — a document, so a readable column.
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-[680px]">
       <Link
         href="/feed"
         className="inline-flex h-9 items-center gap-1.5 rounded-full bg-surface pl-3 pr-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"

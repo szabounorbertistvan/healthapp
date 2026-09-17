@@ -32,6 +32,12 @@
   --color-warn-soft: #33200f;
   --color-risk: #e06666;
   --color-risk-soft: #3a1c1c;
+  /* The inverse tile: a feed post's "media". Cream on the dark theme, brand near-black on the light one. */
+  --color-tile: #f2efe8;
+  --color-tile-ink: #0b0b0d;
+  --color-tile-soft: #5b574f;
+  --color-tile-accent: #8a6510;
+  --color-tile-line: #dcd8cf;
   --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
   --font-display: var(--font-exo2), var(--font-inter), system-ui, sans-serif;
 }
@@ -61,6 +67,11 @@
     --color-warn-soft: #fae7d8;
     --color-risk: #bc4242;
     --color-risk-soft: #f8e1e1;
+    --color-tile: #121519;
+    --color-tile-ink: #f2efe8;
+    --color-tile-soft: #b9b5ab;
+    --color-tile-accent: #e6c25a;
+    --color-tile-line: #2f3339;
   }
 }
 :root[data-theme="light"] {
@@ -79,6 +90,11 @@
   --color-warn-soft: #fae7d8;
   --color-risk: #bc4242;
   --color-risk-soft: #f8e1e1;
+  --color-tile: #121519;
+  --color-tile-ink: #f2efe8;
+  --color-tile-soft: #b9b5ab;
+  --color-tile-accent: #e6c25a;
+  --color-tile-line: #2f3339;
 }
 
 body {
