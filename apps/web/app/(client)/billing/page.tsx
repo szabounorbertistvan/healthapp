@@ -1,3 +1,13 @@
+import { redirect } from "next/navigation";
+
+// Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
+// The route stays so old links do not 404; it sends people to the account
+// screen instead. The original page is kept verbatim below.
+export default function BillingPage() {
+  redirect("/account");
+}
+
+/*
 import { getProfile } from "@/lib/data";
 import { Card } from "@/components/ui";
 import { TIER_LABEL } from "@/lib/entitlements";
@@ -48,3 +58,4 @@ export default async function BillingPage() {
     </div>
   );
 }
+*/

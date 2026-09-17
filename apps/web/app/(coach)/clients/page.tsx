@@ -4,7 +4,7 @@ import { Card, EmptyState, SignalBadge } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { pct, timeAgo } from "@/lib/format";
 import { InviteButton } from "@/components/invite-button";
-import { entitlementsFor, TIER_LABEL } from "@/lib/entitlements";
+import { entitlementsFor /* , TIER_LABEL — Trial / Pro hidden for now */ } from "@/lib/entitlements";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -32,7 +32,8 @@ export default async function ClientsPage() {
               limitReached ? "text-warn" : "text-ink-soft"
             }`}
           >
-            {fill(t.coachApp.clients.slots, { used, max: maxClients })} · {TIER_LABEL[profile?.tier ?? "free"]}
+            {fill(t.coachApp.clients.slots, { used, max: maxClients })}
+            {/* Trial / Pro hidden for now: · {TIER_LABEL[profile?.tier ?? "free"]} */}
           </span>
           <Link
             href="/clients/challenges"

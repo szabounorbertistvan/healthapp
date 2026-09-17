@@ -5,7 +5,8 @@ import { NavLinks, CoachTabBar } from "@/components/nav-links";
 import { NavIcon } from "@/components/client-nav";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { TIER_LABEL } from "@/lib/entitlements";
+// Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
+// import { TIER_LABEL } from "@/lib/entitlements";
 import { Logo, LogoMark } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -31,7 +32,8 @@ export default async function CoachLayout({ children }: { children: React.ReactN
         <Link href="/settings" className="mt-2.5 flex items-center gap-2 px-2.5 text-xs text-ink-faint hover:text-ink">
           <Avatar name={displayName(profile)} url={profile.avatar_url} size="h-7 w-7" />
           <span className="truncate">
-            {displayName(profile)} · <span className="font-semibold text-accent-ink">{TIER_LABEL[profile.tier]}</span>
+            {displayName(profile)}
+            {/* Trial / Pro hidden for now: · <span className="font-semibold text-accent-ink">{TIER_LABEL[profile.tier]}</span> */}
           </span>
         </Link>
         <div className="mt-4">

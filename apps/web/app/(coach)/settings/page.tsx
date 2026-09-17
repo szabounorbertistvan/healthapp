@@ -1,7 +1,8 @@
 import { getProfile } from "@/lib/data";
-import { Card } from "@/components/ui";
-import { ENTITLEMENTS, TIER_LABEL } from "@/lib/entitlements";
-import { SubscribePanel, TrialBanner } from "@/components/billing";
+// Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
+// import { Card } from "@/components/ui";
+// import { ENTITLEMENTS, TIER_LABEL } from "@/lib/entitlements";
+// import { SubscribePanel, TrialBanner } from "@/components/billing";
 import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { ProfileForm } from "@/components/account";
@@ -10,9 +11,9 @@ export default async function SettingsPage() {
   const { t } = await getI18n();
   const profile = await getProfile();
   if (!profile) return null;
-  const tier = profile?.tier ?? "free";
-  const paid = tier === "coach_pro" && Boolean(profile?.has_stripe);
-  const starter = ENTITLEMENTS.coach_free;
+  // const tier = profile?.tier ?? "free";
+  // const paid = tier === "coach_pro" && Boolean(profile?.has_stripe);
+  // const starter = ENTITLEMENTS.coach_free;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -38,12 +39,14 @@ export default async function SettingsPage() {
           lengthUnit={profile.length_unit}
         />
 
+        {/* Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
+
         <TrialBanner trialEndsAt={profile.trial_ends_at} paid={paid} />
 
         <Card plain>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.coachApp.settings.subscription}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {/* The free plan, shaped like the paid panel next to it. */}
+            (The free plan, shaped like the paid panel next to it.)
             <div className="rounded-2xl bg-bg px-4 py-[18px]">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-display text-lg font-bold tracking-tight">{TIER_LABEL.coach_free}</p>
@@ -71,6 +74,7 @@ export default async function SettingsPage() {
             {t.coachApp.settings.stripeNote}
           </p>
         </Card>
+        */}
       </div>
     </div>
   );
