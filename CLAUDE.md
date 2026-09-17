@@ -58,8 +58,12 @@ check-ins, messages, settings, admin. `(client)` = today, workout (list of every
 published program → `workout/[dayId]` day overview + per-day history →
 `workout/[dayId]/log` set logger), workout/build, food, habits, progress,
 check-in, coach, billing. Ungrouped: landing `page.tsx`, login, complete-profile
-(username / sex / age for accounts that signed up without them — both layouts
-redirect there while `users.username` is null), privacy, terms, get-the-app.
+(username / sex / age / coach-or-client for accounts that signed up without
+them — both layouts redirect there while `users.username` is null), privacy,
+terms, get-the-app. Profile editing (photo, city, bio, units, time zone) is the
+shared `ProfileForm` in `components/account.tsx`, mounted on the client's
+`/account` and the coach's `/settings`; the avatar is a public Cloudinary
+upload (`lib/cloudinary.ts`), unlike progress photos.
 
 ## The five conventions that matter
 

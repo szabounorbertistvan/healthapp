@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getProfile } from "@/lib/data";
 import { getI18n } from "@/lib/i18n/server";
+import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/account";
 
 /**
@@ -20,8 +21,13 @@ export default async function AccountPage() {
 
       <div className="mt-5 grid gap-3.5 sm:mt-6">
         <ProfileForm
+          role={profile.role}
+          avatarUrl={profile.avatar_url}
+          photoUploads={cloudinaryConfigured()}
           fullName={profile.full_name}
           username={profile.username ?? ""}
+          city={profile.city ?? ""}
+          bio={profile.bio ?? ""}
           timezone={profile.timezone}
           checkInWeekday={profile.check_in_weekday}
           leaderboardVisibility={profile.leaderboard_visibility}

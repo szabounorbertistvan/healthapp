@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo, LogoMark } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { SignOutButton } from "@/components/sign-out-button";
+import { Avatar } from "@/components/social";
 import { NotificationBell } from "@/components/notification-bell";
 import { UnitsProvider } from "@/lib/units/client";
 import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
@@ -36,7 +37,11 @@ export default async function ClientLayout({ children }: { children: React.React
         <Link href="/" className="flex items-center gap-2 px-2.5">
           <Logo size="sm" />
         </Link>
-        <p className="px-2.5 pt-2 text-xs text-ink-faint">{name}</p>
+        {/* Who is signed in, one tap from editing it. */}
+        <Link href="/account" className="mt-2.5 flex items-center gap-2 px-2.5 text-xs text-ink-faint hover:text-ink">
+          <Avatar name={name} url={profile.avatar_url} size="h-7 w-7" />
+          <span className="truncate">{name}</span>
+        </Link>
         <div className="mt-4">
           <ClientNav />
         </div>

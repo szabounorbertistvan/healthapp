@@ -170,7 +170,11 @@ defaults everything else to `client`, so a sign-up request can never mint an
 admin (`supabase/tests/signup_role.test.sql`). Google cannot carry metadata, so
 the choice rides on the callback URL as `?role=` and the callback calls
 `claim_signup_role()`, which only acts on a row created in the last 10 minutes
-(`role_not_self_service.test.sql`). The same migration makes the `users`
+(`role_not_self_service.test.sql`) — or, since `20260917100000`, on a row whose
+`username` is still null, because the "sign in" tab's Google button creates
+accounts with no role choice at all and `/complete-profile` is where they are
+first asked (`profile_extras.test.sql`). The complete-profile action claims the
+role *before* writing the username, since the username closes that window. The same migration makes the `users`
 update grant column-level — `role` is not on it, so nobody can PATCH their own
 role over REST. Emailed links and the OAuth return both land on
 `/auth/callback`, which verifies a `token_hash` (our templates) or exchanges a

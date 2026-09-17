@@ -15,7 +15,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   if (!live) return null;
   const { supabase, userId } = live;
   const [{ data: user }, { data: sub }] = await Promise.all([
-    supabase.from("users").select("id, full_name, username, avatar_url, sex, birth_year, timezone, check_in_weekday, leaderboard_visibility, weight_unit, length_unit, role").eq("id", userId).single(),
+    supabase.from("users").select("id, full_name, username, avatar_url, city, bio, sex, birth_year, timezone, check_in_weekday, leaderboard_visibility, weight_unit, length_unit, role").eq("id", userId).single(),
     supabase.from("subscriptions")
       .select("tier, status, trial_ends_at, stripe_customer_id")
       .eq("user_id", userId).maybeSingle(),
@@ -27,6 +27,8 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     full_name: user.full_name ?? "Coach",
     username: (user.username as string | null) ?? null,
     avatar_url: (user.avatar_url as string | null) ?? null,
+    city: (user.city as string | null) ?? null,
+    bio: (user.bio as string | null) ?? null,
     sex: (user.sex as Profile["sex"]) ?? null,
     birth_year: (user.birth_year as number | null) ?? null,
     timezone: (user.timezone as string | null) ?? "Europe/Bucharest",

@@ -20,7 +20,8 @@ export type ActionResult = {
  * a screen comparing against a misspelt code fails to compile.
  */
 export type ActionErrorCode = RpcErrorCode | ProfileErrorCode | "NO_ROWS";
-export type ProfileErrorCode = "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN";
+export type ProfileErrorCode =
+  | "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN" | "ROLE" | "CITY" | "BIO";
 
 export async function createInvite(): Promise<ActionResult & { code?: string }> {
   const supabase = await supabaseServer();

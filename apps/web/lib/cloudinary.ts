@@ -117,6 +117,77 @@ export async function destroyUserPhotos(userId: string): Promise<void> {
   await client.api.delete_resources_by_prefix(prefix, { type: "authenticated" });
   // The folder itself lingers otherwise, empty but named after a user id.
   await client.api.delete_folder(prefix).catch(() => {});
+  // The profile picture is public, so it is the one that matters most here.
+  await client.api.delete_resources_by_prefix(avatarFolder(userId));
+  await client.api.delete_folder(avatarFolder(userId)).catch(() => {});
+}
+
+// ---------- profile pictures ----------
+//
+// Public (`type: "upload"`), unlike everything above: an avatar is shown to
+// followers, on leaderboards and in the feed, so a plain URL that other
+// people's browsers can fetch is the point. Still a signed upload into a folder
+// only this server names, and one fixed public_id per person, so re-uploading
+// replaces the picture instead of stacking orphans.
+
+export function avatarFolder(userId: string): string {
+  return `voinic/avatars/${userId}`;
+}
+export const AVATAR_PUBLIC_ID = "avatar";
+
+export type AvatarUploadTicket = {
+  cloudName: string;
+  apiKey: string;
+  /** Every field the browser must post, exactly as signed. */
+  fields: Record<string, string>;
+};
+
+export function signAvatarUpload(userId: string): AvatarUploadTicket {
+  const client = configured();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = {
+    folder: avatarFolder(userId),
+    public_id: AVATAR_PUBLIC_ID,
+    timestamp,
+    overwrite: "true",
+    invalidate: "true",
+  };
+  const signature = client.utils.api_sign_request(params, API_SECRET!);
+  return {
+    cloudName: CLOUD_NAME!,
+    apiKey: API_KEY!,
+    fields: {
+      folder: params.folder,
+      public_id: params.public_id,
+      timestamp: String(timestamp),
+      overwrite: params.overwrite,
+      invalidate: params.invalidate,
+      signature,
+    },
+  };
+}
+
+/**
+ * The URL stored in users.avatar_url: square, face-centred, and versioned so a
+ * replaced picture is not served from a browser cache of the old one.
+ */
+export function avatarUrl(publicId: string, version: number): string {
+  const client = configured();
+  return client.url(publicId, {
+    type: "upload",
+    secure: true,
+    version,
+    transformation: [
+      { width: 256, height: 256, crop: "fill", gravity: "face", quality: "auto", fetch_format: "auto" },
+    ],
+  });
+}
+
+/** Remove the profile picture asset. Best effort; the column is the record. */
+export async function destroyAvatar(userId: string): Promise<void> {
+  const client = configured();
+  await client.uploader.destroy(`${avatarFolder(userId)}/${AVATAR_PUBLIC_ID}`, { invalidate: true });
+  await client.api.delete_folder(avatarFolder(userId)).catch(() => {});
 }
 
 /** Remove one asset. Called when the row it belongs to is deleted. */

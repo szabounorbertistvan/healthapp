@@ -3,10 +3,13 @@ import { Card } from "@/components/ui";
 import { ENTITLEMENTS, TIER_LABEL } from "@/lib/entitlements";
 import { SubscribePanel, TrialBanner } from "@/components/billing";
 import { getI18n } from "@/lib/i18n/server";
+import { cloudinaryConfigured } from "@/lib/cloudinary";
+import { ProfileForm } from "@/components/account";
 
 export default async function SettingsPage() {
   const { t } = await getI18n();
   const profile = await getProfile();
+  if (!profile) return null;
   const tier = profile?.tier ?? "free";
   const paid = tier === "coach_pro" && Boolean(profile?.has_stripe);
   const starter = ENTITLEMENTS.coach_free;
@@ -17,8 +20,25 @@ export default async function SettingsPage() {
         <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{t.common.nav.settings}</h1>
       </header>
 
-      <div className="mt-5 sm:mt-6">
-        <TrialBanner trialEndsAt={profile?.trial_ends_at ?? null} paid={paid} />
+      <div className="mt-5 grid gap-3.5 sm:mt-6">
+        {/* The coach had no way to edit their own profile until now: the form
+            is the client's, minus the check-in day and leaderboard switch. */}
+        <ProfileForm
+          role={profile.role}
+          avatarUrl={profile.avatar_url}
+          photoUploads={cloudinaryConfigured()}
+          fullName={profile.full_name}
+          username={profile.username ?? ""}
+          city={profile.city ?? ""}
+          bio={profile.bio ?? ""}
+          timezone={profile.timezone}
+          checkInWeekday={profile.check_in_weekday}
+          leaderboardVisibility={profile.leaderboard_visibility}
+          weightUnit={profile.weight_unit}
+          lengthUnit={profile.length_unit}
+        />
+
+        <TrialBanner trialEndsAt={profile.trial_ends_at} paid={paid} />
 
         <Card plain>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.coachApp.settings.subscription}</p>

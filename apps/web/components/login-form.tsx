@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser, enabledOAuthProviders } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/client";
+import { RoleCard } from "./role-card";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { usernameAvailable } from "@/app/profile-actions";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
@@ -332,22 +333,6 @@ function GoogleButton({ onClick, disabled, label }: { onClick: () => void; disab
         <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
       </svg>
       {label}
-    </button>
-  );
-}
-
-function RoleCard({
-  selected, onSelect, title, body,
-}: { selected: boolean; onSelect: () => void; title: string; body: string }) {
-  return (
-    <button
-      type="button" onClick={onSelect} aria-pressed={selected}
-      className={`rounded-lg border p-2.5 text-left transition-colors ${
-        selected ? "border-accent bg-accent-soft" : "border-line bg-bg hover:border-ink-faint"
-      }`}
-    >
-      <span className={`block text-sm font-semibold ${selected ? "text-accent-ink" : ""}`}>{title}</span>
-      <span className="mt-0.5 block text-[11px] leading-snug text-ink-soft">{body}</span>
     </button>
   );
 }

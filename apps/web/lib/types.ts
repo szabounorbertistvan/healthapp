@@ -20,6 +20,9 @@ export type Profile = {
    */
   username: string | null;
   avatar_url: string | null;
+  /** Free-text locality and short self-description, both optional; see /account. */
+  city: string | null;
+  bio: string | null;
   sex: Sex | null;
   birth_year: number | null;
   /** IANA zone. The scheduled reminder jobs fire on this clock, not on UTC. */

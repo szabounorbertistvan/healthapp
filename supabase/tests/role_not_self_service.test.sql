@@ -19,7 +19,10 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('b2000000-0000-0000-0000-000000000001', 'fresh@role.local', '{"full_name":"Fresh"}'),
   ('b2000000-0000-0000-0000-000000000002', 'old@role.local',   '{"full_name":"Old"}'),
   ('b2000000-0000-0000-0000-000000000003', 'admin@role.local', '{"full_name":"Admin"}');
-update public.users set created_at = now() - interval '1 hour'
+-- Past the sign-up window *and* with a finished profile: since 20260917100000 a
+-- row whose username is still null may still pick, because /complete-profile
+-- is where a "sign in with Google" account first gets asked.
+update public.users set created_at = now() - interval '1 hour', username = 'old_user'
   where id = 'b2000000-0000-0000-0000-000000000002';
 update public.users set role = 'admin'
   where id = 'b2000000-0000-0000-0000-000000000003';

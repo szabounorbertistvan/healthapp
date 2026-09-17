@@ -5,21 +5,25 @@ import { completeProfile } from "@/app/profile-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
+import type { Role } from "@/lib/entitlements";
+import { RoleCard } from "./role-card";
 
 const inputClass =
   "h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent";
 
 /**
- * Fills in what a sign-up may have skipped: name, username, sex, age. Reached
- * from either layout when `users.username` is null (Google accounts, accounts
- * from before the field existed). `next` is where to go once saved.
+ * Fills in what a sign-up may have skipped: name, username, sex, age — and,
+ * for a Google account, whether this is a coach or a client, which the OAuth
+ * round-trip could not ask. Reached from either layout when `users.username`
+ * is null (Google accounts, accounts from before the field existed). Where to
+ * go afterwards follows the role picked here.
  */
 export function CompleteProfileForm({
   initialName,
-  next,
+  initialRole,
 }: {
   initialName: string;
-  next: string;
+  initialRole: Role;
 }) {
   const { t } = useI18n();
   const m = t.clientApp.completeProfile;
@@ -28,6 +32,10 @@ export function CompleteProfileForm({
   const [username, setUsername] = useState("");
   const [sex, setSex] = useState<Sex | "">("");
   const [age, setAge] = useState("");
+  // An admin row is never re-picked (claim_signup_role ignores it), so the
+  // cards are hidden rather than shown as a choice that does nothing.
+  const askRole = initialRole !== "admin";
+  const [role, setRole] = useState<Role>(initialRole);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -54,6 +62,7 @@ export function CompleteProfileForm({
       setError(null);
       const result = await completeProfile({
         fullName, username, sex: sex as Sex, age: parseInt(age, 10),
+        role: askRole ? role : "client",
       });
       if (!result.ok) {
         setError(
@@ -66,7 +75,7 @@ export function CompleteProfileForm({
         );
         return;
       }
-      router.push(next);
+      router.push(role === "client" ? "/today" : "/dashboard");
       router.refresh();
     });
   }
@@ -109,6 +118,21 @@ export function CompleteProfileForm({
           className={`${inputClass} w-24`}
         />
       </label>
+      {askRole ? (
+        <fieldset>
+          <legend className="mb-1.5 text-xs font-medium text-ink-soft">{t.login.iAm}</legend>
+          <div className="grid grid-cols-2 gap-2">
+            <RoleCard
+              selected={role === "client"} onSelect={() => setRole("client")}
+              title={t.login.roleClient} body={t.login.roleClientBody}
+            />
+            <RoleCard
+              selected={role === "coach"} onSelect={() => setRole("coach")}
+              title={t.login.roleCoach} body={t.login.roleCoachBody}
+            />
+          </div>
+        </fieldset>
+      ) : null}
       {error ? <p className="text-sm text-risk" role="alert">{error}</p> : null}
       <button
         type="submit" disabled={pending}

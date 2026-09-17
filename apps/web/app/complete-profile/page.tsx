@@ -13,8 +13,7 @@ export default async function CompleteProfilePage() {
   const { t } = await getI18n();
   const profile = await getProfile();
   if (!profile) redirect("/");
-  const home = profile.role === "client" ? "/today" : "/dashboard";
-  if (profile.username) redirect(home);
+  if (profile.username) redirect(profile.role === "client" ? "/today" : "/dashboard");
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
@@ -28,7 +27,7 @@ export default async function CompleteProfilePage() {
         <h1 className="mb-3 text-center font-display text-2xl font-extrabold tracking-tight">
           {t.clientApp.completeProfile.title}
         </h1>
-        <CompleteProfileForm initialName={profile.full_name} next={home} />
+        <CompleteProfileForm initialName={profile.full_name} initialRole={profile.role} />
       </div>
     </main>
   );

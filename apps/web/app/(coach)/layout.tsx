@@ -9,6 +9,7 @@ import { TIER_LABEL } from "@/lib/entitlements";
 import { Logo, LogoMark } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { SignOutButton } from "@/components/sign-out-button";
+import { Avatar } from "@/components/social";
 
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -26,9 +27,13 @@ export default async function CoachLayout({ children }: { children: React.ReactN
         <Link href="/" className="flex items-center gap-2 px-2.5">
           <Logo size="sm" />
         </Link>
-        <p className="px-2.5 pt-2 text-xs text-ink-faint">
-          {displayName(profile)} · <span className="font-semibold text-accent-ink">{TIER_LABEL[profile.tier]}</span>
-        </p>
+        {/* Who is signed in, one tap from editing it. */}
+        <Link href="/settings" className="mt-2.5 flex items-center gap-2 px-2.5 text-xs text-ink-faint hover:text-ink">
+          <Avatar name={displayName(profile)} url={profile.avatar_url} size="h-7 w-7" />
+          <span className="truncate">
+            {displayName(profile)} · <span className="font-semibold text-accent-ink">{TIER_LABEL[profile.tier]}</span>
+          </span>
+        </Link>
         <div className="mt-4">
           <NavLinks isAdmin={profile.role === "admin"} />
         </div>
