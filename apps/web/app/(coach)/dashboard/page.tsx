@@ -23,15 +23,18 @@ export default async function DashboardPage() {
       </h1>
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-4">
-        <Stat icon={ICON.clients} label={t.coachApp.dashboard.activeClients} value={rows.length} />
+        {/* Each tile opens the section it counts: the figure is the summary,
+            the section is where the work happens. */}
+        <Stat href="/clients" icon={ICON.clients} label={t.coachApp.dashboard.activeClients} value={rows.length} />
         <Stat
+          href="/check-ins"
           icon={ICON.checkIns}
           label={t.coachApp.dashboard.checkInsToReview}
           value={checkIns.length}
           accent={checkIns.length > 0}
         />
-        <Stat icon={ICON.messages} label={t.coachApp.dashboard.unreadMessages} value={unread} accent={unread > 0} />
-        <Stat icon={ICON.risk} label={t.coachApp.dashboard.atRisk} value={atRisk} accent={atRisk > 0} />
+        <Stat href="/messages" icon={ICON.messages} label={t.coachApp.dashboard.unreadMessages} value={unread} accent={unread > 0} />
+        <Stat href="/clients" icon={ICON.risk} label={t.coachApp.dashboard.atRisk} value={atRisk} accent={atRisk > 0} />
       </div>
 
       <div className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
@@ -185,20 +188,25 @@ function RowAction({ href, label }: { href: string; label: string }) {
   );
 }
 
-/** One headline figure on its own tile: an icon, the label, the number. */
+/** One headline figure on its own tile: an icon, the label, the number — and a link to the section behind it. */
 function Stat({
+  href,
   icon,
   label,
   value,
   accent = false,
 }: {
+  href: string;
   icon: string;
   label: string;
   value: string | number;
   accent?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2.5 rounded-3xl bg-surface px-4 py-5 text-center sm:gap-3 sm:py-6">
+    <Link
+      href={href}
+      className="flex flex-col items-center gap-2.5 rounded-3xl bg-surface px-4 py-5 text-center transition hover:bg-accent-soft/40 sm:gap-3 sm:py-6"
+    >
       <NavIcon d={icon} className="h-10 w-10 shrink-0 text-accent-ink sm:h-12 sm:w-12" />
       <p className="flex min-h-[2.4em] w-full items-center justify-center text-[11px] font-semibold uppercase leading-snug tracking-wider text-ink-faint">
         {label}
@@ -210,6 +218,6 @@ function Stat({
       >
         {value}
       </p>
-    </div>
+    </Link>
   );
 }

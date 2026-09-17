@@ -19,7 +19,8 @@ const en = {
   },
   clients: {
     slots: "{used} / {max} slots",
-    limitReached: "Client limit reached for your plan. Upgrade to Coach Pro for up to 30 clients.",
+    // Trial / Pro hidden for now (2026-09-17): "Client limit reached for your plan. Upgrade to Coach Pro for up to 30 clients."
+    limitReached: "Client limit reached for your plan.",
     emptyTitle: "No clients yet",
     emptyHint: "Generate an invite code and share it — your client enters it in the app.",
     thName: "Name",
@@ -179,7 +180,8 @@ const ro: typeof en = {
   },
   clients: {
     slots: "{used} / {max} locuri",
-    limitReached: "Ai atins limita de clienți pentru planul tău. Treci la Coach Pro pentru până la 30 de clienți.",
+    // Trial / Pro ascuns momentan (2026-09-17): "Ai atins limita de clienți pentru planul tău. Treci la Coach Pro pentru până la 30 de clienți."
+    limitReached: "Ai atins limita de clienți pentru planul tău.",
     emptyTitle: "Niciun client încă",
     emptyHint: "Generează un cod de invitație și trimite-l — clientul tău îl introduce în aplicație.",
     thName: "Nume",
