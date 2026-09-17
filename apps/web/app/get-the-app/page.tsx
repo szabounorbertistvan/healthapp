@@ -14,7 +14,7 @@ export default async function GetTheAppPage() {
         <LanguageSelector />
       </div>
       <div className="max-w-md">
-        <LogoMark className="mx-auto mb-4 h-16 w-16" />
+        <LogoMark className="mx-auto mb-4 h-16 w-16" px={64} />
         <h1 className="text-2xl font-extrabold tracking-tight">{fill(t.getApp.title, { app: APP_NAME })}</h1>
         <p className="mt-3 text-ink-soft">{t.getApp.body}</p>
         <p className="mt-4 rounded-xl border border-line bg-surface p-4 text-sm text-ink-soft">

@@ -55,7 +55,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
             header carries the feed. */}
         <header className="flex h-14 items-center justify-between gap-3 px-3 pl-4 sm:hidden">
           <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold tracking-tight">
-            <LogoMark className="h-6 w-6" />
+            <LogoMark className="h-6 w-6" px={24} />
             <span className="truncate">{displayName(profile)}</span>
           </span>
           <div className="flex shrink-0 items-center gap-1.5">

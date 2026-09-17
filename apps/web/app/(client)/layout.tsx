@@ -61,7 +61,7 @@ export default async function ClientLayout({ children }: { children: React.React
             actually use could never switch language or sign out. */}
         <header className="flex h-14 items-center justify-between gap-3 px-3 pl-4 sm:hidden">
           <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold tracking-tight">
-            <LogoMark className="h-6 w-6" />
+            <LogoMark className="h-6 w-6" px={24} />
             <span className="truncate">{name}</span>
           </span>
           <div className="flex shrink-0 items-center gap-1.5">

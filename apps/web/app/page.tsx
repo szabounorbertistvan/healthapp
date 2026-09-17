@@ -48,8 +48,8 @@ export default async function LandingPage() {
       <section className="grid items-end gap-0 pt-2 sm:min-h-[520px] sm:grid-cols-[minmax(0,1fr)_minmax(0,440px)] sm:gap-10 sm:pt-5">
         <div className="pb-6 sm:pb-10">
           <Link href="/" aria-label={APP_NAME} className="inline-flex items-center gap-3 sm:gap-4">
-            <LogoMark className="h-14 w-14 sm:h-[72px] sm:w-[72px]" />
-            <Wordmark className="h-6 sm:h-8" />
+            <LogoMark className="h-14 w-14 sm:h-[72px] sm:w-[72px]" px={72} />
+            <Wordmark className="h-6 sm:h-8" px={32} />
           </Link>
           <p className="mt-5 flex items-center gap-3 font-display text-xs font-bold uppercase tracking-[0.28em] text-accent-ink">
             <span className="h-px w-8 bg-accent" aria-hidden />
