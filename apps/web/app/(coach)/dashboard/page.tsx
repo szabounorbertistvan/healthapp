@@ -47,7 +47,7 @@ export default async function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-[13.5px]">
                   <thead>
-                    <tr className="text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                    <tr className="whitespace-nowrap text-left text-[11px] uppercase tracking-wider text-ink-faint">
                       <th className="px-6 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thClient}</th>
                       <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thSignal}</th>
                       <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thWhy}</th>
