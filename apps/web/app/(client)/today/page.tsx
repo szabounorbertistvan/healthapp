@@ -84,15 +84,21 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   return (
     // Capped at 1600px: a dashboard of cards, three columns wide at most.
-    <div className="mx-auto max-w-[1600px]">
+    <div className="@container mx-auto max-w-[1600px]">
       <header>
         <h1 className="font-display text-2xl font-extrabold tracking-tight first-letter:uppercase sm:text-[28px]">{weekday}</h1>
         <p className="mt-1 text-[13px] text-ink-faint first-letter:uppercase">{longDate}</p>
       </header>
 
-      <div className="mt-4 grid items-start gap-4 sm:mt-6 md:grid-cols-2 md:gap-5 xl:grid-cols-3 xl:gap-6">
+      <div className="mt-4 grid items-start gap-4 sm:mt-6 @3xl:grid-cols-2 @3xl:gap-5 @6xl:grid-cols-3 @6xl:gap-6">
+        {/* Up to 72rem of content width the grid has at most two columns. Columns one and
+            three share one cell there, so "everything else" flows under the
+            checklist instead of wrapping to a new row under the tall week
+            column and leaving a hole; at @6xl the wrapper dissolves (contents)
+            and the three columns take their own order. */}
+        <div className="space-y-4 @6xl:contents">
         {/* ---- what to do today ---- */}
-        <div className="space-y-4">
+        <div className="space-y-4 @6xl:order-1">
           <TodayChecklist doneToday={doneToday} next={next} nutrition={nutrition} habits={habits} checkIn={checkIn} />
 
           {checkIn.last?.coach_feedback ? (
@@ -125,26 +131,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           ) : null}
         </div>
 
-        {/* ---- the week ---- */}
-        <div className="space-y-4">
-          <WeekCard
-            adherence={adherence}
-            today={todayIso}
-            workoutDays={workoutDays}
-            done={done}
-            planned={planned}
-            streak={streak}
-            nudge={nudge}
-            load={today.training_load}
-          />
-
-          {streakView ? <StreakCard view={streakView} compact /> : null}
-
-          {fitness ? <FitnessScoreCard view={fitness} /> : null}
-        </div>
-
         {/* ---- everything else ---- */}
-        <div className="space-y-4">
+        <div className="space-y-4 @6xl:order-3">
           {lastWorkout ? (
             <Card plain>
               <div className="flex items-start justify-between gap-3">
@@ -197,6 +185,25 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
               <TrainingLoadSummaryCard summary={today.training_load} />
             </div>
           </details>
+        </div>
+        </div>
+
+        {/* ---- the week ---- */}
+        <div className="space-y-4 @6xl:order-2">
+          <WeekCard
+            adherence={adherence}
+            today={todayIso}
+            workoutDays={workoutDays}
+            done={done}
+            planned={planned}
+            streak={streak}
+            nudge={nudge}
+            load={today.training_load}
+          />
+
+          {streakView ? <StreakCard view={streakView} compact /> : null}
+
+          {fitness ? <FitnessScoreCard view={fitness} /> : null}
         </div>
       </div>
     </div>

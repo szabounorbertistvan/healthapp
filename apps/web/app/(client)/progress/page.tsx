@@ -48,7 +48,7 @@ export default async function ProgressPage() {
   );
 
   return (
-    <div className="mx-auto max-w-[1600px]">
+    <div className="@container mx-auto max-w-[1600px]">
       <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
         {t.common.nav.progress}
       </h1>
@@ -72,7 +72,7 @@ export default async function ProgressPage() {
         <Stat icon={ICON.trophy} label={t.clientApp.progress.personalRecords} value={String(prs.length)} accent />
       </div>
 
-      <div className="mt-4 grid items-start gap-4 sm:mt-6 md:grid-cols-2 md:gap-5 xl:grid-cols-3 xl:gap-6">
+      <div className="mt-4 grid items-start gap-4 sm:mt-6 @3xl:grid-cols-2 @3xl:gap-5 @6xl:grid-cols-3 @6xl:gap-6">
         {/* ---- weight: the trend, then the weigh-in that feeds it ---- */}
         <div className="space-y-4">
           <Card plain>
