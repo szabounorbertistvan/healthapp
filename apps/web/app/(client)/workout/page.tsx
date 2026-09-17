@@ -16,7 +16,8 @@ export default async function WorkoutPage() {
 
   // Every published program the client holds is listed — the coach's and their
   // own — so nothing they built disappears when a coach's program arrives.
-  // The builder link appears when there is no program of their own yet.
+  // The builder link is always there for a solo client with programs: it reads
+  // "edit" once they own one — the editor is where days and exercises change.
   const hasOwn = groups.some((g) => g.is_own);
 
   return (
@@ -27,9 +28,9 @@ export default async function WorkoutPage() {
           <PillLink href="/exercises" icon="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM4 4v18M8 8h6">
             {t.clientApp.library.title}
           </PillLink>
-          {groups.length > 0 && !hasOwn && !coached ? (
-            <PillLink href="/workout/build" icon="M12 5v14M5 12h14">
-              {t.clientApp.builder.title}
+          {groups.length > 0 && !coached ? (
+            <PillLink href="/workout/build" icon={hasOwn ? "M4 20h4l10-10-4-4L4 16zM13 7l4 4" : "M12 5v14M5 12h14"}>
+              {hasOwn ? t.clientApp.workout.editProgram : t.clientApp.builder.title}
             </PillLink>
           ) : null}
         </div>
