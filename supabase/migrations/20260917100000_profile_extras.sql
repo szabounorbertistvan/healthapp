@@ -77,3 +77,13 @@ begin
   return jsonb_build_object('status', 'pending', 'purge_after', v_purge);
 end;
 $$;
+
+-- ---------- grants the account form was missing ----------
+-- The update grant on users has been column-level since 20260907110000, and
+-- every column added since had to be listed by hand. leaderboard_visibility
+-- (20260914120000) never was, so saving the account screen failed with
+-- "permission denied for table users" the moment it sent that column. The
+-- other two are already granted by earlier migrations in this repo; repeating
+-- them here is harmless and repairs a live project where they were missing.
+grant update (check_in_weekday, leaderboard_visibility, birth_year)
+  on table public.users to authenticated;

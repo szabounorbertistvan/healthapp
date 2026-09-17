@@ -6,6 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { Logo } from "@/components/logo";
 import { useI18n } from "@/lib/i18n/client";
 import { LanguageSelector } from "@/components/language-selector";
+import { PasswordInput } from "@/components/password-input";
 import { authErrorMessage } from "@/lib/auth-errors";
 
 const MIN_PASSWORD = 8;
@@ -84,13 +85,13 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={submit} className="space-y-3 rounded-xl border border-line bg-surface p-5">
             <p className="text-base font-bold">{t.login.setNewPassword}</p>
-            <input
-              type="password" autoComplete="new-password" required minLength={MIN_PASSWORD} value={password}
+            <PasswordInput
+              autoComplete="new-password" required minLength={MIN_PASSWORD} value={password}
               onChange={(e) => setPassword(e.target.value)} placeholder={t.login.newPassword}
               className={inputClass}
             />
-            <input
-              type="password" autoComplete="new-password" required value={repeat}
+            <PasswordInput
+              autoComplete="new-password" required value={repeat}
               onChange={(e) => setRepeat(e.target.value)} placeholder={t.login.repeatPassword}
               className={inputClass}
             />

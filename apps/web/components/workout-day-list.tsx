@@ -80,7 +80,7 @@ export function WorkoutDayList({ groups, sex, editable = true }: { groups: Clien
             {group.is_own && editable ? (
               <Link
                 href="/workout/build"
-                className="flex min-h-20 items-center justify-center gap-2 rounded-3xl border border-dashed border-line p-4 text-sm font-semibold text-ink-faint transition hover:border-accent hover:text-accent-ink sm:min-h-[196px]"
+                className="flex min-h-20 items-center justify-center gap-2 rounded-3xl border border-dashed border-line p-4 text-sm font-semibold text-ink-faint transition hover:border-accent hover:text-accent-ink sm:min-h-[150px]"
               >
                 <span aria-hidden className="text-lg leading-none">+</span>
                 {w.addAnotherDay}
@@ -97,53 +97,55 @@ export function WorkoutDayList({ groups, sex, editable = true }: { groups: Clien
 }
 
 /**
- * One day: the state pill, the name, the exercise count, every exercise with
- * its sets × reps, a chevron — and the athlete for what the day trains
- * standing on the card's right, full length, feet on the bottom edge.
+ * One day: a header row — the athlete for what the day trains in a square
+ * tile on the page background, the name and exercise count, the chevron —
+ * then every exercise with its sets × reps on the card's full width. The
+ * tile is a fixed size, so the figure looks the same whether the day has
+ * three exercises or nine, and names no longer truncate against it.
  */
 function DayCard({ day, sex }: { day: ClientWorkoutDay; sex: Sex | null }) {
   const { t } = useI18n();
   const w = t.clientApp.workout;
   return (
     <Link href={`/workout/${day.day_id}`} className="block h-full" draggable={false}>
-      <Card plain className="relative flex h-full min-h-44 overflow-hidden p-0 transition hover:bg-accent-soft/40 sm:min-h-[196px]">
-        <div className="flex min-w-0 flex-1 flex-col py-[18px] pl-[18px] pr-1 sm:p-5 sm:pr-1.5">
-          {day.logged.length > 0 ? (
-            <span className="mb-2 w-fit rounded-full bg-warn-soft px-2.5 py-0.5 text-[11px] font-bold text-warn">
-              {w.inProgress}
-            </span>
+      <Card plain className="flex h-full flex-col p-3.5 transition hover:bg-accent-soft/40 sm:p-4">
+        <div className="flex items-center gap-3.5">
+          {day.type ? (
+            <div className="relative h-[84px] w-[84px] shrink-0 overflow-hidden rounded-2xl bg-bg sm:h-[92px] sm:w-[92px]">
+              <Athlete
+                type={day.type}
+                sex={sex}
+                seed={day.day_id}
+                sizes="92px"
+                className="absolute inset-x-1.5 bottom-0 h-[calc(100%-6px)] w-[calc(100%-12px)] object-contain object-bottom"
+              />
+            </div>
           ) : null}
-          <h3 className="font-display text-xl font-bold leading-tight tracking-tight">{day.day_name}</h3>
-          <p className="mt-1 text-[12.5px] text-ink-faint">{fill(w.exercisesCount, { count: day.exercises.length })}</p>
-          <ul className="mt-2.5 space-y-0.5 text-[13.5px] text-ink-soft">
-            {day.exercises.map((e) => (
-              <li key={e.id} className="flex justify-between gap-2">
-                <span className="truncate">{e.exercise}</span>
-                <span className="shrink-0 tabular-nums text-ink-faint">
-                  {e.sets}×{e.reps}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-auto pt-3.5">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-accent-soft text-accent-ink" aria-hidden>
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m9 6 6 6-6 6" />
-              </svg>
-            </span>
+          <div className="min-w-0 flex-1">
+            {day.logged.length > 0 ? (
+              <span className="mb-1.5 inline-block rounded-full bg-warn-soft px-2.5 py-0.5 text-[11px] font-bold text-warn">
+                {w.inProgress}
+              </span>
+            ) : null}
+            <h3 className="truncate font-display text-xl font-bold leading-tight tracking-tight">{day.day_name}</h3>
+            <p className="mt-1 text-[12.5px] text-ink-faint">{fill(w.exercisesCount, { count: day.exercises.length })}</p>
           </div>
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-ink" aria-hidden>
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 6 6 6-6 6" />
+            </svg>
+          </span>
         </div>
-        {day.type ? (
-          <div className="pointer-events-none relative w-[42%] shrink-0 sm:w-[40%]">
-            <Athlete
-              type={day.type}
-              sex={sex}
-              seed={day.day_id}
-              sizes="(min-width: 640px) 16rem, 42vw"
-              className="absolute bottom-0 right-2 h-[calc(100%-12px)] w-auto max-w-full object-contain object-right-bottom"
-            />
-          </div>
-        ) : null}
+        <ul className="mt-3 space-y-0.5 px-1.5 text-[13.5px] text-ink-soft">
+          {day.exercises.map((e) => (
+            <li key={e.id} className="flex justify-between gap-3">
+              <span className="truncate">{e.exercise}</span>
+              <span className="shrink-0 tabular-nums text-ink-faint">
+                {e.sets}×{e.reps}
+              </span>
+            </li>
+          ))}
+        </ul>
       </Card>
     </Link>
   );

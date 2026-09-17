@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser, enabledOAuthProviders } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/client";
 import { RoleCard } from "./role-card";
+import { PasswordInput } from "./password-input";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { usernameAvailable } from "@/app/profile-actions";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
@@ -261,8 +262,8 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
       />
 
       {mode !== "forgot" ? (
-        <input
-          type="password" required value={password}
+        <PasswordInput
+          required value={password}
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
           minLength={mode === "signup" ? MIN_PASSWORD : undefined}
           onChange={(e) => setPassword(e.target.value)} placeholder={t.login.password}
@@ -272,8 +273,8 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
 
       {mode === "signup" ? (
         <>
-          <input
-            type="password" autoComplete="new-password" required value={repeat}
+          <PasswordInput
+            autoComplete="new-password" required value={repeat}
             onChange={(e) => setRepeat(e.target.value)} placeholder={t.login.repeatPassword}
             className={inputClass}
           />
