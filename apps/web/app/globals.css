@@ -168,10 +168,11 @@ input[type="range"] {
   --glass-alpha-subtle: 0.018;      /* secondary controls */
   --glass-intensity: 1;             /* multiplies every alpha above (LiquidGlass `intensity`) */
   --glass-border: rgba(255, 255, 255, 0.13);
-  --glass-highlight: rgba(255, 255, 255, 0.6);           /* rim, lit side */
-  --glass-highlight-warm: rgba(230, 194, 90, 0.3);       /* the gold catch on the rim */
-  --glass-highlight-low: rgba(255, 255, 255, 0.1);       /* rim, shadow side */
-  --glass-specular: rgba(255, 255, 255, 0.045);          /* the pool of light inside */
+  --glass-highlight: rgba(255, 255, 255, 0.3);           /* rim, lit side */
+  --glass-highlight-warm: rgba(230, 194, 90, 0.15);      /* the gold catch on the rim */
+  --glass-highlight-low: rgba(255, 255, 255, 0.05);      /* rim, shadow side */
+  --glass-specular: rgba(255, 255, 255, 0.022);          /* the pool of light inside */
+  --glass-corner: 0.028;                                 /* extra fill at the lit corner */
   --glass-shadow:
     0 1px 1px rgba(0, 0, 0, 0.2),
     0 16px 40px -14px rgba(0, 0, 0, 0.6);
@@ -180,7 +181,7 @@ input[type="range"] {
     0 6px 16px -8px rgba(0, 0, 0, 0.5);
   --glass-blur: 22px;
   --glass-saturation: 150%;
-  --glass-brightness: 1.02;
+  --glass-brightness: 1.01;
   --glass-contrast: 1;
   --glass-radius: 1.5rem;
   --glass-opacity: 1;
@@ -200,6 +201,7 @@ input[type="range"] {
     --glass-highlight-warm: rgba(201, 162, 39, 0.65);
     --glass-highlight-low: rgba(18, 21, 25, 0.16);
     --glass-specular: rgba(255, 255, 255, 0.9);
+    --glass-corner: 0.055;
     --glass-shadow:
       0 1px 1px rgba(18, 21, 25, 0.06),
       0 2px 6px rgba(18, 21, 25, 0.05),
@@ -225,6 +227,7 @@ input[type="range"] {
   --glass-highlight-warm: rgba(201, 162, 39, 0.65);
   --glass-highlight-low: rgba(18, 21, 25, 0.16);
   --glass-specular: rgba(255, 255, 255, 0.9);
+  --glass-corner: 0.055;
   --glass-shadow:
     0 1px 1px rgba(18, 21, 25, 0.06),
     0 2px 6px rgba(18, 21, 25, 0.05),
@@ -286,7 +289,7 @@ body::before {
     background:
       linear-gradient(
         135deg,
-        color-mix(in srgb, var(--glass-tint) calc((var(--_a) + 0.055) * 100%), transparent) 0%,
+        color-mix(in srgb, var(--glass-tint) calc((var(--_a) + var(--glass-corner)) * 100%), transparent) 0%,
         color-mix(in srgb, var(--glass-tint) calc(var(--_a) * 100%), transparent) 50%,
         color-mix(in srgb, var(--glass-tint) calc((var(--_a) + 0.02) * 100%), transparent) 100%
       );

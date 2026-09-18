@@ -73,9 +73,9 @@ function Row({ label, value, unit, previous, delta }: {
   delta?: Delta | null;
 }) {
   return (
-    <li className="flex items-center gap-2 py-1.5">
-      <span className="min-w-0 flex-1 text-sm leading-snug text-ink-soft">{label}</span>
-      <span className="shrink-0 text-right text-sm font-bold tabular-nums">
+    <li className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5">
+      <span className="min-w-[7rem] flex-1 text-sm leading-snug text-ink-soft">{label}</span>
+      <span className="ml-auto shrink-0 text-right text-sm font-bold tabular-nums">
         {value}
         {unit ? <span className="ml-0.5 text-xs font-medium text-ink-faint">{unit}</span> : null}
         {previous ? <span className="ml-1.5 text-[11px] font-medium text-ink-faint">← {previous}</span> : null}
@@ -123,7 +123,10 @@ export function WeeklySummaryCard({ summary: s, switchPath, compact = false }: {
   const prevIf = (v: number, show = true) => (show && v > 0 ? f.n(v) : null);
 
   return (
-    <Card>
+    // @container: the two-column body below keys off the card's own width,
+    // not the viewport's — in Today's third column a `lg:` grid split 400px
+    // into two 180px halves and the labels sat on top of the numbers.
+    <Card className="@container">
       {/* header: eyebrow + range on the left, the week switch on the right */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -158,7 +161,7 @@ export function WeeklySummaryCard({ summary: s, switchPath, compact = false }: {
         </div>
       ) : null}
 
-      <div className={`mt-4 space-y-5 ${compact ? "" : "lg:grid lg:grid-cols-2 lg:gap-x-10 lg:gap-y-5 lg:space-y-0"}`}>
+      <div className={`mt-4 space-y-5 ${compact ? "" : "@2xl:grid @2xl:grid-cols-2 @2xl:gap-x-10 @2xl:gap-y-5 @2xl:space-y-0"}`}>
         <Section title={w.training}>
           <Row label={w.workouts} value={f.n(cur.training.workouts)} previous={prevIf(prev.training.workouts)} delta={s.training.workouts} />
           <Row label={w.duration} value={cur.training.duration_min > 0 ? f.duration(cur.training.duration_min) : "—"}
