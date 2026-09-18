@@ -65,7 +65,7 @@ select is((select count(*)::int from public.users where id = 'c0000000-0000-0000
 -- The whole point: the client keeps what they trained on.
 select is((select count(*)::int from public.program_exercises
            where program_day_id = '4d000000-0000-0000-0000-000000000001'),
-  1, "the client's program survives its coach's deletion");
+  1, 'the client''s program survives its coach''s deletion');
 
 select * from finish();
 rollback;
