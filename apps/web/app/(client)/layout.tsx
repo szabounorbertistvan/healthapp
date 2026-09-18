@@ -13,10 +13,14 @@ import { UnitsProvider } from "@/lib/units/client";
 import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
-  // Coaches belong in the coach workspace.
   const profile = await getProfile();
   if (!profile) redirect("/");
-  if (profile.role === "coach") redirect("/dashboard");
+  // A coach trains too, so this surface is theirs as well: every read under it
+  // is scoped to the signed-in user (lib/actor.ts) and every RLS policy on the
+  // tables it touches is owner-based, so a coach logging their own workout
+  // needs no second implementation and no new policy. What they do need is a
+  // door back — see BackToCoaching in components/client-nav.tsx.
+  const coach = profile.role !== "client";
   // An account without a username (Google sign-up, or older than the field)
   // finishes its profile before it sees anything else.
   if (!profile.username) redirect("/complete-profile");
@@ -43,7 +47,7 @@ export default async function ClientLayout({ children }: { children: React.React
           <span className="truncate">{name}</span>
         </Link>
         <div className="mt-4">
-          <ClientNav />
+          <ClientNav coach={coach} />
         </div>
         <div className="mt-auto space-y-3 px-1 pt-6">
           <div className="flex items-center gap-2">
@@ -82,7 +86,7 @@ export default async function ClientLayout({ children }: { children: React.React
         </header>
         <main className="flex-1 px-4 pb-28 pt-1 sm:px-10 sm:pb-12 sm:pt-7">{children}</main>
       </div>
-      <ClientTabBar />
+      <ClientTabBar coach={coach} />
     </div>
     </UnitsProvider>
   );

@@ -489,6 +489,8 @@ export type ClientToday = {
   habits: ClientHabitRow[];
   check_in: ClientCheckInState;
   last_activity: string | null;
+  /** Whether an active coach stands behind the plan, or the person trains solo. */
+  has_coach: boolean;
   unread_from_coach: number;
   training_load: TrainingLoadSummary;
 };

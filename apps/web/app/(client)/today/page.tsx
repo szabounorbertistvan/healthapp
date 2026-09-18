@@ -7,6 +7,7 @@ import { getMyStreak } from "@/lib/streak-data";
 import { getMyFitnessScore } from "@/lib/fitness-score-data";
 import { getLeaderboard } from "@/lib/leaderboard-data";
 import { hasChosenSolo } from "@/lib/onboarding";
+import { getProfile } from "@/lib/data";
 import { Card, EmptyState } from "@/components/ui";
 import { LinkRow, TodayChecklist, WeekCard } from "@/components/today-dashboard";
 import { NavIcon } from "@/components/client-nav";
@@ -56,7 +57,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     getMyFitnessScore(),
   ]);
   reads.catch(() => {});
-  if (!(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
+  // …except for a coach training themselves: /welcome asks "coach or solo",
+  // a question they have already answered by being a coach, and its join-code
+  // branch would only send them in a circle. getProfile is request-cached, so
+  // the layout has already paid for this read.
+  const me = await getProfile();
+  const solo = me !== null && me.role !== "client";
+  if (!solo && !(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
 
   const [today, challenges, weekly, recent, streakView, board, fitness] = await reads;
   if (!today) {
@@ -80,7 +87,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     : null;
   const workoutDays = today.training_load.daily.filter((x) => x.load > 0).map((x) => x.day);
   const activeChallenges = challenges.filter((c) => c.joined && c.status === "active").length;
-  const nudge = adherence.signal === "at_risk" ? fill(d.atRiskBody, { time: timeAgo(last, locale) }) : null;
+  const nudge =
+    adherence.signal === "at_risk"
+      ? fill(today.has_coach ? d.atRiskBody : d.atRiskBodySolo, { time: timeAgo(last, locale) })
+      : null;
 
   return (
     // Capped at 1600px: a dashboard of cards, three columns wide at most.
@@ -99,7 +109,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         <div className="space-y-4 @6xl:contents">
         {/* ---- what to do today ---- */}
         <div className="space-y-4 @6xl:order-1">
-          <TodayChecklist doneToday={doneToday} next={next} nutrition={nutrition} habits={habits} checkIn={checkIn} />
+          <TodayChecklist doneToday={doneToday} next={next} nutrition={nutrition} habits={habits} checkIn={checkIn} coached={today.has_coach} />
 
           {checkIn.last?.coach_feedback ? (
             <div className="rounded-3xl bg-accent-soft px-5 py-[18px]">

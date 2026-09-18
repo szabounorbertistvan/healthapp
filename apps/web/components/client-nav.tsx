@@ -24,6 +24,36 @@ const items: { href: string; key: NavKey; icon: string }[] = [
   { href: "/account", key: "account", icon: "M12 4a4 4 0 1 0 0 8 4 4 0 1 0 0-8M4 21a8 8 0 0 1 16 0M19 3v4M17 5h4" },
 ];
 
+/**
+ * The way back to the coaching workspace, shown only to a coach or admin who is
+ * on the client surface training themselves. The two navs stay separate on
+ * purpose — nineteen entries in one sidebar fits neither the eye nor a phone
+ * tab bar — so each needs one visible door to the other.
+ */
+const BACK_ICON = "M20 12H4M10 6l-6 6 6 6";
+
+function BackToCoaching({ sheet = false }: { sheet?: boolean }) {
+  const { t } = useI18n();
+  return (
+    // The hairline belongs to the wrapper, not the link: a border on a rounded
+    // row draws a curved edge that reads as half a box rather than a divider.
+    <div className={sheet ? "mt-1 border-t border-line pt-1" : "mb-1 border-b border-line pb-1"}>
+      <Link
+        href="/dashboard"
+        className={
+          sheet
+            ? "flex min-h-12 items-center gap-3 rounded-2xl px-3 text-sm font-medium text-ink-soft"
+            : "flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium text-ink-soft hover:bg-surface hover:text-ink"
+        }
+      >
+        <NavIcon d={BACK_ICON} />
+        <span className="flex-1">{t.common.nav.coaching}</span>
+        <NavSpinner />
+      </Link>
+    </div>
+  );
+}
+
 /** A stroke icon from the nav set, or any 24-box path. */
 export function NavIcon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
   return (
@@ -43,11 +73,12 @@ export function NavIcon({ d, className = "h-5 w-5" }: { d: string; className?: s
 }
 
 /** Desktop sidebar: every client section, icon + label, the active one on an accent pill. */
-export function ClientNav() {
+export function ClientNav({ coach = false }: { coach?: boolean }) {
   const pathname = usePathname();
   const { t } = useI18n();
   return (
     <nav className="flex flex-col gap-0.5">
+      {coach ? <BackToCoaching /> : null}
       {items.map((item) => {
         const active = pathname.startsWith(item.href);
         return (
@@ -81,7 +112,7 @@ const TAB_HREFS = ["/today", "/workout", "/food", "/habits"];
  * coach, billing) — without it, Coach and Billing could not be reached from a
  * phone at all.
  */
-export function ClientTabBar() {
+export function ClientTabBar({ coach = false }: { coach?: boolean }) {
   const pathname = usePathname();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -151,6 +182,7 @@ export function ClientTabBar() {
                   </Link>
                 );
               })}
+              {coach ? <BackToCoaching sheet /> : null}
             </nav>
           </div>
         </div>

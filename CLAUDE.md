@@ -65,6 +65,16 @@ shared `ProfileForm` in `components/account.tsx`, mounted on the client's
 `/account` and the coach's `/settings`; the avatar is a public Cloudinary
 upload (`lib/cloudinary.ts`), unlike progress photos.
 
+**`(client)` is not client-only.** A coach trains too, so the coach sidebar and
+the phone "More" sheet carry **My training** → `/today`, and `(client)/layout.tsx`
+lets any role in; while there, `BackToCoaching` in `components/client-nav.tsx` is
+the way back to `/dashboard`. Nothing is duplicated — every read under `(client)`
+is scoped to the signed-in user (`lib/actor.ts`) and every policy on those tables
+is owner-based, so a coach logging a set is the same code path as a client doing
+it. What differs is copy: anything that says "your coach" needs a solo variant,
+keyed off `ClientToday.has_coach` / `hasActiveCoach()` (`noProgramSolo`,
+`atRiskBodySolo`, `noProgramHintSolo`).
+
 ## The five conventions that matter
 
 **1. Supabase is the only backend. There is no demo mode.** It was removed on
@@ -137,9 +147,12 @@ third-party text writes it.
   `prefers-color-scheme: dark` override: `bg`, `surface`, `ink`, `ink-soft`,
   `ink-faint`, `line`, `accent`, `accent-ink`, `accent-soft`, `warn`,
   `warn-soft`, `risk`, `risk-soft`. Never hardcode a hex.
-- There is no coach/client view switcher. `lib/view-mode.ts` and the `bg_view`
-  cookie were demo-only on purpose — doing it live would be admin impersonation
-  of health data — and went with demo mode. Use a client test account instead.
+- There is no coach/client view switcher — the **My training** link is not one.
+  It opens the client surface *as the coach themselves*; `lib/view-mode.ts` and
+  the `bg_view` cookie, which showed one person another person's screens, were
+  demo-only on purpose (doing it live would be admin impersonation of health
+  data) and went with demo mode. To see a real client's data, use a client test
+  account.
 - Barcode scanning uses `@zxing/browser` in [components/barcode-scanner.tsx](apps/web/components/barcode-scanner.tsx);
   a miss must always fall through to search, never dead-end.
 - Who is signed in is shown by `displayName()` in `lib/data.ts` — the username,

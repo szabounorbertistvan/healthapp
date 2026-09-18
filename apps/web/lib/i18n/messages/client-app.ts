@@ -11,9 +11,14 @@ const en = {
     atRiskTitle: "Let us get you moving again",
     atRiskBody:
       "Last activity {time}. One logged set or one meal is enough to restart the week — your coach sees the same signal you do.",
+    // Same nudge without the coach, for someone training on their own.
+    atRiskBodySolo:
+      "Last activity {time}. One logged set or one meal is enough to restart the week.",
     nextWorkout: "Next workout",
     startWorkout: "Start workout",
     noProgram: "No published program yet — your coach assigns one from their workspace.",
+    // …and the same row for someone training without a coach — a solo client, or a coach.
+    noProgramSolo: "No program yet — build your own.",
     logFood: "Log food",
     habitsToday: "Habits today",
     noHabitsYet: "No habits yet.",
@@ -49,6 +54,9 @@ const en = {
     noProgramTitle: "No program assigned",
     noProgramHint:
       "Your coach builds one in their workspace — it appears here the moment it is published.",
+    // Training on their own — a solo client, or a coach: there is no one else
+    // to wait for, so the empty state points at the builder instead.
+    noProgramHintSolo: "Build your own — days, exercises, sets and reps, then train from it.",
     exercisesCount: "{count} exercises",
     moreExercises: "+{count} more",
     inProgress: "in progress",
@@ -323,9 +331,12 @@ const ro: typeof en = {
     atRiskTitle: "Hai să te punem din nou în mișcare",
     atRiskBody:
       "Ultima activitate {time}. Un set înregistrat sau o masă e de ajuns pentru a reporni săptămâna — antrenorul tău vede același semnal ca tine.",
+    atRiskBodySolo:
+      "Ultima activitate {time}. Un set înregistrat sau o masă e de ajuns pentru a reporni săptămâna.",
     nextWorkout: "Următorul antrenament",
     startWorkout: "Începe antrenamentul",
     noProgram: "Încă nu există un program publicat — antrenorul tău îți atribuie unul din spațiul lui de lucru.",
+    noProgramSolo: "Niciun program încă — construiește-ți unul.",
     logFood: "Înregistrează mâncare",
     habitsToday: "Obiceiuri azi",
     noHabitsYet: "Încă nu ai obiceiuri.",
@@ -360,6 +371,7 @@ const ro: typeof en = {
     noProgramTitle: "Niciun program atribuit",
     noProgramHint:
       "Antrenorul tău îl construiește în spațiul lui de lucru — apare aici imediat ce este publicat.",
+    noProgramHintSolo: "Construiește-ți unul — zile, exerciții, serii și repetări, apoi antrenează-te după el.",
     exercisesCount: "{count} exerciții",
     moreExercises: "încă {count}",
     inProgress: "în desfășurare",

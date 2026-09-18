@@ -42,7 +42,11 @@ export default async function WorkoutPage() {
         <div className="space-y-4">
           {groups.length === 0 ? (
             <>
-              <EmptyState plain title={t.clientApp.workout.noProgramTitle} hint={t.clientApp.workout.noProgramHint} />
+              <EmptyState
+                plain
+                title={t.clientApp.workout.noProgramTitle}
+                hint={coached ? t.clientApp.workout.noProgramHint : t.clientApp.workout.noProgramHintSolo}
+              />
               <Link
                 href="/workout/build"
                 className="inline-flex h-10 items-center rounded-full bg-accent px-4 text-[13px] font-semibold text-accent-fg"

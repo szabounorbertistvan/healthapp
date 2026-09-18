@@ -24,6 +24,9 @@ const en = {
     coach: "Coach",
     billing: "Billing",
     account: "Account",
+    // the bridge between the two workspaces — a coach trains too
+    myTraining: "My training",
+    coaching: "Coaching",
   },
   moreSheet: {
     title: "All sections",
@@ -485,6 +488,8 @@ const ro: typeof en = {
     coach: "Antrenor",
     billing: "Abonament",
     account: "Cont",
+    myTraining: "Antrenamentul meu",
+    coaching: "Coaching",
   },
   moreSheet: {
     title: "Toate secțiunile",

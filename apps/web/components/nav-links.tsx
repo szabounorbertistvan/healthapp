@@ -23,6 +23,18 @@ const items: { href: string; key: NavKey; icon: string }[] = [
 
 const adminItem = { href: "/admin", key: "admin" as const, icon: "M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6zM9 12l2 2 4-4" };
 
+/**
+ * The way across to the coach's own training.
+ *
+ * A coach trains too, and everything a client gets — logging, habits, progress,
+ * streaks — is already owner-scoped, so there is nothing to duplicate: this
+ * simply opens the client surface for the signed-in coach. Kept out of `items`
+ * on purpose, so it never competes for a phone tab and never reads as a
+ * coaching section; it is a workspace switch, not a destination alongside
+ * Clients and Programs.
+ */
+const myTrainingItem = { href: "/today", key: "myTraining" as const, icon: "M3 12h4l2-5 3 10 2-5h7" };
+
 /** Desktop sidebar: every coach section, icon + label, the active one on an accent pill. */
 export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
@@ -47,6 +59,18 @@ export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
           </Link>
         );
       })}
+      {/* Below a hairline, because it leaves the coaching workspace. The border
+          sits on the wrapper: on the rounded row itself it would curve. */}
+      <div className="mt-1 border-t border-line pt-1">
+        <Link
+          href={myTrainingItem.href}
+          className="flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium text-ink-soft hover:bg-surface hover:text-ink"
+        >
+          <NavIcon d={myTrainingItem.icon} />
+          <span className="flex-1">{t.common.nav.myTraining}</span>
+          <NavSpinner />
+        </Link>
+      </div>
     </nav>
   );
 }
@@ -138,6 +162,18 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
                   </Link>
                 );
               })}
+              {/* The way across to the coach's own training — a phone would
+                  otherwise have no route to it at all. */}
+              <div className="mt-1 border-t border-line pt-1">
+                <Link
+                  href={myTrainingItem.href}
+                  className="flex min-h-12 items-center gap-3 rounded-2xl px-3 text-sm font-medium text-ink-soft"
+                >
+                  <NavIcon d={myTrainingItem.icon} />
+                  <span className="flex-1">{t.common.nav.myTraining}</span>
+                  <NavSpinner />
+                </Link>
+              </div>
             </nav>
           </div>
         </div>

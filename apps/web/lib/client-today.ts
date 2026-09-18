@@ -44,7 +44,7 @@ export async function getToday(): Promise<ClientToday | null> {
   const weekStart = mondayOf(0);
 
   // One wave: activity, streak and profile do not depend on the other reads.
-  const [days, nutrition, habits, checkIn, training_load, activity, streak, profile, unreadFromCoach] =
+  const [days, nutrition, habits, checkIn, training_load, activity, streak, profile, unreadFromCoach, coachId] =
     await Promise.all([
       getMyProgramDays(),
       getMyDayNutrition(),
@@ -55,6 +55,10 @@ export async function getToday(): Promise<ClientToday | null> {
       getWorkoutStreak(clientId),
       getProfile(),
       unreadCoachMessages(clientId),
+      // Free: activeCoachId is request-cached and getMyProgramDays above has
+      // already asked for it. Today needs it because the copy on an empty plan
+      // differs — "your coach assigns one" is wrong for anyone training solo.
+      activeCoachId(clientId),
     ]);
 
   const plannedSessions = days.length;
@@ -91,22 +95,28 @@ export async function getToday(): Promise<ClientToday | null> {
     habits,
     check_in: checkIn,
     last_activity: activity.lastActivity,
+    has_coach: coachId !== null,
     unread_from_coach: unreadFromCoach,
     training_load,
   };
 }
 
 /**
- * Messages waiting from the coach. RLS already limits `messages` to the
- * conversations this person is in, so "not mine and not read" is the whole
- * filter — no join to conversations, and one head request rather than rows.
+ * Messages waiting from the coach — in the thread where this person is the
+ * client, which is not the same as everything RLS lets them read.
  */
 async function unreadCoachMessages(clientId: string): Promise<number> {
   const live = await liveUser();
   if (!live) return 0;
+  // Scoped to the conversation where *I* am the client, not to everything RLS
+  // lets me read. For a client the two are the same set; for a coach training
+  // themselves they are not — without the join this counted every unread
+  // message from every client on the roster and put it on Today under "a word
+  // from your coach", pointing at a thread that does not exist.
   const { count } = await live.supabase
     .from("messages")
-    .select("id", { count: "exact", head: true })
+    .select("id, conversations!inner(client_id)", { count: "exact", head: true })
+    .eq("conversations.client_id", clientId)
     .neq("sender_id", clientId)
     .is("read_at", null);
   return count ?? 0;

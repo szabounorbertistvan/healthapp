@@ -106,12 +106,14 @@ function Row({ href, done, title, sub, right, children }: {
  * the primary action (Start pill); food and check-in navigate; habits tick in
  * place, because ticking is the smallest and most repeated action in the app.
  */
-export function TodayChecklist({ doneToday, next, nutrition, habits, checkIn }: {
+export function TodayChecklist({ doneToday, next, nutrition, habits, checkIn, coached }: {
   doneToday: SessionSummaryRow | null;
   next: ClientWorkoutDay | null;
   nutrition: ClientDayNutrition;
   habits: ClientHabitRow[];
   checkIn: ClientCheckInState;
+  /** False for someone training on their own — a solo client, or a coach. */
+  coached: boolean;
 }) {
   const { t, locale } = useI18n();
   const d = t.clientApp.today;
@@ -161,7 +163,12 @@ export function TodayChecklist({ doneToday, next, nutrition, habits, checkIn }: 
             }
           />
         ) : (
-          <Row href="/workout" done={false} title={t.common.nav.training} sub={d.noProgram} />
+          <Row
+            href={coached ? "/workout" : "/workout/build"}
+            done={false}
+            title={t.common.nav.training}
+            sub={coached ? d.noProgram : d.noProgramSolo}
+          />
         )}
 
         <Row href="/food" done={logged} title={t.common.nav.nutrition} sub={foodSub}>
