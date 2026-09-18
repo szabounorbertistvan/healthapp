@@ -81,7 +81,7 @@ export function NotificationBell({
         aria-label={badge > 0 ? `${n.label}: ${fill(n.unreadCount, { count: badge })}` : n.label}
         title={n.label}
         aria-expanded={open}
-        className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft hover:text-ink sm:h-9 sm:w-9"
+        className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink sm:h-9 sm:w-9"
       >
         <NavIcon d="M12 4a5 5 0 0 0-5 5v3l-1.5 3h13L17 12V9a5 5 0 0 0-5-5M10 18a2 2 0 0 0 4 0" className="h-[18px] w-[18px]" />
         {badge > 0 ? (
@@ -93,7 +93,7 @@ export function NotificationBell({
 
       {open ? (
         <div
-          className={`absolute z-40 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-3xl bg-surface shadow-xl ring-1 ring-line/60 ${
+          className={`glass glass--strong absolute z-40 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-3xl ${
             // Anchored on the side it has room to grow into: the sidebar sits
             // against the left screen edge, so a right-anchored panel wider
             // than the 15rem column would run off the page.

@@ -16,10 +16,15 @@ export function SignalBadge({ signal }: { signal: Signal }) {
   );
 }
 
-/** `plain` is the redesigned surface: larger radius, no border — the client app's cards. */
+/**
+ * A card is a Liquid Glass pane (app/globals.css `.glass`): translucent over
+ * the page, a lit rim, a soft shadow. `plain` is the client app's larger
+ * radius; the coach surfaces keep the tighter one. Neither draws a border of
+ * its own any more — the pane's rim is the edge.
+ */
 export function Card({ children, className = "", plain = false }: { children: React.ReactNode; className?: string; plain?: boolean }) {
   return (
-    <div className={`${plain ? "rounded-3xl" : "rounded-xl border border-line"} bg-surface p-4 ${className}`}>
+    <div className={`${plain ? "rounded-3xl" : "rounded-xl"} glass p-4 ${className}`}>
       {children}
     </div>
   );

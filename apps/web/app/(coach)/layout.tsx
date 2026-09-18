@@ -53,7 +53,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
             who you are on the left, and the controls the tab bar has no room
             for on the right — messages first, for the same reason the client
             header carries the feed. */}
-        <header className="flex h-14 items-center justify-between gap-3 px-3 pl-4 sm:hidden">
+        <header className="glass glass--strong sticky top-2 z-10 mx-3 flex h-14 items-center justify-between gap-3 rounded-2xl px-2 pl-3.5 sm:hidden">
           <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold tracking-tight">
             <LogoMark className="h-6 w-6" px={24} />
             <span className="truncate">{displayName(profile)}</span>
@@ -63,16 +63,16 @@ export default async function CoachLayout({ children }: { children: React.ReactN
               href="/messages"
               aria-label={t.common.nav.messages}
               title={t.common.nav.messages}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft hover:text-ink"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink"
             >
               <NavIcon d="M4 5h16v11H9l-5 4z" className="h-[18px] w-[18px]" />
             </Link>
             <LanguageSelector />
             <ThemeToggle />
-            <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg text-ink-soft hover:text-ink disabled:opacity-50" />
+            <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center text-lg disabled:opacity-50 rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink" />
           </div>
         </header>
-        <main className="min-w-0 flex-1 px-4 pb-28 pt-1 sm:px-10 sm:pb-12 sm:pt-7">{children}</main>
+        <main className="min-w-0 flex-1 px-4 pb-28 pt-3 sm:px-10 sm:pb-12 sm:pt-7">{children}</main>
       </div>
       <CoachTabBar isAdmin={profile.role === "admin"} />
     </div>

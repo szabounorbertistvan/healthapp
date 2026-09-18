@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMySessions, getToday, isEmptyAccount } from "@/lib/client-data";
 import { getMyChallenges } from "@/lib/challenges-data";
@@ -9,15 +8,12 @@ import { getLeaderboard } from "@/lib/leaderboard-data";
 import { hasChosenSolo } from "@/lib/onboarding";
 import { getProfile } from "@/lib/data";
 import { Card, EmptyState } from "@/components/ui";
-import { LinkRow, TodayChecklist, WeekCard } from "@/components/today-dashboard";
+import { CoachCard, HabitsCard, LinkRow, NutritionCard, TrainingCard, WeekCard } from "@/components/today-dashboard";
 import { NavIcon } from "@/components/client-nav";
 import { TrainingLoadSummaryCard } from "@/components/training-load";
-import { StreakCard } from "@/components/streak";
+import { StreakRow } from "@/components/streak";
 import { FitnessScoreCard } from "@/components/fitness-score";
-import { LeaderboardSummaryCard } from "@/components/leaderboard";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
-import { ShareWorkoutButton } from "@/components/share-workout";
-import { TrainingLoadBadge } from "@/components/training-load";
 import { timeAgo } from "@/lib/format";
 import { parseDay } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
@@ -26,10 +22,11 @@ import { isoDay } from "@/lib/dates";
 
 /**
  * Today. Three columns once there is room, one on a phone, in this order: the
- * date, today's checklist (the one card that answers "what do I do now") and a
- * word from the coach; the week's score with its parts, the workout streak
- * and the 28-day fitness score; the last workout, the leaderboard, links to the rest, and the weekly report
- * folded away for whoever wants the numbers.
+ * date; the two scores (the week's, with its parts, and the 28-day fitness
+ * score); one card per context — training (today's workout, the last one, the
+ * streak), nutrition, habits by category, coach (check-in, feedback, unread);
+ * then the community links and the weekly report folded away for whoever
+ * wants the numbers.
  */
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { t, locale } = await getI18n();
@@ -80,11 +77,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(todayDate);
   const longDate = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(todayDate);
   const doneToday = recent.find((s) => s.at.slice(0, 10) === todayIso) ?? null;
-  // getMySessions is newest-completed first: [0] is the last finished workout.
-  const lastWorkout = recent[0] ?? null;
-  const lastWorkoutDate = lastWorkout
-    ? new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short" }).format(new Date(lastWorkout.at))
-    : null;
   const workoutDays = today.training_load.daily.filter((x) => x.load > 0).map((x) => x.day);
   const activeChallenges = challenges.filter((c) => c.joined && c.status === "active").length;
   const nudge =
@@ -100,106 +92,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         <p className="mt-1 text-[13px] text-ink-faint first-letter:uppercase">{longDate}</p>
       </header>
 
-      <div className="mt-4 grid items-start gap-4 sm:mt-6 @3xl:grid-cols-2 @3xl:gap-5 @6xl:grid-cols-3 @6xl:gap-6">
-        {/* Up to 72rem of content width the grid has at most two columns. Columns one and
-            three share one cell there, so "everything else" flows under the
-            checklist instead of wrapping to a new row under the tall week
-            column and leaving a hole; at @6xl the wrapper dissolves (contents)
-            and the three columns take their own order. */}
-        <div className="space-y-4 @6xl:contents">
-        {/* ---- what to do today ---- */}
-        <div className="space-y-4 @6xl:order-1">
-          <TodayChecklist doneToday={doneToday} next={next} nutrition={nutrition} habits={habits} checkIn={checkIn} coached={today.has_coach} />
-
-          {checkIn.last?.coach_feedback ? (
-            <div className="rounded-3xl bg-accent-soft px-5 py-[18px]">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{d.fromYourCoach}</p>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{checkIn.last.coach_feedback}</p>
-            </div>
-          ) : null}
-
-          {/* Messages the coach sent and this client has not opened. Until now
-              unread_from_coach was hardcoded 0 and read by nothing, so a coach
-              could write and the client would never learn of it from Today. */}
-          {today.unread_from_coach > 0 ? (
-            <Link
-              href="/coach"
-              className="flex items-center justify-between gap-3 rounded-3xl bg-surface px-5 py-[18px] transition hover:bg-accent-soft/40"
-            >
-              <span className="min-w-0">
-                <span className="block text-[13.5px] font-bold">
-                  {today.unread_from_coach === 1
-                    ? d.unreadMessageOne
-                    : fill(d.unreadMessages, { count: today.unread_from_coach })}
-                </span>
-                <span className="mt-0.5 block text-[12.5px] text-ink-faint">{d.openConversation}</span>
-              </span>
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent font-display text-[12px] font-bold tabular-nums text-accent-fg">
-                {today.unread_from_coach > 9 ? "9+" : today.unread_from_coach}
-              </span>
-            </Link>
-          ) : null}
-        </div>
-
-        {/* ---- everything else ---- */}
-        <div className="space-y-4 @6xl:order-3">
-          {lastWorkout ? (
-            <Card plain>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.shareCard.lastWorkout}</p>
-                  <p className="mt-1.5 truncate text-[15px] font-semibold">{lastWorkout.day_name}</p>
-                  <p className="mt-0.5 text-[12.5px] tabular-nums text-ink-faint first-letter:uppercase">
-                    {lastWorkoutDate} · {lastWorkout.sets} {t.clientApp.workoutDay.sets} · {new Intl.NumberFormat(locale).format(lastWorkout.volume_kg)} kg
-                    {lastWorkout.prs > 0 ? <> · <span className="font-semibold text-accent-ink">{lastWorkout.prs} {t.clientApp.workoutDay.prs}</span></> : null}
-                  </p>
-                </div>
-                <TrainingLoadBadge load={lastWorkout.load} showLabel={false} />
-              </div>
-              <div className="mt-3.5 flex flex-wrap gap-2">
-                <Link
-                  href={lastWorkout.day_id ? `/workout/${lastWorkout.day_id}` : "/workout"}
-                  className="inline-flex h-[38px] items-center rounded-full bg-bg px-4 text-[13px] font-semibold text-ink-soft hover:text-ink"
-                >
-                  {t.common.shareCard.view}
-                </Link>
-                <ShareWorkoutButton
-                  sessionId={lastWorkout.id}
-                  className="inline-flex h-[38px] items-center rounded-full bg-accent px-4 text-[13px] font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50"
-                />
-              </div>
-            </Card>
-          ) : null}
-
-          <LeaderboardSummaryCard board={board} />
-
-          <Card plain className="overflow-hidden p-0">
-            <ul className="divide-y divide-line/60">
-              <LinkRow
-                href="/challenges"
-                icon="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"
-                label={t.common.challenges.title}
-                meta={`${activeChallenges} ${d.active}`}
-              />
-              <LinkRow href="/feed" icon="M4 5h16v11H9l-5 4z" label={t.common.social.feed} />
-            </ul>
-          </Card>
-
-          <details id="weekly-report" open={reportOpen} className="group">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-3xl bg-surface px-5 py-3.5 hover:bg-accent-soft/40 [&::-webkit-details-marker]:hidden">
-              <span className="text-[14.5px] font-semibold">{d.weeklyReport}</span>
-              <NavIcon d="m6 9 6 6 6-6" className="h-4 w-4 text-ink-faint transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="mt-4 space-y-4">
-              {weekly ? <WeeklySummaryCard summary={weekly} switchPath="/today" /> : null}
-              <TrainingLoadSummaryCard summary={today.training_load} />
-            </div>
-          </details>
-        </div>
-        </div>
-
-        {/* ---- the week ---- */}
-        <div className="space-y-4 @6xl:order-2">
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 sm:mt-6 @3xl:grid-cols-2 @3xl:gap-5 @6xl:grid-cols-3 @6xl:gap-6">
+        {/* ---- the scores ---- */}
+        {/* Two columns wide, the two scores share one row across the top; at
+            three columns they stack into the first column. */}
+        <div className="grid grid-cols-1 items-start gap-4 @3xl:col-span-2 @3xl:grid-cols-2 @3xl:gap-5 @6xl:order-1 @6xl:col-span-1 @6xl:grid-cols-1 @6xl:gap-6">
           <WeekCard
             adherence={adherence}
             today={todayIso}
@@ -211,9 +108,54 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             load={today.training_load}
           />
 
-          {streakView ? <StreakCard view={streakView} compact /> : null}
-
           {fitness ? <FitnessScoreCard view={fitness} /> : null}
+        </div>
+
+        {/* ---- today, one card per context ---- */}
+        <div className="space-y-4 @6xl:order-2">
+          <TrainingCard
+            doneToday={doneToday}
+            recent={recent}
+            next={next}
+            coached={today.has_coach}
+            streak={streakView ? <StreakRow view={streakView} /> : undefined}
+          />
+          <NutritionCard nutrition={nutrition} />
+          <HabitsCard habits={habits} />
+          <CoachCard checkIn={checkIn} coached={today.has_coach} unread={today.unread_from_coach} />
+        </div>
+
+        {/* ---- everything else ---- */}
+        <div className="space-y-4 @6xl:order-3">
+          <Card plain className="overflow-hidden p-0">
+            <p className="px-5 pt-[18px] text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.community}</p>
+            <ul className="mt-2 divide-y divide-line/60">
+              <LinkRow
+                href="/leaderboards"
+                icon="M4 20V10M12 20V4M20 20v-7"
+                label={t.common.leaderboards.title}
+                meta={board.me ? `#${board.me.rank}` : undefined}
+              />
+              <LinkRow
+                href="/challenges"
+                icon="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"
+                label={t.common.challenges.title}
+                meta={`${activeChallenges} ${d.active}`}
+              />
+              <LinkRow href="/feed" icon="M4 5h16v11H9l-5 4z" label={t.common.social.feed} />
+            </ul>
+          </Card>
+
+          <details id="weekly-report" open={reportOpen} className="group">
+            <summary className="glass glass--interactive flex list-none items-center justify-between gap-3 rounded-3xl px-5 py-3.5 [&::-webkit-details-marker]:hidden">
+              <span className="text-[14.5px] font-semibold">{d.weeklyReport}</span>
+              <NavIcon d="m6 9 6 6 6-6" className="h-4 w-4 text-ink-faint transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-4 space-y-4">
+              {weekly ? <WeeklySummaryCard summary={weekly} switchPath="/today" /> : null}
+              <TrainingLoadSummaryCard summary={today.training_load} />
+            </div>
+          </details>
         </div>
       </div>
     </div>

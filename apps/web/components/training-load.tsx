@@ -130,7 +130,7 @@ export function TrainingLoadSummaryCard({ summary }: { summary: TrainingLoadSumm
                 {trend.direction === "increased" ? "↑" : trend.direction === "decreased" ? "↓" : "→"}{" "}
                 {l.direction[trend.direction]}
               </p>
-              <p className={`whitespace-nowrap font-bold tabular-nums ${deltaTone} ${trend.delta_pct === null ? "text-sm leading-8" : "text-2xl"}`}>
+              <p className={`whitespace-nowrap font-bold tabular-nums ${deltaTone} ${trend.delta_pct === null ? "text-sm leading-8" : "text-xl sm:text-2xl"}`}>
                 {deltaText}
               </p>
             </div>

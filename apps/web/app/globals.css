@@ -53,7 +53,7 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     color-scheme: light;
-    --color-bg: #eceff3;
+    --color-bg: #e6e9ef;
     --color-surface: #ffffff;
     --color-ink: #121519;
     --color-ink-soft: #464d56;
@@ -76,7 +76,7 @@
 }
 :root[data-theme="light"] {
   color-scheme: light;
-  --color-bg: #eceff3;
+  --color-bg: #e6e9ef;
   --color-surface: #ffffff;
   --color-ink: #121519;
   --color-ink-soft: #464d56;
@@ -100,6 +100,10 @@
 body {
   background: var(--color-bg);
   color: var(--color-ink);
+  /* viewport-fit=cover (app/layout.tsx): keep flowing content clear of the
+     notch in landscape; the fixed bottom navs pad themselves the same way. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Sign-in modal (components/login-modal.tsx): dim + blur the page behind, no scroll. */
@@ -126,4 +130,338 @@ body:has(.app-dialog[open]) {
 /* Range inputs (set intensity, macro split) take the brand accent. */
 input[type="range"] {
   accent-color: var(--color-accent);
+}
+
+/* ==========================================================================
+   Liquid Glass — the translucent material (cards, floating bars, sheets,
+   controls). Tokens first, so the whole look is tuned from one place; the
+   material itself is the `.glass` family below. React wrapper and class
+   helper: components/liquid-glass.tsx.
+
+   Layers of one glass surface, bottom to top:
+     1. the element's own background: a 135° fall of light through a tinted
+        pane (two color-mix stops of --glass-tint), over a backdrop-filter
+        that blurs, saturates and very slightly brightens what is behind it;
+     2. ::before — the rim: a 1px ring cut with mask-composite, lit warm gold
+        at the top-left where the light hits, fading to nothing, then a
+        faint cool return at the bottom-right;
+     3. ::after — the specular: a soft radial pool of light in the top-left
+        corner and a hairline of light along the top edge;
+     4. the content. Both pseudo-elements sit at z-index -1 inside the
+        element's own stacking context (isolation: isolate), so nothing they
+        draw ever covers text, and they never take clicks.
+
+   Dark and light take different numbers: on near-black, a pane is a few
+   percent of white and the rim carries the light; on the light theme the
+   pane is mostly white and the rim is the one thing keeping it from
+   melting into the page.
+   ========================================================================== */
+:root {
+  --glass-tint: #ffffff;
+  --glass-alpha: 0.057;             /* standard pane */
+  --glass-alpha-strong: 0.106;       /* bars, sheets, popovers over busy content */
+  --glass-alpha-subtle: 0.031;      /* secondary controls */
+  --glass-intensity: 1;             /* multiplies every alpha above (LiquidGlass `intensity`) */
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-highlight: rgba(255, 255, 255, 0.28);          /* rim, lit side */
+  --glass-highlight-warm: rgba(230, 194, 90, 0.22);      /* the gold catch on the rim */
+  --glass-highlight-low: rgba(255, 255, 255, 0.05);      /* rim, shadow side */
+  --glass-specular: rgba(255, 255, 255, 0.07);           /* the pool of light inside */
+  --glass-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.18),
+    0 14px 36px -12px rgba(0, 0, 0, 0.55);
+  --glass-shadow-pressed:
+    0 1px 1px rgba(0, 0, 0, 0.18),
+    0 6px 16px -8px rgba(0, 0, 0, 0.5);
+  --glass-blur: 20px;
+  --glass-saturation: 160%;
+  --glass-brightness: 1.06;
+  --glass-contrast: 1.02;
+  --glass-radius: 1.5rem;
+  --glass-opacity: 1;
+  --glass-fallback-bg: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  --glass-motion: 180ms;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    /* Light: the pane is thinner (less white) so the colour fields behind it
+       show through, the rim goes gold-then-ink because white-on-white is
+       nothing, and the shadow does the lifting the rim cannot. */
+    --glass-alpha: 0.26;
+    --glass-alpha-strong: 0.44;
+    --glass-alpha-subtle: 0.16;
+    --glass-border: rgba(18, 21, 25, 0.12);
+    --glass-highlight: rgba(255, 255, 255, 1);
+    --glass-highlight-warm: rgba(201, 162, 39, 0.65);
+    --glass-highlight-low: rgba(18, 21, 25, 0.16);
+    --glass-specular: rgba(255, 255, 255, 0.9);
+    --glass-shadow:
+      0 1px 1px rgba(18, 21, 25, 0.06),
+      0 2px 6px rgba(18, 21, 25, 0.05),
+      0 20px 48px -16px rgba(18, 21, 25, 0.3);
+    --glass-shadow-pressed:
+      0 1px 1px rgba(18, 21, 25, 0.05),
+      0 8px 18px -10px rgba(18, 21, 25, 0.2);
+    --glass-blur: 22px;
+    --glass-saturation: 170%;
+    --glass-brightness: 1.03;
+    --glass-contrast: 1.02;
+  }
+}
+:root[data-theme="light"] {
+  /* Light: the pane is thinner (less white) so the colour fields behind it
+     show through, the rim goes gold-then-ink because white-on-white is
+     nothing, and the shadow does the lifting the rim cannot. */
+  --glass-alpha: 0.26;
+  --glass-alpha-strong: 0.44;
+  --glass-alpha-subtle: 0.16;
+  --glass-border: rgba(18, 21, 25, 0.12);
+  --glass-highlight: rgba(255, 255, 255, 1);
+  --glass-highlight-warm: rgba(201, 162, 39, 0.65);
+  --glass-highlight-low: rgba(18, 21, 25, 0.16);
+  --glass-specular: rgba(255, 255, 255, 0.9);
+  --glass-shadow:
+    0 1px 1px rgba(18, 21, 25, 0.06),
+    0 2px 6px rgba(18, 21, 25, 0.05),
+    0 20px 48px -16px rgba(18, 21, 25, 0.3);
+  --glass-shadow-pressed:
+    0 1px 1px rgba(18, 21, 25, 0.05),
+    0 8px 18px -10px rgba(18, 21, 25, 0.2);
+  --glass-blur: 22px;
+  --glass-saturation: 170%;
+  --glass-brightness: 1.03;
+  --glass-contrast: 1.02;
+}
+
+/* Phones: a smaller blur radius is the single biggest saving — the blur cost
+   grows with radius, and a 14px blur reads the same as 20px at that size. */
+@media (max-width: 640px) {
+  :root {
+    --glass-blur: 14px;
+  }
+}
+
+/* Ambient light behind everything: two soft fields, gold from the top-left
+   and a cool return from the bottom-right, at a few percent. The page colour
+   stays; this only gives the glass something to refract — over a flat colour
+   a blur is invisible. Fixed and non-interactive, one layer for the page. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 55% at 12% -5%, rgba(212, 169, 56, 0.11), transparent 62%),
+    radial-gradient(55% 45% at 95% 100%, rgba(122, 146, 190, 0.09), transparent 60%);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) body::before {
+    background:
+      radial-gradient(70% 50% at 8% -6%, rgba(201, 162, 39, 0.42), transparent 62%),
+      radial-gradient(55% 45% at 102% 26%, rgba(110, 138, 190, 0.38), transparent 60%),
+      radial-gradient(45% 35% at 22% 72%, rgba(201, 162, 39, 0.2), transparent 60%),
+      radial-gradient(60% 45% at 60% 110%, rgba(255, 255, 255, 0.95), transparent 62%);
+  }
+}
+:root[data-theme="light"] body::before {
+  background:
+    radial-gradient(70% 50% at 8% -6%, rgba(201, 162, 39, 0.42), transparent 62%),
+    radial-gradient(55% 45% at 102% 26%, rgba(110, 138, 190, 0.38), transparent 60%),
+    radial-gradient(45% 35% at 22% 72%, rgba(201, 162, 39, 0.2), transparent 60%),
+    radial-gradient(60% 45% at 60% 110%, rgba(255, 255, 255, 0.95), transparent 62%);
+}
+
+@layer components {
+  .glass {
+    --_a: calc(var(--glass-alpha) * var(--glass-intensity));
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--glass-radius);
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--glass-tint) calc((var(--_a) + 0.05) * 100%), transparent) 0%,
+        color-mix(in srgb, var(--glass-tint) calc(var(--_a) * 100%), transparent) 55%,
+        color-mix(in srgb, var(--glass-tint) calc((var(--_a) + 0.015) * 100%), transparent) 100%
+      );
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness)) contrast(var(--glass-contrast));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness)) contrast(var(--glass-contrast));
+    box-shadow:
+      inset 0 0 0 1px var(--glass-border),
+      var(--glass-shadow);
+    opacity: var(--glass-opacity);
+  }
+  /* the rim */
+  .glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      135deg,
+      var(--glass-highlight) 0%,
+      var(--glass-highlight-warm) 14%,
+      transparent 42%,
+      transparent 62%,
+      var(--glass-highlight-low) 100%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+  /* the specular */
+  .glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.85;
+    background:
+      radial-gradient(90% 55% at 18% -8%, var(--glass-specular), transparent 60%),
+      linear-gradient(180deg, color-mix(in srgb, var(--glass-highlight) 55%, transparent) 0, transparent 1px);
+  }
+
+  .glass--strong {
+    --_a: calc(var(--glass-alpha-strong) * var(--glass-intensity));
+  }
+  .glass--subtle {
+    --_a: calc(var(--glass-alpha-subtle) * var(--glass-intensity));
+  }
+  /* A pane inside a pane blurs a surface that is already frosted: drop the
+     filter there, keep the material. This is also what keeps a page to a
+     handful of backdrop-filters — cards carry them, the controls in them
+     don't. Strong panes are exempt: they are the popovers and sheets that
+     hang out of their parent over other content. */
+  .glass .glass:not(.glass--strong) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: inset 0 0 0 1px var(--glass-border);
+  }
+
+  /* ---- interaction: hover lifts the light, press sets the pane down ---- */
+  .glass--interactive {
+    cursor: pointer;
+    transition:
+      transform var(--glass-motion) cubic-bezier(0.2, 0.7, 0.2, 1),
+      box-shadow var(--glass-motion) ease,
+      filter var(--glass-motion) ease,
+      background-color var(--glass-motion) ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .glass--interactive::before,
+  .glass--interactive::after {
+    transition: opacity var(--glass-motion) ease;
+  }
+  @media (hover: hover) {
+    .glass--interactive:hover,
+    .glass--hover {
+      filter: brightness(1.04) contrast(1.02);
+      transform: scale(1.006);
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--glass-border) 100%, var(--glass-highlight) 35%),
+        var(--glass-shadow);
+    }
+    .glass--interactive:hover::after,
+    .glass--hover::after {
+      opacity: 1;
+    }
+  }
+  .glass--interactive:active,
+  .glass--pressed {
+    transform: scale(0.985);
+    filter: brightness(0.98);
+    box-shadow:
+      inset 0 0 0 1px var(--glass-border),
+      var(--glass-shadow-pressed);
+  }
+  .glass--interactive:active::after,
+  .glass--pressed::after {
+    opacity: 0.5;
+  }
+  .glass--interactive:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .glass--interactive:disabled,
+  .glass--interactive[aria-disabled="true"],
+  .glass--disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    transform: none;
+    filter: none;
+  }
+
+  /* ---- the accent pane: the primary button, gold all the way through ----
+     Opaque on purpose — dark text on gold must stay legible over anything —
+     but built like the glass: a fall of light, a lit rim, a specular. */
+  .glass--accent {
+    --glass-tint: var(--color-accent);
+    --glass-border: color-mix(in srgb, var(--color-accent) 70%, #000 30%);
+    --glass-highlight: rgba(255, 255, 255, 0.6);
+    --glass-highlight-warm: rgba(255, 244, 200, 0.55);
+    --glass-highlight-low: rgba(0, 0, 0, 0.12);
+    --glass-specular: rgba(255, 255, 255, 0.22);
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-accent) 84%, #fff) 0%,
+      var(--color-accent) 48%,
+      color-mix(in srgb, var(--color-accent) 93%, #000) 100%
+    );
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow:
+      inset 0 0 0 1px var(--glass-border),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 1px 1px rgba(0, 0, 0, 0.15),
+      0 8px 20px -8px color-mix(in srgb, var(--color-accent) 55%, transparent);
+    color: var(--color-accent-fg);
+  }
+  .glass .glass--accent {
+    box-shadow:
+      inset 0 0 0 1px var(--glass-border),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 6px 16px -8px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  .glass--accent.glass--interactive:active,
+  .glass--accent.glass--pressed {
+    box-shadow:
+      inset 0 0 0 1px var(--glass-border),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 3px 10px -6px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+
+  /* ---- no backdrop-filter, or the person asked for less transparency:
+          an almost-opaque pane, same rim, same shadow, same hierarchy ---- */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass:not(.glass--accent) {
+      background: var(--glass-fallback-bg);
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass:not(.glass--accent) {
+      background: var(--glass-fallback-bg);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .glass--interactive,
+    .glass--interactive::before,
+    .glass--interactive::after {
+      transition: none;
+    }
+    .glass--interactive:hover,
+    .glass--interactive:active,
+    .glass--hover,
+    .glass--pressed {
+      transform: none;
+    }
+  }
 }

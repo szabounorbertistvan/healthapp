@@ -80,6 +80,36 @@ export function StreakCard({ view, compact = false }: { view: StreakView; compac
   );
 }
 
+/**
+ * The streak as one row of the Today training card: flame, "12 day streak",
+ * the best on the right, tap for the calendar. Same words as the card,
+ * without a card of its own.
+ */
+export function StreakRow({ view }: { view: StreakView }) {
+  const x = useStreakText();
+  const { current, longest, activeToday, activeYesterday } = view.summary;
+  const none = current === 0;
+  return (
+    <li>
+      <Link href="/streak" className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-bg/60">
+        <span className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full bg-accent-soft text-accent" aria-hidden>
+          <NavIcon d={FLAME} className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14.5px] font-semibold">{none ? x.s.startTitle : x.dayStreak(current)}</span>
+          <span className="mt-0.5 block text-[12.5px] leading-snug text-ink-faint">
+            {none ? x.s.startBody : activeToday ? x.consecutive(current) : activeYesterday ? x.s.keepGoing : x.consecutive(current)}
+          </span>
+        </span>
+        {!none && longest > 0 ? (
+          <span className="shrink-0 text-[12.5px] tabular-nums text-ink-faint">{x.best(longest)}</span>
+        ) : null}
+        <NavIcon d={CHEVRON} className="h-4 w-4 shrink-0 text-ink-faint [stroke-width:2.2]" />
+      </Link>
+    </li>
+  );
+}
+
 // ---------- calendar ----------
 
 /**

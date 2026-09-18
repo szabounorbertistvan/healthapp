@@ -33,7 +33,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
         <ChallengeStatusBadge status={c.status} />
       </div>
 
-      <div className="mt-5 grid items-start gap-4 sm:mt-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)] xl:gap-6">
+      <div className="mt-5 grid grid-cols-1 items-start gap-4 sm:mt-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)] xl:gap-6">
         <Card plain>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.type[c.type]}</p>
           {c.description ? <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{c.description}</p> : null}

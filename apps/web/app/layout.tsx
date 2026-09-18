@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Exo_2, Inter } from "next/font/google";
 import "./globals.css";
 import { CookieBanner } from "@/components/cookie-banner";
@@ -16,6 +16,16 @@ const exo2 = Exo_2({ subsets: ["latin", "latin-ext"], weight: ["600", "700", "80
 export const metadata: Metadata = {
   title: `${APP_NAME} — ${APP_TAGLINE}`,
   description: "Antrenament, nutriție, check-in-uri și coaching într-o singură aplicație. Training, nutrition, check-ins and coaching in one app.",
+};
+
+// viewport-fit=cover lets the page run under the iPhone home indicator and
+// notch; without it Safari reports every env(safe-area-inset-*) as 0 and the
+// fixed bottom nav (which already pads with it) sits on a bare strip above the
+// indicator. The nav and the "More" sheet are the only edges that reach it.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

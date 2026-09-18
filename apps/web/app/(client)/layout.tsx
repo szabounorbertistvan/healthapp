@@ -63,7 +63,8 @@ export default async function ClientLayout({ children }: { children: React.React
             and the tab bar has no room to spare, so the phone gets its own slim
             header carrying both. Without it a client on the surface they
             actually use could never switch language or sign out. */}
-        <header className="flex h-14 items-center justify-between gap-3 px-3 pl-4 sm:hidden">
+        {/* Sticky and glass: a floating strip the page scrolls under. */}
+        <header className="glass glass--strong sticky top-2 z-10 mx-3 flex h-14 items-center justify-between gap-3 rounded-2xl px-2 pl-3.5 sm:hidden">
           <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold tracking-tight">
             <LogoMark className="h-6 w-6" px={24} />
             <span className="truncate">{name}</span>
@@ -74,17 +75,17 @@ export default async function ClientLayout({ children }: { children: React.React
               href="/feed"
               aria-label={t.common.social.feed}
               title={t.common.social.feed}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft hover:text-ink"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink"
             >
               <NavIcon d="M4 5h16v11H9l-5 4z" className="h-[18px] w-[18px]" />
             </Link>
             <NotificationBell notifications={notifications} unread={unread} />
             <LanguageSelector />
             <ThemeToggle />
-            <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-lg text-ink-soft hover:text-ink disabled:opacity-50" />
+            <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center text-lg disabled:opacity-50 rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink" />
           </div>
         </header>
-        <main className="flex-1 px-4 pb-28 pt-1 sm:px-10 sm:pb-12 sm:pt-7">{children}</main>
+        <main className="min-w-0 flex-1 px-4 pb-28 pt-3 sm:px-10 sm:pb-12 sm:pt-7">{children}</main>
       </div>
       <ClientTabBar coach={coach} />
     </div>

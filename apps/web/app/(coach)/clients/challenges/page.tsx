@@ -36,7 +36,7 @@ export default async function CoachChallengesPage() {
         {rows.length === 0 ? (
           <EmptyState plain title={ch.coachEmpty} hint={ch.emptyHint} />
         ) : (
-          <div className="grid items-start gap-3 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] sm:gap-4">
+          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] sm:gap-4">
             {rows.map(({ challenge: c, clients }) => (
               <Card key={c.id} plain className="overflow-hidden p-0">
                 <div className="flex items-start justify-between gap-3 px-5 pb-4 pt-[18px]">

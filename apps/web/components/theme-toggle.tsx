@@ -41,7 +41,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       aria-label={label}
       title={label}
       // 44px square on phones (thumb target), 32px next to the sidebar nav.
-      className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft hover:text-ink sm:h-8 sm:w-8 ${pending ? "opacity-60" : ""} ${className}`}
+      className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink sm:h-8 sm:w-8 ${pending ? "opacity-60" : ""} ${className}`}
     >
       {theme === "system" ? (
         // half-filled circle: "follows the device"

@@ -72,7 +72,7 @@ export default async function ProgressPage() {
         <Stat icon={ICON.trophy} label={t.clientApp.progress.personalRecords} value={String(prs.length)} accent />
       </div>
 
-      <div className="mt-4 grid items-start gap-4 sm:mt-6 @3xl:grid-cols-2 @3xl:gap-5 @6xl:grid-cols-3 @6xl:gap-6">
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 sm:mt-6 @3xl:grid-cols-2 @3xl:gap-5 @6xl:grid-cols-3 @6xl:gap-6">
         {/* ---- weight: the trend, then the weigh-in that feeds it ---- */}
         <div className="space-y-4">
           <Card plain>

@@ -27,7 +27,7 @@ export default async function HabitsPage() {
         </span>
       </header>
 
-      <div className="mt-5 grid items-start gap-4 sm:mt-6 lg:grid-cols-2 lg:gap-6">
+      <div className="mt-5 grid grid-cols-1 items-start gap-4 sm:mt-6 lg:grid-cols-2 lg:gap-6">
         {habits.length === 0 ? (
           <EmptyState
             plain

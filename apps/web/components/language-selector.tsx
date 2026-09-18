@@ -25,7 +25,7 @@ export function LanguageSelector({ className = "" }: { className?: string }) {
     <div
       role="group"
       aria-label={t.common.language.label}
-      className={`inline-flex overflow-hidden rounded-lg border border-line text-xs font-semibold ${pending ? "opacity-60" : ""} ${className}`}
+      className={`glass glass--subtle inline-flex overflow-hidden rounded-lg text-xs font-semibold ${pending ? "opacity-60" : ""} ${className}`}
     >
       {locales.map((l) => (
         <button
@@ -36,7 +36,7 @@ export function LanguageSelector({ className = "" }: { className?: string }) {
           title={t.common.language[l]}
           // 44px tall on phones (thumb target); the desktop sidebar keeps the slim pill.
           className={`min-h-11 px-3 sm:min-h-0 sm:px-2.5 sm:py-1.5 ${
-            l === locale ? "bg-accent text-accent-fg" : "bg-surface text-ink-soft hover:text-ink"
+            l === locale ? "bg-accent text-accent-fg" : "text-ink-soft hover:text-ink"
           }`}
         >
           {SHORT[l]}

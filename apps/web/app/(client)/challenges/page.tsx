@@ -38,7 +38,7 @@ export default async function ChallengesPage() {
                     {items.length}
                   </span>
                 </div>
-                <div className="grid items-start gap-3 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] sm:gap-4">
+                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] sm:gap-4">
                   {items.map((c) => (
                     <ChallengeCard key={c.id} challenge={c} />
                   ))}

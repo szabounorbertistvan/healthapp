@@ -105,7 +105,7 @@ const TAB_HREFS = ["/today", "/workout", "/food", "/habits"];
 
 /**
  * Phone tab bar — the client surface is thumb-first, unlike the coach desk.
- * A flush strip on the surface colour with a hairline on top: four cells of
+ * A floating glass pane a thumb's width off the bottom edge: four cells of
  * icon + label plus "More", tall enough for the targets to clear 44px, the
  * active one in the accent with a short bar under its label. The sheet holds
  * the sections the bar cannot fit (progress, check-in, challenges, feed,
@@ -158,7 +158,7 @@ export function ClientTabBar({ coach = false }: { coach?: boolean }) {
             role="dialog"
             aria-modal="true"
             aria-label={t.common.moreSheet.title}
-            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-3xl bg-surface p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
+            className="glass glass--strong absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-3xl rounded-b-none p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
             <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
@@ -188,7 +188,8 @@ export function ClientTabBar({ coach = false }: { coach?: boolean }) {
         </div>
       ) : null}
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface px-1.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2 sm:hidden">
+      {/* A floating pane, clear of the screen edges and the home indicator. */}
+      <nav className="glass glass--strong fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-[calc(0.75rem+env(safe-area-inset-left))] right-[calc(0.75rem+env(safe-area-inset-right))] z-30 grid grid-cols-5 rounded-[26px] px-1.5 py-1.5 sm:hidden">
         {tabs.map((item) => {
           const active = pathname.startsWith(item.href);
           return (

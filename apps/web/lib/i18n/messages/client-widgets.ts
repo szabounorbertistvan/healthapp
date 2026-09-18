@@ -192,6 +192,7 @@ const en = {
       why: "Fibre, vitamins and volume for very few calories — the easiest way to feel full while eating in a deficit.",
     },
   },
+  habitCategories: { nutrition: "Nutrition", movement: "Movement", recovery: "Recovery", own: "Your own" },
   macroTargets: {
     protein: "Protein",
     carbs: "Carbs",
@@ -390,6 +391,7 @@ const ro: typeof en = {
       why: "Fibre, vitamine și volum pentru foarte puține calorii — cel mai simplu mod de a te simți sătul într-un deficit.",
     },
   },
+  habitCategories: { nutrition: "Nutriție", movement: "Mișcare", recovery: "Recuperare", own: "Ale tale" },
   macroTargets: {
     protein: "Proteine",
     carbs: "Carbohidrați",

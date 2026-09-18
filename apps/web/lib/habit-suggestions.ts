@@ -31,3 +31,38 @@ export function suggestionKeyForName(name: string): HabitSuggestionKey | null {
   }
   return null;
 }
+
+// ---------- categories ----------
+
+/**
+ * The order the lists show habits in: what you eat, how you move, how you
+ * recover, then whatever the person wrote themselves. `habits` has no
+ * category column, so a category is recovered from the suggestion the name
+ * matches — a custom habit is "own".
+ */
+export const HABIT_CATEGORIES = ["nutrition", "movement", "recovery", "own"] as const;
+
+export type HabitCategory = (typeof HABIT_CATEGORIES)[number];
+
+const CATEGORY_OF: Record<HabitSuggestionKey, Exclude<HabitCategory, "own">> = {
+  water: "nutrition", protein: "nutrition", vegetables: "nutrition",
+  steps: "movement", stretching: "movement",
+  sleep: "recovery", meditation: "recovery",
+};
+
+export function habitCategory(name: string): HabitCategory {
+  const key = suggestionKeyForName(name);
+  return key ? CATEGORY_OF[key] : "own";
+}
+
+/** The rows bucketed in HABIT_CATEGORIES order; empty categories are left out. */
+export function groupHabitsByCategory<T extends { name: string }>(
+  rows: T[],
+): { category: HabitCategory; habits: T[] }[] {
+  const buckets = new Map<HabitCategory, T[]>(HABIT_CATEGORIES.map((c) => [c, []]));
+  for (const row of rows) buckets.get(habitCategory(row.name))!.push(row);
+  return HABIT_CATEGORIES.flatMap((category) => {
+    const habits = buckets.get(category)!;
+    return habits.length > 0 ? [{ category, habits }] : [];
+  });
+}

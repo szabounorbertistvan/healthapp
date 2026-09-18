@@ -41,7 +41,7 @@ export default async function AdminPage({
         <Counter icon={ICON.link} label={t.coachApp.admin.activePairs} value={stats.active_relationships} />
       </div>
 
-      <div className="mt-4 grid items-start gap-4 sm:mt-5 lg:grid-cols-[300px_1fr] lg:gap-6">
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 sm:mt-5 lg:grid-cols-[300px_1fr] lg:gap-6">
         <Card plain>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
             {t.coachApp.admin.activeSubscriptions}
