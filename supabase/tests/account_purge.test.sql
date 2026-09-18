@@ -30,10 +30,10 @@ values ('e0000000-0000-0000-0000-0000000000e1', 'c0000000-0000-0000-0000-0000000
 insert into public.programs (id, coach_id, client_id, name, status)
 values ('40000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-00000000000c',
         'c0000000-0000-0000-0000-000000000001', 'Client Program', 'published');
-insert into public.program_days (id, program_id, name, position)
-values ('4d000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 'Pull', 1);
-insert into public.program_exercises (program_day_id, exercise_id, sets, reps, position)
-values ('4d000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-0000000000e1', 3, '8', 1);
+insert into public.program_days (id, program_id, week_index, day_index, name)
+values ('4d000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 1, 1, 'Pull');
+insert into public.program_exercises (program_day_id, exercise_id, position, target_sets, target_reps)
+values ('4d000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-0000000000e1', 0, 3, '8');
 
 -- ---------- request: hidden immediately ----------
 set local role authenticated;
