@@ -163,9 +163,9 @@ input[type="range"] {
      black grey), and the rim carries the light: crisp white on the lit side,
      the gold catch just after it, a faint return on the shadow side. */
   --glass-tint: #ffffff;
-  --glass-alpha: 0.028;             /* standard pane */
-  --glass-alpha-strong: 0.075;      /* bars, sheets, popovers over busy content */
-  --glass-alpha-subtle: 0.018;      /* secondary controls */
+  --glass-alpha: 0.021;             /* standard pane */
+  --glass-alpha-strong: 0.056;      /* bars, sheets, popovers over busy content */
+  --glass-alpha-subtle: 0.014;      /* secondary controls */
   --glass-intensity: 1;             /* multiplies every alpha above (LiquidGlass `intensity`) */
   --glass-border: rgba(255, 255, 255, 0.13);
   --glass-highlight: rgba(255, 255, 255, 0.3);           /* rim, lit side */
@@ -193,9 +193,9 @@ input[type="range"] {
     /* Light: the pane is thinner (less white) so the colour fields behind it
        show through, the rim goes gold-then-ink because white-on-white is
        nothing, and the shadow does the lifting the rim cannot. */
-    --glass-alpha: 0.26;
-    --glass-alpha-strong: 0.44;
-    --glass-alpha-subtle: 0.16;
+    --glass-alpha: 0.195;
+    --glass-alpha-strong: 0.33;
+    --glass-alpha-subtle: 0.12;
     --glass-border: rgba(18, 21, 25, 0.12);
     --glass-highlight: rgba(255, 255, 255, 1);
     --glass-highlight-warm: rgba(201, 162, 39, 0.65);
@@ -219,9 +219,9 @@ input[type="range"] {
   /* Light: the pane is thinner (less white) so the colour fields behind it
      show through, the rim goes gold-then-ink because white-on-white is
      nothing, and the shadow does the lifting the rim cannot. */
-  --glass-alpha: 0.26;
-  --glass-alpha-strong: 0.44;
-  --glass-alpha-subtle: 0.16;
+  --glass-alpha: 0.195;
+  --glass-alpha-strong: 0.33;
+  --glass-alpha-subtle: 0.12;
   --glass-border: rgba(18, 21, 25, 0.12);
   --glass-highlight: rgba(255, 255, 255, 1);
   --glass-highlight-warm: rgba(201, 162, 39, 0.65);
