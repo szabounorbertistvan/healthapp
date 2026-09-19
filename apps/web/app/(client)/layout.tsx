@@ -10,6 +10,8 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { Avatar } from "@/components/social";
 import { NotificationBell } from "@/components/notification-bell";
 import { UnitsProvider } from "@/lib/units/client";
+import { RestTimerProvider } from "@/lib/rest-timer/client";
+import { RestTimerBar } from "@/components/rest-timer-bar";
 import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -34,6 +36,9 @@ export default async function ClientLayout({ children }: { children: React.React
 
   return (
     <UnitsProvider weight={profile.weight_unit} length={profile.length_unit}>
+    {/* The rest timer lives here, above every (client) route, so a countdown
+        started in the set logger follows the person to Today and back. */}
+    <RestTimerProvider prefs={profile.rest_prefs}>
     <div className="flex min-h-screen">
       {/* The sidebar sits on the page ground, no border: the cards are the
           only surfaces, so the eye has one kind of edge to read. */}
@@ -85,10 +90,14 @@ export default async function ClientLayout({ children }: { children: React.React
             <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center text-lg disabled:opacity-50 rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink" />
           </div>
         </header>
-        <main className="min-w-0 flex-1 px-4 pb-28 pt-3 sm:px-10 sm:pb-12 sm:pt-7">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col px-4 pb-28 pt-3 sm:px-10 sm:pb-12 sm:pt-7">
+          <div className="flex-1">{children}</div>
+          <RestTimerBar />
+        </main>
       </div>
       <ClientTabBar coach={coach} />
     </div>
+    </RestTimerProvider>
     </UnitsProvider>
   );
 }

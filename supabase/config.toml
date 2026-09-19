@@ -481,6 +481,11 @@ verify_jwt = true
 [functions.push-dispatch]
 verify_jwt = true
 
+# Called by the pg_cron tick (tick_rest_pushes) with the service-role key;
+# sends the "rest finished" Web Push. See migration 20260919100000.
+[functions.rest-push]
+verify_jwt = true
+
 # Called by Stripe, not by users — authenticity comes from the Stripe
 # signature, verified inside the function.
 [functions.stripe-webhook]

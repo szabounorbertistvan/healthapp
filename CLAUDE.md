@@ -181,6 +181,12 @@ third-party text writes it.
 - Date helpers (`isoDay`, `daysAgoIso`, `mondayOf`, `daysSince`) live in
   `lib/dates.ts`; serving sizes and the `FoodItem` / `FoodPortion` shapes live in
   `lib/food-portions.ts`. Both were carved out of the deleted demo modules.
+- The rest timer between sets is timestamp-based (`startedAt` / `endsAt` in
+  `packages/shared/src/rest-timer.ts`, persisted in `localStorage`), mounted
+  once in `(client)/layout.tsx`. Its "rest finished" push is a separate,
+  best-effort path (`public/sw.js`, `rest_pushes`, edge function `rest-push`)
+  that needs one-time VAPID setup — see docs/ENGINES.md. Never sound, never
+  `navigator.vibrate`.
 
 ## Deeper notes
 

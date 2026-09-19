@@ -40,6 +40,52 @@ create a program for a client, add a day, add an exercise from the 888-row
 library, set sets/reps/RIR/rest, publish, and confirm it reaches the client's
 Today. RLS and column grants all held; `mutated()` guards every update/delete.
 
+### Rest timer (added 2026-09-19)
+
+| | |
+|---|---|
+| Client | The sticky bar under every `(client)` route (`components/rest-timer-bar.tsx`), the per-exercise rest chip in `set-logger.tsx`, the **Rest timer** card on `/account` and `/settings` (`components/rest-settings.tsx`) |
+| Writes | [app/rest-actions.ts](../apps/web/app/rest-actions.ts): `saveRestPrefs`, `savePushSubscription` / `removePushSubscription`, `scheduleRestPush` / `cancelRestPush` |
+| Math | [packages/shared/src/rest-timer.ts](../packages/shared/src/rest-timer.ts) — `startRest` / `pauseRest` / `resumeRest` / `extendRest` / `skipRest` / `settleRest`, `remainingMs`, `markRestNotified`, `plannedSets` / `nextPlannedSet` / `restBetween`, `resolveRestSeconds`, `restAfterLoggedSet` |
+| State | `lib/rest-timer/client.tsx` (`RestTimerProvider`, mounted in `(client)/layout.tsx`), persisted in `localStorage` under `voinic-rest-timer-v1` (`lib/rest-timer/storage.ts`) |
+| Tables | `users.rest_prefs` (jsonb: default, per-lift overrides, notify), `push_subscriptions`, `rest_pushes` — migration `20260919100000_rest_timer.sql`, pgTAP `rest_timer.test.sql` |
+| Push | `public/sw.js` (push + notificationclick), `app/manifest.ts`, edge function `rest-push` (Web Push via `jsr:@negrel/webpush`), pg_cron `rest-push-tick` every 10 s → `tick_rest_pushes()` → `net.http_post` |
+
+After `logSet()` succeeds — and only then — `restAfterLoggedSet()` decides
+whether a rest starts: not after the workout's final set, not on a completed
+day, and not between the members of one superset round (the rest comes after
+the round). Duration: the person's override for the lift → the coach's
+`program_exercises.rest_seconds` → the person's default (60 s; presets 30/45/
+60/90/120/180 or custom 5–600). The timer is two epoch instants, `startedAt`
+and `endsAt`; the UI ticks every 250 ms only to re-read `Date.now()`, and
+`visibilitychange` re-settles it, so a phone that was locked shows the right
+remainder the moment it wakes. Pause freezes the remainder; resume recomputes
+`endsAt`; +15 s moves it; Skip ends it.
+
+Completion is announced once per timer id (`notifiedAt`): an in-app banner
+when the page is visible; a notification through the service worker when the
+tab is hidden but alive; and, when the device is asleep, the server push —
+scheduled as one `rest_pushes` row keyed by the timer id, claimed atomically
+by `claim_due_rest_pushes()` before sending. No sound, no vibration anywhere
+(`silent: true`, no `vibrate`); the OS and the person's settings have the
+last word on that.
+
+**Maturity: timer solid, push pipeline live.** The timer, settings and
+permission flow were driven in the browser on 2026-09-19, and the same day the
+server side was set up on the production project and exercised end-to-end
+(due row → cron tick → `net.http_post` → function `200 {"due":1,…}` → row
+marked sent): VAPID keys from `node scripts/vapid-keys.mjs`, function secrets
+`VAPID_KEYS_JSON` / `VAPID_SUBJECT`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` on Vercel,
+`supabase functions deploy rest-push`, vault secrets `rest_push_url` /
+`rest_push_key`. A new environment needs that list again. The function does
+not compare the bearer against `SUPABASE_SERVICE_ROLE_KEY` (the injected
+value no longer equals the legacy JWT once a project carries `sb_secret_`
+keys); it uses the caller's bearer as its client key and lets the grant on
+`claim_due_rest_pushes()` decide. What has *not* been observed yet is a real
+device receiving one — the desktop app's browser pane denies notifications by
+policy. Delivery latency is up to one tick (10 s). iOS delivers Web Push only
+to a Home-Screen-installed app, which is why the manifest exists.
+
 ---
 
 ## Nutrition

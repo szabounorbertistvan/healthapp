@@ -2,7 +2,7 @@
 import "server-only";
 import { cache } from "react";
 import { liveUser, supabaseServer } from "./supabase/server";
-import { effectiveTier, isLengthUnit, isWeightUnit, portionMacros, sumMacros } from "@healthapp/shared";
+import { effectiveTier, isLengthUnit, isWeightUnit, normalizeRestPrefs, portionMacros, sumMacros } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import type {
   AdminStats, AdminUserRow, CheckInRow, ClientRow, ConversationRow, DashboardRow,
@@ -15,7 +15,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   if (!live) return null;
   const { supabase, userId } = live;
   const [{ data: user }, { data: sub }] = await Promise.all([
-    supabase.from("users").select("id, full_name, username, avatar_url, city, bio, sex, birth_year, timezone, check_in_weekday, leaderboard_visibility, weight_unit, length_unit, role").eq("id", userId).single(),
+    supabase.from("users").select("id, full_name, username, avatar_url, city, bio, sex, birth_year, timezone, check_in_weekday, leaderboard_visibility, weight_unit, length_unit, rest_prefs, role").eq("id", userId).single(),
     supabase.from("subscriptions")
       .select("tier, status, trial_ends_at, stripe_customer_id")
       .eq("user_id", userId).maybeSingle(),
@@ -37,6 +37,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     length_unit: isLengthUnit(user.length_unit) ? user.length_unit : "cm",
     leaderboard_visibility:
       (user.leaderboard_visibility as Profile["leaderboard_visibility"] | null) ?? "public",
+    rest_prefs: normalizeRestPrefs(user.rest_prefs),
     role,
     tier: effectiveTier(sub ? { ...sub, tier: sub.tier as Tier } : null, role),
     trial_ends_at: sub?.trial_ends_at ?? null,

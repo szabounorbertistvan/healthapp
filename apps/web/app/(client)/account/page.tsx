@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/data";
 import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/account";
+import { RestTimerCard } from "@/components/rest-settings";
 
 /**
  * The client's account screen. It carries only controls that change something:
@@ -34,6 +35,8 @@ export default async function AccountPage() {
           weightUnit={profile.weight_unit}
           lengthUnit={profile.length_unit}
         />
+
+        <RestTimerCard prefs={profile.rest_prefs} />
 
         <DataExportCard />
 

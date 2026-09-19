@@ -107,9 +107,21 @@ nothing a free one does not, and `coach_pro` buys only the bigger roster.
 The landing page and the checkout panel now mark those three with a "soon"
 badge instead of a tick (2026-09-16).
 
-**No offline anything.** No service worker, no IndexedDB, no outbox — the web
-app simply fails without a connection, and `sync-ingest` / `packages/shared/src/sync.ts`
-remain unused. The landing page claimed "offline logging" until 2026-09-16.
+**No offline anything.** No IndexedDB, no outbox — the web app simply fails
+without a connection, and `sync-ingest` / `packages/shared/src/sync.ts` remain
+unused. The landing page claimed "offline logging" until 2026-09-16. There *is*
+a service worker since 2026-09-19 (`public/sw.js`), but it exists only for the
+rest timer's Web Push and caches nothing — a rest already counting down keeps
+counting offline, that is all.
+
+**Rest-timer push: pipeline live, device delivery unobserved.** The Web Push
+path (migration `20260919100000`, edge function `rest-push`, cron
+`rest-push-tick`) was fully set up on production on 2026-09-19 and driven
+through to the function claiming a due row. No real phone has yet been seen
+receiving one (the dev browser pane denies notifications); the first person
+to enable notifications on `/account` from a normal browser will be that
+test. `push-dispatch` (Expo) remains unused — the web push is a separate,
+smaller path.
 
 **~~No GDPR export or account deletion~~ — closed 2026-09-16.** `/account` carries
 both: `downloadMyData` (lib/data-export.ts) hands the browser one JSON file with

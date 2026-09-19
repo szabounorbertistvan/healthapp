@@ -2,7 +2,7 @@ import type {
   AdherenceResult, ChallengeStatus, ChallengeType, LoadTrend, Macros, PostPayload, PostType,
   PostVisibility, TrainingLoad,
 } from "@healthapp/shared";
-import type { LengthUnit, WeightUnit } from "@healthapp/shared";
+import type { LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
 import type { ExerciseType } from "./exercise-types";
 
@@ -34,6 +34,8 @@ export type Profile = {
   length_unit: LengthUnit;
   /** Who may see this person on a leaderboard. Defaults to public in SQL. */
   leaderboard_visibility: "public" | "followers" | "private";
+  /** Rest timer between sets: default, per-lift overrides, notifications. Normalised on read. */
+  rest_prefs: RestPrefs;
   role: Role;
   /** Effective tier — includes an active 30-day trial, not just paid tiers. */
   tier: Tier;

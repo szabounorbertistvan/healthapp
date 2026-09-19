@@ -6,6 +6,7 @@ import { getProfile } from "@/lib/data";
 import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { ProfileForm } from "@/components/account";
+import { RestTimerCard } from "@/components/rest-settings";
 
 export default async function SettingsPage() {
   const { t } = await getI18n();
@@ -38,6 +39,9 @@ export default async function SettingsPage() {
           weightUnit={profile.weight_unit}
           lengthUnit={profile.length_unit}
         />
+
+        {/* A coach trains too (My training): their own rest between sets. */}
+        <RestTimerCard prefs={profile.rest_prefs} />
 
         {/* Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
 
