@@ -157,32 +157,36 @@ input[type="range"] {
    melting into the page.
    ========================================================================== */
 :root {
-  /* Dark: almost no fill — a pane is read by its edge, not its body. The
-     white in the body is a few percent at the lit corner and nearly nothing
-     elsewhere, brightness stays at 1 (lifting it is what turned the blurred
-     black grey), and the rim carries the light: crisp white on the lit side,
-     the gold catch just after it, a faint return on the shadow side. */
+  /* Dark: a pane is read by its body *and* its edge. A blur over a flat
+     near-black is invisible, so what makes this glass is the ambient fields
+     (body::before) showing through a real pane — a few percent of white in
+     the body, a little more at the lit corner. Brightness stays at 1 and
+     contrast goes slightly up: lifting brightness is what turned the blurred
+     black grey, while contrast keeps the blacks black and the gold field
+     bright, which is the difference between frosted and milky. The rim
+     carries the rest of the light: crisp white on the lit side, the gold
+     catch just after it, a faint return on the shadow side. */
   --glass-tint: #ffffff;
-  --glass-alpha: 0.021;             /* standard pane */
-  --glass-alpha-strong: 0.056;      /* bars, sheets, popovers over busy content */
-  --glass-alpha-subtle: 0.014;      /* secondary controls */
+  --glass-alpha: 0.058;             /* standard pane */
+  --glass-alpha-strong: 0.11;       /* bars, sheets, popovers over busy content */
+  --glass-alpha-subtle: 0.036;      /* secondary controls */
   --glass-intensity: 1;             /* multiplies every alpha above (LiquidGlass `intensity`) */
-  --glass-border: rgba(255, 255, 255, 0.13);
-  --glass-highlight: rgba(255, 255, 255, 0.3);           /* rim, lit side */
-  --glass-highlight-warm: rgba(230, 194, 90, 0.15);      /* the gold catch on the rim */
-  --glass-highlight-low: rgba(255, 255, 255, 0.05);      /* rim, shadow side */
-  --glass-specular: rgba(255, 255, 255, 0.022);          /* the pool of light inside */
-  --glass-corner: 0.028;                                 /* extra fill at the lit corner */
+  --glass-border: rgba(255, 255, 255, 0.17);
+  --glass-highlight: rgba(255, 255, 255, 0.42);          /* rim, lit side */
+  --glass-highlight-warm: rgba(230, 194, 90, 0.26);      /* the gold catch on the rim */
+  --glass-highlight-low: rgba(255, 255, 255, 0.08);      /* rim, shadow side */
+  --glass-specular: rgba(255, 255, 255, 0.055);          /* the pool of light inside */
+  --glass-corner: 0.05;                                  /* extra fill at the lit corner */
   --glass-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.2),
-    0 16px 40px -14px rgba(0, 0, 0, 0.6);
+    0 1px 1px rgba(0, 0, 0, 0.3),
+    0 18px 44px -14px rgba(0, 0, 0, 0.75);
   --glass-shadow-pressed:
-    0 1px 1px rgba(0, 0, 0, 0.2),
-    0 6px 16px -8px rgba(0, 0, 0, 0.5);
-  --glass-blur: 22px;
-  --glass-saturation: 150%;
-  --glass-brightness: 1.01;
-  --glass-contrast: 1;
+    0 1px 1px rgba(0, 0, 0, 0.3),
+    0 6px 16px -8px rgba(0, 0, 0, 0.6);
+  --glass-blur: 26px;
+  --glass-saturation: 175%;
+  --glass-brightness: 1;
+  --glass-contrast: 1.08;
   --glass-radius: 1.5rem;
   --glass-opacity: 1;
   --glass-fallback-bg: color-mix(in srgb, var(--color-surface) 96%, transparent);
@@ -260,8 +264,10 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(70% 55% at 12% -5%, rgba(212, 169, 56, 0.11), transparent 62%),
-    radial-gradient(55% 45% at 95% 100%, rgba(122, 146, 190, 0.09), transparent 60%);
+    radial-gradient(70% 55% at 10% -8%, rgba(212, 169, 56, 0.26), transparent 62%),
+    radial-gradient(55% 48% at 100% 22%, rgba(122, 146, 190, 0.2), transparent 60%),
+    radial-gradient(45% 38% at 24% 78%, rgba(212, 169, 56, 0.12), transparent 60%),
+    radial-gradient(60% 45% at 62% 108%, rgba(150, 170, 210, 0.13), transparent 62%);
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) body::before {

@@ -39,8 +39,6 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
     });
   }
 
-  const isEmpty = plan.meals.every((m) => m.foods.length === 0);
-
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -58,8 +56,7 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
           {error ? <span className="text-[13px] font-semibold text-risk">{error}</span> : null}
           <button
             onClick={() => run(() => publishNutritionPlan(plan.id))}
-            disabled={pending || isEmpty || plan.status === "published"}
-            title={isEmpty ? m.publishHint : undefined}
+            disabled={pending || plan.status === "published"}
             className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
           >
             <NavIcon d="m5 12 5 5 9-10" className="h-4 w-4 [stroke-width:2.2]" />
@@ -67,6 +64,15 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
           </button>
         </div>
       </div>
+
+      {/* The program builder has always said this out loud; the plan builder did
+          not, and a coach who set the targets, saw four meal cards and pressed
+          publish had no way to tell the plan was still a template. */}
+      {plan.status !== "published" ? (
+        <p className="mb-4 rounded-2xl bg-warn-soft px-4 py-3 text-[12.5px] font-medium text-warn">
+          {fill(m.draftNotice, { name: plan.client_name })}
+        </p>
+      ) : null}
 
       <TargetsCard plan={plan} />
 

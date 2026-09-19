@@ -10,10 +10,12 @@ import { notSignedIn } from "@/lib/action-result";
 
 // Nutrition plan builder writes (W6, Sprint 6).
 //
-// Same two-branch shape as the program builder, and the same status: written to
-// the schema, not yet driven end-to-end against a live project. Every
-// update/delete goes through `mutated()` so an RLS-filtered write cannot report
-// success. See docs/superpowers/specs/2026-09-08-s1-*.
+// Same shape as the program builder. Driven against the live project on
+// 2026-09-19 for addPlanFood / removePlanFood / publishNutritionPlan, with the
+// client's read of the published plan checked on the other side; the grams,
+// day-variant and create paths are still unverified. Every update/delete goes
+// through `mutated()` so an RLS-filtered write cannot report success. See
+// docs/superpowers/specs/2026-09-08-s1-*.
 
 export async function searchFoods(q: string): Promise<FoodItem[]> {
   const supabase = await supabaseServer();

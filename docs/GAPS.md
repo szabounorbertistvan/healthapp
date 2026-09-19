@@ -14,12 +14,13 @@ for it and unused: `supabase/functions/sync-ingest` (offline outbox),
 `supabase/functions/push-dispatch` (`users.push_token` is never written by any
 client), and `packages/shared/src/sync.ts`.
 
-**The nutrition builder is unproven.** `nutrition-actions.ts` says so in its own
-header comment. Since demo mode was removed on 2026-09-14 there is no fallback
-behind it: it is the only path and has never been driven end-to-end. Expect
-column-name and join surprises. (The *program* builder was proven on 2026-09-14
-— see docs/ENGINES.md — so the same shape of code does work against the real
-schema; that is reassuring but not a substitute for running this one.)
+**The nutrition builder is partly proven — 2026-09-19.** Driven against the live
+project as coach Andrei: `addPlanFood`, `removePlanFood` and
+`publishNutritionPlan` all work, and the client then reads the plan under RLS
+(verified both for a targets-only plan and for the seeded plan with 14 foods).
+Still not exercised end-to-end: `createNutritionPlan`, `updatePlanFoodGrams`,
+`addMealDayVariant` / `removeMealDayVariant`. The header comment in
+`nutrition-actions.ts` is correspondingly narrower now.
 
 **Tests cover only domain math.** Vitest is scoped to
 `packages/**/src/**/*.test.ts`. Nothing tests a component, a server action, or a
