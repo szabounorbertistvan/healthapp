@@ -754,7 +754,7 @@ const ro: typeof en = {
   challenges: {
     title: "Provocări",
     createTitle: "Începe una a ta",
-    createHint: "Alege o țintă și un interval. Progresul se numără din sesiunile logate — nimeni nu poate scrie un număr de mână.",
+    createHint: "Alege o țintă și un interval. Progresul se numără din sesiunile notate — nimeni nu poate scrie un număr de mână.",
     create: "Creează provocarea",
     creating: "Se creează…",
     nameLabel: "Nume",

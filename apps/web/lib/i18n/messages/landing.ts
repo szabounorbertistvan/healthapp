@@ -199,7 +199,7 @@ const ro: typeof en = {
       "{app} înlocuiește conversațiile de WhatsApp, tabelele Excel și trei aplicații diferite de tracking cu un singur flux între tine și antrenorul tău — sau pe cont propriu.",
     startFree: "Începe gratuit",
     pillars: [
-      { title: "Antrenează", body: "Programe construite de antrenor, logate set cu set." },
+      { title: "Antrenează", body: "Programe construite de antrenor, notate set cu set." },
       { title: "Planifică", body: "Check-in-uri săptămânale și obiceiuri care țin planul onest." },
       { title: "Mănâncă", body: "Planuri de mese, scanare de coduri de bare și macro care se adună." },
       { title: "Progresează", body: "Greutate, forță și aderență pe o singură cronologie." },
@@ -207,7 +207,7 @@ const ro: typeof en = {
     forYou: "Pentru tine",
     forCoaches: "Pentru antrenori",
     clientBenefits: [
-      { title: "Loghează un set din 3 atingeri", body: "Ținte precompletate, cronometru de pauză automat și recordul personal semnalat în clipa în care l-ai bătut." },
+      { title: "Notează un set din 3 atingeri", body: "Ținte precompletate, cronometru de pauză automat și recordul personal semnalat în clipa în care l-ai bătut." },
       { title: "Nutriție fără tabele Excel", body: "Scanează un cod de bare sau apasă „am mâncat conform planului”. Macronutrienții se actualizează instant față de planul construit de antrenor." },
       { title: "Vezi progres real", body: "Trendul greutății, recorduri de forță, check-in-uri săptămânale — totul într-o singură cronologie, nu în cinci aplicații." },
       { title: "Păstrează-ți seria", body: "Obiceiurile, calendarul seriei și provocările lunare duc și săptămânile plictisitoare. Clasamentele sunt acolo dacă le vrei — le ignori și seria contează la fel." },
@@ -225,7 +225,7 @@ const ro: typeof en = {
     benefits: {
       client: {
         items: [
-          "Programele antrenorului tău, logate set cu set — ținte precompletate, cronometru de pauză, recorduri găsite pentru tine",
+          "Programele antrenorului tău, notate set cu set — ținte precompletate, cronometru de pauză, recorduri găsite pentru tine",
           "Nutriție: scanare de coduri de bare, planuri de mese și o singură apăsare pentru o masă mâncată conform planului",
           "Poze de progres, comparate alăturat, private pentru tine și antrenorul tău",
           "Obiceiuri, calendarul seriei, provocări lunare și clasamente din care poți ieși",
@@ -261,7 +261,7 @@ const ro: typeof en = {
         name: "Gratuit",
         audience: "client",
         items: [
-          "Programele antrenorului tău, logate set cu set — ținte precompletate, cronometru de pauză, recorduri găsite pentru tine",
+          "Programele antrenorului tău, notate set cu set — ținte precompletate, cronometru de pauză, recorduri găsite pentru tine",
           "Nutriție: scanare de coduri de bare, planuri de mese, macro numărate față de plan",
           "Obiceiuri, serii și check-in-uri săptămânale",
           "Greutate, forță și aderență pe o singură cronologie",
