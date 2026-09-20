@@ -37,6 +37,6 @@ export async function setExerciseRomanian(
   const failed = await mutated(result);
   if (failed) return failed;
 
-  revalidatePath("/admin/exercises");
+  revalidatePath("/admin/exercises/translate");
   return { ok: true };
 }

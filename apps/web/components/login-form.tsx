@@ -7,6 +7,7 @@ import { RoleCard } from "./role-card";
 import { PasswordInput } from "./password-input";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { usernameAvailable } from "@/app/profile-actions";
+import { reportLoginFailure } from "@/app/admin-actions";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
 
@@ -96,8 +97,12 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
     if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setBusy(false);
-      if (error) setError(authErrorMessage(error, t.login));
-      else router.push("/dashboard");
+      if (error) {
+        setError(authErrorMessage(error, t.login));
+        // The admin auth page counts these; GoTrue itself keeps no trace of a
+        // refused password. Fire and forget — never the password.
+        void reportLoginFailure(email);
+      } else router.push("/dashboard");
       return;
     }
 

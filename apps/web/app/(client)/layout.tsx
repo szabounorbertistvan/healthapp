@@ -17,6 +17,8 @@ import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notificati
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
   if (!profile) redirect("/");
+  // an admin switched this account off; the page explains and offers sign-out
+  if (profile.suspended_at) redirect("/suspended");
   // A coach trains too, so this surface is theirs as well: every read under it
   // is scoped to the signed-in user (lib/actor.ts) and every RLS policy on the
   // tables it touches is owner-based, so a coach logging their own workout

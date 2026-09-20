@@ -4,7 +4,6 @@ import { getProfile } from "@/lib/data";
 import { EXERCISE_TRANSLATION_PAGE, getExercisesForTranslation } from "@/lib/exercise-admin-data";
 import { Card } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
-import { AdminTabs } from "@/components/admin-tabs";
 import { ExerciseTranslateRow } from "@/components/exercise-translate-row";
 import { exerciseImage } from "@/lib/exercise-images";
 import { getI18n } from "@/lib/i18n/server";
@@ -33,7 +32,7 @@ export default async function AdminExercisesPage({
   const { rows, missing, total, pages } = await getExercisesForTranslation({ q, onlyMissing, page });
 
   const href = (next: { page?: number; all?: boolean }) =>
-    `/admin/exercises?${new URLSearchParams({
+    `/admin/exercises/translate?${new URLSearchParams({
       ...(q ? { q } : {}),
       ...((next.all ?? !onlyMissing) ? { all: "1" } : {}),
       ...((next.page ?? page) > 1 ? { page: String(next.page ?? page) } : {}),
@@ -44,8 +43,7 @@ export default async function AdminExercisesPage({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <AdminTabs current="exercises" />
-      <h1 className="mt-4 font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
+      <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
         {m.title}
       </h1>
       <p className="mt-2 max-w-2xl text-[13px] text-ink-soft">{m.intro}</p>
@@ -55,7 +53,7 @@ export default async function AdminExercisesPage({
           <p className="text-[11px] font-semibold uppercase tracking-wider tabular-nums text-ink-faint">
             {fill(m.missingCount, { n: missing })}
           </p>
-          <form action="/admin/exercises" method="GET" className="flex flex-wrap items-center gap-2">
+          <form action="/admin/exercises/translate" method="GET" className="flex flex-wrap items-center gap-2">
             {!onlyMissing ? <input type="hidden" name="all" value="1" /> : null}
             <label className="flex h-[42px] w-64 min-w-0 items-center gap-2.5 rounded-2xl bg-bg px-3.5 text-ink-faint">
               <NavIcon d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3" className="h-4 w-4 shrink-0" />

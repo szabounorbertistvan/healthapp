@@ -4,7 +4,6 @@ import { getProfile } from "@/lib/data";
 import { FOOD_TRANSLATION_PAGE, getFoodsForTranslation } from "@/lib/food-admin-data";
 import { Card } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
-import { AdminTabs } from "@/components/admin-tabs";
 import { FoodTranslateRow } from "@/components/food-translate-row";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
@@ -37,8 +36,7 @@ export default async function AdminFoodsPage({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <AdminTabs current="foods" />
-      <h1 className="mt-4 font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
+      <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
         {m.title}
       </h1>
       <p className="mt-2 max-w-2xl text-[13px] text-ink-soft">{m.intro}</p>

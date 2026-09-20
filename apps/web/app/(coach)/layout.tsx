@@ -15,6 +15,8 @@ import { Avatar } from "@/components/social";
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
   if (!profile) redirect("/");
+  // an admin switched this account off; the page explains and offers sign-out
+  if (profile.suspended_at) redirect("/suspended");
   // the coach web area is for coaches and admins; clients have their own surface
   if (profile.role === "client") redirect("/today");
   if (!profile.username) redirect("/complete-profile");

@@ -5,6 +5,7 @@ import { clientAppMessages } from "./messages/client-app";
 import { clientWidgetsMessages } from "./messages/client-widgets";
 import { coachAppMessages } from "./messages/coach-app";
 import { coachWidgetsMessages } from "./messages/coach-widgets";
+import { adminMessages } from "./messages/admin";
 
 export function getDictionary(locale: Locale) {
   return {
@@ -16,6 +17,7 @@ export function getDictionary(locale: Locale) {
     clientWidgets: clientWidgetsMessages[locale],
     coachApp: coachAppMessages[locale],
     coachWidgets: coachWidgetsMessages[locale],
+    admin: adminMessages[locale],
   };
 }
 

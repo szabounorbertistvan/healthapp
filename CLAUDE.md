@@ -54,7 +54,13 @@ written. Every "client app" screen today is a web route under
 `apps/web/app/(client)/`.
 
 Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
-check-ins, messages, settings, admin. `(client)` = today, workout (list of every
+check-ins, messages, settings. `(admin)` = the admin panel under `/admin`
+(overview, users, users/[id], activity, auth, invitations, workouts,
+exercises (+ /translate), foods, nutrition, social, challenges, notifications,
+system, search) — its own layout, gated by `lib/admin/guard.ts` and, in the
+database, by `admin_assert()` inside every `admin_*` RPC
+(`20260920100000_admin_panel.sql`; reads in `lib/admin/data.ts`, writes in
+`app/admin-actions.ts`, strings in `messages/admin.ts`). `(client)` = today, workout (list of every
 published program → `workout/[dayId]` day overview + per-day history →
 `workout/[dayId]/log` set logger), workout/build, food, habits, progress,
 check-in, coach, billing. Ungrouped: landing `page.tsx`, login, complete-profile

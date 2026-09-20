@@ -198,7 +198,7 @@ Today's "Last workout".
 
 | | |
 |---|---|
-| Routes | `app/login`, `app/reset-password`, `app/auth/callback` (route handler), `app/(coach)/settings`, `app/(coach)/admin`, `app/(client)/billing` |
+| Routes | `app/login`, `app/reset-password`, `app/auth/callback` (route handler), `app/(coach)/settings`, `app/(admin)/admin/*`, `app/(client)/billing` |
 | Writes | [billing-actions.ts](../apps/web/app/billing-actions.ts) — `startCheckout`, `openBillingPortal`, `adminSetTier`; `createInvite` |
 | Tables | `users`, `trainer_clients`, `subscriptions` |
 | Migrations | `..._subscriptions.sql`, `..._admin_role.sql`, `..._stripe_billing.sql`, `..._signup_role.sql` |
@@ -238,6 +238,24 @@ No Apple, no onboarding — see GAPS.
 a trialling user reads as their paid tier without a payment record. Stripe is
 wired (checkout + portal + webhook); monthly and ~15%-off annual prices, and an
 admin can grant a tier directly with `admin_set_tier`.
+
+**Admin panel** (`app/(admin)/admin/*`, 2026-09-20). Read-mostly operations
+desk: `lib/admin/data.ts` wraps one `admin_*` RPC per page; each RPC is
+`security definer` and opens with `admin_assert()` (raises `42501` unless
+`is_admin()`), so the `/admin` prefix is a view, not the boundary. Email, last
+sign-in and provider come from `auth.users` / `auth.identities` only through
+those RPCs; login history from `auth.audit_log_entries`. `admin_audit_events`
+is an append-only stream written by triggers on users, auth.users
+(`last_sign_in_at`), trainer_clients, programs, logged_sessions, logged_sets,
+exercises, challenges, social_*, push_subscriptions and
+account_deletion_requests, plus the admin actions themselves; a `before update
+or delete` trigger refuses edits from every API role. Failed password sign-ins
+are reported by the login form through `record_login_failure()` (anonymous,
+flood-capped). Admin writes: `admin_set_suspended` (sets `users.suspended_at`;
+both app layouts redirect a suspended account to `/suspended`),
+`admin_revoke_invitation`, `admin_delete_post` (soft), `admin_remove_push_subscription`,
+`admin_set_tier` (now audited). Tests: `supabase/tests/admin_panel.test.sql`
+(101 assertions), `lib/admin/params.test.ts`.
 
 One active coach per client is enforced by `trainer_clients` + invite codes
 (`create_invite()`), and it is what `is_active_coach_of()` — and therefore every
