@@ -40,21 +40,25 @@ const NAMES_ONLY = args.includes("--names-only");
 const LIMIT = args.includes("--limit") ? Number(args[args.indexOf("--limit") + 1]) || 0 : 0;
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5";
 
+// .env.local first, then .env — this box keeps its variables in the latter.
 function fromEnvFile(key) {
-  try {
-    const line = readFileSync(join(root, "apps/web/.env.local"), "utf8")
-      .split(/\r?\n/)
-      .find((l) => l.trim().startsWith(`${key}=`));
-    return line ? line.slice(line.indexOf("=") + 1).trim() : undefined;
-  } catch {
-    return undefined;
+  for (const file of ["apps/web/.env.local", "apps/web/.env"]) {
+    try {
+      const line = readFileSync(join(root, file), "utf8")
+        .split(/\r?\n/)
+        .find((l) => l.trim().startsWith(`${key}=`));
+      if (line) return line.slice(line.indexOf("=") + 1).trim();
+    } catch {
+      // try the next file
+    }
   }
+  return undefined;
 }
 
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL ?? fromEnvFile("NEXT_PUBLIC_SUPABASE_URL");
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? fromEnvFile("SUPABASE_SERVICE_ROLE_KEY");
 
-if (!URL_) fail("NEXT_PUBLIC_SUPABASE_URL is not set (apps/web/.env.local or the environment).");
+if (!URL_) fail("NEXT_PUBLIC_SUPABASE_URL is not set (apps/web/.env.local, apps/web/.env or the environment).");
 if (!KEY) fail("SUPABASE_SERVICE_ROLE_KEY is not set. Supabase dashboard → Project Settings → API keys → service_role.");
 // The SDK resolves credentials itself: ANTHROPIC_API_KEY, then
 // ANTHROPIC_AUTH_TOKEN, then an `ant auth login` profile. Only stop when there
@@ -163,6 +167,13 @@ async function main() {
       try {
         results = await translateBatch(slice);
       } catch (e) {
+        // A refused key will be refused 88 times over; say so once and stop.
+        if (e?.status === 401) {
+          fail(`Anthropic refused the API key (${e.message}). Set ANTHROPIC_API_KEY to a secret key from console.anthropic.com → Settings → API keys (it starts with sk-ant-), not the key's id.`);
+        }
+        if (e?.status === 400 && /credit balance/i.test(e.message ?? "")) {
+          fail("The Anthropic account has no credit: console.anthropic.com → Plans & Billing. Nothing was translated.");
+        }
         failed += slice.length;
         console.warn(`! batch at ${from + i}: ${e.message}`);
         continue;
