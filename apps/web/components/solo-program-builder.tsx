@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { addSoloProgramDay, createSoloProgram, publishProgram, removeProgramDay } from "@/app/builder-actions";
+import { addSoloProgramDay, createSoloProgram, deleteProgram, publishProgram, removeProgramDay } from "@/app/builder-actions";
 import { SwipeToDelete } from "@/components/swipe-to-delete";
 import { fill } from "@/lib/i18n";
 import { ProgramDayEditor } from "@/components/program-day-editor";
@@ -27,6 +27,7 @@ export function SoloProgramBuilder({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [name, setName] = useState("");
   // The create form is always reachable, not only when there are no programs.
@@ -209,6 +210,50 @@ export function SoloProgramBuilder({
         {program.status === "published" ? t.clientApp.builder.published : t.clientApp.builder.publish}
       </button>
       <p className="text-[12.5px] text-ink-faint">{t.clientApp.builder.publishHint}</p>
+
+      {confirmingDelete ? (
+        <div className="space-y-2.5 rounded-2xl bg-risk-soft px-4 py-3">
+          <p className="text-[13px] font-semibold text-risk">
+            {fill(t.clientApp.builder.deleteConfirm, { name: program.name })}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await deleteProgram(program.id);
+                  setConfirmingDelete(false);
+                  if (!result.ok) setError(result.message ?? "Something went wrong");
+                  // Another of their programs (or the create form) takes over.
+                  router.replace("/workout/build");
+                  router.refresh();
+                })
+              }
+              className="inline-flex h-9 items-center rounded-full bg-risk px-3.5 text-[12.5px] font-bold text-bg disabled:opacity-50"
+            >
+              {t.common.actions.delete}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="inline-flex h-9 items-center rounded-full px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+            >
+              {t.common.actions.cancel}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => { setError(null); setConfirmingDelete(true); }}
+          className="text-[12.5px] font-semibold text-ink-faint hover:text-risk disabled:opacity-50"
+        >
+          {t.clientApp.builder.deleteProgram}
+        </button>
+      )}
+
       {error ? <p className="text-sm font-semibold text-risk">{error}</p> : null}
       <HaveACoach />
     </div>

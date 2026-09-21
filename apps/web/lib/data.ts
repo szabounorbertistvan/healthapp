@@ -74,13 +74,21 @@ export async function getDashboard(): Promise<DashboardRow[]> {
 }
 
 export async function getClients(): Promise<ClientRow[]> {
-  const supabase = await supabaseServer();
+  const live = await liveUser();
+  if (!live) return [];
+  const { supabase, userId } = live;
   // Three independent reads, one wave: the roster, the dashboard RPC and the
   // week's training load. None of them needs another's result.
+  //
+  // coach_id is filtered here rather than left to RLS: `tc_admin_read` opens
+  // the whole table to an admin, and an admin who opens the coach area is not
+  // every coach's coach — unscoped, they saw other coaches' clients and every
+  // write for one was refused by `is_active_coach_of()`.
   const [{ data, error }, dash, load] = await Promise.all([
     supabase
       .from("trainer_clients")
       .select("status, started_at, client:users!trainer_clients_client_id_fkey(id, full_name)")
+      .eq("coach_id", userId)
       .in("status", ["invited", "active"]),
     getDashboard(),
     clientLoad7d(supabase),
@@ -261,12 +269,21 @@ export async function getMessages(conversationId: string): Promise<MessageRow[]>
   }));
 }
 
-/** Clients a program or plan can be assigned to. */
+/**
+ * Clients a program or plan can be assigned to — the signed-in coach's own.
+ *
+ * Scoped by coach_id for the same reason as getClients: RLS alone would hand an
+ * admin the whole table, and every client it listed that the admin does not
+ * coach produced a raw "new row violates row-level security policy" on create.
+ */
 export async function getRoster(): Promise<{ id: string; name: string }[]> {
-  const supabase = await supabaseServer();
+  const live = await liveUser();
+  if (!live) return [];
+  const { supabase, userId } = live;
   const { data, error } = await supabase
     .from("trainer_clients")
     .select("client:users!trainer_clients_client_id_fkey(id, full_name)")
+    .eq("coach_id", userId)
     .eq("status", "active");
   if (error) throw error;
   return (data ?? [])

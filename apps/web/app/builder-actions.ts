@@ -451,3 +451,31 @@ export async function removeProgramDay(programId: string, dayId: string): Promis
   revalidatePath("/workout");
   return { ok: true };
 }
+
+/**
+ * Delete a whole program.
+ *
+ * Which rows go is decided by the schema, not here: `program_days` and
+ * `program_exercises` cascade, while `logged_sessions.program_day_id` and
+ * `logged_sets.program_exercise_id` are `on delete set null`. So the training
+ * history survives intact — every set, its weight, its PR flag — and only the
+ * link back to the plan is cut. A past session then reads as "Session" rather
+ * than "Upper A" (`client-training.ts`, `day_name`), which is why the button
+ * confirms before it fires.
+ *
+ * No coach/owner check here: `programs_coach_all` (coach_id = auth.uid()) and
+ * `programs_solo_delete` are the gate, and `mutated()` turns an RLS-filtered
+ * zero-row delete into a visible error instead of a false success.
+ */
+export async function deleteProgram(programId: string): Promise<ActionResult> {
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase.from("programs").delete({ count: "exact" }).eq("id", programId),
+  );
+  if (failed) return failed;
+  revalidatePath("/programs");
+  revalidatePath("/workout");
+  revalidatePath("/workout/build");
+  revalidatePath("/today");
+  return { ok: true };
+}

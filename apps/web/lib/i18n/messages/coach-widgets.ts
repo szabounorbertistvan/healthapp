@@ -12,6 +12,8 @@ const en = {
     published: "Published",
     publishHint: "Add at least one exercise first",
     draftNotice: "Template — {name} cannot see this until you publish it.",
+    deleteProgram: "Delete program",
+    deleteConfirm: "Delete “{name}”? The days and exercises go with it. Logged sessions stay, but lose the day name they were logged under.",
     noDaysTitle: "No days yet",
     noDaysBody: "Add a training day, then pull exercises from the library.",
     closeLibrary: "Close library",
@@ -109,6 +111,11 @@ const en = {
     couldNotCreate: "Could not create the exercise",
     created: "Added to your library.",
   },
+  noClients: {
+    title: "No clients yet",
+    body: "A program or a plan is always written for someone. Invite a client first, or accept a pending invite.",
+    action: "Go to clients",
+  },
   newProgramForm: {
     programName: "Program name",
     namePlaceholder: "Hypertrophy Block 1",
@@ -185,6 +192,8 @@ const ro: typeof en = {
     published: "Publicat",
     publishHint: "Adaugă mai întâi cel puțin un exercițiu",
     draftNotice: "Șablon — {name} nu îl vede până nu îl publici.",
+    deleteProgram: "Șterge programul",
+    deleteConfirm: "Ștergi „{name}”? Zilele și exercițiile dispar odată cu el. Antrenamentele notate rămân, dar pierd numele zilei sub care au fost notate.",
     noDaysTitle: "Nicio zi încă",
     noDaysBody: "Adaugă o zi de antrenament, apoi alege exerciții din bibliotecă.",
     closeLibrary: "Închide biblioteca",
@@ -281,6 +290,11 @@ const ro: typeof en = {
     saveAndAdd: "Salvează și adaugă în zi",
     couldNotCreate: "Exercițiul nu a putut fi creat",
     created: "Adăugat în biblioteca ta.",
+  },
+  noClients: {
+    title: "Niciun client încă",
+    body: "Un program sau un plan se scrie mereu pentru cineva. Invită întâi un client sau acceptă o invitație în așteptare.",
+    action: "Mergi la clienți",
   },
   newProgramForm: {
     programName: "Numele programului",

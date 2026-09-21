@@ -30,6 +30,9 @@ const en = {
     thLastActivity: "Last activity",
     thSince: "Since",
     thLoad: "Load (7d)",
+    postsTitle: "Shared by {name}",
+    postsEmpty: "Nothing shared yet.",
+    postsAll: "See all",
     status: {
       invited: "invited",
       active: "active",
@@ -191,6 +194,9 @@ const ro: typeof en = {
     thLastActivity: "Ultima activitate",
     thSince: "Din",
     thLoad: "Încărcare (7z)",
+    postsTitle: "Postat de {name}",
+    postsEmpty: "Nimic postat încă.",
+    postsAll: "Vezi tot",
     status: {
       invited: "invitat",
       active: "activ",
