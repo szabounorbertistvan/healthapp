@@ -201,3 +201,54 @@ them the section renders a "not configured" note instead of a broken upload.
 - Admin coach/client view switching no longer exists — `lib/view-mode.ts` went
   with demo mode on 2026-09-14. A live equivalent is a real access-control
   decision about health data and should not be added casually.
+- **There are no set types.** `logged_sets` has no warm-up / drop / failure
+  column, so exercise analytics counts every logged set as a working set: a
+  warm-up single at 40 kg is in the volume total and in the session's set count.
+  Adding the column is a schema change plus a logger affordance plus a decision
+  about what to do with the sets already stored, and was deliberately left out
+  of the 2026-09-22 analytics work rather than half-done.
+- **Muscle analytics stop at the exercise page.** `exercises.primary_muscles` /
+  `secondary_muscles` are shown on `/exercises/[id]`, and the analytics rows
+  carry what weekly-sets-per-muscle, volume-per-muscle and muscle balance would
+  need — but nothing aggregates across lifts yet. The honest blocker is that
+  the schema has no per-exercise muscle *weighting*, so a set of chin-ups would
+  count once for lats and once for biceps as if they were equal work.
+- **Mentions exist only in comments.** A post's own text is not scanned for
+  handles, so `@maria` in a caption is plain text. The composer would need the
+  same suggestion affordance and the post body the same segment renderer; it
+  was left out rather than half-built.
+- **Comment replies stop at one level**, by constraint rather than by omission
+  (`social_comment_depth_guard`). Threading deeper needs a different renderer
+  than a single indent, and a decision about what a phone shows.
+- **"Gym" and "specialisation" do not exist** on `users`, so people search
+  filters on name, username and `city` only. Adding them is two nullable
+  columns plus profile editing — deliberately not invented to satisfy a filter.
+- **Nothing shares outside the app yet.** `lib/share-payload.ts` builds the
+  card data for every post kind, but no button calls it and no image is
+  rendered from it; §19 asked for the infrastructure, not the integration.
+- **Notifications have no pagination.** `/notifications` reads the most recent
+  50. Past that a cursor is needed, on the same shape the feed already uses.
+- **Routine templates are a shelf, not a catalogue.** The library ships with no
+  seeded programs: Discover shows whatever real people have published, and is
+  empty on a fresh deployment. A seeded set (PPL, Upper/Lower, 5/3/1, Full
+  Body) needs nothing new in the schema — a system account owning public
+  programs would appear in Discover exactly like anyone else's.
+- **Routine ratings do not exist.** The card has room for one and
+  `discover_programs` sorts only by `created_at` and `copy_count`, both real
+  counts. Ratings would need their own table and a sort key; nothing was faked
+  in the meantime.
+- **A coach cannot publish a template.** `programs_shareable_only_solo` allows
+  a non-private visibility only when `coach_id is null`, because a coach
+  program belongs to one named client. A coach publishes from their own
+  training account instead. If coach-authored public templates are wanted, that
+  is a nullable `client_id` plus a rewrite of every policy that assumes it —
+  deliberately not attempted here.
+- **`program_usage` counts sessions across every copy.** That is the honest
+  answer to "is anyone training this?", but it means a routine's author sees a
+  number that includes strangers' sessions. Only aggregates are exposed, never
+  identities; `program_assignees` (which does name people) is restricted to the
+  coach who authored the source.
+- Bodyweight exercises log `weight_kg = 0`, so their volume is 0 and they
+  produce no 1RM. Nothing infers a body weight from `measurements` to fill the
+  gap, and analytics does not pretend otherwise — `relevantOneRm` returns null
+  rather than a number built on a guess.

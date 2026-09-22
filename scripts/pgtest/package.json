@@ -1,0 +1,14 @@
+{
+  "name": "@healthapp/pgtest",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Offline pgTAP runner — deliberately outside the npm workspaces so a normal install does not download Postgres binaries.",
+  "type": "module",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "dependencies": {
+    "embedded-postgres": "^18.4.0-beta.17",
+    "pg": "^8.23.0"
+  }
+}

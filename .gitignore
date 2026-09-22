@@ -51,3 +51,6 @@ env.download
 .env*
 !.env.example
 .exercise-images/
+
+# a git worktree from another Claude session lives here; never commit it
+.claude/worktrees/

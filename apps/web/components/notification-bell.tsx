@@ -7,7 +7,7 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { timeAgo } from "@/lib/format";
 import type { NotificationRow } from "@/lib/notifications-data";
-import { markNotificationsRead } from "@/app/client-actions-app";
+import { markNotificationRead, markNotificationsRead } from "@/app/client-actions-app";
 import { NavIcon } from "./client-nav";
 
 /**
@@ -54,7 +54,7 @@ export function NotificationBell({
   // back, and it reset to false on every remount, which put the old badge
   // straight back while the refresh was still in flight.
   const [dismissed, setDismissed] = useState(0);
-  const [, start] = useTransition();
+  const [pending, start] = useTransition();
   const box = useRef<HTMLDivElement>(null);
   // The portalled sheet is not a DOM descendant of `box`, so the outside-click
   // test has to know about it separately or a tap on a row would dismiss the
@@ -85,12 +85,22 @@ export function NotificationBell({
   }, [open]);
 
   /**
-   * Everything on screen is read the moment the panel opens — the panel is the
-   * list. The badge goes out immediately rather than after the round trip:
-   * waiting for the server to answer before clearing it is what made the count
-   * look stuck.
+   * Opening the panel does NOT mark anything read.
+   *
+   * It used to: the badge cleared on open, which meant glancing at the bell
+   * destroyed the one piece of state unread is for. Reading a notification is
+   * an interaction — following it, or asking for all of them at once.
    */
-  function markRead() {
+  function readOne(id: string) {
+    setDismissed((d) => d + 1);
+    start(async () => {
+      await markNotificationRead(id);
+      router.refresh();
+    });
+  }
+
+  /** The explicit "mark all as read" control, and only that. */
+  function readAll() {
     if (unread <= dismissed) return;
     setDismissed(unread);
     start(async () => {
@@ -106,16 +116,25 @@ export function NotificationBell({
       setSheetTop((strip?.getBoundingClientRect().bottom ?? 0) + 6);
     }
     setOpen(next);
-    if (next) markRead();
   }
 
   const badge = Math.max(0, unread - dismissed);
 
   const body = (
     <>
-      <p className="px-4 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-        {n.title}
-      </p>
+      <div className="flex items-baseline justify-between gap-2 px-4 pb-1.5 pt-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{n.title}</p>
+        {badge > 0 ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={readAll}
+            className="text-[11.5px] font-semibold text-accent-ink hover:underline disabled:opacity-50"
+          >
+            {t.common.social.markAllRead}
+          </button>
+        ) : null}
+      </div>
       {notifications.length === 0 ? (
         <div className="px-4 pb-4 pt-1">
           <p className="text-[13.5px] font-semibold">{n.empty}</p>
@@ -139,7 +158,12 @@ export function NotificationBell({
                   // Reading one by following it counts too — the panel may have
                   // been opened by keyboard, and leaving the badge up after a
                   // tap is exactly the behaviour this component argues against.
-                  <Link href={item.href} onClick={() => { markRead(); setOpen(false); }} className="block px-4 py-3 hover:bg-bg/60">
+                  // Following one reads that one. The rest keep their state.
+                  <Link
+                    href={item.href}
+                    onClick={() => { if (!item.read) readOne(item.id); setOpen(false); }}
+                    className="block px-4 py-3 hover:bg-bg/60"
+                  >
                     {row}
                   </Link>
                 ) : (

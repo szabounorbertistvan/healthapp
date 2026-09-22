@@ -14,12 +14,18 @@ import { currentActorId } from "./actor";
 import { supabaseServer } from "./supabase/server";
 import { loadOf } from "./training-load";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
-import type { FeedPage, FeedPost, KudosGiver, KudosPage, PersonRow, PostComment, ShareableSession, SocialProfile } from "./types";
+import type {
+  CommentPage, CommentThread, FeedPage, FeedPost, KudosGiver, KudosPage, MutualFollowers,
+  PersonRow, PostComment, ShareableSession, SocialProfile,
+} from "./types";
+import type { FeedScope } from "@healthapp/shared";
 
 // ---------- feed ----------
 
 /** The home feed (own + followed) or one author's posts, newest first, one page. */
-export async function getFeed(opts: { before?: string | null; author?: string | null } = {}): Promise<FeedPage> {
+export async function getFeed(
+  opts: { before?: string | null; author?: string | null; scope?: FeedScope; type?: string | null } = {},
+): Promise<FeedPage> {
   const viewer = await currentActorId();
   if (!viewer) return { items: [], next_cursor: null };
   const supabase = await supabaseServer();
@@ -27,6 +33,8 @@ export async function getFeed(opts: { before?: string | null; author?: string | 
     p_limit: FEED_PAGE_SIZE + 1,
     p_before: opts.before ?? null,
     p_author: opts.author ?? null,
+    p_scope: opts.scope ?? "following",
+    p_type: opts.type ?? null,
   });
   type Row = Omit<FeedPost, "mine" | "payload"> & { payload: PostPayload | null; author_username: string | null };
   const rows = ((data ?? []) as Row[]).map((r) => ({ ...r, payload: r.payload ?? null, mine: r.user_id === viewer }));
@@ -34,25 +42,90 @@ export async function getFeed(opts: { before?: string | null; author?: string | 
   return { items, next_cursor: rows.length > FEED_PAGE_SIZE ? items[items.length - 1]!.created_at : null };
 }
 
-export async function getPost(id: string): Promise<{ post: FeedPost; comments: PostComment[] } | null> {
+/**
+ * One post and the first page of its conversation.
+ *
+ * This used to ask social_feed for fifty posts by the same author and scan for
+ * the one it wanted; social_post() answers by id. Both come back empty for a
+ * post the reader may not see, which is what makes the route a real 404 rather
+ * than a page that fetches something and then hides it.
+ */
+export async function getPost(id: string): Promise<{ post: FeedPost; comments: CommentPage } | null> {
   const viewer = await currentActorId();
   if (!viewer) return null;
   const supabase = await supabaseServer();
-  const [{ data: post }, { data: comments }] = await Promise.all([
-    // social_feed with p_author scoped to one id is the same shape; filter to the post.
-    supabase.from("social_posts").select("user_id").eq("id", id).maybeSingle(),
-    supabase.rpc("social_post_comments", { p_post: id }),
+  const [{ data: rows }, comments] = await Promise.all([
+    supabase.rpc("social_post", { p_post: id }),
+    getComments(id),
   ]);
-  if (!post) return null;
-  const { data: rows } = await supabase.rpc("social_feed", { p_limit: 50, p_before: null, p_author: post.user_id });
   type Row = Omit<FeedPost, "mine">;
-  const found = ((rows ?? []) as Row[]).find((r) => r.id === id);
+  const found = ((rows ?? []) as Row[])[0];
   if (!found) return null;
-  type CommentRow = Omit<PostComment, "mine">;
   return {
     post: { ...found, payload: found.payload ?? null, mine: found.user_id === viewer },
-    comments: ((comments ?? []) as CommentRow[]).map((c) => ({ ...c, mine: c.user_id === viewer })),
+    comments,
   };
+}
+
+export const COMMENT_PAGE_SIZE = 20;
+
+/**
+ * One page of a post's comments: top-level comments on a cursor, each with its
+ * replies already attached.
+ *
+ * Replies come down with their parent rather than on their own cursor — a
+ * reply is part of the comment it answers, and paging them separately would be
+ * a round trip per comment on screen.
+ */
+export async function getComments(postId: string, before: string | null = null): Promise<CommentPage> {
+  const viewer = await currentActorId();
+  if (!viewer) return { items: [], next_cursor: null };
+  const supabase = await supabaseServer();
+  const { data } = await supabase.rpc("social_post_comments", {
+    p_post: postId,
+    p_limit: COMMENT_PAGE_SIZE + 1,
+    p_before: before,
+  });
+
+  type Row = Omit<PostComment, "mine" | "mentions"> & {
+    mentions: { user_id: string; username: string | null }[] | null;
+  };
+  const rows = ((data ?? []) as Row[]).map((c) => ({
+    ...c,
+    // A mention whose user has no username cannot be rendered as a handle, so
+    // it is dropped here rather than half-rendered downstream.
+    mentions: (c.mentions ?? []).filter((m): m is { user_id: string; username: string } => Boolean(m.username)),
+    mine: c.user_id === viewer,
+  }));
+
+  const roots = rows.filter((c) => c.parent_id === null);
+  const page = roots.slice(0, COMMENT_PAGE_SIZE);
+  const keep = new Set(page.map((c) => c.id));
+  const items: CommentThread[] = page.map((root) => ({
+    ...root,
+    replies: rows
+      .filter((c) => c.parent_id === root.id)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at)),
+  }));
+  // Replies of a root that fell off this page come back with it next time.
+  void keep;
+  const last = page[page.length - 1];
+  return { items, next_cursor: roots.length > COMMENT_PAGE_SIZE && last ? last.created_at : null };
+}
+
+/** Who the author can mean by "@mar" — people who can see the post first. */
+export async function getMentionCandidates(query: string, postId: string | null): Promise<PersonRow[]> {
+  const viewer = await currentActorId();
+  if (!viewer) return [];
+  const supabase = await supabaseServer();
+  const { data } = await supabase.rpc("social_mention_candidates", {
+    p_query: query.trim(),
+    p_post: postId,
+  });
+  type Row = { id: string; name: string; username: string | null; avatar_url: string | null; can_see: boolean };
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: r.id, name: r.name, username: r.username, avatar_url: r.avatar_url, is_following: false,
+  }));
 }
 
 // ---------- kudos ----------
@@ -83,13 +156,45 @@ export async function getSocialProfile(userId: string): Promise<SocialProfile | 
   return row ? { ...row, me: row.id === viewer } : null;
 }
 
-export async function searchPeople(query: string): Promise<PersonRow[]> {
+export async function searchPeople(query: string, city: string | null = null): Promise<PersonRow[]> {
   const viewer = await currentActorId();
   const q = query.trim().toLowerCase();
-  if (!viewer || q.length < 2) return [];
+  const c = city?.trim() ?? "";
+  // Either half is enough to search on, so "everyone in Cluj" works with no
+  // name typed at all.
+  if (!viewer || (q.length < 2 && c.length < 2)) return [];
   const supabase = await supabaseServer();
-  const { data } = await supabase.rpc("social_search_users", { p_query: q });
+  const { data } = await supabase.rpc("social_search_users", { p_query: q, p_city: c || null });
   return (data ?? []) as PersonRow[];
+}
+
+/**
+ * People followed by the people you follow, most shared connections first.
+ *
+ * Counted, not modelled: the number beside each suggestion is how many of your
+ * follows also follow them, which is a sentence you can say out loud. One
+ * query over the follow edges.
+ */
+export async function getSuggestedPeople(limit = 10): Promise<PersonRow[]> {
+  const viewer = await currentActorId();
+  if (!viewer) return [];
+  const supabase = await supabaseServer();
+  const { data } = await supabase.rpc("social_suggested_people", { p_limit: limit });
+  return (data ?? []) as PersonRow[];
+}
+
+/** "Followed by Maria and 3 others" — one query, never one per person. */
+export async function getMutualFollowers(userId: string, limit = 3): Promise<MutualFollowers> {
+  const viewer = await currentActorId();
+  if (!viewer) return { people: [], total: 0 };
+  const supabase = await supabaseServer();
+  const { data } = await supabase.rpc("social_mutual_followers", { p_user: userId, p_limit: limit });
+  type Row = { id: string; name: string; username: string | null; avatar_url: string | null; total: number };
+  const rows = (data ?? []) as Row[];
+  return {
+    people: rows.map((r) => ({ id: r.id, name: r.name, username: r.username, avatar_url: r.avatar_url, is_following: true })),
+    total: rows[0]?.total ?? 0,
+  };
 }
 
 export const FOLLOW_PAGE_SIZE = 20;

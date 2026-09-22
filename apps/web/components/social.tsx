@@ -3,16 +3,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import type { PostVisibility } from "@healthapp/shared";
-import { displayToKg, kudosSummary, toggleKudosState, POST_TEXT_MAX, COMMENT_MAX } from "@healthapp/shared";
+import { displayToKg, kudosSummary, toggleKudosState, POST_TEXT_MAX } from "@healthapp/shared";
 import {
-  addComment, createProgressPost, createTextPost, deleteComment, deletePost, follow, loadKudos, requestPostPhotoUpload, toggleKudos, unfollow,
+  createProgressPost, createTextPost, deletePost, follow, loadKudos, requestPostPhotoUpload, toggleKudos, unfollow,
 } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { parseDay } from "@/lib/week";
 import { durationLabel } from "@/lib/share-card";
-import type { FeedPost, KudosGiver, PostComment, ShareableSession } from "@/lib/types";
+import type { FeedPost, KudosGiver, ShareableSession } from "@/lib/types";
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
 
@@ -46,7 +46,7 @@ export function Avatar({ name, url, size = "h-9 w-9" }: { name: string; url: str
   );
 }
 
-function useSocialFormat() {
+export function useSocialFormat() {
   const { t, locale } = useI18n();
   const tag = locale === "ro" ? "ro-RO" : "en-GB";
   const nf = new Intl.NumberFormat(tag);
@@ -232,6 +232,34 @@ function PostMedia({ post }: { post: FeedPost }) {
           {f.n(p.value)} / {f.n(p.target)} {t.common.challenges.unit[p.type as keyof typeof t.common.challenges.unit] ?? ""}
         </p>
       </div>
+    );
+  }
+  // A shared routine. Not gold: the gold tiles are things somebody achieved,
+  // and a program is an invitation to train, not a result. Everything on it
+  // comes from the snapshot taken when it was posted, so editing the routine
+  // afterwards never rewrites the post — only the link leads to today's version.
+  if (p.kind === "program") {
+    const r = t.clientApp.routines;
+    const facts = [
+      fill(r.daysCount, { count: p.days }),
+      fill(r.exercisesCount, { count: p.exercises }),
+      p.est_minutes > 0 ? fill(r.aboutMinutes, { count: p.est_minutes }) : null,
+      p.level ? r.level[p.level] : null,
+      p.goal ? r.goal[p.goal] : null,
+    ].filter((x): x is string => Boolean(x));
+    return (
+      <Link
+        href={`/routines/${p.program_id}`}
+        className="mx-3 block rounded-2xl bg-bg px-5 pb-5 pt-4 transition hover:bg-accent-soft/40"
+      >
+        <BlockLabel icon={DUMBBELL} tone="text-ink-faint">{r.sharedRoutine}</BlockLabel>
+        <p className="mt-2 font-display text-[22px] font-extrabold leading-tight tracking-tight">{p.name}</p>
+        {p.description ? <p className="mt-1.5 text-[13px] text-ink-soft">{p.description}</p> : null}
+        <p className="mt-2 text-[12.5px] tabular-nums text-ink-faint">{facts.join(" · ")}</p>
+        {p.muscle_groups.length > 0 ? (
+          <p className="mt-1 text-[12px] text-ink-faint">{p.muscle_groups.join(" · ")}</p>
+        ) : null}
+      </Link>
     );
   }
   return (
@@ -525,77 +553,9 @@ function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void 
 }
 
 // ---------- comments ----------
-
-export function Comments({ postId, comments }: { postId: string; comments: PostComment[] }) {
-  const { t } = useI18n();
-  const f = useSocialFormat();
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [body, setBody] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const s = t.common.social;
-  return (
-    <Card plain className="p-5">
-      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-        <NavIcon d={COMMENT} className="h-[15px] w-[15px]" />
-        {comments.length === 1 ? s.commentOne : fill(s.commentsCount, { count: comments.length })}
-      </p>
-      <ul className="mt-3.5 space-y-3.5">
-        {comments.map((c) => (
-          <li key={c.id} className="flex items-start gap-2.5">
-            <Avatar name={c.author_name} url={c.author_avatar} size="h-8 w-8" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="truncate text-[13px] font-semibold">{c.author_name}</span>
-                <span className="shrink-0 text-[12px] text-ink-faint">{f.when(c.created_at)}</span>
-              </div>
-              <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed">{c.body}</p>
-              {c.mine ? (
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => startTransition(async () => { await deleteComment(c.id, postId); router.refresh(); })}
-                  className="mt-1 text-[11px] font-semibold text-ink-faint hover:text-risk"
-                >
-                  {s.deleteComment}
-                </button>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
-      <form
-        className="mt-4 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setError(null);
-          startTransition(async () => {
-            const r = await addComment(postId, body);
-            if (!r.ok) setError(r.message ?? "Error");
-            else setBody("");
-            router.refresh();
-          });
-        }}
-      >
-        <input
-          value={body}
-          onChange={(e) => setBody(e.target.value.slice(0, COMMENT_MAX))}
-          placeholder={s.writeComment}
-          maxLength={COMMENT_MAX}
-          className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent"
-        />
-        <button
-          type="submit"
-          disabled={pending || body.trim().length === 0}
-          className="flex h-11 shrink-0 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
-        >
-          {s.send}
-        </button>
-      </form>
-      {error ? <p className="mt-2 text-xs text-risk">{error}</p> : null}
-    </Card>
-  );
-}
+// The conversation lives in components/comment-thread.tsx: replies, mentions
+// and its own composer. It was moved out of this file when replies arrived —
+// two comment lists with different capabilities is the thing to avoid.
 
 // ---------- composer ----------
 

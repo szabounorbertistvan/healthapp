@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  circuitSegments, displayToKg, kgToDisplay, parseDecimal, resolveRestSeconds, restAfterLoggedSet,
+  circuitSegments, displayToKg, kgToDisplay, parseDecimal, prefillFor, previousFor, previousSetFor,
+  progressionVs, resolveRestSeconds, restAfterLoggedSet, type PreviousWorkout,
 } from "@healthapp/shared";
 import { finishWorkout, logSet } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
@@ -13,7 +14,7 @@ import { EditSet } from "./edit-set";
 import { RestDurationPicker } from "./rest-settings";
 import { useRestTimer } from "@/lib/rest-timer/client";
 import { useUnits } from "@/lib/units/client";
-import type { LastPerformance } from "@/lib/client-training";
+import { PreviousSets, ProgressionNote } from "./previous-sets";
 import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
 
 /**
@@ -22,12 +23,22 @@ import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
  * sit a 1–10 intensity slider and a one-line note, both optional, so the set
  * can carry how it felt as well as what it was.
  *
- * `last` is what this person actually lifted on each exercise the last time
- * (getLastPerformance). It wins over the coach's target for the pre-fill: the
- * number you used yesterday is the better guess at the number you want today,
- * and it is the one a solo program has at all.
+ * `previous` is every set of the last COMPLETED session on each lift
+ * (getPreviousForDay), keyed by `pe:<program_exercises.id>` and by
+ * `exercises.id`. It is shown above the boxes and wins over the coach's target
+ * for the pre-fill: the number you used last week is the better guess at the
+ * number you want today, and it is the one a solo program has at all.
+ *
+ * A plain object rather than the Map the domain function returns — this crosses
+ * the server/client boundary, and only JSON does.
  */
-export function SetLogger({ day, last = {} }: { day: ClientWorkoutDay; last?: Record<string, LastPerformance> }) {
+export function SetLogger({
+  day,
+  previous = {},
+}: {
+  day: ClientWorkoutDay;
+  previous?: Record<string, PreviousWorkout>;
+}) {
   const { t } = useI18n();
   const u = useUnits();
   const router = useRouter();
@@ -36,6 +47,9 @@ export function SetLogger({ day, last = {} }: { day: ClientWorkoutDay; last?: Re
   const [error, setError] = useState<string | null>(null);
   const [pr, setPr] = useState<string | null>(null);
   const rest = useRestTimer();
+  // Back into the Map the domain lookup takes, once per render rather than
+  // once per exercise block.
+  const previousMap = useMemo(() => new Map(Object.entries(previous)), [previous]);
 
   // Grouped by the prescribed row, not the exercise name: a day may program the
   // same lift twice (heavy, then a back-off block) and each block owns its own
@@ -105,8 +119,11 @@ export function SetLogger({ day, last = {} }: { day: ClientWorkoutDay; last?: Re
       {seg.exercises.map((exercise) => {
         const blockSets = setsFor.get(exercise.id) ?? [];
         const done = blockSets.length;
-        // Today's own sets first, then last session's, then the prescription.
-        const previous = last[exercise.id] ?? (exercise.exercise_id ? last[exercise.exercise_id] : undefined) ?? last[exercise.exercise];
+        // The prescribed row's own history when it has any, else the lift's.
+        const lastTime = previousFor(previousMap, {
+          programExerciseId: exercise.id,
+          exerciseId: exercise.exercise_id,
+        });
         return (
           <ExerciseBlock
             key={exercise.id}
@@ -114,8 +131,7 @@ export function SetLogger({ day, last = {} }: { day: ClientWorkoutDay; last?: Re
             targetSets={exercise.sets}
             targetReps={exercise.reps}
             targetWeight={exercise.weight_kg}
-            lastWeightKg={previous?.weight_kg ?? null}
-            lastReps={previous?.reps ?? null}
+            previous={lastTime}
             targetRpe={exercise.rpe_value}
             rest={exercise.rest}
             restSeconds={exercise.rest_seconds}
@@ -232,16 +248,15 @@ type SetEntry = {
 };
 
 function ExerciseBlock({
-  name, targetSets, targetReps, targetWeight, lastWeightKg, lastReps, targetRpe, rest, restSeconds, exerciseId, intensityMode,
+  name, targetSets, targetReps, targetWeight, previous, targetRpe, rest, restSeconds, exerciseId, intensityMode,
   done, sets, pending, dayId, onLog, onEdited,
 }: {
   name: string;
   targetSets: number;
   targetReps: string;
   targetWeight: number | null;
-  /** What this person lifted here last time, in kilograms; null the first time. */
-  lastWeightKg: number | null;
-  lastReps: number | null;
+  /** Every set of the last completed session on this lift; null the first time. */
+  previous: PreviousWorkout | null;
   targetRpe: number | null;
   rest: string;
   /** The coach's prescribed rest, raw; the timer resolves it against the person's own settings. */
@@ -269,16 +284,26 @@ function ExerciseBlock({
   // the box is in the reader's unit, so pre-filling either raw would put 100
   // into a pound field and log 45 kg.
   //
-  // Today's last set wins over the previous session's, which wins over the
-  // prescription: once you have logged set 1 at 62.5 kg, set 2 opens at 62.5.
+  // What the boxes open on, in order: the SAME SET NUMBER of the last completed
+  // session, then today's most recent set, then the prescription. Matching the
+  // set number is what makes a descending block work — a day that ran
+  // 110×8 / 105×9 / 100×10 offers 105 for set 2 rather than 110 again. Every
+  // value stays editable; nothing is forced.
   const doneToday = sets.length > 0 ? sets[sets.length - 1] : null;
-  const rememberedKg = doneToday?.weight_kg ?? (lastWeightKg && lastWeightKg > 0 ? lastWeightKg : null);
-  const initialKg = rememberedKg ?? targetWeight;
-  const initialReps = doneToday?.reps ?? (lastReps && lastReps > 0 ? lastReps : null) ?? (parseInt(targetReps, 10) || null);
+  function suggestion(setNumber: number) {
+    return prefillFor({
+      setNumber,
+      previous,
+      todaysLastSet: doneToday,
+      targetWeightKg: targetWeight,
+      targetReps,
+    });
+  }
+  const initial = suggestion(done + 1);
   const [weight, setWeight] = useState(
-    initialKg === null ? "" : String(kgToDisplay(initialKg, u.weightUnit)),
+    initial.weight_kg === null ? "" : String(kgToDisplay(initial.weight_kg, u.weightUnit)),
   );
-  const [reps, setReps] = useState(initialReps ? String(initialReps) : "");
+  const [reps, setReps] = useState(initial.reps ? String(initial.reps) : "");
   const [rir, setRir] = useState(asRir && targetRpe !== null ? String(targetRpe) : "");
   const [intensity, setIntensity] = useState<number>(
     targetRpe === null ? 7 : Math.round(clamp(asRir ? 10 - targetRpe : targetRpe, 1, 10)),
@@ -298,6 +323,31 @@ function ExerciseBlock({
   useEffect(() => {
     setRestInput(String(effectiveRest));
   }, [effectiveRest]);
+
+  // Advance the boxes to the next set's suggestion once a set actually lands —
+  // and only then. Keyed on the count rather than on a render, so nothing the
+  // person is halfway through typing is ever overwritten.
+  const advance = useRef(suggestion);
+  advance.current = suggestion;
+  const filledFor = useRef(done);
+  useEffect(() => {
+    if (filledFor.current === done) return;
+    filledFor.current = done;
+    const next = advance.current(done + 1);
+    if (next.weight_kg !== null) setWeight(String(kgToDisplay(next.weight_kg, u.weightUnit)));
+    if (next.reps !== null) setReps(String(next.reps));
+  }, [done, u.weightUnit]);
+
+  // The most recent set of this block against the same set number last time.
+  // Factual, and it survives a refresh because it is derived from stored rows
+  // rather than from what just happened in this component.
+  const justLogged = sets.length > 0 ? sets[sets.length - 1] : null;
+  const progression = justLogged
+    ? progressionVs(
+        { weight_kg: justLogged.weight_kg, reps: justLogged.reps },
+        previousSetFor(previous, justLogged.set_index),
+      )
+    : null;
 
   function submit() {
     const rirValue = asRir && rir.trim() !== "" ? clamp(parseFloat(rir), 0, 10) : null;
@@ -333,6 +383,8 @@ function ExerciseBlock({
         </span>
       </div>
 
+      <PreviousSets previous={previous} exerciseId={exerciseId} />
+
       {sets.length > 0 ? (
         <ul className="mt-3 flex flex-wrap gap-1.5">
           {sets.map((s) => (
@@ -359,6 +411,7 @@ function ExerciseBlock({
           ))}
         </ul>
       ) : null}
+      <ProgressionNote progression={progression} />
       {editing ? (() => {
         const target = sets.find((x) => x.id === editing);
         return target ? (

@@ -22,6 +22,8 @@ export type NotificationRow = {
   href: string | null;
   created_at: string;
   read: boolean;
+  /** Who did the thing, for the avatar on the card. Null for engine rows. */
+  actor: { id: string; name: string; username: string | null; avatar_url: string | null } | null;
 };
 
 /**
@@ -38,9 +40,15 @@ function hrefFor(category: string, payload: Record<string, unknown> | null): str
   const followerId = typeof payload?.follower_id === "string" ? payload.follower_id : null;
   const actorId = typeof payload?.actor_id === "string" ? payload.actor_id : null;
 
+  const commentId = typeof payload?.comment_id === "string" ? payload.comment_id : null;
+
   if (category === "new_kudos" && postId) return `/feed/${postId}`;
   if (category === "new_follower" && (followerId ?? actorId)) return `/people/${followerId ?? actorId}`;
-  if (category === "new_comment" && postId) return `/feed/${postId}`;
+  // A comment, a reply and a mention all live on the post; the fragment takes
+  // the reader to the exact comment rather than the top of a long thread.
+  if ((category === "new_comment" || category === "comment_reply" || category === "new_mention") && postId) {
+    return commentId ? `/feed/${postId}#comment-${commentId}` : `/feed/${postId}`;
+  }
 
   const screen = typeof payload?.screen === "string" ? payload.screen : null;
   return (screen && SCREEN_HREF[screen]) || null;
@@ -81,15 +89,37 @@ export async function getMyNotifications(limit = 20): Promise<NotificationRow[]>
     id: string; category: string; title: string; body: string | null;
     payload: Record<string, unknown> | null; created_at: string; read_at: string | null;
   };
-  return ((data ?? []) as Row[]).map((n) => ({
-    id: n.id,
-    category: n.category,
-    title: n.title,
-    body: n.body,
-    href: hrefFor(n.category, n.payload),
-    created_at: n.created_at,
-    read: n.read_at !== null,
-  }));
+  const rows = (data ?? []) as Row[];
+
+  // One lookup for every actor on the page rather than one per card.
+  // users_select would hide them all, so it goes through a definer RPC that
+  // returns name, handle and avatar and nothing else.
+  const actorIds = [...new Set(
+    rows.map((n) => (typeof n.payload?.actor_id === "string" ? n.payload.actor_id
+                   : typeof n.payload?.follower_id === "string" ? n.payload.follower_id : null))
+      .filter((id): id is string => Boolean(id)),
+  )];
+  type Actor = { id: string; name: string; username: string | null; avatar_url: string | null };
+  const actors = new Map<string, Actor>();
+  if (actorIds.length > 0) {
+    const { data: people } = await supabase.rpc("notification_actors", { p_ids: actorIds });
+    for (const person of ((people ?? []) as Actor[])) actors.set(person.id, person);
+  }
+
+  return rows.map((n) => {
+    const actorId = typeof n.payload?.actor_id === "string" ? n.payload.actor_id
+      : typeof n.payload?.follower_id === "string" ? n.payload.follower_id : null;
+    return {
+      id: n.id,
+      category: n.category,
+      title: n.title,
+      body: n.body,
+      href: hrefFor(n.category, n.payload),
+      created_at: n.created_at,
+      read: n.read_at !== null,
+      actor: actorId ? actors.get(actorId) ?? null : null,
+    };
+  });
 }
 
 /** Just the badge number — a head request, no rows over the wire. */

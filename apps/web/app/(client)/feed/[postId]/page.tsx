@@ -1,12 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPost } from "@/lib/social-data";
-import { Comments, PostCard } from "@/components/social";
+import { PostCard } from "@/components/social";
+import { CommentThread } from "@/components/comment-thread";
 import { NavIcon } from "@/components/client-nav";
 import { getI18n } from "@/lib/i18n/server";
 
 const BACK = "m15 6-6 6 6 6";
 
+/**
+ * One post and its conversation.
+ *
+ * getPost() returns null for anything the reader may not see — social_post()
+ * and social_post_comments() both go through can_see_post — so this is a real
+ * 404, not a page that fetches a post and then hides it.
+ */
 export default async function PostPage({ params }: { params: Promise<{ postId: string }> }) {
   const { t } = await getI18n();
   const { postId } = await params;
@@ -24,7 +32,7 @@ export default async function PostPage({ params }: { params: Promise<{ postId: s
       </Link>
       <div className="mt-4 space-y-4">
         <PostCard post={data.post} detail />
-        <Comments postId={postId} comments={data.comments} />
+        <CommentThread postId={postId} page={data.comments} />
       </div>
     </div>
   );

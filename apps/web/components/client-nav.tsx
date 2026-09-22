@@ -12,12 +12,20 @@ type NavKey = keyof Dictionary["common"]["nav"];
 const items: { href: string; key: NavKey; icon: string }[] = [
   { href: "/today", key: "today", icon: "M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" },
   { href: "/workout", key: "training", icon: "M2 10v4M22 10v4M5 8v8M19 8v8M8 6v12M16 6v12M8 12h8" },
+  // Training is where you execute a plan; Programs is where plans are kept,
+  // found and copied. Reuses the coach's existing "Programs" label — it is the
+  // same word for the same thing. Not in TAB_HREFS: the phone's four tabs are
+  // the daily loop, and picking a routine is not a daily move.
+  { href: "/routines", key: "programs", icon: "M4 5h11a2 2 0 0 1 2 2v13H6a2 2 0 0 1-2-2zM17 20h3V6a2 2 0 0 0-2-2h-1M8 9h5M8 13h5" },
   { href: "/food", key: "nutrition", icon: "M3 12h18a9 9 0 0 1-18 0zM8 12c0-3 2-5 5-6 2 2 3 4 1 6" },
   { href: "/habits", key: "habits", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M8 12l3 3 5-6" },
   { href: "/progress", key: "progress", icon: "M4 20h16M6 17v-4M11 17V9M16 17v-6M4 8l5-3 4 3 7-5M17 3h3v3" },
   { href: "/check-in", key: "checkIn", icon: "M9 4h6v3H9zM7 6H5v14h14V6h-2M9 13h6M9 17h4" },
   { href: "/challenges", key: "challenges", icon: "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" },
   { href: "/feed", key: "feed", icon: "M4 5h16v11H9l-5 4z" },
+  // The bell is a glance from any screen; this is the full list, with who did
+  // what. Not in TAB_HREFS — the phone's four tabs are the daily loop.
+  { href: "/notifications", key: "notifications", icon: "M12 4a5 5 0 0 0-5 5v3l-1.5 3h13L17 12V9a5 5 0 0 0-5-5M10 18a2 2 0 0 0 4 0" },
   { href: "/coach", key: "coach", icon: "M12 4a4 4 0 1 0 0 8 4 4 0 1 0 0-8M4 21a8 8 0 0 1 16 0" },
   // Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
   // { href: "/billing", key: "billing", icon: "M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 10h18" },

@@ -692,9 +692,34 @@ export async function toggleFavoriteFood(input: {
 }
 
 /**
- * Mark the notifications the client has just seen. `notifications` allows the
- * owner an update (policy notifications_mark_read) and nothing else, so this
- * cannot create or delete one.
+ * Mark ONE notification read — what opening it does.
+ *
+ * Deliberately separate from the mark-all below: a bell that empties itself
+ * because the panel was opened loses the one thing an unread state is for.
+ * Reading a notification is an interaction; glancing at the list is not.
+ *
+ * `user_id = auth.uid()` is belt to the policy's braces: notifications_mark_read
+ * already restricts the update to the owner, so a forged id touches no rows.
+ */
+export async function markNotificationRead(notificationId: string): Promise<ActionResult> {
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const { error } = await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", notificationId)
+    .eq("user_id", userId)
+    .is("read_at", null);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/", "layout");
+  revalidatePath("/notifications");
+  return { ok: true };
+}
+
+/**
+ * Mark every unread notification read — the explicit "mark all as read"
+ * button, never something a render does on its own.
  */
 export async function markNotificationsRead(): Promise<ActionResult> {
   const live = await liveUser();
@@ -712,6 +737,7 @@ export async function markNotificationsRead(): Promise<ActionResult> {
   // be re-read — a path revalidation alone would leave the coach and admin
   // copies showing the count they were rendered with.
   revalidatePath("/", "layout");
+  revalidatePath("/notifications");
   revalidatePath("/today");
   return { ok: true };
 }

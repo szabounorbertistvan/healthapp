@@ -30,7 +30,8 @@ npm run web
 | `npm test` | Vitest — only `packages/**/src/**/*.test.ts` (domain math). No React tests exist. |
 | `npm run build` | Turbo build |
 | `npm run db:start` / `db:reset` | Local Supabase stack |
-| `npm run db:test` | pgTAP RLS tests in `supabase/tests/` |
+| `npm run db:test` | pgTAP RLS tests in `supabase/tests/` (needs Docker) |
+| `npm run db:test:offline` | the same suites without Docker — [scripts/pgtest](scripts/pgtest/README.md). One-time `cd scripts/pgtest && npm install` (downloads a Postgres, ~100 MB, not a workspace). Stub pgTAP + stub `auth`; CI stays the source of truth. |
 
 CI (`.github/workflows/ci.yml`) runs typecheck + test + build, a `deno check` over
 `supabase/functions/` (the edge functions are Deno modules that `tsc` never sees —

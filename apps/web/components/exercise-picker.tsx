@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { exerciseRef, youtubeEmbedUrl, type ExerciseSummary } from "@healthapp/shared";
 import { renameExercise, searchExerciseLibrary, setExerciseVideo } from "@/app/library-actions";
@@ -246,6 +247,19 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
                 >
                   {pendingLabel ?? t.common.actions.add}
                 </button>
+              ) : exercise.id ? (
+                // Browse mode only. Inside the program builder this column is
+                // the Add button, and a link that navigates away mid-build
+                // would lose the day being edited.
+                <Link
+                  href={`/exercises/${exercise.id}`}
+                  className="ml-auto inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-bg px-3 text-xs font-semibold text-ink-soft hover:text-accent-ink"
+                >
+                  {t.clientApp.library.openHistory}
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="m9 6 6 6-6 6" />
+                  </svg>
+                </Link>
               ) : null}
             </div>
           </li>

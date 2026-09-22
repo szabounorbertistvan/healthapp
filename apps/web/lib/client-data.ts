@@ -24,8 +24,6 @@ export {
   getMySessions,
   getMyTrainingLoad,
   getMyPrs,
-  getLastPerformance,
-  type LastPerformance,
 } from "./client-training";
 export { getMyDayNutrition, getMyFoodDays, getMyPlanMeals, getMyQuickFoods } from "./client-nutrition";
 export { getMyHabits, getMyMeasurements, getMyCheckInState } from "./client-progress";

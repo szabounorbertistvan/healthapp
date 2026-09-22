@@ -4,16 +4,36 @@
 // is validated. Nothing sensitive is derived here: a post's payload is a
 // snapshot the author chose to publish, never a live read of their logs.
 
-export type PostType = "workout" | "pr" | "challenge_completed" | "progress" | "text" | "streak";
+import type { ProgramPostPayload } from "./routines";
+
+export type PostType = "workout" | "pr" | "challenge_completed" | "progress" | "text" | "streak" | "program";
 export type PostVisibility = "public" | "followers" | "private";
 export type ReactionType = "kudos";
 
-export const POST_TYPES: readonly PostType[] = ["workout", "pr", "challenge_completed", "progress", "text", "streak"];
+export const POST_TYPES: readonly PostType[] = ["workout", "pr", "challenge_completed", "progress", "text", "streak", "program"];
 export const POST_VISIBILITIES: readonly PostVisibility[] = ["public", "followers", "private"];
 
 export const POST_TEXT_MAX = 500;
 export const COMMENT_MAX = 500;
 export const FEED_PAGE_SIZE = 20;
+export const COMMENT_PAGE_SIZE = 20;
+
+/**
+ * Which posts the feed lists.
+ *
+ *   following  own posts and the people you follow — the original behaviour
+ *   all        everything the visibility rules already allow
+ *   mine       your own only
+ *
+ * A scope widens who is LISTED; it never widens what may be seen. The
+ * visibility predicate is applied on top of all three, in SQL.
+ */
+export const FEED_SCOPES = ["following", "all", "mine"] as const;
+export type FeedScope = (typeof FEED_SCOPES)[number];
+
+export function isFeedScope(x: unknown): x is FeedScope {
+  return typeof x === "string" && (FEED_SCOPES as readonly string[]).includes(x);
+}
 
 // ---------- payloads ----------
 // What each post type publishes. Aggregates only for a workout: the feed and
@@ -80,7 +100,7 @@ export type StreakPostPayload = {
   title: string;
 };
 
-export type PostPayload = WorkoutPostPayload | PrPostPayload | ChallengePostPayload | ProgressPostPayload | StreakPostPayload | null;
+export type PostPayload = WorkoutPostPayload | PrPostPayload | ChallengePostPayload | ProgressPostPayload | StreakPostPayload | ProgramPostPayload | null;
 
 /** Build a workout post from a scored session. Only aggregates cross into the feed. */
 export function workoutPostPayload(session: {

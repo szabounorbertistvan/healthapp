@@ -8,6 +8,8 @@ import {
   STREAK_SHARE_MIN,
   canKudos,
   payloadIsSafe,
+  extractMentionHandles,
+  resolveMentions,
   validateComment,
   validateFollow,
   validatePostText,
@@ -25,10 +27,10 @@ import { CloudinaryNotConfiguredError, cloudinaryConfigured, postPhotoFolder, po
 import { currentActorId } from "@/lib/actor";
 import { supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
-import { getPostKudos, getShareableSession } from "@/lib/social-data";
+import { getComments, getMentionCandidates, getPostKudos, getShareableSession } from "@/lib/social-data";
 import { getChallenge } from "@/lib/challenges-data";
 import { getMyStreak } from "@/lib/streak-data";
-import type { KudosPage } from "@/lib/types";
+import type { CommentPage, KudosPage, PersonRow } from "@/lib/types";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -285,17 +287,78 @@ export async function loadKudos(postId: string, before: string | null = null): P
 
 // ---------- comments ----------
 
-export async function addComment(postId: string, body: string): Promise<ActionResult> {
+/**
+ * Comment on a post, or reply to a comment on it.
+ *
+ * Mentions are written as ROWS, not parsed out of the body at read time: the
+ * handles the author typed are resolved to ids here and stored in
+ * social_comment_mentions, and the renderer links a handle only when a row
+ * says so. So a body containing "@someone" cannot fabricate a link, and no
+ * markup is ever produced from user input.
+ *
+ * A mention grants nothing. The notification trigger checks the mentioned
+ * person's own visibility of the post, so naming somebody in a comment on a
+ * private post is silent — see notify_new_mention().
+ */
+export async function addComment(
+  postId: string,
+  body: string,
+  parentId?: string | null,
+): Promise<ActionResult & { id?: string }> {
   const { t } = await getI18n();
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
   const clean = validateComment(body);
   if (!clean) return { ok: false, message: t.common.social.commentInvalid };
   const supabase = await supabaseServer();
-  const { error } = await supabase.from("social_comments").insert({ post_id: postId, user_id: uid, body: clean });
-  if (error) return { ok: false, message: error.message };
+
+  const { data: created, error } = await supabase
+    .from("social_comments")
+    .insert({ post_id: postId, user_id: uid, body: clean, parent_id: parentId ?? null })
+    .select("id")
+    .single();
+  // The insert is gated by comments_insert (your own row, on a post you can
+  // see) and by the depth trigger. Both surface here as an error rather than a
+  // silent no-op.
+  if (error) return { ok: false, message: t.common.social.commentInvalid };
+
+  const handles = extractMentionHandles(clean);
+  if (handles.length > 0) {
+    // users_select hides everyone who is not the reader's coach or client, so
+    // the lookup goes through a security-definer RPC that returns nothing but
+    // id and username.
+    const { data: known } = await supabase.rpc("social_resolve_handles", { p_handles: handles });
+    type HandleRow = { id: string; username: string };
+    const mentions = resolveMentions(
+      handles,
+      ((known ?? []) as HandleRow[]).map((k) => ({ user_id: k.id, username: k.username })),
+    );
+    if (mentions.length > 0) {
+      // Best effort: a comment that saved but whose mentions did not is still
+      // a comment. Failing the whole action here would lose what was typed.
+      const { error: mentionError } = await supabase
+        .from("social_comment_mentions")
+        .insert(mentions.map((m) => ({ comment_id: created.id, user_id: m.user_id })));
+      if (mentionError) console.error("mentions not written:", mentionError.message);
+    }
+  }
+
   touched([`/feed/${postId}`]);
-  return { ok: true };
+  return { ok: true, id: created.id as string };
+}
+
+/** Who "@mar" could mean, for the composer's suggestion list. */
+export async function mentionCandidates(query: string, postId: string | null): Promise<PersonRow[]> {
+  const uid = await currentActorId();
+  if (!uid) return [];
+  return getMentionCandidates(query, postId);
+}
+
+/** One more page of a post's comments. */
+export async function loadComments(postId: string, before: string | null = null): Promise<CommentPage> {
+  const uid = await currentActorId();
+  if (!uid) return { items: [], next_cursor: null };
+  return getComments(postId, before);
 }
 
 export async function deleteComment(commentId: string, postId: string): Promise<ActionResult> {

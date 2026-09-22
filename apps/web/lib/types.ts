@@ -373,13 +373,24 @@ export type KudosPage = { items: KudosGiver[]; next_cursor: string | null };
 
 export type PostComment = {
   id: string;
+  /** The comment this one answers. Null for a top-level comment; one level only. */
+  parent_id: string | null;
   user_id: string;
   author_name: string;
+  author_username: string | null;
   author_avatar: string | null;
   body: string;
   created_at: string;
+  /** The people named in the body, resolved. Rendering links only these. */
+  mentions: { user_id: string; username: string }[];
+  reply_count: number;
   mine: boolean;
 };
+
+/** A top-level comment with the replies hanging off it. */
+export type CommentThread = PostComment & { replies: PostComment[] };
+
+export type CommentPage = { items: CommentThread[]; next_cursor: string | null };
 
 /** A person's public face: name, follow counts and three aggregate numbers. Nothing private. */
 export type SocialProfile = {
@@ -387,17 +398,35 @@ export type SocialProfile = {
   name: string;
   username: string | null;
   avatar_url: string | null;
+  /** Free text the person wrote about themselves; already public on /account. */
+  city: string | null;
+  bio: string | null;
   followers: number;
   following: number;
   workouts: number;
   prs: number;
   challenges: number;
+  /** Posts this reader may actually open — never a count of hidden things. */
+  posts: number;
+  streak_days: number;
   is_following: boolean;
   follows_me: boolean;
   me: boolean;
 };
 
-export type PersonRow = { id: string; name: string; username: string | null; avatar_url: string | null; is_following: boolean };
+/** "Followed by Maria and 3 others" — people I follow who also follow them. */
+export type MutualFollowers = { people: PersonRow[]; total: number };
+
+export type PersonRow = {
+  id: string;
+  name: string;
+  username: string | null;
+  avatar_url: string | null;
+  is_following: boolean;
+  city?: string | null;
+  /** How many people I follow also follow them — only on suggestions. */
+  mutuals?: number;
+};
 
 /** What the "Workout completed" screen offers to share — aggregates plus the PRs of that session. */
 export type ShareableSession = {

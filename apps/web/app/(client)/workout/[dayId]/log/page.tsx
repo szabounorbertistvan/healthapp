@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getLastPerformance, getWorkoutDay } from "@/lib/client-data";
+import { getWorkoutDay } from "@/lib/client-data";
+import { getPreviousForDay } from "@/lib/exercise-analytics-data";
 import { NavIcon } from "@/components/client-nav";
 import { SetLogger } from "@/components/set-logger";
 import { getI18n } from "@/lib/i18n/server";
@@ -15,9 +16,11 @@ export default async function WorkoutLogPage({
   const { dayId } = await params;
   const day = await getWorkoutDay(dayId);
   if (!day) notFound();
-  // What this person lifted here last time, so the boxes open on their numbers
-  // rather than on the prescription they have long since outgrown.
-  const last = await getLastPerformance(day);
+  // Every set of the last COMPLETED session on each lift, so the boxes open on
+  // this person's own numbers rather than on the prescription they have long
+  // since outgrown — and so the block above them says what to beat.
+  // A Map does not survive the server/client boundary; an object does.
+  const previous = Object.fromEntries(await getPreviousForDay(day));
 
   return (
     <div className="mx-auto max-w-[1600px]">
@@ -37,7 +40,7 @@ export default async function WorkoutLogPage({
         </h1>
       </div>
       <div className="mt-5">
-        <SetLogger day={day} last={last} />
+        <SetLogger day={day} previous={previous} />
       </div>
     </div>
   );
