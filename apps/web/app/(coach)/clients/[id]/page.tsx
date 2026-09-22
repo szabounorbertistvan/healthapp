@@ -3,10 +3,14 @@ import { notFound } from "next/navigation";
 import { getClients } from "@/lib/data";
 import { getClientWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getClientFitnessScore } from "@/lib/fitness-score-data";
+import { getFeed } from "@/lib/social-data";
 import { SignalBadge } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
 import { FitnessScoreCoachCard } from "@/components/fitness-score";
+import { PostCard } from "@/components/social";
+import { Card } from "@/components/ui";
+import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 
 /**
@@ -28,10 +32,14 @@ export default async function CoachClientPage({
   // The roster and the summary go out together: the summary is filtered by
   // client id and RLS answers it, so it never needed the roster first. A client
   // the coach cannot see still 404s below — the wasted summary read is empty.
-  const [clients, summary, fitness] = await Promise.all([
+  const [clients, summary, fitness, posts] = await Promise.all([
     getClients(),
     getClientWeeklySummary(id, choice),
     getClientFitnessScore(id),
+    // What the client chose to put out themselves. Since 20260921100000 an
+    // active coach passes the 'followers' branch, so this is the coach's view
+    // of the same cards the client's followers see — private posts excluded.
+    getFeed({ author: id }),
   ]);
   const client = clients.find((c) => c.client_id === id && c.status === "active");
   if (!client) notFound();
@@ -80,6 +88,23 @@ export default async function CoachClientPage({
         ) : (
           <p className="text-[13px] text-ink-faint">{t.common.weekly.noData}</p>
         )}
+
+        <section>
+          <h2 className="mb-3 font-display text-lg font-bold tracking-tight">
+            {fill(t.coachApp.clients.postsTitle, { name: client.full_name })}
+          </h2>
+          {posts.items.length === 0 ? (
+            <Card plain>
+              <p className="text-[13px] text-ink-faint">{t.coachApp.clients.postsEmpty}</p>
+            </Card>
+          ) : (
+            <div className="space-y-3.5">
+              {posts.items.slice(0, 5).map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

@@ -33,6 +33,7 @@ export function RestTimerCard({ prefs }: { prefs: RestPrefs }) {
   const [custom, setCustom] = useState(!isPreset(prefs.default_seconds));
   const [seconds, setSeconds] = useState(String(prefs.default_seconds));
   const [notify, setNotify] = useState(prefs.notify);
+  const [alert, setAlert] = useState(prefs.alert);
   const [state, setState] = useState<"idle" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   // "unsupported" until mounted: the server cannot know what this browser can do.
@@ -59,7 +60,7 @@ export function RestTimerCard({ prefs }: { prefs: RestPrefs }) {
       return;
     }
     start(async () => {
-      const result = await saveRestPrefs({ ...prefs, default_seconds: defaultSeconds, notify, ...next });
+      const result = await saveRestPrefs({ ...prefs, default_seconds: defaultSeconds, notify, alert, ...next });
       if (!result.ok) {
         setState("error");
         setError(result.message ?? m.couldNotSave);
@@ -92,6 +93,21 @@ export function RestTimerCard({ prefs }: { prefs: RestPrefs }) {
       }
       setNotify(true);
       const result = await saveRestPrefs({ ...prefs, notify: true });
+      if (!result.ok) setError(result.message ?? m.couldNotSave);
+      router.refresh();
+    });
+  }
+
+  /**
+   * Whether the notification may behave like an alert. Off is what the app
+   * used to do to everyone — `silent: true`, which on Android files it in a
+   * channel a locked phone never shows. Nothing here ever asks for a sound or
+   * a vibration pattern; this only decides which channel the device uses.
+   */
+  function toggleAlert(on: boolean) {
+    setAlert(on);
+    start(async () => {
+      const result = await saveRestPrefs({ ...prefs, notify, alert: on });
       if (!result.ok) setError(result.message ?? m.couldNotSave);
       router.refresh();
     });
@@ -173,6 +189,27 @@ export function RestTimerCard({ prefs }: { prefs: RestPrefs }) {
           </button>
         ) : null}
       </div>
+
+      {permission === "granted" && notify ? (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[13px] font-semibold text-ink-soft">{m.lockScreen}</p>
+            <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-faint">{m.lockScreenHint}</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={alert}
+            disabled={pending}
+            onClick={() => toggleAlert(!alert)}
+            className={`inline-flex h-9 shrink-0 items-center justify-center rounded-xl px-3.5 text-[13px] font-semibold ${
+              alert ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint"
+            }`}
+          >
+            {alert ? m.enabled : m.off}
+          </button>
+        </div>
+      ) : null}
 
       {mounted ? (
         <div className="mt-3 text-[12.5px] leading-relaxed">

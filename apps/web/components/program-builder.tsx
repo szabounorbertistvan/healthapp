@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProgramDetail } from "@/lib/types";
-import { addProgramDay, duplicateProgramDay, publishProgram, removeProgramDay } from "@/app/builder-actions";
+import { addProgramDay, deleteProgram, duplicateProgramDay, publishProgram, removeProgramDay } from "@/app/builder-actions";
 import { ProgramDayEditor } from "@/components/program-day-editor";
 import { NavIcon } from "@/components/client-nav";
 import { Card, EmptyState } from "@/components/ui";
@@ -24,6 +24,7 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
   const { t } = useI18n();
   const m = t.coachWidgets.programBuilder;
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function run(action: () => Promise<{ ok: boolean; message?: string }>) {
@@ -74,6 +75,64 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Why the button is dead. It used to live only in a `title`, so a coach
+          who pressed publish on an exercise-free program saw nothing happen and
+          nothing explaining it. */}
+      {isEmpty && program.status !== "published" ? (
+        <p className="mt-3 text-right text-[12.5px] font-medium text-ink-faint">{m.publishHint}</p>
+      ) : null}
+
+      {/* Deleting is one step back from the publish row: a coach reaches for it
+          rarely, and never by accident on the way to "publish". */}
+      {confirmingDelete ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-risk-soft px-4 py-3">
+          <p className="text-[13px] font-semibold text-risk">
+            {fill(m.deleteConfirm, { name: program.name })}
+          </p>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="inline-flex h-9 items-center rounded-full px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+            >
+              {t.common.actions.cancel}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await deleteProgram(program.id);
+                  if (!result.ok) {
+                    setError(result.message ?? m.somethingWentWrong);
+                    setConfirmingDelete(false);
+                    router.refresh();
+                    return;
+                  }
+                  // The page it was on no longer exists; replace so Back does
+                  // not walk into a 404.
+                  router.replace("/programs");
+                })
+              }
+              className="inline-flex h-9 items-center rounded-full bg-risk px-3.5 text-[12.5px] font-bold text-bg disabled:opacity-50"
+            >
+              {t.common.actions.delete}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 text-right">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => { setError(null); setConfirmingDelete(true); }}
+            className="text-[12.5px] font-semibold text-ink-faint hover:text-risk disabled:opacity-50"
+          >
+            {m.deleteProgram}
+          </button>
+        </div>
+      )}
 
       {/* Its own row rather than squeezed next to the buttons: a server message
           is a sentence, not a chip. */}

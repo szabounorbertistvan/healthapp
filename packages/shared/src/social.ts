@@ -30,6 +30,13 @@ export type WorkoutPostPayload = {
   volume_kg: number;
   load: number;
   prs: number;
+  /**
+   * A picture the author chose to attach — the gym selfie people actually
+   * want to post. Public Cloudinary URL (lib/cloudinary.ts), minted by the
+   * server from an upload it signed, never a URL the browser supplied. Absent
+   * on every post shared before this existed.
+   */
+  photo_url?: string | null;
 };
 
 export type PrPostPayload = {
@@ -85,6 +92,7 @@ export function workoutPostPayload(session: {
   volume_kg: number;
   load: number;
   prs: number;
+  photo_url?: string | null;
 }): WorkoutPostPayload {
   return {
     kind: "workout",
@@ -96,6 +104,11 @@ export function workoutPostPayload(session: {
     volume_kg: Math.max(0, Math.round(session.volume_kg)),
     load: Math.min(100, Math.max(0, Math.round(session.load))),
     prs: Math.max(0, Math.round(session.prs)),
+    // Only ever https, and only ever a string: a payload key the feed renders
+    // into an <img src> is the one place a stray value would be visible.
+    photo_url: typeof session.photo_url === "string" && session.photo_url.startsWith("https://")
+      ? session.photo_url
+      : null,
   };
 }
 

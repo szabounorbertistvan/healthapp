@@ -22,6 +22,18 @@ export type RestPrefs = {
   default_seconds: number;
   /** Rest-finished notifications wanted (browser permission is a separate question). */
   notify: boolean;
+  /**
+   * Whether the rest-finished notification may reach the lock screen.
+   *
+   * The app has never asked for sound or vibration and still does not: it
+   * never sets a `vibrate` pattern and never plays audio. What this controls
+   * is the one flag that decides whether the platform treats the notification
+   * as an alert at all — `silent: true` files it in a quiet channel on
+   * Android, which means a locked phone shows nothing until it is picked up,
+   * and a rest timer nobody sees is not a rest timer. On, the device's own
+   * notification settings decide; off restores the silent channel.
+   */
+  alert: boolean;
   /** exercises.id → seconds. Only the lifts the person chose to configure. */
   exercises: Record<string, number>;
 };
@@ -43,6 +55,7 @@ export function normalizeRestPrefs(raw: unknown): RestPrefs {
   return {
     default_seconds: clampSeconds(obj.default_seconds) ?? DEFAULT_REST_SECONDS,
     notify: obj.notify !== false,
+    alert: obj.alert !== false,
     exercises,
   };
 }

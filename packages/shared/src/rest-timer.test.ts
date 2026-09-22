@@ -28,7 +28,7 @@ import {
 const T0 = Date.parse("2026-09-19T10:30:00Z");
 const SEC = 1000;
 
-const prefs: RestPrefs = { default_seconds: 60, notify: true, exercises: {} };
+const prefs: RestPrefs = { default_seconds: 60, notify: true, alert: true, exercises: {} };
 
 function start(over: Partial<Parameters<typeof startRest>[0]> = {}) {
   return startRest({
@@ -71,6 +71,12 @@ describe("rest duration settings", () => {
     expect(normalizeRestPrefs({}).notify).toBe(true);
     expect(normalizeRestPrefs({ notify: false }).notify).toBe(false);
     expect(normalizeRestPrefs({ notify: "no" }).notify).toBe(true);
+  });
+
+  test("alert defaults to on, so a rest notification may reach the lock screen", () => {
+    expect(normalizeRestPrefs({}).alert).toBe(true);
+    expect(normalizeRestPrefs({ alert: false }).alert).toBe(false);
+    expect(normalizeRestPrefs({ alert: "no" }).alert).toBe(true);
   });
 
   test("exercise overrides are kept only when they are valid durations", () => {

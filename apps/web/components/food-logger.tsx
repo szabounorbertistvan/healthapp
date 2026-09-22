@@ -366,7 +366,7 @@ export function FoodLogger({
               ) : null}
             </div>
           ) : (
-            <ul className="mt-2 max-h-64 divide-y divide-line/60 overflow-y-auto">
+            <ul className="mt-2 max-h-[min(78vh,48rem)] divide-y divide-line/60 overflow-y-auto">
               {results.map((food) => row(food, null, "result"))}
               {results.length === 0 ? (
                 <li className="py-3 text-sm text-ink-faint">{fl.noMatches}</li>

@@ -21,6 +21,7 @@ import {
   type StreakPostPayload,
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
+import { CloudinaryNotConfiguredError, cloudinaryConfigured, postPhotoFolder, postPhotoUrl, signPostPhotoUpload, type PostPhotoUploadTicket } from "@/lib/cloudinary";
 import { currentActorId } from "@/lib/actor";
 import { supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
@@ -119,16 +120,58 @@ export async function createProgressPost(text: string, visibility?: string, weig
   return insertPost({ type: "progress", text: clean, payload, visibility: visibilityOf(visibility) });
 }
 
-/** Share a finished session: the aggregates only, snapshotted now. */
-export async function shareWorkout(sessionId: string, visibility?: string, text?: string): Promise<PostResult> {
+/**
+ * A one-shot permission to upload one photo for a post. Same shape as the
+ * avatar ticket: the signature covers the exact folder and public_id, so the
+ * browser posts the file straight to Cloudinary without it ever passing
+ * through a server action's body limit, and cannot widen where it lands.
+ */
+export async function requestPostPhotoUpload(): Promise<ActionResult & { ticket?: PostPhotoUploadTicket }> {
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  try {
+    return { ok: true, ticket: signPostPhotoUpload(uid) };
+  } catch (error) {
+    if (error instanceof CloudinaryNotConfiguredError) {
+      console.error(error.message);
+      return { ok: false, message: error.message };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Rebuild the delivery URL from an upload this server signed. The browser
+ * hands back the public_id and version Cloudinary answered with; anything
+ * outside this person's own post folder is refused, and the URL itself is
+ * composed here rather than trusted.
+ */
+async function resolvePostPhoto(uid: string, photo: { publicId: string; version: number } | null | undefined): Promise<string | null> {
+  if (!photo) return null;
+  if (!cloudinaryConfigured()) return null;
+  if (typeof photo.publicId !== "string" || !photo.publicId.startsWith(`${postPhotoFolder(uid)}/`)) return null;
+  if (!Number.isInteger(photo.version) || photo.version <= 0) return null;
+  return postPhotoUrl(photo.publicId, photo.version);
+}
+
+/** Share a finished session: the aggregates only, snapshotted now, plus an optional photo the author picked. */
+export async function shareWorkout(
+  sessionId: string,
+  visibility?: string,
+  text?: string,
+  photo?: { publicId: string; version: number } | null,
+): Promise<PostResult> {
   const { t } = await getI18n();
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   const s = await getShareableSession(sessionId);
   if (!s) return { ok: false, message: t.common.social.notFound };
   const caption = text ? validatePostText(text) : null;
+  const photoUrl = await resolvePostPhoto(uid, photo);
   return insertPost({
     type: "workout",
     text: caption,
-    payload: workoutPostPayload({ name: s.name, date: s.date, duration_min: s.duration_min, exercises: s.exercises, sets: s.sets, volume_kg: s.volume_kg, load: s.load, prs: s.prs.length }),
+    payload: workoutPostPayload({ name: s.name, date: s.date, duration_min: s.duration_min, exercises: s.exercises, sets: s.sets, volume_kg: s.volume_kg, load: s.load, prs: s.prs.length, photo_url: photoUrl }),
     visibility: visibilityOf(visibility),
     activity_id: sessionId,
   });

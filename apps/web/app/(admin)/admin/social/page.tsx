@@ -35,12 +35,12 @@ export default async function AdminSocialPage({ searchParams }: { searchParams: 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Section title={c.total}>
           <KpiGrid cols={5}>
-            <Kpi label={m.stats.posts} value={n(stats.posts)} accent sub={`${n(stats.posts_7d)} · ${c.last7}`} />
-            <Kpi label={m.stats.comments} value={n(stats.comments)} sub={`${n(stats.comments_7d)} · ${c.last7}`} />
-            <Kpi label={m.stats.kudos} value={n(stats.kudos)} sub={`${n(stats.kudos_7d)} · ${c.last7}`} />
-            <Kpi label={m.stats.follows} value={n(stats.follows)} sub={`${n(stats.follows_7d)} · ${c.last7}`} />
+            <Kpi label={m.stats.posts} value={n(stats.posts)} accent sub={`${n(stats.posts_7d)} · ${c.last7}`} href="/admin/social?status=live" />
+            <Kpi label={m.stats.comments} value={n(stats.comments)} sub={`${n(stats.comments_7d)} · ${c.last7}`} href="/admin/activity?action=COMMENT_CREATED" />
+            <Kpi label={m.stats.kudos} value={n(stats.kudos)} sub={`${n(stats.kudos_7d)} · ${c.last7}`} href="/admin/activity?action=KUDOS_ADDED" />
+            <Kpi label={m.stats.follows} value={n(stats.follows)} sub={`${n(stats.follows_7d)} · ${c.last7}`} href="/admin/activity?action=FOLLOW_CREATED" />
             <Kpi label={m.stats.active7d} value={n(stats.active_users_7d)} />
-            <Kpi label={m.stats.deleted} value={n(stats.posts_deleted)} />
+            <Kpi label={m.stats.deleted} value={n(stats.posts_deleted)} href="/admin/social?status=deleted" />
           </KpiGrid>
           <div className="mt-3"><DailyBars title={m.chart} points={series.map((p) => ({ day: p.day, value: Number(p.posts) }))} locale={locale} accent /></div>
         </Section>

@@ -34,6 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/social", label: n.social, icon: "M4 5h16v11H9l-5 4z" },
     { href: "/admin/challenges", label: n.challenges, icon: "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" },
     { href: "/admin/notifications", label: n.notifications, icon: "M12 4a5 5 0 0 0-5 5v3l-1.5 3h13L17 12V9a5 5 0 0 0-5-5M10 18a2 2 0 0 0 4 0" },
+    { href: "/admin/errors", label: n.errors, icon: "M12 9v4M12 17h.01M10.3 4.3 2.6 18a1.6 1.6 0 0 0 1.4 2.4h16a1.6 1.6 0 0 0 1.4-2.4L13.7 4.3a1.6 1.6 0 0 0-2.8 0z" },
     { href: "/admin/system", label: n.system, icon: "M4 6h16v5H4zM4 13h16v5H4zM7 8.5h.01M7 15.5h.01" },
   ];
   const name = displayName(profile);

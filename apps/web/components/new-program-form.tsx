@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createProgram } from "@/app/builder-actions";
@@ -42,6 +43,26 @@ export function NewProgramForm({
       if (result.ok && result.id) router.push(`/programs/${result.id}`);
       else setError(result.message ?? m.createError);
     });
+  }
+
+  // An admin, or a coach whose first client has not accepted yet, reaches this
+  // page with an empty roster. Rendering the form anyway posted an empty
+  // clientId and surfaced a raw Postgres RLS error; say what is missing instead.
+  if (roster.length === 0) {
+    return (
+      <div className="py-6 text-center">
+        <p className="font-display text-lg font-bold tracking-tight">{t.coachWidgets.noClients.title}</p>
+        <p className="mx-auto mt-2 max-w-md text-[13.5px] leading-relaxed text-ink-soft">
+          {t.coachWidgets.noClients.body}
+        </p>
+        <Link
+          href="/clients"
+          className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90"
+        >
+          {t.coachWidgets.noClients.action}
+        </Link>
+      </div>
+    );
   }
 
   const field =

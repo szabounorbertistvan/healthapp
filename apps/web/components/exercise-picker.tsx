@@ -8,7 +8,7 @@ import { fill } from "@/lib/i18n";
 import { NewExerciseForm } from "./new-exercise-form";
 
 /** Matches EXERCISE_PAGE_SIZE in app/library-actions.ts. */
-const PAGE_SIZE = 40;
+const PAGE_SIZE = 60;
 
 type Props = {
   muscles: string[];

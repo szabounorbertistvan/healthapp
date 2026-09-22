@@ -244,7 +244,11 @@ desk: `lib/admin/data.ts` wraps one `admin_*` RPC per page; each RPC is
 `security definer` and opens with `admin_assert()` (raises `42501` unless
 `is_admin()`), so the `/admin` prefix is a view, not the boundary. Email, last
 sign-in and provider come from `auth.users` / `auth.identities` only through
-those RPCs; login history from `auth.audit_log_entries`. `admin_audit_events`
+those RPCs; **login history from `public.admin_login_events`** — a view over
+the USER_LOGIN audit rows, because `auth.audit_log_entries` is empty on a
+hosted Supabase project and every login figure in the panel read 0 until
+20260922100000 (it falls back to GoTrue's log only while our own stream is
+empty, which is the local stack). `admin_audit_events`
 is an append-only stream written by triggers on users, auth.users
 (`last_sign_in_at`), trainer_clients, programs, logged_sessions, logged_sets,
 exercises, challenges, social_*, push_subscriptions and
@@ -254,8 +258,22 @@ are reported by the login form through `record_login_failure()` (anonymous,
 flood-capped). Admin writes: `admin_set_suspended` (sets `users.suspended_at`;
 both app layouts redirect a suspended account to `/suspended`),
 `admin_revoke_invitation`, `admin_delete_post` (soft), `admin_remove_push_subscription`,
-`admin_set_tier` (now audited). Tests: `supabase/tests/admin_panel.test.sql`
-(101 assertions), `lib/admin/params.test.ts`.
+`admin_set_tier` (now audited), `admin_resolve_app_error`. Tests:
+`supabase/tests/admin_panel.test.sql` (101 assertions), `lib/admin/params.test.ts`.
+
+**Application errors** (`/admin/errors`, `app_errors`, 2026-09-22). The panel's
+"Application errors" tile used to be an honest dash; there is a store now.
+`app/error.tsx`, `app/global-error.tsx` and `(admin)/error.tsx` each mount
+`components/error-reporter.tsx`, which calls `reportAppError`
+(`app/error-actions.ts`) → `record_app_error()` — security definer, callable by
+anon (an error boundary fires for a signed-out visitor too) and capped at 20
+rows an hour per user, 40 per address. The row holds the message, the Next.js
+digest, the route, a trimmed stack, the user agent and the IP; never a form
+value, a token or a request body. Reads go through `admin_app_errors()`, which
+returns the counters, the distinct messages ranked by frequency, and one page of
+raw rows; `admin_resolve_app_error(id, all_alike)` marks rather than deletes.
+Nothing reports server-side failures that never reach a boundary — a caught
+error in a server action is still only a console line.
 
 One active coach per client is enforced by `trainer_clients` + invite codes
 (`create_invite()`), and it is what `is_active_coach_of()` — and therefore every

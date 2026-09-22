@@ -29,7 +29,9 @@ describe("rest timer persistence", () => {
   test("a saved timer comes back with its instants intact", () => {
     const store = memory();
     saveRestTimer(store, timer);
-    expect(loadRestTimer(store)).toEqual(timer);
+    // Read at the fixture's own clock: loadRestTimer drops a rest that ended
+    // more than half an hour ago, and T0 is a fixed date in the past.
+    expect(loadRestTimer(store, T0 + 1000)).toEqual(timer);
   });
 
   test("the timer is stored under one versioned key, as JSON", () => {

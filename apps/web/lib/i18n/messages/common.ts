@@ -47,7 +47,7 @@ const en = {
   signal: {
     on_track: "On Track",
     needs_attention: "Needs Attention",
-    at_risk: "At Risk",
+    at_risk: "Needs a Restart",
   },
   time: {
     never: "never",
@@ -98,6 +98,13 @@ const en = {
     saving: "Saving…",
     loading: "Loading…",
     nothingChanged: "Nothing was saved. This item is no longer available to you; refresh and try again.",
+  },
+  errorBoundary: {
+    title: "Something went wrong on this screen",
+    body: "Nothing you logged was lost. Try again, or go back and open it once more — the problem has been reported.",
+    retry: "Try again",
+    home: "Back to start",
+    reference: "Reference",
   },
   macros: {
     calories: "Calories",
@@ -188,6 +195,12 @@ const en = {
     prMany: "{count} PRs",
     cancel: "Cancel",
     postNotFound: "This post is not available.",
+    photoAdd: "Add a photo",
+    photoRemove: "Remove photo",
+    photoHint: "Optional — a selfie or a shot of the session. Whoever can see the post can see the photo.",
+    photoNotImage: "That file is not an image.",
+    photoTooLarge: "That image is too large. 8 MB is the limit.",
+    photoFailed: "The photo could not be uploaded. The workout can still be shared without it.",
   },
   streaks: {
     title: "Streak",
@@ -510,7 +523,7 @@ const ro: typeof en = {
   signal: {
     on_track: "Pe drumul bun",
     needs_attention: "Necesită atenție",
-    at_risk: "În pericol",
+    at_risk: "Necesită repornire",
   },
   time: {
     never: "niciodată",
@@ -561,6 +574,13 @@ const ro: typeof en = {
     saving: "Se salvează…",
     loading: "Se încarcă…",
     nothingChanged: "Nu s-a salvat nimic. Elementul nu îți mai este disponibil; reîncarcă pagina și încearcă din nou.",
+  },
+  errorBoundary: {
+    title: "Ceva n-a mers bine pe acest ecran",
+    body: "Nimic din ce ai înregistrat nu s-a pierdut. Încearcă din nou sau deschide pagina încă o dată — problema a fost raportată.",
+    retry: "Încearcă din nou",
+    home: "Înapoi la început",
+    reference: "Referință",
   },
   macros: {
     calories: "Calorii",
@@ -651,6 +671,12 @@ const ro: typeof en = {
     prMany: "{count} recorduri",
     cancel: "Renunță",
     postNotFound: "Această postare nu este disponibilă.",
+    photoAdd: "Adaugă o poză",
+    photoRemove: "Elimină poza",
+    photoHint: "Opțional — un selfie sau o poză din sesiune. Cine vede postarea vede și poza.",
+    photoNotImage: "Fișierul acela nu este o imagine.",
+    photoTooLarge: "Imaginea e prea mare. Limita este 8 MB.",
+    photoFailed: "Poza nu a putut fi încărcată. Antrenamentul poate fi publicat și fără ea.",
   },
   streaks: {
     title: "Serie",

@@ -13,7 +13,7 @@ import type { ActionResult } from "./actions";
 // asks for a page of matches as the coach types and renders only those; `offset`
 // fetches the next page when they scroll past the first. (Not exported: a
 // "use server" module may only export async functions.)
-const EXERCISE_PAGE_SIZE = 40;
+const EXERCISE_PAGE_SIZE = 60;
 
 export async function searchExerciseLibrary(
   filter: ExerciseFilter,

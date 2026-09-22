@@ -6,8 +6,10 @@
 // (lib/rest-timer/push.ts) — not on page load, and not before the person has
 // asked for notifications.
 //
-// Visual only: `silent: true`, no `vibrate` pattern, no sound. The platform
-// and the person's own notification settings decide the rest.
+// No `vibrate` pattern and no sound, ever. Whether the notification is shown
+// as an alert (so a locked phone can light up for it) or filed silently is the
+// person's own setting, carried on the payload as `alert`; the platform and
+// their notification settings decide everything after that.
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -28,12 +30,14 @@ self.addEventListener("push", (event) => {
 
   const id = String(payload.id || "");
   const url = typeof payload.url === "string" && payload.url.startsWith("/") ? payload.url : "/today";
+  const alert = payload.alert !== false;
   event.waitUntil(
     self.registration.showNotification(String(payload.title || ""), {
       body: String(payload.body || ""),
       tag: "rest-" + id,
       renotify: false,
-      silent: true,
+      silent: !alert,
+      requireInteraction: alert,
       icon: "/icon.png",
       data: { url, id },
     }),

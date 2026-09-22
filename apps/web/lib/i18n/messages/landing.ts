@@ -22,7 +22,7 @@ const en = {
       { title: "Stay on a streak", body: "Habits, a streak calendar and monthly challenges carry the boring weeks. Leaderboards are there if you want them — ignore them and the streak still counts." },
     ],
     coachBenefits: [
-      { title: "Know who needs you today", body: "Every client carries an On Track / Needs Attention / At Risk signal — with the reason spelled out." },
+      { title: "Know who needs you today", body: "Every client carries an On Track / Needs Attention / Needs a Restart signal — with the reason spelled out." },
       { title: "Build once, coach everywhere", body: "Program and meal builders on the web; your clients get them on their phone the moment you hit publish." },
       { title: "Feedback in context", body: "Reply on the weekly check-in and your client reads it on their Today screen — not in a WhatsApp thread three days later." },
     ],
@@ -56,7 +56,7 @@ const en = {
       coach: {
         items: [
           "Program and meal-plan builders on the web — on your client's phone the moment you publish",
-          "On Track / Needs Attention / At Risk on every client, with the reason spelled out",
+          "On Track / Needs Attention / Needs a Restart on every client, with the reason spelled out",
           "Weekly check-in review, and your reply lands on their Today screen",
           "Meal plans that differ by weekday, not one day repeated forever",
           "Your own exercises with a YouTube demo link, so clients see your cues",
@@ -104,7 +104,7 @@ const en = {
         items: [
           "Up to 3 clients",
           "Program and meal-plan builders on the web — on their phone the moment you publish",
-          "On Track / Needs Attention / At Risk on every client, with the reason spelled out",
+          "On Track / Needs Attention / Needs a Restart on every client, with the reason spelled out",
           "Messages, check-in review and feedback on the weekly check-in",
           "Your own exercises with a YouTube demo link, so clients see your cues",
         ],
@@ -213,7 +213,7 @@ const ro: typeof en = {
       { title: "Păstrează-ți seria", body: "Obiceiurile, calendarul seriei și provocările lunare duc și săptămânile plictisitoare. Clasamentele sunt acolo dacă le vrei — le ignori și seria contează la fel." },
     ],
     coachBenefits: [
-      { title: "Știi cine are nevoie de tine azi", body: "Fiecare client poartă un semnal Pe drumul bun / Necesită atenție / În pericol — cu motivul explicat clar." },
+      { title: "Știi cine are nevoie de tine azi", body: "Fiecare client poartă un semnal Pe drumul bun / Necesită atenție / Necesită repornire — cu motivul explicat clar." },
       { title: "Construiește o dată, antrenează peste tot", body: "Constructori de programe și mese pe web; clienții le primesc pe telefon în momentul în care publici." },
       { title: "Feedback în context", body: "Răspunzi la check-in-ul săptămânal, iar clientul îl citește pe ecranul lui de azi — nu într-o conversație de WhatsApp trei zile mai târziu." },
     ],
@@ -236,7 +236,7 @@ const ro: typeof en = {
       coach: {
         items: [
           "Constructori de programe și de mese pe web — pe telefonul clientului în momentul în care publici",
-          "Pe drumul bun / Necesită atenție / În pericol pe fiecare client, cu motivul explicat",
+          "Pe drumul bun / Necesită atenție / Necesită repornire pe fiecare client, cu motivul explicat",
           "Revizuirea check-in-ului săptămânal, iar răspunsul tău ajunge pe ecranul lui de azi",
           "Planuri de mese care diferă pe zile, nu o zi repetată la infinit",
           "Exercițiile tale cu link demonstrativ de YouTube, ca să-ți vadă indicațiile",
@@ -284,7 +284,7 @@ const ro: typeof en = {
         items: [
           "Până la 3 clienți",
           "Constructori de programe și de mese pe web — pe telefonul lor în momentul în care publici",
-          "Pe drumul bun / Necesită atenție / În pericol pe fiecare client, cu motivul explicat",
+          "Pe drumul bun / Necesită atenție / Necesită repornire pe fiecare client, cu motivul explicat",
           "Mesaje, revizuirea check-in-urilor și feedback la check-in-ul săptămânal",
           "Exercițiile tale cu link demonstrativ de YouTube, ca să-ți vadă indicațiile",
         ],

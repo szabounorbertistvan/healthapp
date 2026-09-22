@@ -5,7 +5,7 @@ import { useEffect, useOptimistic, useRef, useState, useTransition } from "react
 import type { PostVisibility } from "@healthapp/shared";
 import { displayToKg, kudosSummary, toggleKudosState, POST_TEXT_MAX, COMMENT_MAX } from "@healthapp/shared";
 import {
-  addComment, createProgressPost, createTextPost, deleteComment, deletePost, follow, loadKudos, toggleKudos, unfollow,
+  addComment, createProgressPost, createTextPost, deleteComment, deletePost, follow, loadKudos, requestPostPhotoUpload, toggleKudos, unfollow,
 } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -130,11 +130,10 @@ function PostMedia({ post }: { post: FeedPost }) {
 
   if (p.kind === "workout") {
     const dur = f.duration(p.duration_min);
-    return (
-      <div className="mx-3 rounded-2xl bg-tile px-5 pb-5 pt-4 text-tile-ink">
-        <BlockLabel icon={DUMBBELL} tone="text-tile-accent">{s.workoutPost}</BlockLabel>
-        <p className="mt-1 truncate font-display text-[26px] font-extrabold leading-tight tracking-tight">{p.name}</p>
-        <div className={`mt-4 grid gap-3 ${dur ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+    const photo = typeof p.photo_url === "string" && p.photo_url.startsWith("https://") ? p.photo_url : null;
+    const stats = (
+      <>
+        <div className={`grid gap-3 ${dur ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
           {dur ? <Stat value={dur} label={s.statDuration} /> : null}
           <Stat value={f.n(p.volume_kg)} unit="kg" label={s.statVolume} />
           <Stat value={f.n(p.sets)} label={s.statSets} />
@@ -155,6 +154,52 @@ function PostMedia({ post }: { post: FeedPost }) {
               {p.prs === 1 ? s.prOne : fill(s.prMany, { count: p.prs })}
             </span>
           ) : null}
+        </div>
+      </>
+    );
+
+    // With a photo the card becomes what people came for: the picture full
+    // bleed, the workout's name and its headline number sitting on it behind a
+    // gradient, and the rest of the figures underneath on the tile. Without
+    // one it is the tile alone, exactly as before.
+    return (
+      <div className="mx-3 overflow-hidden rounded-2xl bg-tile text-tile-ink">
+        {photo ? (
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photo}
+              alt=""
+              aria-hidden
+              loading="lazy"
+              decoding="async"
+              className="block max-h-[28rem] w-full bg-bg object-cover"
+            />
+            {/* The scrim exists so white text is legible on any photo; it is
+                opaque at the bottom and clear at the top, so the picture is
+                never dimmed where nothing sits on it. */}
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-5 pb-4 pt-14 text-white">
+              <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-white/70">
+                <NavIcon d={DUMBBELL} className="h-3.5 w-3.5" />
+                {s.workoutPost}
+              </span>
+              <p className="mt-1 truncate font-display text-[24px] font-extrabold leading-tight tracking-tight">{p.name}</p>
+              <p className="mt-1 flex flex-wrap items-center gap-x-3 text-[12.5px] font-semibold tabular-nums text-white/85">
+                {dur ? <span>{dur}</span> : null}
+                <span>{fill(s.volume, { kg: f.n(p.volume_kg) })}</span>
+                <span>{fill(s.setsCount, { count: p.sets })}</span>
+              </p>
+            </div>
+          </div>
+        ) : null}
+        <div className={photo ? "px-5 pb-5 pt-4" : "px-5 pb-5 pt-4"}>
+          {photo ? null : (
+            <>
+              <BlockLabel icon={DUMBBELL} tone="text-tile-accent">{s.workoutPost}</BlockLabel>
+              <p className="mb-4 mt-1 truncate font-display text-[26px] font-extrabold leading-tight tracking-tight">{p.name}</p>
+            </>
+          )}
+          {stats}
         </div>
       </div>
     );
@@ -702,10 +747,14 @@ export function FollowButton({ userId, following, compact = false }: { userId: s
 
 // ---------- share panel (workout done) ----------
 
-export function SharePanel({ session, onShare, onSharePr }: {
+export type PostPhoto = { publicId: string; version: number; previewUrl: string };
+
+export function SharePanel({ session, onShare, onSharePr, photoUploads = false }: {
   session: ShareableSession;
-  onShare: (visibility: PostVisibility, text: string) => Promise<{ ok: boolean; message?: string }>;
+  onShare: (visibility: PostVisibility, text: string, photo: { publicId: string; version: number } | null) => Promise<{ ok: boolean; message?: string }>;
   onSharePr: (setId: string, visibility: PostVisibility) => Promise<{ ok: boolean; message?: string }>;
+  /** Whether Cloudinary is configured; without it the photo button is not offered. */
+  photoUploads?: boolean;
 }) {
   const { t } = useI18n();
   const f = useSocialFormat();
@@ -714,6 +763,7 @@ export function SharePanel({ session, onShare, onSharePr }: {
   const [visibility, setVisibility] = useState<PostVisibility>("followers");
   const [text, setText] = useState("");
   const [shared, setShared] = useState(session.already_shared);
+  const [photo, setPhoto] = useState<PostPhoto | null>(null);
   const [sharedPrs, setSharedPrs] = useState<Set<string>>(new Set(session.prs.filter((p) => p.shared).map((p) => p.set_id)));
   const [error, setError] = useState<string | null>(null);
   const s = t.common.social;
@@ -743,6 +793,7 @@ export function SharePanel({ session, onShare, onSharePr }: {
               placeholder={s.composerPlaceholder}
               className="h-11 w-full rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent"
             />
+            {photoUploads ? <PhotoPicker photo={photo} onChange={setPhoto} disabled={pending} /> : null}
             <VisibilityPicker value={visibility} onChange={setVisibility} />
             <button
               type="button"
@@ -750,7 +801,7 @@ export function SharePanel({ session, onShare, onSharePr }: {
               onClick={() =>
                 startTransition(async () => {
                   setError(null);
-                  const r = await onShare(visibility, text);
+                  const r = await onShare(visibility, text, photo ? { publicId: photo.publicId, version: photo.version } : null);
                   if (!r.ok) setError(r.message ?? "Error");
                   else setShared(true);
                   router.refresh();
@@ -807,6 +858,99 @@ export function SharePanel({ session, onShare, onSharePr }: {
           </ul>
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+
+/** How big a post photo may be before the browser refuses to send it. */
+const POST_PHOTO_MAX_BYTES = 8 * 1024 * 1024;
+
+/**
+ * "Add a photo" for a workout post — the gym selfie.
+ *
+ * `capture="environment"` is deliberately *not* set: on a phone the picker
+ * offers both the camera and the library, and someone who wants a selfie wants
+ * the front camera, which only the unhinted picker lets them choose. The file
+ * goes straight to Cloudinary under a signature this server minted
+ * (requestPostPhotoUpload), so it never passes through a server action body,
+ * and the post only carries the public_id and version — the URL itself is
+ * rebuilt server-side when the post is written.
+ */
+function PhotoPicker({ photo, onChange, disabled }: {
+  photo: PostPhoto | null;
+  onChange: (photo: PostPhoto | null) => void;
+  disabled: boolean;
+}) {
+  const { t } = useI18n();
+  const s = t.common.social;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upload(file: File) {
+    setError(null);
+    if (!file.type.startsWith("image/")) { setError(s.photoNotImage); return; }
+    if (file.size > POST_PHOTO_MAX_BYTES) { setError(s.photoTooLarge); return; }
+    setBusy(true);
+    try {
+      const permission = await requestPostPhotoUpload();
+      if (!permission.ok || !permission.ticket) { setError(permission.message ?? s.photoFailed); return; }
+      const ticket = permission.ticket;
+      const body = new FormData();
+      body.append("file", file);
+      body.append("api_key", ticket.apiKey);
+      for (const [key, value] of Object.entries(ticket.fields)) body.append(key, value);
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${ticket.cloudName}/image/upload`, { method: "POST", body });
+      if (!response.ok) { setError(s.photoFailed); return; }
+      const uploaded = (await response.json()) as { public_id?: string; version?: number; secure_url?: string };
+      if (!uploaded.public_id || !uploaded.version) { setError(s.photoFailed); return; }
+      onChange({ publicId: uploaded.public_id, version: uploaded.version, previewUrl: uploaded.secure_url ?? "" });
+    } catch {
+      setError(s.photoFailed);
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }}
+      />
+      {photo ? (
+        <div className="flex items-center gap-3">
+          <span className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-bg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photo.previewUrl} alt="" aria-hidden className="h-full w-full object-cover" />
+          </span>
+          <button
+            type="button"
+            disabled={disabled || busy}
+            onClick={() => onChange(null)}
+            className="inline-flex h-10 items-center rounded-2xl px-3.5 text-[13px] font-semibold text-ink-faint hover:bg-bg hover:text-risk disabled:opacity-50"
+          >
+            {s.photoRemove}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={disabled || busy}
+          onClick={() => fileRef.current?.click()}
+          className="inline-flex h-11 items-center gap-2 rounded-2xl bg-bg px-4 text-[13px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
+        >
+          <NavIcon d="M4 8h3l1.5-2h7L17 8h3v11H4zM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7" className="h-[18px] w-[18px]" />
+          {busy ? t.common.actions.loading : s.photoAdd}
+        </button>
+      )}
+      <p className="mt-1.5 text-[12px] leading-relaxed text-ink-faint">{s.photoHint}</p>
+      {error ? <p className="mt-1 text-[12.5px] text-risk">{error}</p> : null}
     </div>
   );
 }

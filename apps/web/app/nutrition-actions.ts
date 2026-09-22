@@ -17,6 +17,9 @@ import { notSignedIn } from "@/lib/action-result";
 // through `mutated()` so an RLS-filtered write cannot report success. See
 // docs/superpowers/specs/2026-09-08-s1-*.
 
+/** How many foods one search returns — what the picker's scroll list holds. */
+const FOOD_SEARCH_LIMIT = 60;
+
 export async function searchFoods(q: string): Promise<FoodItem[]> {
   const supabase = await supabaseServer();
   const term = q.trim();
@@ -31,7 +34,9 @@ export async function searchFoods(q: string): Promise<FoodItem[]> {
     .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
     .order("verified", { ascending: false })
     .order("name_en")
-    .limit(30);
+    // The picker panel grew to fill the viewport (2026-09-21), so a page of 30
+    // left half of it empty on a desk screen.
+    .limit(FOOD_SEARCH_LIMIT);
   if (term) {
     // `search_text` is the lower-cased, unaccented name+brand kept by the
     // database (migration 20260908120000), and the term gets the same
@@ -62,7 +67,7 @@ export async function searchFoods(q: string): Promise<FoodItem[]> {
 
   const remote = (await searchFoodsRemote(supabase, term)) ?? [];
   const seen = new Set(local.map((f) => f.id));
-  return [...local, ...remote.filter((f) => !seen.has(f.id))].slice(0, 30);
+  return [...local, ...remote.filter((f) => !seen.has(f.id))].slice(0, FOOD_SEARCH_LIMIT);
 }
 
 type RemoteFood = {

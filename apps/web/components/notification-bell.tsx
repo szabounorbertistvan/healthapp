@@ -17,7 +17,10 @@ import { NavIcon } from "./client-nav";
  *
  * Opening marks everything read. That is the honest behaviour for a list whose
  * whole content is reminders: keeping a badge alive after someone has looked at
- * it trains them to ignore it.
+ * it trains them to ignore it. The badge clears on the tap, not when the write
+ * comes back, and the two bells (sidebar and phone header) each keep their own
+ * count of what this browser has dismissed — whichever one you open, the
+ * server write and the refresh that follows settle both.
  */
 export function NotificationBell({
   notifications,
@@ -45,7 +48,12 @@ export function NotificationBell({
   const n = t.common.notifications;
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [seen, setSeen] = useState(false);
+  // How many notifications had been read away by this browser. It is a count,
+  // not a flag, because the layout keeps handing this component a fresh
+  // `unread`: a flag stayed true and hid a badge that had legitimately come
+  // back, and it reset to false on every remount, which put the old badge
+  // straight back while the refresh was still in flight.
+  const [dismissed, setDismissed] = useState(0);
   const [, start] = useTransition();
   const box = useRef<HTMLDivElement>(null);
   // The portalled sheet is not a DOM descendant of `box`, so the outside-click
@@ -76,6 +84,21 @@ export function NotificationBell({
     };
   }, [open]);
 
+  /**
+   * Everything on screen is read the moment the panel opens — the panel is the
+   * list. The badge goes out immediately rather than after the round trip:
+   * waiting for the server to answer before clearing it is what made the count
+   * look stuck.
+   */
+  function markRead() {
+    if (unread <= dismissed) return;
+    setDismissed(unread);
+    start(async () => {
+      await markNotificationsRead();
+      router.refresh();
+    });
+  }
+
   function toggle() {
     const next = !open;
     if (next && placement === "down") {
@@ -83,16 +106,10 @@ export function NotificationBell({
       setSheetTop((strip?.getBoundingClientRect().bottom ?? 0) + 6);
     }
     setOpen(next);
-    if (next && unread > 0 && !seen) {
-      setSeen(true);
-      start(async () => {
-        await markNotificationsRead();
-        router.refresh();
-      });
-    }
+    if (next) markRead();
   }
 
-  const badge = seen ? 0 : unread;
+  const badge = Math.max(0, unread - dismissed);
 
   const body = (
     <>
@@ -119,7 +136,10 @@ export function NotificationBell({
             return (
               <li key={item.id} className={item.read ? "" : "bg-accent-soft/40"}>
                 {item.href ? (
-                  <Link href={item.href} onClick={() => setOpen(false)} className="block px-4 py-3 hover:bg-bg/60">
+                  // Reading one by following it counts too — the panel may have
+                  // been opened by keyboard, and leaving the badge up after a
+                  // tap is exactly the behaviour this component argues against.
+                  <Link href={item.href} onClick={() => { markRead(); setOpen(false); }} className="block px-4 py-3 hover:bg-bg/60">
                     {row}
                   </Link>
                 ) : (

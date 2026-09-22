@@ -29,7 +29,7 @@ export default async function LibraryPage() {
 
       {/* One tall card that scrolls inside itself: the search, the filters and
           the count stay put while 873 exercises move underneath them. */}
-      <Card plain className="mt-5 flex h-[calc(100vh-15rem)] min-h-[24rem] flex-col sm:mt-6 sm:p-5">
+      <Card plain className="mt-5 flex h-[calc(100vh-11rem)] min-h-[32rem] flex-col sm:mt-6 sm:p-5">
         <ExercisePicker muscles={facets.muscles} equipment={facets.equipment} />
       </Card>
 

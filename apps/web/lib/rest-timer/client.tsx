@@ -71,6 +71,11 @@ export function RestTimerProvider({ prefs, children }: { prefs: RestPrefs; child
   // page when it changes.
   const pushReady = useRef(false);
   const timerRef = useRef<RestTimer | null>(null);
+  // Read inside callbacks that must not re-create themselves when a setting
+  // changes: the countdown and its push schedule are keyed on the timer, not
+  // on the profile.
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
 
   const setTimer = useCallback((next: RestTimer | null) => {
     timerRef.current = next;
@@ -123,6 +128,7 @@ export function RestTimerProvider({ prefs, children }: { prefs: RestPrefs; child
         title: t.clientWidgets.restTimer.finishedTitle,
         body: t.clientWidgets.restTimer.finishedBody,
         url: `/workout/${marked.context.dayId}/log`,
+        alert: prefsRef.current.alert,
       });
     }
   }, [setTimer, t]);
@@ -155,7 +161,7 @@ export function RestTimerProvider({ prefs, children }: { prefs: RestPrefs; child
   const syncPush = useCallback((next: RestTimer) => {
     if (!pushReady.current) return;
     if (next.status === "running") {
-      void scheduleRestPush({ id: next.id, endsAt: next.endsAt, dayId: next.context.dayId }).catch(() => undefined);
+      void scheduleRestPush({ id: next.id, endsAt: next.endsAt, dayId: next.context.dayId, alert: prefsRef.current.alert }).catch(() => undefined);
     } else {
       void cancelRestPush(next.id).catch(() => undefined);
     }
