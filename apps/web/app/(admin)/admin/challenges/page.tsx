@@ -17,13 +17,13 @@ export default async function AdminChallengesPage() {
     <div>
       <AdminHeader title={m.title} />
       <KpiGrid cols={5}>
-        <Kpi label={m.stats.total} value={n(stats.total)} accent />
+        <Kpi label={m.stats.total} value={n(stats.total)} accent href="/admin/challenges" />
         <Kpi label={m.stats.active} value={n(stats.active)} />
         <Kpi label={m.stats.upcoming} value={n(stats.upcoming)} />
         <Kpi label={m.stats.finished} value={n(stats.finished)} />
         <Kpi label={m.stats.rate} value={stats.completion_rate === null ? c.none : `${n(stats.completion_rate)}%`} />
-        <Kpi label={m.stats.participants} value={n(stats.participants)} />
-        <Kpi label={m.stats.completions} value={n(stats.completions)} />
+        <Kpi label={m.stats.participants} value={n(stats.participants)} href="/admin/activity?action=CHALLENGE_JOINED" />
+        <Kpi label={m.stats.completions} value={n(stats.completions)} href="/admin/activity?action=CHALLENGE_COMPLETED" />
         <Kpi label={m.stats.platform} value={n(stats.platform)} />
         <Kpi label={m.stats.user} value={n(stats.user_created)} />
       </KpiGrid>

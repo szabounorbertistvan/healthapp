@@ -183,6 +183,12 @@ additional_redirect_urls = [
   # Vercel: production alias, plus every preview (branch aliases and deploy hashes)
   "https://healthapp-liart.vercel.app/**",
   "https://healthapp-*-nisp.vercel.app/**",
+  # The real domain. Both hosts: the apex 308s to www, but an emailed link or a
+  # bookmark can start from either, and GoTrue matches the origin it is given.
+  # Missing here until 2026-09-22, which is why everyone who signed in from
+  # voinic.fit was thrown onto the Site URL — healthapp-liart.vercel.app.
+  "https://www.voinic.fit/**",
+  "https://voinic.fit/**",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

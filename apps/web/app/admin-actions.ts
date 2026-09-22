@@ -62,6 +62,18 @@ export async function removePushSubscription(subscriptionId: string, userId: str
 }
 
 /**
+ * Mark one reported application error — or every unresolved one with the same
+ * message — as understood. Nothing is deleted: the row keeps its place in the
+ * log and simply stops counting as open. The reason ConfirmAction collects is
+ * not stored here; the audit row the RPC writes carries the message instead.
+ */
+export async function resolveAppError(errorId: number, allAlike: boolean, _reason: string): Promise<ActionResult> {
+  if (!Number.isInteger(errorId) || errorId <= 0) return { ok: false, message: "Invalid id" };
+  return call("admin_resolve_app_error", { p_id: errorId, p_all_alike: allAlike },
+    ["/admin", "/admin/errors", "/admin/system", "/admin/activity"]);
+}
+
+/**
  * Called by the login form when a password sign-in is refused. GoTrue keeps
  * no record of a wrong password, so this is the only trace. Metadata only —
  * the address typed, the caller's IP and browser — and never the password.

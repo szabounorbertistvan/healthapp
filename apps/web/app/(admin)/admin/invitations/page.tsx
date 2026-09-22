@@ -29,15 +29,15 @@ export default async function AdminInvitationsPage({ searchParams }: { searchPar
       <AdminHeader title={m.title} intro={m.intro} />
       <Section title={c.total}>
         <KpiGrid cols={5}>
-          <Kpi label={m.stats.total} value={n(stats.total)} accent />
-          <Kpi label={m.stats.pending} value={n(stats.pending)} />
-          <Kpi label={m.stats.accepted} value={n(stats.accepted)} />
-          <Kpi label={m.stats.expired} value={n(stats.expired)} />
+          <Kpi label={m.stats.total} value={n(stats.total)} accent href="/admin/invitations" />
+          <Kpi label={m.stats.pending} value={n(stats.pending)} href="/admin/invitations?status=pending" />
+          <Kpi label={m.stats.accepted} value={n(stats.accepted)} href="/admin/invitations?status=accepted" />
+          <Kpi label={m.stats.expired} value={n(stats.expired)} href="/admin/invitations?status=expired" />
           <Kpi label={m.stats.rate} value={stats.acceptance_rate === null ? c.none : `${n(stats.acceptance_rate)}%`} />
           <Kpi label={m.stats.revoked} value={n(stats.revoked)} />
-          <Kpi label={m.stats.ended} value={n(stats.ended)} />
-          <Kpi label={m.stats.sent7d} value={n(stats.created_7d)} />
-          <Kpi label={m.stats.sent30d} value={n(stats.created_30d)} />
+          <Kpi label={m.stats.ended} value={n(stats.ended)} href="/admin/invitations?status=ended" />
+          <Kpi label={m.stats.sent7d} value={n(stats.created_7d)} href="/admin/invitations?days=7" />
+          <Kpi label={m.stats.sent30d} value={n(stats.created_30d)} href="/admin/invitations?days=30" />
           <Kpi label="rejected" value="—" unavailable={m.rejectedHint} />
         </KpiGrid>
       </Section>

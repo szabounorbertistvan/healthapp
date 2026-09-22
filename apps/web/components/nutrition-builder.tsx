@@ -242,7 +242,7 @@ function MealCard({
         </div>
 
         {open ? (
-          <div className="flex h-[clamp(26rem,70vh,52rem)] w-full shrink-0 flex-col rounded-2xl bg-bg p-3.5 lg:w-80">
+          <div className="flex h-[clamp(32rem,82vh,64rem)] w-full shrink-0 flex-col rounded-2xl bg-bg p-3.5 lg:w-80">
             <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
               {fill(m.addTo, { name: meal.name })}
             </p>

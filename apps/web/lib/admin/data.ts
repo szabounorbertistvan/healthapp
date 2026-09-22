@@ -10,7 +10,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { loadOf, toLoadSet, type LoadSetJoin } from "@/lib/training-load";
 import type { FitnessScoreView } from "@/lib/fitness-score-data";
 import type {
-  AdminOverview, AdminUserDetail, AdminUsersPage, AuditPage, AuthStats, ChallengeDetail, ChallengesPage,
+  AdminOverview, AdminUserDetail, AdminUsersPage, AppErrorsPage, AuditPage, AuthStats, ChallengeDetail, ChallengesPage,
   DailyPoint, ExercisesPage, InvitationsPage, NotificationStats, NutritionStats, Probe, SearchResults,
   SocialPage, SocialPostDetail, SystemHealth, TimelineEvent, WorkoutStats,
 } from "./types";
@@ -152,3 +152,24 @@ export async function probeServices(): Promise<Probe[]> {
 }
 
 export const adminSearch = cache((query: string) => rpc<SearchResults>("admin_search", { p_query: query, p_limit: 8 }));
+
+export type AppErrorsQuery = {
+  days: number; source?: string | null; status?: string | null; search?: string | null; limit: number; offset: number;
+};
+
+/** Reported application errors — the store record_app_error() writes into. */
+export function getAdminAppErrors(q: AppErrorsQuery): Promise<AppErrorsPage> {
+  return rpc<AppErrorsPage>("admin_app_errors", {
+    p_days: q.days, p_source: q.source ?? null, p_status: q.status ?? null,
+    p_search: q.search ?? null, p_limit: q.limit, p_offset: q.offset,
+  });
+}
+
+/**
+ * Just the counters, for the "Application errors" tile on Overview and System.
+ * Cached per request, so the two tiles and the page never ask twice.
+ */
+export const getAdminErrorCounts = cache(async (): Promise<AppErrorsPage["stats"]> => {
+  const page = await rpc<AppErrorsPage>("admin_app_errors", { p_days: 7, p_limit: 1, p_offset: 0 });
+  return page.stats;
+});

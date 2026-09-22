@@ -4,11 +4,12 @@ import type { ShareableSession } from "@/lib/types";
 import { SharePanel } from "./social";
 
 /** Binds the share panel to the server actions; the page stays a server component. */
-export function WorkoutDoneShare({ session }: { session: ShareableSession }) {
+export function WorkoutDoneShare({ session, photoUploads = false }: { session: ShareableSession; photoUploads?: boolean }) {
   return (
     <SharePanel
       session={session}
-      onShare={(visibility, text) => shareWorkout(session.session_id, visibility, text)}
+      photoUploads={photoUploads}
+      onShare={(visibility, text, photo) => shareWorkout(session.session_id, visibility, text, photo)}
       onSharePr={(setId, visibility) => sharePr(session.session_id, setId, visibility)}
     />
   );

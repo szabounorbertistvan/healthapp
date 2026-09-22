@@ -708,6 +708,10 @@ export async function markNotificationsRead(): Promise<ActionResult> {
   // Not mutated(): zero rows here means "nothing was unread", the ordinary case
   // when the panel is opened twice, not a write an RLS policy silently ate.
   if (error) return { ok: false, message: error.message };
+  // The bell is rendered by the three shells, so the whole layout tree has to
+  // be re-read — a path revalidation alone would leave the coach and admin
+  // copies showing the count they were rendered with.
   revalidatePath("/", "layout");
+  revalidatePath("/today");
   return { ok: true };
 }

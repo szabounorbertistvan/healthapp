@@ -191,8 +191,13 @@ third-party text writes it.
   `packages/shared/src/rest-timer.ts`, persisted in `localStorage`), mounted
   once in `(client)/layout.tsx`. Its "rest finished" push is a separate,
   best-effort path (`public/sw.js`, `rest_pushes`, edge function `rest-push`)
-  that needs one-time VAPID setup — see docs/ENGINES.md. Never sound, never
-  `navigator.vibrate`.
+  that needs one-time VAPID setup — see docs/ENGINES.md. Never a sound and
+  never a `vibrate` pattern — but as of 2026-09-22 not forced silent either:
+  `silent: true` filed it in a channel a locked Android phone never showed, so
+  the flag is now `rest_prefs.alert` (on by default, a switch in the rest card)
+  and the device's own notification settings decide the rest. The tick runs
+  every 5 s and claims a rest 5 s before it ends, so the push lands within a
+  few seconds of the countdown instead of up to twelve after it.
 
 ## Deeper notes
 

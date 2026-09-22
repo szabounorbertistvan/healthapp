@@ -13,15 +13,21 @@ import { EditSet } from "./edit-set";
 import { RestDurationPicker } from "./rest-settings";
 import { useRestTimer } from "@/lib/rest-timer/client";
 import { useUnits } from "@/lib/units/client";
+import type { LastPerformance } from "@/lib/client-training";
 import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
 
 /**
- * Log a set in three taps: the fields arrive pre-filled from the coach target,
- * so a set that goes to plan is one button press (PRODUCT_SPEC B1). Under the
- * kg / reps / RIR boxes sit a 1–10 intensity slider and a one-line note, both
- * optional, so the set can carry how it felt as well as what it was.
+ * Log a set in three taps: the fields arrive pre-filled, so a set that goes to
+ * plan is one button press (PRODUCT_SPEC B1). Under the kg / reps / RIR boxes
+ * sit a 1–10 intensity slider and a one-line note, both optional, so the set
+ * can carry how it felt as well as what it was.
+ *
+ * `last` is what this person actually lifted on each exercise the last time
+ * (getLastPerformance). It wins over the coach's target for the pre-fill: the
+ * number you used yesterday is the better guess at the number you want today,
+ * and it is the one a solo program has at all.
  */
-export function SetLogger({ day }: { day: ClientWorkoutDay }) {
+export function SetLogger({ day, last = {} }: { day: ClientWorkoutDay; last?: Record<string, LastPerformance> }) {
   const { t } = useI18n();
   const u = useUnits();
   const router = useRouter();
@@ -99,6 +105,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
       {seg.exercises.map((exercise) => {
         const blockSets = setsFor.get(exercise.id) ?? [];
         const done = blockSets.length;
+        // Today's own sets first, then last session's, then the prescription.
+        const previous = last[exercise.id] ?? (exercise.exercise_id ? last[exercise.exercise_id] : undefined) ?? last[exercise.exercise];
         return (
           <ExerciseBlock
             key={exercise.id}
@@ -106,6 +114,8 @@ export function SetLogger({ day }: { day: ClientWorkoutDay }) {
             targetSets={exercise.sets}
             targetReps={exercise.reps}
             targetWeight={exercise.weight_kg}
+            lastWeightKg={previous?.weight_kg ?? null}
+            lastReps={previous?.reps ?? null}
             targetRpe={exercise.rpe_value}
             rest={exercise.rest}
             restSeconds={exercise.rest_seconds}
@@ -222,13 +232,16 @@ type SetEntry = {
 };
 
 function ExerciseBlock({
-  name, targetSets, targetReps, targetWeight, targetRpe, rest, restSeconds, exerciseId, intensityMode,
+  name, targetSets, targetReps, targetWeight, lastWeightKg, lastReps, targetRpe, rest, restSeconds, exerciseId, intensityMode,
   done, sets, pending, dayId, onLog, onEdited,
 }: {
   name: string;
   targetSets: number;
   targetReps: string;
   targetWeight: number | null;
+  /** What this person lifted here last time, in kilograms; null the first time. */
+  lastWeightKg: number | null;
+  lastReps: number | null;
   targetRpe: number | null;
   rest: string;
   /** The coach's prescribed rest, raw; the timer resolves it against the person's own settings. */
@@ -252,12 +265,20 @@ function ExerciseBlock({
   // reserve and saves it to logged_sets.rir; the slider is always the felt
   // intensity 1..10 (logged_sets.rpe), pre-set from the target — RIR 2 ≈ 8/10.
   const asRir = intensityMode === "rir";
-  // The coach's target is stored in kilograms; the box is in the reader's unit,
-  // so pre-filling it raw would put 100 into a pound field and log 45 kg.
+  // Both the coach's target and the remembered weight are stored in kilograms;
+  // the box is in the reader's unit, so pre-filling either raw would put 100
+  // into a pound field and log 45 kg.
+  //
+  // Today's last set wins over the previous session's, which wins over the
+  // prescription: once you have logged set 1 at 62.5 kg, set 2 opens at 62.5.
+  const doneToday = sets.length > 0 ? sets[sets.length - 1] : null;
+  const rememberedKg = doneToday?.weight_kg ?? (lastWeightKg && lastWeightKg > 0 ? lastWeightKg : null);
+  const initialKg = rememberedKg ?? targetWeight;
+  const initialReps = doneToday?.reps ?? (lastReps && lastReps > 0 ? lastReps : null) ?? (parseInt(targetReps, 10) || null);
   const [weight, setWeight] = useState(
-    targetWeight === null ? "" : String(kgToDisplay(targetWeight, u.weightUnit)),
+    initialKg === null ? "" : String(kgToDisplay(initialKg, u.weightUnit)),
   );
-  const [reps, setReps] = useState(parseInt(targetReps, 10) ? String(parseInt(targetReps, 10)) : "");
+  const [reps, setReps] = useState(initialReps ? String(initialReps) : "");
   const [rir, setRir] = useState(asRir && targetRpe !== null ? String(targetRpe) : "");
   const [intensity, setIntensity] = useState<number>(
     targetRpe === null ? 7 : Math.round(clamp(asRir ? 10 - targetRpe : targetRpe, 1, 10)),

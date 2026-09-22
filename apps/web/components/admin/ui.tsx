@@ -50,12 +50,19 @@ export function Section({ title, hint, children, className = "", actions }: { ti
   );
 }
 
-/** One number with its label. `unavailable` renders the honest dash + hint instead of a fake zero. */
-export function Kpi({ label, value, sub, accent = false, unavailable, warn = false }: {
+/**
+ * One number with its label. `unavailable` renders the honest dash + hint
+ * instead of a fake zero; `href` turns the tile into a link to the list that
+ * number counts — a KPI nobody can open is a dead end, and every figure the
+ * panel shows is a filter over rows that exist somewhere.
+ */
+export function Kpi({ label, value, sub, accent = false, unavailable, warn = false, href }: {
   label: string; value: React.ReactNode; sub?: string; accent?: boolean; unavailable?: string; warn?: boolean;
+  /** Where this number's rows live, already filtered. */
+  href?: string;
 }) {
-  return (
-    <div className="glass glass--subtle rounded-2xl px-3.5 py-3">
+  const body = (
+    <>
       <p className="text-[10.5px] font-semibold uppercase leading-snug tracking-wider text-ink-faint">{label}</p>
       {unavailable ? (
         <p className="mt-1 font-display text-[22px] font-extrabold leading-none text-ink-faint" title={unavailable}>—</p>
@@ -64,7 +71,18 @@ export function Kpi({ label, value, sub, accent = false, unavailable, warn = fal
       )}
       {sub ? <p className="mt-1 text-[11.5px] text-ink-faint">{sub}</p> : null}
       {unavailable ? <p className="mt-1 text-[11px] text-ink-faint">{unavailable}</p> : null}
-    </div>
+    </>
+  );
+  const cls = "glass glass--subtle block rounded-2xl px-3.5 py-3";
+  if (!href) return <div className={cls}>{body}</div>;
+  return (
+    <Link href={href} className={`${cls} group relative transition hover:ring-1 hover:ring-accent/60`}>
+      {body}
+      <NavIcon
+        d="m9 6 6 6-6 6"
+        className="absolute right-2.5 top-3 h-3.5 w-3.5 text-ink-faint opacity-0 transition group-hover:opacity-100"
+      />
+    </Link>
   );
 }
 

@@ -30,13 +30,13 @@ export default async function AdminWorkoutsPage({ searchParams }: { searchParams
       <Section title={fill(c.days, { n: s.days })} className="mt-4">
         <KpiGrid cols={6}>
           <Kpi label={m.sessions} value={n(s.sessions)} />
-          <Kpi label={m.completed} value={n(s.completed)} accent />
+          <Kpi label={m.completed} value={n(s.completed)} accent href="/admin/activity?action=WORKOUT_COMPLETED" />
           <Kpi label={m.abandoned} value={n(s.abandoned)} warn={s.abandoned > 0} sub={m.abandonedHint} />
-          <Kpi label={m.inProgress} value={n(s.in_progress)} />
-          <Kpi label={m.sets} value={n(s.sets)} />
-          <Kpi label={m.prs} value={n(s.prs)} />
+          <Kpi label={m.inProgress} value={n(s.in_progress)} href="/admin/activity?action=WORKOUT_STARTED" />
+          <Kpi label={m.sets} value={n(s.sets)} href="/admin/activity?action=SET_LOGGED" />
+          <Kpi label={m.prs} value={n(s.prs)} href="/admin/social?type=pr" />
           <Kpi label={m.exercises} value={n(s.exercises_logged)} />
-          <Kpi label={m.activeUsers} value={n(s.active_users)} />
+          <Kpi label={m.activeUsers} value={n(s.active_users)} href="/admin/users?sort=most_workouts" />
           <Kpi label={m.avgDuration} value={s.avg_duration_min ? `${n(s.avg_duration_min)} ${c.min}` : c.none} />
           <Kpi label={m.avgSets} value={s.avg_sets_per_session ? n(s.avg_sets_per_session) : c.none} />
           <Kpi label={m.streakToday} value={n(s.streak_users_today)} />

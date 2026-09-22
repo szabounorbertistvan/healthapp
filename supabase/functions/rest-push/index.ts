@@ -9,10 +9,10 @@
 // claimed (marked sent) *before* the push goes out, in one statement, so the
 // same rest can never be announced twice however many ticks overlap.
 //
-// The notification is visual only. The payload carries a title, a body and a
-// path; the service worker (apps/web/public/sw.js) shows it with `silent:
-// true` and no vibration pattern. Whether the OS honours that is the OS's
-// business — nothing here asks for sound or vibration.
+// The payload carries a title, a body, a path and the person's own `alert`
+// setting; the service worker (apps/web/public/sw.js) shows it with
+// `silent: !alert` and never a vibration pattern. Whether an alert lights the
+// lock screen is the OS's business — nothing here asks for sound.
 //
 // Secrets (supabase secrets set …):
 //   VAPID_KEYS_JSON  — {"publicKey": JWK, "privateKey": JWK}, from scripts/vapid-keys.mjs
@@ -30,6 +30,8 @@ type RestPushRow = {
   title: string;
   body: string;
   url: string;
+  /** The person's RestPrefs.alert, stamped on the row when the rest started. */
+  alert: boolean | null;
 };
 
 type SubscriptionRow = {
@@ -93,7 +95,7 @@ Deno.serve(async (req) => {
         const subscriber = appServer.subscribe({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } });
         try {
           await subscriber.pushTextMessage(
-            JSON.stringify({ kind: "rest_finished", id: row.id, title: row.title, body: row.body, url: row.url }),
+            JSON.stringify({ kind: "rest_finished", id: row.id, title: row.title, body: row.body, url: row.url, alert: row.alert !== false }),
             {
               ttl: TTL_SECONDS,
               urgency: webpush.Urgency.High,

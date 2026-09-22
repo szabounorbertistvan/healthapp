@@ -39,10 +39,10 @@ export default async function AdminExercisesPage({ searchParams }: { searchParam
         <Link href="/admin/exercises/translate" className="inline-flex h-9 items-center rounded-xl bg-accent px-4 text-[12.5px] font-bold text-accent-fg hover:opacity-90">{m.translate}</Link>
       </AdminHeader>
       <KpiGrid cols={6}>
-        <Kpi label={m.stats.total} value={n(stats.total)} accent />
-        <Kpi label={m.stats.system} value={n(stats.system)} />
-        <Kpi label={m.stats.custom} value={n(stats.custom)} />
-        <Kpi label={m.stats.missingRo} value={n(stats.missing_ro)} warn={stats.missing_ro > 0} />
+        <Kpi label={m.stats.total} value={n(stats.total)} accent href="/admin/exercises" />
+        <Kpi label={m.stats.system} value={n(stats.system)} href="/admin/exercises?owner=system" />
+        <Kpi label={m.stats.custom} value={n(stats.custom)} href="/admin/exercises?owner=custom" />
+        <Kpi label={m.stats.missingRo} value={n(stats.missing_ro)} warn={stats.missing_ro > 0} href="/admin/exercises/translate" />
         <Kpi label={m.stats.withImages} value={n(stats.with_images)} />
         <Kpi label={m.stats.inUse} value={n(stats.in_use)} />
       </KpiGrid>

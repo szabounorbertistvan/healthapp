@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getShareableSession } from "@/lib/social-data";
 import { getMyStreak } from "@/lib/streak-data";
 import { getProfile } from "@/lib/data";
+import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { shareCardFromSession } from "@/lib/share-card";
 import { shareProfileOf } from "@/lib/share-card-data";
 import { WorkoutDoneShare } from "@/components/workout-done-share";
@@ -38,7 +39,7 @@ export default async function WorkoutDonePage({
     <div className="mx-auto max-w-3xl space-y-4">
       <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{s.workoutCompleted}</h1>
       {streak ? <StreakAfterWorkout view={streak} /> : null}
-      <WorkoutDoneShare session={shareable} />
+      <WorkoutDoneShare session={shareable} photoUploads={cloudinaryConfigured()} />
       <div className="flex flex-wrap gap-3">
         <ShareWorkoutButton
           card={card}

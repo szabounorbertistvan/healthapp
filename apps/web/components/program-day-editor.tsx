@@ -151,7 +151,7 @@ export function ProgramDayEditor({
       {/* The picker brings its own surface language (bg-bg pills and cards), so
           its panel stays on the card and is delimited by a border only. */}
       {replacing ? (
-        <div className="mt-4 flex h-[clamp(26rem,70vh,52rem)] flex-col rounded-2xl border border-accent p-3.5">
+        <div className="mt-4 flex h-[clamp(32rem,82vh,64rem)] flex-col rounded-2xl border border-accent p-3.5">
           <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{m.changeExercise}</p>
           <ExercisePicker
             muscles={muscles}
@@ -190,7 +190,7 @@ export function ProgramDayEditor({
             }}
           />
         ) : (
-          <div className="mt-4 flex h-[clamp(26rem,70vh,52rem)] flex-col rounded-2xl border border-line/60 p-3.5">
+          <div className="mt-4 flex h-[clamp(32rem,82vh,64rem)] flex-col rounded-2xl border border-line/60 p-3.5">
             <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{fill(m.addTo, { name: day.name })}</p>
             <ExercisePicker
               muscles={muscles}

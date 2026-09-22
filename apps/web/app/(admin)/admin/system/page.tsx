@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin/guard";
-import { getAdminSystemHealth, probeServices } from "@/lib/admin/data";
+import { getAdminErrorCounts, getAdminSystemHealth, probeServices } from "@/lib/admin/data";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 import { AdminHeader, Breakdown, Facts, Kpi, KpiGrid, Note, Pill, Section, Table, Td, Th, fmtDateTime, fmtNum } from "@/components/admin/ui";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // jobs, plus a reachability probe of each Supabase service from this server.
 export default async function AdminSystemPage() {
   await requireAdmin();
-  const [{ t, locale }, h, probes] = await Promise.all([getI18n(), getAdminSystemHealth(), probeServices()]);
+  const [{ t, locale }, h, probes, errors] = await Promise.all([getI18n(), getAdminSystemHealth(), probeServices(), getAdminErrorCounts()]);
   const m = t.admin.system;
   const c = t.admin.common;
   const n = (v: number | null | undefined) => fmtNum(v, locale);
@@ -78,7 +78,7 @@ export default async function AdminSystemPage() {
             <Kpi label={m.deletionOverdue} value={n(h.deletion_requests_overdue)} warn={h.deletion_requests_overdue > 0} />
             <Kpi label={m.failedLogins} value={n(h.failed_logins_1h)} warn={h.failed_logins_1h > 5} />
             <Kpi label={m.auditTotal} value={n(h.audit_events_total)} />
-            <Kpi label={t.admin.overview.errors} value="—" unavailable={m.errorsHint} />
+            <Kpi label={t.admin.overview.errors} value={n(errors.window)} sub={m.errorsLink} warn={errors.open > 0} href="/admin/errors" />
           </KpiGrid>
           <h3 className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.counts}</h3>
           <Breakdown data={h.table_counts} locale={locale} />

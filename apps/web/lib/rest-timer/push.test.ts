@@ -17,11 +17,21 @@ describe("notificationState", () => {
 });
 
 describe("restNotificationOptions", () => {
-  test("is visual only: silent, no vibration pattern, no sound", () => {
-    const options = restNotificationOptions({ id: "abc123", body: "Time for your next set.", url: "/workout/d/log" });
-    expect(options.silent).toBe(true);
-    expect("vibrate" in options).toBe(false);
-    expect("sound" in options).toBe(false);
+  test("never asks for a vibration pattern or a sound, whatever the setting", () => {
+    for (const alert of [undefined, true, false]) {
+      const options = restNotificationOptions({ id: "abc123", body: "Time for your next set.", url: "/workout/d/log", alert });
+      expect("vibrate" in options).toBe(false);
+      expect("sound" in options).toBe(false);
+    }
+  });
+
+  test("alert decides the channel: an alert by default, silent when switched off", () => {
+    const on = restNotificationOptions({ id: "abc123", body: "b", url: "/x" });
+    expect(on.silent).toBe(false);
+    expect(on.requireInteraction).toBe(true);
+    const off = restNotificationOptions({ id: "abc123", body: "b", url: "/x", alert: false });
+    expect(off.silent).toBe(true);
+    expect(off.requireInteraction).toBe(false);
   });
 
   test("carries the timer id as its tag so a second copy replaces, not stacks", () => {

@@ -261,3 +261,27 @@ export type SearchResults = {
   posts: { id: string; type: string; text: string | null; username: string | null; created_at: string; deleted: boolean }[];
   audit: { id: number; action: string; entity_type: string | null; entity_id: string | null; created_at: string; actor_username: string | null }[];
 };
+
+/** One reported application error, as /admin/errors lists it. */
+export type AppErrorRow = {
+  id: number; created_at: string; source: "client" | "server" | "edge"; level: "error" | "warn";
+  message: string; digest: string | null; route: string | null; stack: string | null;
+  user_agent: string | null; ip: string | null; resolved_at: string | null;
+  user_id: string | null; username: string | null; full_name: string | null;
+};
+
+/** The same errors folded by message — what the page ranks before the raw rows. */
+export type AppErrorGroup = {
+  message: string; count: number; first_at: string; last_at: string;
+  sources: string[]; open: number; users: number; sample_id: number;
+};
+
+export type AppErrorsPage = {
+  stats: {
+    days: number; total: number; window: number; last_24h: number; last_1h: number; open: number;
+    client: number; server: number; edge: number; users: number; last_at: string | null;
+  };
+  groups: AppErrorGroup[];
+  total: number;
+  rows: AppErrorRow[];
+};

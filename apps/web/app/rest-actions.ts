@@ -93,6 +93,8 @@ export async function scheduleRestPush(input: {
   id: string;
   endsAt: number;
   dayId: string;
+  /** RestPrefs.alert, so the worker knows whether this one may reach the lock screen. */
+  alert?: boolean;
 }): Promise<ActionResult> {
   if (!UUID.test(input.id) || !UUID.test(input.dayId)) return { ok: false, message: "Invalid timer" };
   const endsAt = Number(input.endsAt);
@@ -112,6 +114,7 @@ export async function scheduleRestPush(input: {
       title: t.clientWidgets.restTimer.finishedTitle,
       body: t.clientWidgets.restTimer.finishedBody,
       url: `/workout/${input.dayId}/log`,
+      alert: input.alert !== false,
       sent_at: null,
       cancelled_at: null,
     },

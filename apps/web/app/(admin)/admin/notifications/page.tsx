@@ -18,8 +18,8 @@ export default async function AdminNotificationsPage() {
     <div>
       <AdminHeader title={m.title} intro={m.intro} />
       <KpiGrid cols={5}>
-        <Kpi label={m.usersWithPush} value={n(s.users_with_push)} accent sub={`${n(s.users_total)} ${c.total}`} />
-        <Kpi label={m.usersWithout} value={n(s.users_without_push)} />
+        <Kpi label={m.usersWithPush} value={n(s.users_with_push)} accent sub={`${n(s.users_total)} ${c.total}`} href="/admin/activity?action=PUSH_SUBSCRIBED" />
+        <Kpi label={m.usersWithout} value={n(s.users_without_push)} href="/admin/users" />
         <Kpi label={m.subscriptions} value={n(s.subscriptions)} sub={`${n(s.subscriptions_7d)} · ${m.subscriptions7d.toLowerCase()}`} />
         <Kpi label={m.restNotifyOn} value={n(s.users_rest_notify_on)} />
         <Kpi label={m.lastSent} value={<span className="text-[14px]">{fmtDateTime(s.rest_pushes.last_sent_at, locale)}</span>} />

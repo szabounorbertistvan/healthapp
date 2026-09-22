@@ -7,9 +7,11 @@ import { fill } from "@/lib/i18n";
 import { AdminHeader, Breakdown, DaysPicker, Kpi, KpiGrid, Note, Pill, Section, Table, Td, Th, UserCell, fmtDateTime, fmtNum } from "@/components/admin/ui";
 import { DailyBars, DailyLines } from "@/components/admin/charts";
 
-// Admin · authentication. Successful sign-ins come from auth.audit_log_entries
-// (GoTrue's own log), providers from auth.identities, failures from the
-// LOGIN_FAILED events the login form reports. Never a password or a token.
+// Admin · authentication. Successful sign-ins come from admin_login_events —
+// our own USER_LOGIN audit rows, because GoTrue's auth.audit_log_entries is
+// empty on a hosted project (20260922100000). Providers come from
+// auth.identities, failures from the LOGIN_FAILED events the login form
+// reports. Never a password or a token.
 export default async function AdminAuthPage({ searchParams }: { searchParams: Promise<Search> }) {
   await requireAdmin();
   const days = daysOf(await searchParams);
@@ -34,18 +36,18 @@ export default async function AdminAuthPage({ searchParams }: { searchParams: Pr
       <div className="mt-4 space-y-4">
         <Section title={m.title} hint={m.tokensHint}>
           <KpiGrid cols={6}>
-            <Kpi label={m.loginsTotal} value={n(s.logins_total)} accent />
-            <Kpi label={m.loginsToday} value={n(s.logins_today)} />
+            <Kpi label={m.loginsTotal} value={n(s.logins_total)} accent href="/admin/activity?action=USER_LOGIN" />
+            <Kpi label={m.loginsToday} value={n(s.logins_today)} href="/admin/activity?action=USER_LOGIN" />
             <Kpi label={m.logins7d} value={n(s.logins_7d)} />
             <Kpi label={m.logins30d} value={n(s.logins_30d)} />
-            <Kpi label={m.unique7d} value={n(s.unique_7d)} />
-            <Kpi label={m.unique30d} value={n(s.unique_30d)} />
-            <Kpi label={m.neverLoggedIn} value={n(s.never_logged_in)} />
-            <Kpi label={m.signups} value={n(s.signups_total)} />
+            <Kpi label={m.unique7d} value={n(s.unique_7d)} href="/admin/users?active=7&sort=last_active" />
+            <Kpi label={m.unique30d} value={n(s.unique_30d)} href="/admin/users?active=30&sort=last_active" />
+            <Kpi label={m.neverLoggedIn} value={n(s.never_logged_in)} href="/admin/users?sort=oldest" />
+            <Kpi label={m.signups} value={n(s.signups_total)} href="/admin/users" />
             <Kpi label={m.recoveries} value={n(s.recoveries_30d)} />
-            <Kpi label={m.failed24h} value={n(s.failed_24h)} warn={s.failed_24h > 0} />
-            <Kpi label={m.failed7d} value={n(s.failed_7d)} />
-            <Kpi label={m.failedTotal} value={n(s.failed_total)} />
+            <Kpi label={m.failed24h} value={n(s.failed_24h)} warn={s.failed_24h > 0} href="/admin/activity?action=LOGIN_FAILED" />
+            <Kpi label={m.failed7d} value={n(s.failed_7d)} href="/admin/activity?action=LOGIN_FAILED" />
+            <Kpi label={m.failedTotal} value={n(s.failed_total)} href="/admin/activity?action=LOGIN_FAILED" />
           </KpiGrid>
         </Section>
 

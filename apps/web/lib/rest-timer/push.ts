@@ -9,7 +9,9 @@
 //     endsAt, arriving through the same worker's `push` handler.
 // Both use the same tag, so a device that gets both shows one.
 //
-// Nothing here — and nothing in public/sw.js — asks for sound or vibration.
+// Nothing here — and nothing in public/sw.js — sets a vibration pattern or
+// plays a sound. Whether the notification is an alert or a silent one is the
+// person's setting (RestPrefs.alert); the device decides the rest.
 
 export type NotificationState = "unsupported" | "default" | "granted" | "denied";
 
@@ -41,16 +43,25 @@ export function vapidPublicKey(): string {
 
 /**
  * The options every rest notification is shown with, from the page or from
- * the worker. `silent: true` asks the platform for no sound and no vibration;
- * no `vibrate` pattern is ever set. The OS and the person's own settings have
- * the last word on that — the app only ever asks for quiet.
+ * the worker.
+ *
+ * No `vibrate` pattern is ever set and nothing here plays audio. `alert` is
+ * the person's own setting (RestPrefs.alert, on by default): on, the
+ * notification is an ordinary one and the device's own settings decide
+ * whether it lights the lock screen; off, `silent: true` files it in the
+ * quiet channel the app used to force on everyone — where a locked phone
+ * never showed it. `requireInteraction` keeps it on screen until it is dealt
+ * with instead of fading after a few seconds, which is the whole point when
+ * you are mid-set and looking away.
  */
-export function restNotificationOptions(input: { id: string; body: string; url: string }): NotificationOptions & { renotify: boolean } {
+export function restNotificationOptions(input: { id: string; body: string; url: string; alert?: boolean }): NotificationOptions & { renotify: boolean } {
+  const alert = input.alert !== false;
   return {
     body: input.body,
     tag: `rest-${input.id}`,
     renotify: false,
-    silent: true,
+    silent: !alert,
+    requireInteraction: alert,
     icon: "/icon.png",
     data: { url: input.url, id: input.id },
   };
@@ -139,7 +150,7 @@ export async function unsubscribeFromPush(): Promise<string | null> {
  * hidden but still running. Goes through the worker so the click handler is
  * the same one a server push gets.
  */
-export async function showLocalRestNotification(input: { id: string; title: string; body: string; url: string }): Promise<boolean> {
+export async function showLocalRestNotification(input: { id: string; title: string; body: string; url: string; alert?: boolean }): Promise<boolean> {
   if (currentNotificationState() !== "granted") return false;
   const registration = await registerRestServiceWorker();
   if (!registration) return false;
