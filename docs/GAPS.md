@@ -72,12 +72,14 @@ funnels to search and stops there.
 
 ## Engagement
 
-**Badges have a table and RLS but no logic** — nothing writes `badges`, and no
-screen reads it. Streaks *are* live, but derived on the fly from completed
+**Badges are awarded** (2026-09-25, `award_badges_for()` and its triggers) and
+shown on the social profile, but the catalog is twelve fixed thresholds — there
+are no Fitness Score badges, because the score is computed in TypeScript and
+the award runs in SQL. Streaks are live, but derived on the fly from completed
 sessions (`lib/streak-data.ts`, `packages/shared/src/streaks.ts`), not from the
-`streaks` table. `adherence_snapshots` is the same story as badges: the formula
-exists in `packages/shared`, the scheduled job that materialises weekly
-snapshots does not.
+`streaks` table. `adherence_snapshots`: the formula exists in
+`packages/shared`, the scheduled job that materialises weekly snapshots does
+not.
 
 ## Coaching
 
@@ -213,10 +215,28 @@ them the section renders a "not configured" note instead of a broken upload.
   need — but nothing aggregates across lifts yet. The honest blocker is that
   the schema has no per-exercise muscle *weighting*, so a set of chin-ups would
   count once for lats and once for biceps as if they were equal work.
-- **Mentions exist only in comments.** A post's own text is not scanned for
-  handles, so `@maria` in a caption is plain text. The composer would need the
-  same suggestion affordance and the post body the same segment renderer; it
-  was left out rather than half-built.
+- **Workout / PR / streak post payloads are built by server actions, not
+  re-derived in SQL.** The Fitness Score (since 20260926100000) and achievement
+  posts are recomputed by the database; the other data posts still trust the
+  action that built them, so an owner calling PostgREST directly could post a
+  workout tile about themselves that no session backs. It can only misstate
+  their own activity, never read anyone else's.
+- **The admin panel's training-load numbers are not the app's.** Three
+  rollups in `20260920100000_admin_panel.sql` (`admin_users` load_7d, the
+  `admin_overview` load bands, `admin_challenge_detail` load) average
+  `ls.rpe` alone — a set logged with only an RIR has no intensity there — count
+  `reps = 0` sets, let a negative weight subtract volume, and window challenges
+  on `started_at::date` (UTC) rather than the member's timezone. None of them
+  turns a missing intensity into 1 (`avg` skips NULLs), so they were left out
+  of the 20260927100000 fix; aligning them means routing them through
+  `effective_rpe()` and the same rollup the challenges use.
+- **SQL challenge / leaderboard rollups count exercises over `reps > 0` sets
+  only**; `loadOf()` counts every exercise on the session. A session where an
+  exercise has only `reps = 0` sets scores one exercise fewer in SQL. Not a
+  NULL issue, so not changed with the intensity fix.
+- **Two visibility settings overlap.** `leaderboard_visibility` still governs
+  leaderboards on its own; `stats_visibility` governs the profile. Someone with
+  private stats and a public leaderboard entry still appears on the board.
 - **Comment replies stop at one level**, by constraint rather than by omission
   (`social_comment_depth_guard`). Threading deeper needs a different renderer
   than a single indent, and a decision about what a phone shows.
@@ -226,8 +246,10 @@ them the section renders a "not configured" note instead of a broken upload.
 - **Nothing shares outside the app yet.** `lib/share-payload.ts` builds the
   card data for every post kind, but no button calls it and no image is
   rendered from it; §19 asked for the infrastructure, not the integration.
-- **Notifications have no pagination.** `/notifications` reads the most recent
-  50. Past that a cursor is needed, on the same shape the feed already uses.
+- **The feed cursor is `created_at` alone** (`social_feed`'s `p_before`). Two
+  posts with the identical timestamp at a page boundary would lose one. The
+  notifications center moved to a `created_at|id` cursor for exactly this; the
+  feed has not, because posts are written one at a time.
 - **Routine templates are a shelf, not a catalogue.** The library ships with no
   seeded programs: Discover shows whatever real people have published, and is
   empty on a fresh deployment. A seeded set (PPL, Upper/Lower, 5/3/1, Full

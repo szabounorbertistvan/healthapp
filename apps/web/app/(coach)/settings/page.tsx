@@ -7,10 +7,11 @@ import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { ProfileForm } from "@/components/account";
 import { RestTimerCard } from "@/components/rest-settings";
+import { SocialPrivacyCard } from "@/components/social-v2";
+import { getMySocialPrivacy } from "@/lib/social-data";
 
 export default async function SettingsPage() {
-  const { t } = await getI18n();
-  const profile = await getProfile();
+  const [{ t }, profile, privacy] = await Promise.all([getI18n(), getProfile(), getMySocialPrivacy()]);
   if (!profile) return null;
   // const tier = profile?.tier ?? "free";
   // const paid = tier === "coach_pro" && Boolean(profile?.has_stripe);
@@ -42,6 +43,9 @@ export default async function SettingsPage() {
 
         {/* A coach trains too (My training): their own rest between sets. */}
         <RestTimerCard prefs={profile.rest_prefs} />
+
+        {/* Who sees the numbers on the social profile (/people/[id]). */}
+        {privacy ? <SocialPrivacyCard privacy={privacy} /> : null}
 
         {/* Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
 

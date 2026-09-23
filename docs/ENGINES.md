@@ -95,6 +95,69 @@ body weight the author typed in.
 pgTAP suites pass; the signed-in pages have not been opened against the live
 project.
 
+### Social v2 completion: privacy, badges, achievements (added 2026-09-25)
+
+| | |
+|---|---|
+| Client | `/people/[id]` (relationship chip, gated stats, Fitness Score snapshot, `#achievements`, public programs, achievements tab), `/people` (live search, paged; suggestions with a most-followed fallback), `/notifications` (all · unread, cursor-paged), privacy card on `/account` and `/settings`, share card on `/fitness-score` |
+| Reads | `getProfileBadges`, `getMySocialPrivacy`, `getReplies`, paged `searchPeople` in [lib/social-data.ts](../apps/web/lib/social-data.ts); `getProfileRoutines` in `lib/routine-data.ts`; `getNotificationPage` in [lib/notifications-data.ts](../apps/web/lib/notifications-data.ts) |
+| Writes | `editComment`, `loadReplies`, `shareAchievement`, `shareFitnessScore`, `publishFitnessScore`, `updateSocialPrivacy` in `app/social-actions.ts`; `loadNotifications` in `client-actions-app.ts`. Caption mentions are written by `insertPost` |
+| Maths | [packages/shared/src/achievements.ts](../packages/shared/src/achievements.ts) — `earnedBadges`, `longestRun`, `fitnessScorePostPayload`, `canSeeStats`, `canSeeFitnessScore`, `followState`; [lib/notification-href.ts](../apps/web/lib/notification-href.ts) — routing, sentence, cursor |
+| Migration | `20260925100000_social_v2_completion.sql` |
+| Tables | `users.stats_visibility` / `fitness_score_visibility` / `fitness_score_public(_at)`, `social_comments.edited_at`, new `social_post_mentions`; post types `achievement`, `fitness_score`; notification category `badge_earned`; four badges added to the catalog |
+| Components | `social-v2.tsx` (BadgeShelf, ShareFitnessScore, SocialPrivacyCard, PeopleSearchBox, MentionText, mention suggester), `social-skeleton.tsx` |
+| Tests | `achievements.test.ts` (22), `notification-href.test.ts` (12), `supabase/tests/social_v2_completion.test.sql` (66 pgTAP) |
+
+**Privacy lives in the RPCs, not the page.** `social_profile()` and
+`social_streak()` are security definer and used to answer anyone with anyone's
+workout / PR counts and streak. `can_see_stats()` (self · setting · active
+coach · admin) now gates the numbers inside `social_profile`, `social_streak`
+and `social_badges`; hidden numbers come back **null**, and the page says they
+are private rather than showing zeros. Follow counts stay visible — the graph
+is already public through `social_follow_list`.
+
+**The Fitness Score on a profile is a snapshot.** It is computed in TypeScript
+from private sets, so nobody else can compute it. The owner publishes it
+(`set_public_fitness_score`, 0..100, own row only) and chooses who sees it
+(`fitness_score_visibility`, private by default).
+
+**Badges are awarded by the database.** `award_badges_for()` (not granted to
+anyone) counts real rows — completed sessions, the longest workout streak, PR
+sets, check-ins, finished challenges, consecutive food-log days — and inserts
+into `user_badges`, which has no insert policy. Triggers on `logged_sessions`,
+`check_ins`, `challenge_participants` and `food_logs` call it, swallowing any
+failure so a badge can never roll back a workout. Existing history was
+backfilled silently. `earnedBadges()` mirrors the thresholds.
+
+**Snapshots are immutable.** The update grant on `social_posts` is now
+column-level (`text`, `visibility`, `deleted_at`) and on `social_comments`
+`body` only. `social_posts_guard` checks that `payload.kind` matches `type`,
+refuses an achievement the author has not earned and rebuilds its payload
+from the catalog, and bounds a Fitness Score post (0..100, a milestone from the
+fixed list at or under the score).
+
+**Replies page.** A thread carries its first three replies and `reply_count`;
+`social_comment_replies()` serves the rest on a cursor.
+
+**Notification cursor is `created_at|id`**: one award run writes several rows
+with the same `now()`, so `created_at` alone would skip one at a page boundary.
+
+**The Fitness Score is the database's number when it leaves the owner's
+screen** (`20260926100000_social_v2_cleanup.sql`). `fitness_score_of()` is
+`fitnessScore()` composed over `training_load_score()` — the same formula,
+pinned by `apps/web/lib/fitness-score-parity.test.ts` and
+`supabase/tests/social_v2_cleanup.test.sql`, which score one fixture to the
+same numbers. `set_public_fitness_score()` takes no argument, and
+`social_posts_guard` replaces a `fitness_score` payload with the author's real
+score, milestone and band, so a PostgREST call sending `100` publishes the real
+number or nothing.
+
+**Posts can be re-captioned** from the `…` menu on your own post (`editPost`):
+only `text` changes (column grant), the database stamps `edited_at`, the card
+says "edited", and caption mentions are re-resolved. Delete stays on the post's
+own page. `validatePostEdit()` holds the rule: a text post keeps 1–500
+characters, a data post may drop its caption.
+
 ### Routine library (added 2026-09-23)
 
 | | |

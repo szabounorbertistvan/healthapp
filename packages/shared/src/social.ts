@@ -5,12 +5,17 @@
 // snapshot the author chose to publish, never a live read of their logs.
 
 import type { ProgramPostPayload } from "./routines";
+import type { AchievementPostPayload, FitnessScorePostPayload } from "./achievements";
 
-export type PostType = "workout" | "pr" | "challenge_completed" | "progress" | "text" | "streak" | "program";
+export type PostType =
+  | "workout" | "pr" | "challenge_completed" | "progress" | "text" | "streak" | "program"
+  | "achievement" | "fitness_score";
 export type PostVisibility = "public" | "followers" | "private";
 export type ReactionType = "kudos";
 
-export const POST_TYPES: readonly PostType[] = ["workout", "pr", "challenge_completed", "progress", "text", "streak", "program"];
+export const POST_TYPES: readonly PostType[] = [
+  "workout", "pr", "challenge_completed", "progress", "text", "streak", "program", "achievement", "fitness_score",
+];
 export const POST_VISIBILITIES: readonly PostVisibility[] = ["public", "followers", "private"];
 
 export const POST_TEXT_MAX = 500;
@@ -100,7 +105,19 @@ export type StreakPostPayload = {
   title: string;
 };
 
-export type PostPayload = WorkoutPostPayload | PrPostPayload | ChallengePostPayload | ProgressPostPayload | StreakPostPayload | ProgramPostPayload | null;
+export type PostPayload =
+  | WorkoutPostPayload | PrPostPayload | ChallengePostPayload | ProgressPostPayload | StreakPostPayload
+  | ProgramPostPayload | AchievementPostPayload | FitnessScorePostPayload | null;
+
+/**
+ * A data post's payload names its own type (social_posts_guard enforces the
+ * same in SQL): a 'pr' post cannot carry a workout tile, and a text post has
+ * no payload at all.
+ */
+export function payloadMatchesType(type: PostType, payload: PostPayload): boolean {
+  if (type === "text") return payload === null;
+  return payload === null || payload.kind === type;
+}
 
 /** Build a workout post from a scored session. Only aggregates cross into the feed. */
 export function workoutPostPayload(session: {
@@ -199,6 +216,17 @@ export function cleanText(input: string, max: number): string | null {
 
 export function validatePostText(input: string): string | null {
   return cleanText(input, POST_TEXT_MAX);
+}
+
+/**
+ * A caption edit. A text post is its text, so it keeps 1–500 characters; a
+ * data post (workout, PR, badge…) is its snapshot, so its caption may be
+ * cleared entirely. `ok: false` means refuse; `text: null` means "no caption".
+ */
+export function validatePostEdit(type: PostType, input: string): { ok: true; text: string | null } | { ok: false } {
+  if (input.trim().length === 0 && type !== "text") return { ok: true, text: null };
+  const clean = validatePostText(input);
+  return clean ? { ok: true, text: clean } : { ok: false };
 }
 
 export function validateComment(input: string): string | null {

@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { fitnessScoreMilestone } from "@healthapp/shared";
 import { getMyFitnessScore } from "@/lib/fitness-score-data";
 import { EmptyState } from "@/components/ui";
 import { FitnessScoreDetail } from "@/components/fitness-score";
 import { NavIcon } from "@/components/client-nav";
+import { ShareFitnessScore } from "@/components/social-v2";
 import { getI18n } from "@/lib/i18n/server";
 
 const BACK = "m15 6-6 6 6 6";
@@ -31,6 +33,11 @@ export default async function FitnessScorePage() {
       <div className="mt-5 sm:mt-6">
         <FitnessScoreDetail view={view} />
       </div>
+      {/* Sharing is explicit: this card posts only when tapped, and the server
+          recomputes the score rather than trusting the number shown here. */}
+      {view.current.status === "active" ? (
+        <ShareFitnessScore milestone={view.current.score !== null ? fitnessScoreMilestone(view.current.score) : null} />
+      ) : null}
     </div>
   );
 }

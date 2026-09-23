@@ -25,3 +25,4 @@ export * from "./rest-timer";
 export * from "./exercise-analytics";
 export * from "./routines";
 export * from "./mentions";
+export * from "./achievements";

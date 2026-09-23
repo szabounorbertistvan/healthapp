@@ -16,11 +16,18 @@ import { loadOf } from "./training-load";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
 import type {
   CommentPage, CommentThread, FeedPage, FeedPost, KudosGiver, KudosPage, MutualFollowers,
-  PersonRow, PostComment, ShareableSession, SocialProfile,
+  PersonRow, PostComment, ProfileBadge, ShareableSession, SocialPrivacy, SocialProfile,
 } from "./types";
 import type { FeedScope } from "@healthapp/shared";
 
 // ---------- feed ----------
+
+type RawMention = { user_id: string; username: string | null };
+
+/** A mention whose user has no username cannot be rendered as a handle, so it is dropped. */
+function resolvedMentions(raw: RawMention[] | null | undefined): { user_id: string; username: string }[] {
+  return (raw ?? []).filter((m): m is { user_id: string; username: string } => Boolean(m.username));
+}
 
 /** The home feed (own + followed) or one author's posts, newest first, one page. */
 export async function getFeed(
@@ -36,8 +43,12 @@ export async function getFeed(
     p_scope: opts.scope ?? "following",
     p_type: opts.type ?? null,
   });
-  type Row = Omit<FeedPost, "mine" | "payload"> & { payload: PostPayload | null; author_username: string | null };
-  const rows = ((data ?? []) as Row[]).map((r) => ({ ...r, payload: r.payload ?? null, mine: r.user_id === viewer }));
+  type Row = Omit<FeedPost, "mine" | "payload" | "mentions"> & {
+    payload: PostPayload | null; author_username: string | null; mentions: RawMention[] | null;
+  };
+  const rows = ((data ?? []) as Row[]).map((r) => ({
+    ...r, payload: r.payload ?? null, mentions: resolvedMentions(r.mentions), edited_at: r.edited_at ?? null, mine: r.user_id === viewer,
+  }));
   const items = rows.slice(0, FEED_PAGE_SIZE);
   return { items, next_cursor: rows.length > FEED_PAGE_SIZE ? items[items.length - 1]!.created_at : null };
 }
@@ -58,11 +69,14 @@ export async function getPost(id: string): Promise<{ post: FeedPost; comments: C
     supabase.rpc("social_post", { p_post: id }),
     getComments(id),
   ]);
-  type Row = Omit<FeedPost, "mine">;
+  type Row = Omit<FeedPost, "mine" | "mentions"> & { mentions: RawMention[] | null };
   const found = ((rows ?? []) as Row[])[0];
   if (!found) return null;
   return {
-    post: { ...found, payload: found.payload ?? null, mine: found.user_id === viewer },
+    post: {
+      ...found, payload: found.payload ?? null, mentions: resolvedMentions(found.mentions),
+      edited_at: found.edited_at ?? null, mine: found.user_id === viewer,
+    },
     comments,
   };
 }
@@ -87,16 +101,7 @@ export async function getComments(postId: string, before: string | null = null):
     p_before: before,
   });
 
-  type Row = Omit<PostComment, "mine" | "mentions"> & {
-    mentions: { user_id: string; username: string | null }[] | null;
-  };
-  const rows = ((data ?? []) as Row[]).map((c) => ({
-    ...c,
-    // A mention whose user has no username cannot be rendered as a handle, so
-    // it is dropped here rather than half-rendered downstream.
-    mentions: (c.mentions ?? []).filter((m): m is { user_id: string; username: string } => Boolean(m.username)),
-    mine: c.user_id === viewer,
-  }));
+  const rows = toComments(data, viewer);
 
   const roots = rows.filter((c) => c.parent_id === null);
   const page = roots.slice(0, COMMENT_PAGE_SIZE);
@@ -111,6 +116,41 @@ export async function getComments(postId: string, before: string | null = null):
   void keep;
   const last = page[page.length - 1];
   return { items, next_cursor: roots.length > COMMENT_PAGE_SIZE && last ? last.created_at : null };
+}
+
+type CommentRow = Omit<PostComment, "mine" | "mentions"> & { mentions: RawMention[] | null };
+
+function toComments(data: unknown, viewer: string): PostComment[] {
+  return ((data ?? []) as CommentRow[]).map((c) => ({
+    ...c,
+    edited_at: c.edited_at ?? null,
+    mentions: resolvedMentions(c.mentions),
+    mine: c.user_id === viewer,
+  }));
+}
+
+export const REPLY_PAGE_SIZE = 20;
+
+/**
+ * The replies to one comment after the ones already on screen, oldest first.
+ * A thread arrives with its first three (social_post_comments); this is the
+ * "show more replies" behind them. Empty for a post the reader cannot see.
+ */
+export async function getReplies(
+  parentId: string,
+  after: string | null,
+): Promise<{ items: PostComment[]; next_cursor: string | null }> {
+  const viewer = await currentActorId();
+  if (!viewer) return { items: [], next_cursor: null };
+  const supabase = await supabaseServer();
+  const { data } = await supabase.rpc("social_comment_replies", {
+    p_parent: parentId,
+    p_after: after,
+    p_limit: REPLY_PAGE_SIZE + 1,
+  });
+  const rows = toComments(data, viewer);
+  const items = rows.slice(0, REPLY_PAGE_SIZE);
+  return { items, next_cursor: rows.length > REPLY_PAGE_SIZE ? items[items.length - 1]!.created_at : null };
 }
 
 /** Who the author can mean by "@mar" — people who can see the post first. */
@@ -156,16 +196,67 @@ export async function getSocialProfile(userId: string): Promise<SocialProfile | 
   return row ? { ...row, me: row.id === viewer } : null;
 }
 
-export async function searchPeople(query: string, city: string | null = null): Promise<PersonRow[]> {
+/**
+ * A person's badges, newest first. Empty — not an error — when their stats
+ * are hidden from this reader: social_badges() applies can_see_stats itself.
+ */
+export async function getProfileBadges(userId: string): Promise<ProfileBadge[]> {
+  const viewer = await currentActorId();
+  if (!viewer) return [];
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("social_badges", { p_user: userId });
+  if (error) console.error("badges read failed:", error.message);
+  return (data ?? []) as ProfileBadge[];
+}
+
+/** The signed-in person's own social privacy settings and published score. */
+export async function getMySocialPrivacy(): Promise<SocialPrivacy | null> {
+  const viewer = await currentActorId();
+  if (!viewer) return null;
+  const supabase = await supabaseServer();
+  const { data } = await supabase
+    .from("users")
+    .select("stats_visibility, fitness_score_visibility, fitness_score_public, fitness_score_public_at")
+    .eq("id", viewer)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    stats_visibility: (data.stats_visibility as SocialPrivacy["stats_visibility"]) ?? "public",
+    fitness_score_visibility: (data.fitness_score_visibility as SocialPrivacy["fitness_score_visibility"]) ?? "private",
+    fitness_score_public: (data.fitness_score_public as number | null) ?? null,
+    fitness_score_public_at: (data.fitness_score_public_at as string | null) ?? null,
+  };
+}
+
+export const PEOPLE_PAGE_SIZE = 20;
+
+/**
+ * One page of people search. Offset-paged: results are ranked (prefix
+ * matches first), and a keyset cursor over a rank is not worth its shape for
+ * a list nobody scrolls past a few pages of. One extra row answers "is there
+ * more?" without a count query.
+ */
+export async function searchPeople(
+  query: string,
+  city: string | null = null,
+  page = 1,
+): Promise<{ items: PersonRow[]; hasMore: boolean; page: number }> {
   const viewer = await currentActorId();
   const q = query.trim().toLowerCase();
   const c = city?.trim() ?? "";
+  const current = Math.max(1, Math.floor(page) || 1);
   // Either half is enough to search on, so "everyone in Cluj" works with no
   // name typed at all.
-  if (!viewer || (q.length < 2 && c.length < 2)) return [];
+  if (!viewer || (q.length < 2 && c.length < 2)) return { items: [], hasMore: false, page: current };
   const supabase = await supabaseServer();
-  const { data } = await supabase.rpc("social_search_users", { p_query: q, p_city: c || null });
-  return (data ?? []) as PersonRow[];
+  const { data } = await supabase.rpc("social_search_users", {
+    p_query: q,
+    p_city: c || null,
+    p_limit: PEOPLE_PAGE_SIZE + 1,
+    p_offset: (current - 1) * PEOPLE_PAGE_SIZE,
+  });
+  const rows = (data ?? []) as PersonRow[];
+  return { items: rows.slice(0, PEOPLE_PAGE_SIZE), hasMore: rows.length > PEOPLE_PAGE_SIZE, page: current };
 }
 
 /**

@@ -356,6 +356,10 @@ export type FeedPost = {
   my_kudos: boolean;
   /** The first one or two givers, for "Norbert, Maria and 12 others". */
   kudos_names: string[];
+  /** People named in the caption, resolved at posting time. Rendering links only these. */
+  mentions: { user_id: string; username: string }[];
+  /** Set by the database when the author changed the caption. */
+  edited_at: string | null;
   mine: boolean;
 };
 
@@ -381,6 +385,8 @@ export type PostComment = {
   author_avatar: string | null;
   body: string;
   created_at: string;
+  /** Set when the author changed the body after posting. */
+  edited_at: string | null;
   /** The people named in the body, resolved. Rendering links only these. */
   mentions: { user_id: string; username: string }[];
   reply_count: number;
@@ -392,7 +398,12 @@ export type CommentThread = PostComment & { replies: PostComment[] };
 
 export type CommentPage = { items: CommentThread[]; next_cursor: string | null };
 
-/** A person's public face: name, follow counts and three aggregate numbers. Nothing private. */
+/**
+ * A person's public face. Follow counts are always there (the graph is
+ * public); the activity numbers are null unless the person's stats_visibility
+ * lets this reader see them, and the Fitness Score is null unless they opted
+ * in. Nothing about sets, food, measurements or coaching, ever.
+ */
 export type SocialProfile = {
   id: string;
   name: string;
@@ -403,15 +414,43 @@ export type SocialProfile = {
   bio: string | null;
   followers: number;
   following: number;
-  workouts: number;
-  prs: number;
-  challenges: number;
   /** Posts this reader may actually open — never a count of hidden things. */
   posts: number;
-  streak_days: number;
+  /** False when the numbers below are hidden from this reader. */
+  stats_visible: boolean;
+  workouts: number | null;
+  prs: number | null;
+  challenges: number | null;
+  streak_days: number | null;
+  longest_streak: number | null;
+  badges: number | null;
+  /** The snapshot the owner published, if they let this reader see it. */
+  fitness_score: number | null;
+  fitness_score_at: string | null;
   is_following: boolean;
   follows_me: boolean;
+  /** The owner's own settings — null for anybody else. */
+  stats_visibility: "public" | "followers" | "private" | null;
+  fitness_score_visibility: "public" | "followers" | "private" | null;
   me: boolean;
+};
+
+/** One earned badge, as the profile shows it. `shared` is only ever true for the owner. */
+export type ProfileBadge = {
+  slug: string;
+  name_en: string;
+  name_ro: string;
+  icon: string | null;
+  awarded_at: string;
+  shared: boolean;
+};
+
+/** The owner's privacy settings and published score, for the account screen. */
+export type SocialPrivacy = {
+  stats_visibility: "public" | "followers" | "private";
+  fitness_score_visibility: "public" | "followers" | "private";
+  fitness_score_public: number | null;
+  fitness_score_public_at: string | null;
 };
 
 /** "Followed by Maria and 3 others" — people I follow who also follow them. */
@@ -426,6 +465,8 @@ export type PersonRow = {
   city?: string | null;
   /** How many people I follow also follow them — only on suggestions. */
   mutuals?: number;
+  /** Follower count — only on suggestions, to explain the fallback ones. */
+  followers?: number;
 };
 
 /** What the "Workout completed" screen offers to share — aggregates plus the PRs of that session. */

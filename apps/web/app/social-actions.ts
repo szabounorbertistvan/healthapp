@@ -9,9 +9,14 @@ import {
   canKudos,
   payloadIsSafe,
   extractMentionHandles,
+  fitnessScorePostPayload,
+  isBadgeSlug,
+  isProfileVisibility,
+  payloadMatchesType,
   resolveMentions,
   validateComment,
   validateFollow,
+  validatePostEdit,
   validatePostText,
   workoutPostPayload,
   type ChallengePostPayload,
@@ -27,10 +32,11 @@ import { CloudinaryNotConfiguredError, cloudinaryConfigured, postPhotoFolder, po
 import { currentActorId } from "@/lib/actor";
 import { supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
-import { getComments, getMentionCandidates, getPostKudos, getShareableSession } from "@/lib/social-data";
+import { getComments, getMentionCandidates, getPostKudos, getReplies, getShareableSession } from "@/lib/social-data";
+import { getMyFitnessScore } from "@/lib/fitness-score-data";
 import { getChallenge } from "@/lib/challenges-data";
 import { getMyStreak } from "@/lib/streak-data";
-import type { CommentPage, KudosPage, PersonRow } from "@/lib/types";
+import type { CommentPage, KudosPage, PersonRow, PostComment } from "@/lib/types";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -86,6 +92,7 @@ async function insertPost(input: {
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
   if (!payloadIsSafe(input.payload)) return { ok: false, message: "Payload carries private data" };
+  if (!payloadMatchesType(input.type, input.payload)) return { ok: false, message: "Payload does not match the post type" };
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("social_posts")
@@ -100,8 +107,51 @@ async function insertPost(input: {
     if (error.code === "23505") return { ok: true };
     return { ok: false, message: error.message };
   }
+  if (input.text) await writeMentions(supabase, "post", data.id as string, input.text);
   touched();
   return { ok: true, postId: data.id };
+}
+
+type Supabase = Awaited<ReturnType<typeof supabaseServer>>;
+
+/**
+ * Resolve the handles typed in a caption or comment and store them as rows.
+ *
+ * users_select hides everyone who is not the reader's coach or client, so the
+ * lookup goes through a security-definer RPC that returns nothing but id and
+ * username. Best effort: text that saved but whose mentions did not is still
+ * text — failing the whole action would lose what was typed. The notification
+ * trigger decides who hears about it, as the mentioned person (a mention
+ * grants nothing).
+ *
+ * `replace` is for an edit: the old rows go first, so a handle that was
+ * removed stops being a link. People already notified for this comment are
+ * not notified again (notify_new_mention dedupes on comment_id).
+ */
+async function writeMentions(
+  supabase: Supabase,
+  target: "post" | "comment",
+  id: string,
+  text: string,
+  replace = false,
+): Promise<void> {
+  const table = target === "post" ? "social_post_mentions" : "social_comment_mentions";
+  const column = target === "post" ? "post_id" : "comment_id";
+  if (replace) {
+    const { error } = await supabase.from(table).delete().eq(column, id);
+    if (error) console.error(`${table} not cleared:`, error.message);
+  }
+  const handles = extractMentionHandles(text);
+  if (handles.length === 0) return;
+  const { data: known } = await supabase.rpc("social_resolve_handles", { p_handles: handles });
+  type HandleRow = { id: string; username: string };
+  const mentions = resolveMentions(
+    handles,
+    ((known ?? []) as HandleRow[]).map((k) => ({ user_id: k.id, username: k.username })),
+  );
+  if (mentions.length === 0) return;
+  const { error } = await supabase.from(table).insert(mentions.map((m) => ({ [column]: id, user_id: m.user_id })));
+  if (error) console.error(`${table} not written:`, error.message);
 }
 
 export async function createTextPost(text: string, visibility?: string): Promise<PostResult> {
@@ -242,6 +292,42 @@ export async function deletePost(postId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/**
+ * Change the caption of your own post. Only `text`: the update grant on
+ * social_posts is column-level (text, visibility, deleted_at), so the
+ * snapshot, the author and the type cannot change even through PostgREST, and
+ * the database stamps edited_at. A text post must keep 1–500 characters; a
+ * data post (workout, PR, badge…) may drop its caption entirely. Mentions are
+ * re-resolved, so a handle removed from the text stops being a link.
+ */
+export async function editPost(postId: string, text: string): Promise<ActionResult> {
+  const { t } = await getI18n();
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  const supabase = await supabaseServer();
+  // Own and not deleted — anything else reads as absent, never as someone else's.
+  const { data: post } = await supabase
+    .from("social_posts")
+    .select("type")
+    .eq("id", postId)
+    .eq("user_id", uid)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!post) return { ok: false, message: t.common.social.postNotFound };
+
+  const edit = validatePostEdit(post.type as PostType, text);
+  if (!edit.ok) return { ok: false, message: t.common.social.textInvalid };
+  const clean = edit.text;
+
+  const failure = await mutated(
+    await supabase.from("social_posts").update({ text: clean }, { count: "exact" }).eq("id", postId).eq("user_id", uid),
+  );
+  if (failure) return failure;
+  await writeMentions(supabase, "post", postId, clean ?? "", true);
+  touched([`/feed/${postId}`]);
+  return { ok: true };
+}
+
 // ---------- kudos ----------
 
 export type KudosResult = ActionResult & { kudos?: boolean };
@@ -322,26 +408,7 @@ export async function addComment(
   // silent no-op.
   if (error) return { ok: false, message: t.common.social.commentInvalid };
 
-  const handles = extractMentionHandles(clean);
-  if (handles.length > 0) {
-    // users_select hides everyone who is not the reader's coach or client, so
-    // the lookup goes through a security-definer RPC that returns nothing but
-    // id and username.
-    const { data: known } = await supabase.rpc("social_resolve_handles", { p_handles: handles });
-    type HandleRow = { id: string; username: string };
-    const mentions = resolveMentions(
-      handles,
-      ((known ?? []) as HandleRow[]).map((k) => ({ user_id: k.id, username: k.username })),
-    );
-    if (mentions.length > 0) {
-      // Best effort: a comment that saved but whose mentions did not is still
-      // a comment. Failing the whole action here would lose what was typed.
-      const { error: mentionError } = await supabase
-        .from("social_comment_mentions")
-        .insert(mentions.map((m) => ({ comment_id: created.id, user_id: m.user_id })));
-      if (mentionError) console.error("mentions not written:", mentionError.message);
-    }
-  }
+  await writeMentions(supabase, "comment", created.id as string, clean);
 
   touched([`/feed/${postId}`]);
   return { ok: true, id: created.id as string };
@@ -369,5 +436,130 @@ export async function deleteComment(commentId: string, postId: string): Promise<
   const failure = await mutated(result);
   if (failure) return failure;
   touched([`/feed/${postId}`]);
+  return { ok: true };
+}
+
+/**
+ * Change the body of your own comment. The update grant is column-level
+ * (body only), comments_update requires it to be yours on a post you can
+ * still see, and the database stamps edited_at — so the "edited" label is not
+ * something the browser can leave off.
+ */
+export async function editComment(commentId: string, postId: string, body: string): Promise<ActionResult> {
+  const { t } = await getI18n();
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  const clean = validateComment(body);
+  if (!clean) return { ok: false, message: t.common.social.commentInvalid };
+  const supabase = await supabaseServer();
+  const failure = await mutated(
+    await supabase.from("social_comments").update({ body: clean }, { count: "exact" }).eq("id", commentId).eq("user_id", uid),
+  );
+  if (failure) return failure;
+  await writeMentions(supabase, "comment", commentId, clean, true);
+  touched([`/feed/${postId}`]);
+  return { ok: true };
+}
+
+/** More replies under one comment, after the last one on screen. */
+export async function loadReplies(parentId: string, after: string | null): Promise<{ items: PostComment[]; next_cursor: string | null }> {
+  const uid = await currentActorId();
+  if (!uid) return { items: [], next_cursor: null };
+  return getReplies(parentId, after);
+}
+
+// ---------- achievements and the Fitness Score ----------
+
+/**
+ * Share a badge you have earned. The browser names the badge and nothing else:
+ * social_posts_guard refuses a badge that is not in user_badges for you and
+ * rebuilds the payload from the catalog, so the snapshot is the server's.
+ */
+export async function shareAchievement(slug: string, visibility?: string): Promise<PostResult> {
+  const { t } = await getI18n();
+  if (!isBadgeSlug(slug)) return { ok: false, message: t.common.social.notFound };
+  const result = await insertPost({
+    type: "achievement",
+    text: null,
+    payload: { kind: "achievement", badge_slug: slug },
+    visibility: visibilityOf(visibility),
+  });
+  // 42501 from the guard: not earned. Say "not found" rather than echo the database.
+  if (!result.ok && result.message?.includes("badge not earned")) return { ok: false, message: t.common.social.notFound };
+  return result;
+}
+
+/**
+ * The score as the server computes it now — never a number the browser sends.
+ * Null while the score is still building.
+ */
+async function currentScore(): Promise<{ score: number; band: string | null } | null> {
+  const view = await getMyFitnessScore();
+  const current = view?.current;
+  if (!current || current.status !== "active" || current.score === null) return null;
+  return { score: current.score, band: current.band };
+}
+
+/**
+ * Share the Fitness Score milestone you have reached — once per milestone.
+ *
+ * The score computed here only decides whether there is anything to share and
+ * gives a friendly error if not. The number that is published is not this
+ * one: social_posts_guard replaces the payload with fitness_score_of() — the
+ * same formula, run by the database — so neither this action nor a hand-made
+ * PostgREST insert can put a score into the feed that the sessions do not back.
+ */
+export async function shareFitnessScore(visibility?: string): Promise<PostResult> {
+  const { t } = await getI18n();
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  const now = await currentScore();
+  const payload = now ? fitnessScorePostPayload(now.score, now.band) : null;
+  if (!payload) return { ok: false, message: t.common.social.scoreNotReady };
+  const result = await insertPost({ type: "fitness_score", text: null, payload, visibility: visibilityOf(visibility) });
+  // 22023 from the guard: the database's own count says still building.
+  if (!result.ok && result.message?.includes("still building")) return { ok: false, message: t.common.social.scoreNotReady };
+  revalidatePath("/fitness-score");
+  return result;
+}
+
+/**
+ * Put your current score on your profile. set_public_fitness_score() takes no
+ * argument: the database computes the caller's own score (fitness_score_of,
+ * the mirrored formula) and stores that number and the time. There is nothing
+ * this action — or anyone calling the RPC directly — could send to change it.
+ */
+export async function publishFitnessScore(): Promise<ActionResult & { score?: number }> {
+  const { t } = await getI18n();
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("set_public_fitness_score");
+  // 22023: still building (fewer than three workouts in 28 days).
+  if (error) return { ok: false, message: error.code === "22023" ? t.common.social.scoreNotReady : error.message };
+  revalidatePath(`/people/${uid}`);
+  revalidatePath("/account");
+  revalidatePath("/settings");
+  return { ok: true, score: typeof data === "number" ? data : undefined };
+}
+
+/** Who sees your activity stats and your published Fitness Score. */
+export async function updateSocialPrivacy(input: { stats: string; fitnessScore: string }): Promise<ActionResult> {
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  if (!isProfileVisibility(input.stats) || !isProfileVisibility(input.fitnessScore)) {
+    return { ok: false, message: "Unknown visibility" };
+  }
+  const supabase = await supabaseServer();
+  const failure = await mutated(
+    await supabase
+      .from("users")
+      .update({ stats_visibility: input.stats, fitness_score_visibility: input.fitnessScore }, { count: "exact" })
+      .eq("id", uid),
+  );
+  if (failure) return failure;
+  revalidatePath(`/people/${uid}`);
+  revalidatePath("/account");
+  revalidatePath("/settings");
   return { ok: true };
 }

@@ -5,7 +5,7 @@ import { useEffect, useOptimistic, useRef, useState, useTransition } from "react
 import type { PostVisibility } from "@healthapp/shared";
 import { displayToKg, kudosSummary, toggleKudosState, POST_TEXT_MAX } from "@healthapp/shared";
 import {
-  createProgressPost, createTextPost, deletePost, follow, loadKudos, requestPostPhotoUpload, toggleKudos, unfollow,
+  createProgressPost, createTextPost, deletePost, editPost, follow, loadKudos, requestPostPhotoUpload, toggleKudos, unfollow,
 } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -15,6 +15,7 @@ import { durationLabel } from "@/lib/share-card";
 import type { FeedPost, KudosGiver, ShareableSession } from "@/lib/types";
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
+import { BadgeGlyph, MentionSuggestions, MentionText, useMentionSuggest } from "./social-v2";
 
 // ---------- small pieces ----------
 
@@ -262,6 +263,38 @@ function PostMedia({ post }: { post: FeedPost }) {
       </Link>
     );
   }
+  // An earned badge: the name comes from the snapshot the database built from
+  // the catalog when it was posted, never from the browser.
+  if (p.kind === "achievement") {
+    return (
+      <div className={gold}>
+        <BlockLabel icon={TROPHY} tone={label}>{s.achievementPost}</BlockLabel>
+        <div className="mt-3 flex items-center gap-3.5">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-accent-fg/15">
+            <BadgeGlyph icon={p.icon} className="h-7 w-7 [stroke-width:2]" />
+          </span>
+          <p className="min-w-0 font-display text-[26px] font-extrabold leading-tight tracking-tight">
+            {(locale === "ro" ? p.name_ro : p.name_en) ?? p.badge_slug}
+          </p>
+        </div>
+      </div>
+    );
+  }
+  // A Fitness Score milestone: the score and the milestone it passed. Nothing
+  // about the sessions behind it is in the snapshot, so nothing is shown.
+  if (p.kind === "fitness_score") {
+    return (
+      <div className={gold}>
+        <BlockLabel icon={TREND} tone={label}>{s.fitnessScorePost}</BlockLabel>
+        <p className={hero}>
+          {p.score}
+          <span className="ml-1.5 font-sans text-[17px] font-semibold opacity-70">/ 100</span>
+        </p>
+        <p className="mt-2.5 text-[15px] font-semibold">{fill(s.fitnessScoreReached, { milestone: p.milestone })}</p>
+      </div>
+    );
+  }
+  if (p.kind !== "streak") return null;
   return (
     <div className={gold}>
       <BlockLabel icon={FLAME} tone={label}>{t.common.streaks.title}</BlockLabel>
@@ -290,6 +323,9 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
   const s = t.common.social;
   const p = post.payload;
   const caption = p !== null; // text under a tile or an eyebrow reads as a caption; alone it is the post
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(post.text ?? "");
+  const [editError, setEditError] = useState<string | null>(null);
 
   return (
     <article className="rounded-3xl bg-surface pb-2.5">
@@ -306,23 +342,30 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
             <span aria-hidden>·</span>
             <NavIcon d={VIS_ICON[post.visibility]} className="h-[13px] w-[13px]" />
             <span>{s.visibility[post.visibility]}</span>
+            {post.edited_at ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>{s.edited}</span>
+              </>
+            ) : null}
           </p>
         </div>
-        {post.mine && detail ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() =>
+        {post.mine && !editing ? (
+          <PostMenu
+            pending={pending}
+            onEdit={() => {
+              setDraft(post.text ?? "");
+              setEditError(null);
+              setEditing(true);
+            }}
+            // Delete stays where it has always been: on the post's own page.
+            onDelete={detail ? () =>
               startTransition(async () => {
                 await deletePost(post.id);
                 router.push("/feed");
                 router.refresh();
-              })
-            }
-            className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold text-ink-faint hover:bg-bg hover:text-risk"
-          >
-            {s.deletePost}
-          </button>
+              }) : undefined}
+          />
         ) : null}
       </div>
 
@@ -333,8 +376,61 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
           <BlockLabel icon={TREND}>{s.progressUpdate}</BlockLabel>
         </div>
       ) : null}
-      {post.text ? (
-        <p className={`whitespace-pre-wrap break-words px-5 leading-relaxed ${caption ? "mt-3 text-[15px]" : "text-[17px]"}`}>{post.text}</p>
+      {editing ? (
+        // Only the caption is editable: the tile above is the snapshot, and
+        // the database refuses any other column (column-level update grant).
+        <form
+          className="px-5 pt-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setEditError(null);
+            startTransition(async () => {
+              const r = await editPost(post.id, draft);
+              if (!r.ok) {
+                setEditError(r.message ?? s.textInvalid);
+                return;
+              }
+              setEditing(false);
+              router.refresh();
+            });
+          }}
+        >
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.slice(0, POST_TEXT_MAX))}
+            maxLength={POST_TEXT_MAX}
+            rows={3}
+            aria-label={s.editPost}
+            className="w-full resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
+          />
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <span className="mr-auto text-[11px] tabular-nums text-ink-faint">{draft.length}/{POST_TEXT_MAX}</span>
+            <button
+              type="button"
+              onClick={() => { setEditing(false); setEditError(null); }}
+              className="h-10 rounded-xl px-3.5 text-[13px] font-semibold text-ink-faint hover:bg-bg hover:text-ink"
+            >
+              {s.cancelEdit}
+            </button>
+            <button
+              type="submit"
+              // A text post needs words; a workout or badge may lose its caption.
+              disabled={pending || (post.type === "text" && draft.trim().length === 0)}
+              className="h-10 rounded-xl bg-accent px-4 font-display text-[13px] font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
+            >
+              {s.saveEdit}
+            </button>
+          </div>
+          {editError ? <p className="mt-1.5 text-xs text-risk">{editError}</p> : null}
+        </form>
+      ) : post.text ? (
+        // Handles are links only where a social_post_mentions row says so.
+        <MentionText
+          text={post.text}
+          mentions={post.mentions ?? []}
+          className={`whitespace-pre-wrap break-words px-5 leading-relaxed ${caption ? "mt-3 text-[15px]" : "text-[17px]"}`}
+        />
       ) : null}
       {p?.kind === "progress" && typeof p.weight_kg === "number" ? (
         <p className="mt-1 px-5 text-[12.5px] tabular-nums text-ink-faint">{f.n(p.weight_kg)} kg</p>
@@ -361,6 +457,69 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
         }
       />
     </article>
+  );
+}
+
+/**
+ * The "…" menu on your own post: edit the caption, or delete. Closes on an
+ * outside click or Escape; not a modal, so it traps nothing.
+ */
+function PostMenu({ pending, onEdit, onDelete }: { pending: boolean; onEdit: () => void; onDelete?: () => void }) {
+  const { t } = useI18n();
+  const s = t.common.social;
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const item = "flex w-full items-center rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold disabled:opacity-50";
+  return (
+    <div ref={box} className="relative shrink-0">
+      <button
+        type="button"
+        aria-label={s.postOptions}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="grid h-10 w-10 place-items-center rounded-full text-ink-faint hover:bg-bg hover:text-ink"
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+          <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
+        </svg>
+      </button>
+      {open ? (
+        <div role="menu" className="absolute right-0 top-[calc(100%+4px)] z-20 w-44 rounded-2xl border border-line bg-surface p-1 shadow-lg">
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); onEdit(); }} className={`${item} text-ink hover:bg-bg`}>
+            {s.editPost}
+          </button>
+          {onDelete ? (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={pending}
+              onClick={() => { setOpen(false); onDelete(); }}
+              className={`${item} text-risk hover:bg-risk-soft`}
+            >
+              {s.deletePost}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -576,6 +735,8 @@ export function Composer({ me }: { me?: { name: string; avatar_url: string | nul
   const [weight, setWeight] = useState("");
   const [visibility, setVisibility] = useState<PostVisibility>("followers");
   const [error, setError] = useState<string | null>(null);
+  const mention = useMentionSuggest(null);
+  const box = useRef<HTMLTextAreaElement>(null);
   const s = t.common.social;
 
   if (!open) {
@@ -612,17 +773,37 @@ export function Composer({ me }: { me?: { name: string; avatar_url: string | nul
                 )
               : await createTextPost(text, visibility);
             if (!r.ok) setError(r.message ?? "Error");
-            else { setText(""); setWeight(""); setIncludeWeight(false); setProgress(false); setOpen(false); }
+            else { setText(""); setWeight(""); setIncludeWeight(false); setProgress(false); setOpen(false); mention.clear(); }
             router.refresh();
           });
         }}
       >
+        {/* Above the box, so the on-screen keyboard does not cover it. */}
+        <MentionSuggestions
+          people={mention.suggestions}
+          onPick={(person) => {
+            const caret = box.current?.selectionStart ?? text.length;
+            const next = mention.choose(text, caret, person);
+            if (!next) return;
+            setText(next.body.slice(0, POST_TEXT_MAX));
+            requestAnimationFrame(() => {
+              box.current?.focus();
+              box.current?.setSelectionRange(next.caret, next.caret);
+            });
+          }}
+        />
         <div className="flex items-start gap-3">
           {me ? <Avatar name={me.name} url={me.avatar_url} size="h-10 w-10" /> : null}
           <textarea
+            ref={box}
             autoFocus
             value={text}
-            onChange={(e) => setText(e.target.value.slice(0, POST_TEXT_MAX))}
+            onChange={(e) => {
+              setText(e.target.value.slice(0, POST_TEXT_MAX));
+              mention.track(e.target.value, e.target.selectionStart ?? e.target.value.length);
+            }}
+            onKeyUp={(e) => mention.track(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)}
+            onClick={(e) => mention.track(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)}
             placeholder={s.composerPlaceholder}
             maxLength={POST_TEXT_MAX}
             rows={3}

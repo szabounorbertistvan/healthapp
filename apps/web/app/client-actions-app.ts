@@ -17,6 +17,7 @@ import { liveUser, type LiveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
 import { getMyPlanMeals } from "@/lib/client-nutrition";
+import { getNotificationPage, type NotificationPage } from "@/lib/notifications-data";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -740,4 +741,11 @@ export async function markNotificationsRead(): Promise<ActionResult> {
   revalidatePath("/notifications");
   revalidatePath("/today");
   return { ok: true };
+}
+
+/** One more page of the notifications center, older than the last row shown. */
+export async function loadNotifications(before: string | null, unreadOnly = false): Promise<NotificationPage> {
+  const live = await liveUser();
+  if (!live) return { items: [], next_cursor: null };
+  return getNotificationPage({ before, unreadOnly });
 }

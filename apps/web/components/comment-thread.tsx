@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { COMMENT_MAX, applyMention, commentSegments, mentionQueryAt } from "@healthapp/shared";
-import { addComment, deleteComment, loadComments, mentionCandidates } from "@/app/social-actions";
+import { addComment, deleteComment, editComment, loadComments, loadReplies, mentionCandidates } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
@@ -35,7 +35,8 @@ export function CommentThread({ postId, page }: { postId: string; page: CommentP
     setCursor(page.next_cursor);
   }, [page]);
 
-  const total = threads.reduce((sum, c) => sum + 1 + c.replies.length, 0);
+  // reply_count is the real number under each comment, not just the ones on screen.
+  const total = threads.reduce((sum, c) => sum + 1 + Math.max(c.reply_count, c.replies.length), 0);
 
   return (
     <Card plain className="p-5">
@@ -55,20 +56,11 @@ export function CommentThread({ postId, page }: { postId: string; page: CommentP
                 postId={postId}
                 onReply={() => setReplyTo({ id: c.id, username: c.author_username })}
               />
-              {c.replies.length > 0 ? (
-                /* Indented once and only once — the left rule is the thread. */
-                <ul className="mt-3 space-y-3 border-l border-line/70 pl-3 sm:pl-4">
-                  {c.replies.map((r) => (
-                    <li key={r.id}>
-                      <CommentRow
-                        comment={r}
-                        postId={postId}
-                        onReply={() => setReplyTo({ id: c.id, username: r.author_username })}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              <Replies
+                thread={c}
+                postId={postId}
+                onReply={(username) => setReplyTo({ id: c.id, username })}
+              />
             </li>
           ))}
         </ul>
@@ -104,6 +96,65 @@ export function CommentThread({ postId, page }: { postId: string; page: CommentP
   );
 }
 
+/**
+ * The replies under one comment. The thread arrives with its first three;
+ * "show more" pages the rest from social_comment_replies() on a created_at
+ * cursor, so a comment with hundreds of answers never arrives in one piece.
+ */
+function Replies({ thread, postId, onReply }: {
+  thread: Thread;
+  postId: string;
+  onReply: (username: string | null) => void;
+}) {
+  const { t } = useI18n();
+  const s = t.common.social;
+  const [more, setMore] = useState<PostComment[]>([]);
+  const [failed, setFailed] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  // A refresh brings a new first page; anything paged in before is stale then.
+  useEffect(() => setMore([]), [thread.replies]);
+
+  const shown = [...thread.replies, ...more];
+  const hidden = Math.max(0, thread.reply_count - shown.length);
+  if (shown.length === 0) return null;
+
+  return (
+    /* Indented once and only once — the left rule is the thread. */
+    <div className="mt-3 border-l border-line/70 pl-3 sm:pl-4">
+      <ul className="space-y-3">
+        {shown.map((r) => (
+          <li key={r.id}>
+            <CommentRow comment={r} postId={postId} onReply={() => onReply(r.author_username)} />
+          </li>
+        ))}
+      </ul>
+      {hidden > 0 ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              setFailed(false);
+              const last = shown[shown.length - 1];
+              try {
+                const page = await loadReplies(thread.id, last?.created_at ?? null);
+                setMore((current) => [...current, ...page.items.filter((x) => !shown.some((y) => y.id === x.id))]);
+              } catch {
+                setFailed(true);
+              }
+            })
+          }
+          className="mt-2.5 text-[12px] font-semibold text-ink-faint hover:text-accent-ink disabled:opacity-50"
+        >
+          {hidden === 1 ? s.moreRepliesOne : fill(s.moreReplies, { count: hidden })}
+        </button>
+      ) : null}
+      {failed ? <p className="mt-1 text-xs text-risk">{s.loadFailed}</p> : null}
+    </div>
+  );
+}
+
 /** One comment: who, when, what — and the controls its owner gets. */
 function CommentRow({
   comment, postId, onReply,
@@ -117,6 +168,9 @@ function CommentRow({
   const router = useRouter();
   const s = t.common.social;
   const [pending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(comment.body);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div id={`comment-${comment.id}`} className="flex items-start gap-2.5 scroll-mt-24">
@@ -126,13 +180,68 @@ function CommentRow({
           <Link href={`/people/${comment.user_id}`} className="truncate text-[13px] font-semibold hover:text-accent-ink">
             {comment.author_name}
           </Link>
-          <span className="shrink-0 text-[12px] text-ink-faint">{f.when(comment.created_at)}</span>
+          <span className="shrink-0 text-[12px] text-ink-faint">
+            {f.when(comment.created_at)}
+            {comment.edited_at ? <span className="ml-1">· {s.edited}</span> : null}
+          </span>
         </div>
-        <CommentBody comment={comment} />
+        {editing ? (
+          <form
+            className="mt-1.5 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setError(null);
+              startTransition(async () => {
+                const r = await editComment(comment.id, postId, draft);
+                if (!r.ok) {
+                  setError(r.message ?? s.commentInvalid);
+                  return;
+                }
+                setEditing(false);
+                router.refresh();
+              });
+            }}
+          >
+            <input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.slice(0, COMMENT_MAX))}
+              maxLength={COMMENT_MAX}
+              aria-label={s.editComment}
+              className="h-10 min-w-0 flex-1 rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+            />
+            <button
+              type="submit"
+              disabled={pending || draft.trim().length === 0}
+              className="h-10 shrink-0 rounded-xl bg-accent px-3.5 text-[12.5px] font-bold text-accent-fg disabled:opacity-40"
+            >
+              {s.saveEdit}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEditing(false); setDraft(comment.body); setError(null); }}
+              className="h-10 shrink-0 rounded-xl px-2.5 text-[12.5px] font-semibold text-ink-faint hover:text-ink"
+            >
+              {s.cancelEdit}
+            </button>
+          </form>
+        ) : (
+          <CommentBody comment={comment} />
+        )}
+        {error ? <p className="mt-1 text-xs text-risk">{error}</p> : null}
         <div className="mt-1 flex items-center gap-3">
           <button type="button" onClick={onReply} className="text-[11px] font-semibold text-ink-faint hover:text-accent-ink">
             {s.reply}
           </button>
+          {comment.mine && !editing ? (
+            <button
+              type="button"
+              onClick={() => { setDraft(comment.body); setEditing(true); }}
+              className="text-[11px] font-semibold text-ink-faint hover:text-accent-ink"
+            >
+              {s.editComment}
+            </button>
+          ) : null}
           {comment.mine ? (
             <button
               type="button"

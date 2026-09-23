@@ -9,6 +9,7 @@ import { timeAgo } from "@/lib/format";
 import type { NotificationRow } from "@/lib/notifications-data";
 import { markNotificationRead, markNotificationsRead } from "@/app/client-actions-app";
 import { NavIcon } from "./client-nav";
+import { useNotificationHeadline } from "./notification-list";
 
 /**
  * The bell and its panel. The rows are handed down from the layout, which
@@ -46,6 +47,7 @@ export function NotificationBell({
 }) {
   const { t, locale } = useI18n();
   const n = t.common.notifications;
+  const headline = useNotificationHeadline();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   // How many notifications had been read away by this browser. It is a count,
@@ -145,8 +147,8 @@ export function NotificationBell({
           {notifications.map((item) => {
             const row = (
               <>
-                <p className="text-[13.5px] font-semibold leading-snug">{item.title}</p>
-                {item.body ? (
+                <p className="text-[13.5px] font-semibold leading-snug">{headline(item)}</p>
+                {item.body && item.sentence !== "badge_earned" ? (
                   <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-soft">{item.body}</p>
                 ) : null}
                 <p className="mt-1 text-[11.5px] text-ink-faint">{timeAgo(item.created_at, locale)}</p>
@@ -174,6 +176,14 @@ export function NotificationBell({
           })}
         </ul>
       )}
+      {/* The bell holds the latest few; the center holds all of them, paged. */}
+      <Link
+        href="/notifications"
+        onClick={() => setOpen(false)}
+        className="block border-t border-line/60 px-4 py-3 text-center text-[12.5px] font-semibold text-accent-ink hover:bg-bg/60"
+      >
+        {n.seeAll}
+      </Link>
     </>
   );
 

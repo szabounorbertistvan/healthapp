@@ -27,6 +27,27 @@ function toCards(data: unknown): RoutineCard[] {
   }));
 }
 
+/**
+ * A person's published programs, for their profile: the ids come from
+ * social_profile_programs() (visibility and can_see_program already applied),
+ * the cards from program_card_rows() — the same shape Discover renders, which
+ * re-checks can_see_program on every id. Two round trips, never one per card.
+ */
+export async function getProfileRoutines(userId: string, limit = 6): Promise<RoutineCard[]> {
+  const live = await liveUser();
+  if (!live) return [];
+  const { data: ids, error } = await live.supabase.rpc("social_profile_programs", { p_user: userId, p_limit: limit });
+  if (error) {
+    console.error("profile programs failed:", error.message);
+    return [];
+  }
+  const list = ((ids ?? []) as { id: string }[]).map((r) => r.id);
+  if (list.length === 0) return [];
+  const { data } = await live.supabase.rpc("program_card_rows", { p_ids: list });
+  const order = new Map(list.map((id, i) => [id, i]));
+  return toCards(data).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
+
 /** Programs the signed-in person authored, plus any a coach assigned to them. */
 export const getMyRoutines = cache(async (): Promise<RoutineCard[]> => {
   const live = await liveUser();

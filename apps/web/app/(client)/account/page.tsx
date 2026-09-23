@@ -4,6 +4,8 @@ import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/account";
 import { RestTimerCard } from "@/components/rest-settings";
+import { SocialPrivacyCard } from "@/components/social-v2";
+import { getMySocialPrivacy } from "@/lib/social-data";
 
 /**
  * The client's account screen. It carries only controls that change something:
@@ -12,7 +14,7 @@ import { RestTimerCard } from "@/components/rest-settings";
  * the header, so they are not repeated.
  */
 export default async function AccountPage() {
-  const [{ t }, profile] = await Promise.all([getI18n(), getProfile()]);
+  const [{ t }, profile, privacy] = await Promise.all([getI18n(), getProfile(), getMySocialPrivacy()]);
   if (!profile) return null;
   const a = t.clientApp.account;
 
@@ -37,6 +39,9 @@ export default async function AccountPage() {
         />
 
         <RestTimerCard prefs={profile.rest_prefs} />
+
+        {/* Who sees the numbers on the social profile (/people/[id]). */}
+        {privacy ? <SocialPrivacyCard privacy={privacy} /> : null}
 
         <DataExportCard />
 
