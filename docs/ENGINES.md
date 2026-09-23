@@ -167,7 +167,7 @@ characters, a data post may drop its caption.
 | Reads | [lib/routine-data.ts](../apps/web/lib/routine-data.ts) — `getMyRoutines`, `getSavedRoutines`, `getDiscoverRoutines`, `getRoutineDetail`, `getRoutineUsage`, `getRoutineAssignees` |
 | Writes | [app/routine-actions.ts](../apps/web/app/routine-actions.ts) — `copyRoutine`, `toggleRoutineSave`, `updateRoutineDetails`, `shareRoutine` |
 | Maths | [packages/shared/src/routines.ts](../packages/shared/src/routines.ts) — `estimateMinutes`, `copyName`, `canSeeProgram`, `canCopyProgram`, `canChangeVisibility`, `snapshotProgram` |
-| Migration | `20260923100000_program_library.sql` |
+| Migration | `20260923130000_program_library.sql` (was 20260923100000, which collided with `exercise_video_links` on main and on production) |
 | Tables | `programs` + 6 columns, new `program_saves`. **No new program table** — a routine IS a program |
 | Components | `routine-card.tsx`, `routine-filters.tsx`, `routine-actions-ui.tsx` |
 | Tests | `routines.test.ts` (34), `supabase/tests/program_library.test.sql` (31 pgTAP) |
