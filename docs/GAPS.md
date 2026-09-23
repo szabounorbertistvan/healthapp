@@ -101,7 +101,8 @@ feedback still do not exist** — nothing writes `reference_type` `set`,
 `create_invite` raises `CLIENT_LIMIT_REACHED` at 3 / 30. `progressPhotos`,
 `advancedAnalytics` and `customExerciseVideos` are read by nothing: **no client
 screen gates on an entitlement at all**. Two of the three have since shipped as
-*free* features — coach exercise videos (YouTube links) on 2026-09-16 and
+*free* features — exercise videos (YouTube links; on 2026-09-23 widened from
+the owner's custom rows to anyone on any exercise, via `exercise_video_links`) on 2026-09-16 and
 progress photos the same day — because neither is something a competitor
 charges for; the flag stays in the table as an intention nobody honours. So a paying `premium` client gets
 nothing a free one does not, and `coach_pro` buys only the bigger roster.

@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { exerciseRef, youtubeEmbedUrl, type ExerciseSummary } from "@healthapp/shared";
-import { renameExercise, searchExerciseLibrary, setExerciseVideo } from "@/app/library-actions";
+import { exerciseRef, type ExerciseSummary } from "@healthapp/shared";
+import { renameExercise, searchExerciseLibrary } from "@/app/library-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { exerciseImage, exerciseImages } from "@/lib/exercise-images";
 import { fill } from "@/lib/i18n";
 import { NewExerciseForm } from "./new-exercise-form";
+import { ExerciseVideo } from "./exercise-video";
 
 /** Matches EXERCISE_PAGE_SIZE in app/library-actions.ts. */
 const PAGE_SIZE = 60;
@@ -471,7 +472,14 @@ function ExercisePreview({
       ) : null}
 
       <div className="mt-4 px-5 sm:px-6">
-        <ExerciseVideo exercise={exercise} />
+        {exercise.id ? (
+          <ExerciseVideo
+            exerciseId={exercise.id}
+            videoUrl={exercise.video_url}
+            source={exercise.video_source}
+            mine={exercise.mine}
+          />
+        ) : null}
       </div>
 
       {steps.length > 0 ? (
@@ -509,98 +517,5 @@ function ExercisePreview({
         ) : null}
       </div>
     </dialog>
-  );
-}
-
-/**
- * The coach's demo, and — on an exercise you own — the field that sets it.
- * The src always comes back through youtubeEmbedUrl, never straight from the
- * column, so a row that somehow holds a foreign URL renders nothing instead of
- * framing it.
- */
-function ExerciseVideo({ exercise }: { exercise: ExerciseSummary }) {
-  const { t } = useI18n();
-  const v = t.common.exerciseVideo;
-  const [url, setUrl] = useState(exercise.video_url ?? "");
-  const [saved, setSaved] = useState(exercise.video_url ?? "");
-  const [editing, setEditing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const embed = youtubeEmbedUrl(saved);
-
-  function save(next: string) {
-    setError(null);
-    start(async () => {
-      const result = await setExerciseVideo(exercise.id!, next);
-      if (!result.ok) {
-        setError(result.message ?? v.invalid);
-        return;
-      }
-      setSaved(next);
-      setUrl(next);
-      setEditing(false);
-    });
-  }
-
-  if (!embed && !exercise.mine) return null;
-
-  return (
-    <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{v.title}</p>
-      {embed ? (
-        <div className="mt-2 aspect-video overflow-hidden rounded-2xl bg-bg">
-          <iframe
-            src={embed}
-            title={v.frameTitle}
-            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            className="h-full w-full border-0"
-          />
-        </div>
-      ) : null}
-
-      {exercise.mine && exercise.id ? (
-        editing ? (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder={v.placeholder}
-              className="h-10 min-w-0 flex-1 rounded-2xl bg-bg px-3.5 text-[13.5px] text-ink outline-none ring-accent/50 focus:ring-2"
-            />
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => save(url)}
-              className="inline-flex h-10 items-center rounded-2xl bg-accent px-4 font-display text-[13px] font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
-            >
-              {v.save}
-            </button>
-          </div>
-        ) : (
-          <div className="mt-2 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="text-[12.5px] font-semibold text-accent-ink hover:underline"
-            >
-              {v.add}
-            </button>
-            {saved ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => save("")}
-                className="text-[12.5px] font-semibold text-ink-faint hover:text-ink"
-              >
-                {v.remove}
-              </button>
-            ) : null}
-          </div>
-        )
-      ) : null}
-      {error ? <p className="mt-1.5 text-[12.5px] text-risk">{error}</p> : null}
-    </div>
   );
 }

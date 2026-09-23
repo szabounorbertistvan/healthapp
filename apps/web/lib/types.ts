@@ -2,7 +2,7 @@ import type {
   AdherenceResult, ChallengeStatus, ChallengeType, LoadTrend, Macros, PostPayload, PostType,
   PostVisibility, TrainingLoad,
 } from "@healthapp/shared";
-import type { LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
+import type { ExerciseVideoSource, LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
 import type { ExerciseType } from "./exercise-types";
 
@@ -129,6 +129,9 @@ export type ProgramExerciseRow = {
   circuit: number | null;
   /** Visual type of the exercise (exerciseTypeOf), for its thumbnail; client reads only. */
   type?: ExerciseType | null;
+  /** The resolved demo (lib/exercise-video-links); client reads only. */
+  video_url?: string | null;
+  video_source?: ExerciseVideoSource | null;
 };
 
 export type ProgramDetail = {

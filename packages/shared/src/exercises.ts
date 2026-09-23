@@ -1,3 +1,4 @@
+import type { ExerciseVideoSource } from "./video";
 // Exercise library (W5). One row shape for the whole app: it matches what
 // import-exercises upserts into `exercises`, so the seed in
 // supabase/seed/exercises.json and a live database are interchangeable.
@@ -19,8 +20,14 @@ export type ExerciseSummary = {
   secondary_muscles: string[];
   instructions_en: string;
   images: string[];
-  /** A coach's demo link. Only YouTube for now — see youtubeEmbedUrl(). */
+  /**
+   * The demo this person sees — already resolved by pickExerciseVideo (their
+   * own link, else their coach's, else the row's). Only YouTube — see
+   * youtubeEmbedUrl().
+   */
   video_url?: string | null;
+  /** Which layer video_url came from; null when there is none. */
+  video_source?: ExerciseVideoSource | null;
   /** True for a custom exercise the signed-in user created — theirs to rename. */
   mine?: boolean;
 };

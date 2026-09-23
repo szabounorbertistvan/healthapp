@@ -57,3 +57,25 @@ export function youtubeEmbedUrl(input: string | null | undefined): string | null
   // watched a demo — the cookie banner promises exactly that.
   return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
 }
+
+/** Whose demo an exercise is showing — decides the wording and whether "remove" applies. */
+export type ExerciseVideoSource = "own" | "coach" | "exercise";
+
+/**
+ * The one demo an exercise shows for a person, from the layers that can carry
+ * one: the link they pinned themselves (exercise_video_links), the link their
+ * active coach pinned, and the exercise row's own video_url. Your own wins —
+ * you chose it — then your coach's, then the row's. Every candidate goes
+ * through youtubeVideoId, so a layer holding junk is skipped rather than framed.
+ */
+export function pickExerciseVideo(layers: {
+  own?: string | null;
+  coach?: string | null;
+  exercise?: string | null;
+}): { url: string; source: ExerciseVideoSource } | null {
+  for (const source of ["own", "coach", "exercise"] as const) {
+    const id = youtubeVideoId(layers[source]);
+    if (id) return { url: `https://youtu.be/${id}`, source };
+  }
+  return null;
+}

@@ -14,6 +14,7 @@ import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
 import { liveUser, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
 import { dayTypeOf, exerciseTypeOf } from "./exercise-types";
+import { fetchVideoLinks, resolveVideo, videoLinksFor } from "./exercise-video-links";
 import type {
   ClientPrRow,
   ClientProgramGroup,
@@ -56,17 +57,18 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   // whole round trip behind an otherwise single-wave Today; now the recent
   // sessions come back with everything else and are matched to their keys here.
   const today = isoDay();
-  const [{ data: rows, error }, coachId, recentSessions] = await Promise.all([
+  const [{ data: rows, error }, coachId, recentSessions, linkRows] = await Promise.all([
     supabase
       .from("programs")
       .select(`id, name, intensity_mode, coach_id, updated_at,
         program_days(id, name, week_index, day_index, muscle_groups,
           program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit,
-            exercise:exercises(name_en, name_ro, primary_muscles, category)))`)
+            exercise:exercises(name_en, name_ro, primary_muscles, category, video_url)))`)
       .eq("client_id", userId)
       .eq("status", "published"),
     activeCoachId(userId),
     recentSessionsFor(supabase, userId),
+    fetchVideoLinks(supabase),
   ]);
   // An empty list is a legitimate answer (a client with no program yet), so a
   // failed query must not be dressed up as one: returning [] here once made a
@@ -80,7 +82,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   type ExJoin = {
     id: string; exercise_id: string; position: number; target_sets: number; target_reps: string;
     target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null; circuit: number | null;
-    exercise: { name_en: string; name_ro: string | null; primary_muscles: string[]; category: string | null } | null;
+    exercise: { name_en: string; name_ro: string | null; primary_muscles: string[]; category: string | null; video_url: string | null } | null;
   };
   type DayJoin = { id: string; name: string; day_index: number; muscle_groups: string[] | null; program_exercises: ExJoin[] };
   type ProgramJoin = SelectableProgram & {
@@ -96,6 +98,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   // that is already there.
   const allDayIds = programs.flatMap((p) => (p.program_days ?? []).map((d) => d.id));
   const sessions = sessionsForDays(recentSessions, userId, allDayIds, today);
+  const links = videoLinksFor(linkRows, userId, coachId);
 
   return sortPrograms(programs).map((program) => {
     const days = [...(program.program_days ?? [])].sort((a, b) => a.day_index - b.day_index);
@@ -134,6 +137,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
               position: e.position,
               circuit: e.circuit ?? null,
               type: exerciseTypeOf(e.exercise?.primary_muscles ?? [], e.exercise?.category ?? null),
+              ...resolveVideo(links, e.exercise_id, e.exercise?.video_url),
             })),
           logged: session?.logged ?? [],
           session_id: session?.id ?? null,

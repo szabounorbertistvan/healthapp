@@ -82,6 +82,11 @@ const en = {
     remove: "Remove",
     invalid: "That is not a YouTube link.",
     frameTitle: "Exercise demo",
+    watch: "Watch the demo",
+    fromCoach: "chosen by your coach",
+    change: "Change link",
+    useOwn: "Use my own link",
+    hide: "Hide",
   },
   actions: {
     save: "Save",
@@ -558,6 +563,11 @@ const ro: typeof en = {
     remove: "Șterge",
     invalid: "Nu e un link de YouTube.",
     frameTitle: "Demonstrație exercițiu",
+    watch: "Vezi demonstrația",
+    fromCoach: "ales de antrenorul tău",
+    change: "Schimbă linkul",
+    useOwn: "Folosește linkul meu",
+    hide: "Ascunde",
   },
   actions: {
     save: "Salvează",

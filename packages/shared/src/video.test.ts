@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { youtubeEmbedUrl, youtubeVideoId } from "./video";
+import { pickExerciseVideo, youtubeEmbedUrl, youtubeVideoId } from "./video";
 
 describe("youtubeVideoId", () => {
   it("reads the shapes people paste", () => {
@@ -49,5 +49,26 @@ describe("youtubeEmbedUrl", () => {
   });
   it("is null for junk", () => {
     expect(youtubeEmbedUrl("https://vimeo.com/1")).toBeNull();
+  });
+});
+
+describe("pickExerciseVideo", () => {
+  const own = "https://youtu.be/dQw4w9WgXcQ";
+  const coach = "https://youtu.be/M7lc1UVf-VE";
+  const row = "https://youtu.be/aqz-KE-bpKQ";
+
+  it("prefers your own link, then your coach's, then the exercise's", () => {
+    expect(pickExerciseVideo({ own, coach, exercise: row })).toEqual({ url: own, source: "own" });
+    expect(pickExerciseVideo({ coach, exercise: row })).toEqual({ url: coach, source: "coach" });
+    expect(pickExerciseVideo({ exercise: row })).toEqual({ url: row, source: "exercise" });
+  });
+
+  it("skips a layer that is not a YouTube video", () => {
+    expect(pickExerciseVideo({ own: "https://evil.example", coach })).toEqual({ url: coach, source: "coach" });
+    expect(pickExerciseVideo({ own: null, coach: "", exercise: "javascript:alert(1)" })).toBeNull();
+  });
+
+  it("normalises a bare id to a youtu.be link", () => {
+    expect(pickExerciseVideo({ own: "dQw4w9WgXcQ" })).toEqual({ url: own, source: "own" });
   });
 });

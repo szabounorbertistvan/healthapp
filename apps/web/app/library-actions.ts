@@ -5,6 +5,8 @@ import { exerciseLibrary } from "@/lib/exercise-library";
 import { notSignedIn } from "@/lib/action-result";
 import { mutated } from "@/lib/supabase/mutate";
 import { revalidatePath } from "next/cache";
+import { activeCoachId } from "@/lib/client-training";
+import { fetchVideoLinks, resolveVideo, videoLinksFor } from "@/lib/exercise-video-links";
 import type { ActionResult } from "./actions";
 
 // Exercise search (W5), callable from client components.
@@ -40,10 +42,22 @@ export async function searchExerciseLibrary(
   if (filter.muscle) query = query.contains("primary_muscles", [filter.muscle]);
   if (filter.equipment) query = query.eq("equipment", filter.equipment);
 
-  const { data, error, count } = await query;
+  // The page, the coach lookup and the demo links answer independent
+  // questions, so they go out together — one wave, as before the links.
+  const me = auth.user?.id ?? null;
+  const [{ data, error, count }, coachId, linkRows] = await Promise.all([
+    query,
+    me ? activeCoachId(me) : Promise.resolve(null),
+    me ? fetchVideoLinks(supabase) : Promise.resolve([]),
+  ]);
   if (error) return { results: [], total: 0 };
+  const links = videoLinksFor(linkRows, me ?? "", coachId);
   type Row = ExerciseSummary & { owner_id: string | null };
-  const results = ((data ?? []) as Row[]).map(({ owner_id, ...e }) => ({ ...e, mine: owner_id !== null && owner_id === auth.user?.id }));
+  const results = ((data ?? []) as Row[]).map(({ owner_id, ...e }) => ({
+    ...e,
+    ...resolveVideo(links, e.id, e.video_url),
+    mine: owner_id !== null && owner_id === me,
+  }));
   return { results, total: count ?? 0 };
 }
 
@@ -137,13 +151,16 @@ export async function renameExercise(exerciseId: string, name: string): Promise<
 }
 
 /**
- * Point one of your own exercises at a demo video. Only YouTube links are
- * accepted and only the id is kept, because the stored value ends up inside an
- * <iframe src>; passing an arbitrary string through would let a link decide
- * what loads in the app. An empty string clears the video.
+ * Pin a YouTube demo to an exercise — any exercise, the shared library
+ * included. Only YouTube links are accepted and only the id is kept, because
+ * the stored value ends up inside an <iframe src>; passing an arbitrary string
+ * through would let a link decide what loads in the app. An empty string
+ * clears it.
  *
- * Scoped like renameExercise — `owner_id = you` and `source = 'custom'` — so a
- * coach can annotate their own rows and never the shared library.
+ * On a custom exercise you own, the video goes on the row itself (scoped like
+ * renameExercise — `owner_id = you`, `source = 'custom'`), so everyone who sees
+ * that exercise sees it. Anywhere else it becomes your row in
+ * exercise_video_links: you see it, and so do your clients if you coach.
  */
 export async function setExerciseVideo(exerciseId: string, url: string): Promise<ActionResult> {
   const clean = url.trim();
@@ -153,14 +170,26 @@ export async function setExerciseVideo(exerciseId: string, url: string): Promise
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
-  const failed = await mutated(
-    await supabase
-      .from("exercises")
-      .update({ video_url: id ? `https://youtu.be/${id}` : null }, { count: "exact" })
-      .eq("id", exerciseId)
-      .eq("owner_id", userId)
-      .eq("source", "custom"),
-  );
+
+  // Not mutated(): zero rows here is not a failure, it means "not your custom
+  // exercise", and the link table below is the answer for that case.
+  const own = await supabase
+    .from("exercises")
+    .update({ video_url: id ? `https://youtu.be/${id}` : null }, { count: "exact" })
+    .eq("id", exerciseId)
+    .eq("owner_id", userId)
+    .eq("source", "custom");
+  if (own.error) return { ok: false, message: own.error.message };
+
+  let failed: ActionResult | null = null;
+  if (!own.count) {
+    const link = id
+      ? await supabase
+          .from("exercise_video_links")
+          .upsert({ user_id: userId, exercise_id: exerciseId, video_id: id }, { onConflict: "user_id,exercise_id" })
+      : await supabase.from("exercise_video_links").delete().eq("user_id", userId).eq("exercise_id", exerciseId);
+    if (link.error) failed = { ok: false, message: link.error.message };
+  }
   if (failed) return failed;
   revalidatePath("/library");
   revalidatePath("/exercises");
