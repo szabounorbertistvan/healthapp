@@ -37,6 +37,23 @@ describe("effectiveTier", () => {
   it("handles a missing subscription row", () => {
     expect(effectiveTier(null, "client", NOW)).toBe("free");
   });
+
+  it("drops a coach whose trial ended to Coach Starter, not to the client Free tier", () => {
+    const sub = { tier: "free" as const, status: "active", trial_ends_at: "2026-08-01T00:00:00Z" };
+    expect(effectiveTier(sub, "coach", NOW)).toBe("coach_free");
+    expect(effectiveTier(null, "both", NOW)).toBe("coach_free");
+    expect(effectiveTier(null, "admin", NOW)).toBe("coach_free");
+  });
+
+  it("gives a free client Premium while their active coach pays for Coach Pro", () => {
+    expect(effectiveTier(null, "client", NOW, "coach_pro")).toBe("premium");
+    expect(effectiveTier(null, "client", NOW, "coach_free")).toBe("free");
+    expect(effectiveTier(null, "client", NOW, null)).toBe("free");
+  });
+
+  it("never hands a coach's Pro down to someone who coaches themselves", () => {
+    expect(effectiveTier(null, "coach", NOW, "coach_pro")).toBe("coach_free");
+  });
 });
 
 describe("trialDaysLeft", () => {

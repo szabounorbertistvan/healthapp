@@ -89,6 +89,11 @@ const en = {
     remove: "Remove",
     invalid: "That is not a YouTube link.",
     frameTitle: "Exercise demo",
+    watch: "Watch the demo",
+    fromCoach: "chosen by your coach",
+    change: "Change link",
+    useOwn: "Use my own link",
+    hide: "Hide",
   },
   actions: {
     save: "Save",
@@ -571,6 +576,101 @@ const en = {
     notFound: "This workout is not available.",
     dialogTitle: "Share your workout",
   },
+  plan: {
+    seePlans: "See plans",
+    viaCoach: "Premium is included with your coach's Pro plan.",
+    limitReached: "You've reached what your plan includes.",
+    features: {
+      history: {
+        title: "Older history is {plan}",
+        hint: "Your plan shows the last {days} days. {plan} keeps everything you have ever logged — nothing older is deleted, it waits for you.",
+      },
+      charts: {
+        title: "Trends are {plan}",
+        hint: "Weight, waist and weekly volume charts, every personal record and the trend of your fitness score come with {plan}.",
+      },
+      prs: {
+        title: "{count} more records with {plan}",
+        hint: "Your plan shows your top {shown} personal records.",
+      },
+      fitnessTrend: {
+        title: "The trend is {plan}",
+        hint: "How your score moved against the 28 days before, and what it is made of, come with {plan}.",
+      },
+      photoCompare: {
+        title: "Side by side is {plan}",
+        hint: "Uploading and keeping photos stays free. Comparing two of them side by side comes with {plan}.",
+      },
+      share: {
+        title: "Customising the card is {plan}",
+        hint: "Edit Stats, the square format and hiding your profile come with {plan}.",
+      },
+      barcode: {
+        title: "Today's {limit} free scans are used",
+        hint: "Search still finds the product. Unlimited scanning comes with {plan}.",
+      },
+      favorites: {
+        title: "{limit} favourites is your plan's limit",
+        hint: "Remove one to star another, or get unlimited favourites with {plan}.",
+      },
+      customExercises: {
+        title: "{limit} custom exercises is your plan's limit",
+        hint: "Every exercise you made stays. Unlimited custom exercises come with {plan}.",
+      },
+      ownPrograms: {
+        title: "{limit} program of your own is your plan's limit",
+        hint: "Edit the one you have, or build as many as you like with {plan}.",
+      },
+      videos: {
+        title: "Your own demo video is {plan}",
+        hint: "Adding a YouTube demo to an exercise comes with {plan}. Videos your coach added always play.",
+      },
+      analytics: {
+        title: "Adherence signals are {plan}",
+        hint: "On Track / Needs Attention / At Risk with the reason, the adherence % and the at-risk count come with {plan}.",
+      },
+      clientScore: {
+        title: "A client's fitness score is {plan}",
+        hint: "Their 28-day score, its four parts and the trend come with {plan}.",
+      },
+      programCopy: {
+        title: "Duplicating and copying is {plan}",
+        hint: "Duplicating a day and copying a whole program to another client come with {plan}.",
+      },
+      ingredientPlans: {
+        title: "Meals with foods are {plan}",
+        hint: "Your plan sets the four daily targets. Filling each meal with real foods and grams comes with {plan}.",
+      },
+    },
+    lists: {
+      free: ["Training, nutrition and habit logging", "Your coach's programs and meal plans", "The last 30 days of history", "5 barcode scans a day"],
+      premium: [
+        "Your whole history, not just 30 days",
+        "Weight, waist and volume trends, every PR, the fitness-score trend",
+        "Progress photos side by side",
+        "Unlimited barcode scans, favourites, own programs and exercises",
+        "Your own exercise demo videos and a customisable share card",
+      ],
+      coachFree: ["Up to 3 clients", "Program and meal-target builders", "Messages and check-in review", "10 custom exercises"],
+      coachPro: [
+        "Up to 30 clients — and each one gets Premium included",
+        "Adherence signals, reasons and at-risk count on the dashboard",
+        "Each client's fitness score",
+        "Meal plans with real foods and grams",
+        "Duplicate days, copy programs between clients",
+        "Unlimited custom exercises with your own demo videos",
+      ],
+    },
+    copyProgram: {
+      button: "Copy to client",
+      pick: "Copy this program to",
+      copy: "Copy",
+      copying: "Copying…",
+      done: "Copied as a draft for {name}.",
+      open: "Open the copy",
+      none: "No other client to copy to yet.",
+    },
+  },
   legal: {
     privacy: "Privacy",
     terms: "Terms",
@@ -664,6 +764,11 @@ const ro: typeof en = {
     remove: "Șterge",
     invalid: "Nu e un link de YouTube.",
     frameTitle: "Demonstrație exercițiu",
+    watch: "Vezi demonstrația",
+    fromCoach: "ales de antrenorul tău",
+    change: "Schimbă linkul",
+    useOwn: "Folosește linkul meu",
+    hide: "Ascunde",
   },
   actions: {
     save: "Salvează",
@@ -1145,6 +1250,101 @@ const ro: typeof en = {
     renderError: "Cardul nu a putut fi generat. Încearcă din nou.",
     notFound: "Acest antrenament nu este disponibil.",
     dialogTitle: "Distribuie antrenamentul tău",
+  },
+  plan: {
+    seePlans: "Vezi planurile",
+    viaCoach: "Premium e inclus în planul Pro al antrenorului tău.",
+    limitReached: "Ai atins ce include planul tău.",
+    features: {
+      history: {
+        title: "Istoricul mai vechi e {plan}",
+        hint: "Planul tău arată ultimele {days} zile. {plan} păstrează tot ce ai logat vreodată — nimic mai vechi nu se șterge, te așteaptă.",
+      },
+      charts: {
+        title: "Evoluțiile sunt {plan}",
+        hint: "Graficele de greutate, talie și volum săptămânal, toate recordurile personale și evoluția scorului de fitness vin cu {plan}.",
+      },
+      prs: {
+        title: "Încă {count} recorduri cu {plan}",
+        hint: "Planul tău arată primele {shown} recorduri personale.",
+      },
+      fitnessTrend: {
+        title: "Evoluția e {plan}",
+        hint: "Cum s-a mișcat scorul față de cele 28 de zile dinainte și din ce e compus vin cu {plan}.",
+      },
+      photoCompare: {
+        title: "Comparația e {plan}",
+        hint: "Încărcarea și păstrarea pozelor rămân gratuite. Compararea a două poze una lângă alta vine cu {plan}.",
+      },
+      share: {
+        title: "Personalizarea cardului e {plan}",
+        hint: "Edit Stats, formatul pătrat și ascunderea profilului vin cu {plan}.",
+      },
+      barcode: {
+        title: "Ai folosit cele {limit} scanări gratuite de azi",
+        hint: "Căutarea găsește în continuare produsul. Scanarea nelimitată vine cu {plan}.",
+      },
+      favorites: {
+        title: "{limit} favorite e limita planului tău",
+        hint: "Scoate unul ca să adaugi altul sau ia favorite nelimitate cu {plan}.",
+      },
+      customExercises: {
+        title: "{limit} exerciții proprii e limita planului tău",
+        hint: "Tot ce ai creat rămâne. Exerciții proprii nelimitate vin cu {plan}.",
+      },
+      ownPrograms: {
+        title: "{limit} program propriu e limita planului tău",
+        hint: "Editează-l pe cel pe care îl ai sau construiește câte vrei cu {plan}.",
+      },
+      videos: {
+        title: "Videoclipul tău demonstrativ e {plan}",
+        hint: "Adăugarea unui demo YouTube la un exercițiu vine cu {plan}. Videoclipurile puse de antrenor rulează mereu.",
+      },
+      analytics: {
+        title: "Semnalele de aderență sunt {plan}",
+        hint: "Pe drumul bun / Necesită atenție / La risc cu motivul, procentul de aderență și numărul celor la risc vin cu {plan}.",
+      },
+      clientScore: {
+        title: "Scorul de fitness al clientului e {plan}",
+        hint: "Scorul pe 28 de zile, cele patru componente și evoluția lui vin cu {plan}.",
+      },
+      programCopy: {
+        title: "Duplicarea și copierea sunt {plan}",
+        hint: "Duplicarea unei zile și copierea unui program întreg la alt client vin cu {plan}.",
+      },
+      ingredientPlans: {
+        title: "Mesele cu alimente sunt {plan}",
+        hint: "Planul tău setează cele patru ținte zilnice. Completarea fiecărei mese cu alimente reale și grame vine cu {plan}.",
+      },
+    },
+    lists: {
+      free: ["Logare antrenamente, nutriție și obiceiuri", "Programele și planurile antrenorului tău", "Istoricul ultimelor 30 de zile", "5 scanări de cod de bare pe zi"],
+      premium: [
+        "Tot istoricul, nu doar 30 de zile",
+        "Evoluția greutății, taliei și volumului, toate recordurile, evoluția scorului de fitness",
+        "Pozele de progres una lângă alta",
+        "Scanări, favorite, programe și exerciții proprii nelimitate",
+        "Videoclipuri demonstrative proprii și card de share personalizabil",
+      ],
+      coachFree: ["Până la 3 clienți", "Builder de programe și ținte de macro", "Mesaje și review de check-in", "10 exerciții proprii"],
+      coachPro: [
+        "Până la 30 de clienți — și fiecare primește Premium inclus",
+        "Semnale de aderență, motive și numărul celor la risc pe dashboard",
+        "Scorul de fitness al fiecărui client",
+        "Planuri nutriționale cu alimente reale și grame",
+        "Duplicare zile, copiere programe între clienți",
+        "Exerciții proprii nelimitate cu videoclipurile tale",
+      ],
+    },
+    copyProgram: {
+      button: "Copiază la client",
+      pick: "Copiază programul la",
+      copy: "Copiază",
+      copying: "Se copiază…",
+      done: "Copiat ca ciornă pentru {name}.",
+      open: "Deschide copia",
+      none: "Încă nu ai alt client la care să copiezi.",
+    },
   },
   legal: {
     privacy: "Confidențialitate",

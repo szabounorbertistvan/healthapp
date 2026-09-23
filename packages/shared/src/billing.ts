@@ -48,14 +48,27 @@ export type SubscriptionRow = {
 };
 
 /**
- * What the user is actually entitled to right now. Mirrors public.effective_tier
- * in SQL (migration 13): a paid/granted tier wins; otherwise an unexpired
- * trial grants the full paid tier for the role; otherwise free.
+ * What the user is actually entitled to right now. Mirrors public.own_tier +
+ * public.effective_tier in SQL (migration 20260923120000_paywall): a
+ * paid/granted tier wins; otherwise an unexpired trial grants the full paid
+ * tier for the role; otherwise the role's free tier — Coach Starter for anyone
+ * who coaches, Free for everyone else.
+ *
+ * `coachOwnTier` is the client's active coach's *own* tier (never itself
+ * inherited). A client of a paying Coach Pro gets Premium: the coach already
+ * pays for the relationship, and a client asked to pay to see the history
+ * their coach built them is a client the coach loses.
  */
-export function effectiveTier(sub: SubscriptionRow | null | undefined, role: Role, now = new Date()): Tier {
+export function effectiveTier(
+  sub: SubscriptionRow | null | undefined,
+  role: Role,
+  now = new Date(),
+  coachOwnTier: Tier | null = null,
+): Tier {
   if (sub && sub.status === "active" && sub.tier !== "free") return sub.tier;
   if (sub?.trial_ends_at && new Date(sub.trial_ends_at) > now) return trialTierFor(role);
-  return "free";
+  if (role !== "client") return "coach_free";
+  return coachOwnTier === "coach_pro" ? "premium" : "free";
 }
 
 /** Whole days of trial left, never negative. Null when no trial was recorded. */

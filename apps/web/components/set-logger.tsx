@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   circuitSegments, displayToKg, kgToDisplay, parseDecimal, prefillFor, previousFor, previousSetFor,
-  progressionVs, resolveRestSeconds, restAfterLoggedSet, type PreviousWorkout,
+  progressionVs, resolveRestSeconds, restAfterLoggedSet, type ExerciseVideoSource, type PreviousWorkout,
 } from "@healthapp/shared";
 import { finishWorkout, logSet } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
 import { EditSet } from "./edit-set";
+import { ExerciseVideo } from "./exercise-video";
 import { RestDurationPicker } from "./rest-settings";
 import { useRestTimer } from "@/lib/rest-timer/client";
 import { useUnits } from "@/lib/units/client";
@@ -136,6 +137,8 @@ export function SetLogger({
             rest={exercise.rest}
             restSeconds={exercise.rest_seconds}
             exerciseId={exercise.exercise_id ?? null}
+            videoUrl={exercise.video_url ?? null}
+            videoSource={exercise.video_source ?? null}
             intensityMode={day.intensity_mode}
             done={done}
             sets={blockSets}
@@ -248,7 +251,7 @@ type SetEntry = {
 };
 
 function ExerciseBlock({
-  name, targetSets, targetReps, targetWeight, previous, targetRpe, rest, restSeconds, exerciseId, intensityMode,
+  name, targetSets, targetReps, targetWeight, previous, targetRpe, rest, restSeconds, exerciseId, videoUrl, videoSource, intensityMode,
   done, sets, pending, dayId, onLog, onEdited,
 }: {
   name: string;
@@ -263,6 +266,9 @@ function ExerciseBlock({
   restSeconds: number | null;
   /** exercises.id — the key of a per-lift rest override; null when the row has no library link. */
   exerciseId: string | null;
+  /** The resolved demo video (yours, your coach's, or the exercise's), and whose it is. */
+  videoUrl: string | null;
+  videoSource: ExerciseVideoSource | null;
   intensityMode: "rpe" | "rir" | "simple";
   done: number;
   sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">[];
@@ -384,6 +390,11 @@ function ExerciseBlock({
       </div>
 
       <PreviousSets previous={previous} exerciseId={exerciseId} />
+      {exerciseId ? (
+        <div className="mt-2">
+          <ExerciseVideo exerciseId={exerciseId} videoUrl={videoUrl} source={videoSource} collapsed />
+        </div>
+      ) : null}
 
       {sets.length > 0 ? (
         <ul className="mt-3 flex flex-wrap gap-1.5">

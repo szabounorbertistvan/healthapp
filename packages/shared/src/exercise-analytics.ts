@@ -89,6 +89,11 @@ export type ExerciseStats = {
   sessions: number;
   total_sets: number;
   total_volume_kg: number;
+  /**
+   * True when no set ever carried load: the page leads with reps instead of
+   * kilograms, because "0 kg × 15" describes a push-up badly.
+   */
+  bodyweight: boolean;
 };
 
 /**
@@ -231,6 +236,7 @@ export function exerciseStats(sessions: readonly ExerciseSessionEntry[]): Exerci
   const empty: ExerciseStats = {
     last: null, best_weight_kg: null, best_reps: null, best_reps_at_best_weight: null,
     best_volume_kg: null, best_1rm: null, sessions: 0, total_sets: 0, total_volume_kg: 0,
+    bodyweight: false,
   };
   if (sessions.length === 0) return empty;
 
@@ -261,12 +267,39 @@ export function exerciseStats(sessions: readonly ExerciseSessionEntry[]): Exerci
     sessions: sessions.length,
     total_sets: all.length,
     total_volume_kg: totalVolume(all),
+    bodyweight: bestWeight <= 0,
   };
+}
+
+export type RepRecord = { reps: number; weight_kg: number; at: string };
+
+/**
+ * The heaviest load ever lifted for AT LEAST N reps, for N = 1…maxReps — the
+ * rep-records table. "At least", so the table never claims a 5RM lighter than
+ * something done for 6. A row appears only once a set reached that many reps;
+ * the date is the first session to set that weight. Bodyweight sets (0 kg) are
+ * left out. Capped at ONE_RM_MAX_REPS, the same line past which analytics
+ * stops estimating a one-rep max.
+ */
+export function repRecords(sessions: readonly ExerciseSessionEntry[], maxReps = ONE_RM_MAX_REPS): RepRecord[] {
+  const oldestFirst = [...sessions].sort((a, b) => a.at.localeCompare(b.at) || a.session_id.localeCompare(b.session_id));
+  const best = new Map<number, RepRecord>();
+  for (const s of oldestFirst) {
+    for (const set of s.sets) {
+      if (!(set.weight_kg > 0) || !(set.reps > 0)) continue;
+      for (let n = 1; n <= Math.min(set.reps, maxReps); n++) {
+        const current = best.get(n);
+        if (!current || set.weight_kg > current.weight_kg) best.set(n, { reps: n, weight_kg: set.weight_kg, at: s.at });
+      }
+    }
+  }
+  return [...best.values()].sort((a, b) => a.reps - b.reps);
 }
 
 // ---------- charts ----------
 
-export type ExerciseMetric = "weight" | "volume" | "one_rm";
+/** "reps" is the most reps in one set of a session — the line a bodyweight exercise draws. */
+export type ExerciseMetric = "weight" | "volume" | "one_rm" | "reps";
 /** null = all time. */
 export type ExerciseRangeDays = 7 | 30 | 90 | 365 | null;
 export const EXERCISE_RANGES: ExerciseRangeDays[] = [7, 30, 90, 365, null];
@@ -291,7 +324,11 @@ export function metricSeries(
   for (const s of sessions) {
     const day = s.at.slice(0, 10);
     if (from !== null && day < from) continue;
-    const value = metric === "weight" ? s.top_weight_kg : metric === "volume" ? s.volume_kg : s.best_1rm;
+    const value =
+      metric === "weight" ? s.top_weight_kg
+      : metric === "volume" ? s.volume_kg
+      : metric === "reps" ? s.top_reps
+      : s.best_1rm;
     if (value === null || value <= 0) continue;
     points.push({ day, value });
   }

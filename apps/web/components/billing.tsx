@@ -5,17 +5,27 @@
 // charge something different from what the user confirms.
 import { useState, useTransition } from "react";
 import {
-  ENTITLEMENTS, PLAN_PRICES, TIER_LABEL, trialDaysLeft,
+  PLAN_PRICES, TIER_LABEL, trialDaysLeft,
   type PaidTier, type PlanInterval, type Tier,
 } from "@healthapp/shared";
 import { adminSetTier, openBillingPortal, startCheckout } from "@/app/billing-actions";
+import { useI18n } from "@/lib/i18n/client";
 
-/** Marks a plan line that is promised but not built yet. */
-function Soon() {
+type PlanList = "free" | "premium" | "coachFree" | "coachPro";
+
+/**
+ * What a plan includes, from t.common.plan.lists — the same features the
+ * gates check (ENTITLEMENTS in @healthapp/shared), in words. Every line has
+ * code behind it since the paywall landed (2026-09-23); nothing here is "soon".
+ */
+export function PlanFeatureList({ list, className = "" }: { list: PlanList; className?: string }) {
+  const { t } = useI18n();
   return (
-    <span className="whitespace-nowrap rounded-full bg-ink/[0.07] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]">
-      soon
-    </span>
+    <ul className={`space-y-1 text-[13.5px] text-ink-soft ${className}`}>
+      {t.common.plan.lists[list].map((line) => (
+        <li key={line}>✓ {line}</li>
+      ))}
+    </ul>
   );
 }
 
@@ -54,7 +64,6 @@ export function SubscribePanel({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const prices = PLAN_PRICES[plan];
-  const e = ENTITLEMENTS[plan];
   const subscribed = currentTier === plan && hasStripe;
 
   function go(interval: PlanInterval) {
@@ -85,23 +94,7 @@ export function SubscribePanel({
           </span>
         ) : null}
       </div>
-      {/* Only the client limit is enforced anywhere (create_invite raises
-          CLIENT_LIMIT_REACHED); the other ENTITLEMENTS flags have no code
-          behind them yet. This is the screen where someone hands over money,
-          so what has not shipped says so rather than sitting under a tick. */}
-      <ul className="mt-2.5 space-y-1 text-[13.5px] text-ink-soft">
-        {plan === "coach_pro" ? (
-          <>
-            <li>Up to <b className="text-ink">{e.maxClients}</b> clients</li>
-            <li className="text-ink-faint">Advanced analytics <Soon /></li>
-          </>
-        ) : (
-          <>
-            <li>✓ Everything in the free plan</li>
-            <li className="text-ink-faint">Progress photos <Soon /></li>
-          </>
-        )}
-      </ul>
+      <PlanFeatureList list={plan === "coach_pro" ? "coachPro" : "premium"} className="mt-2.5" />
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {subscribed ? (
           <button

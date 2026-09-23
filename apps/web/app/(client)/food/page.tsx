@@ -6,6 +6,8 @@ import { NutritionSummary } from "@/components/nutrition-summary";
 import { MealCard } from "@/components/meal-card";
 import type { MealSlot } from "@/lib/types";
 import { isoDay } from "@/lib/dates";
+import { getPlan, inHistory } from "@/lib/plan";
+import { UpgradeHint } from "@/components/upgrade";
 
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
 
@@ -24,6 +26,25 @@ export default async function FoodPage({
   const today = isoDay();
   const day = validDay((await searchParams).day) ?? today;
   const week = weekDaysOf(day);
+  const plan = await getPlan();
+
+  // A day before the plan's history window shows the week strip (so the way
+  // back to today is right there) and the hint, and reads nothing else.
+  if (!inHistory(plan, day)) {
+    const loggedDays = await getMyFoodDays(week[0], week[6]);
+    return (
+      <div className="mx-auto max-w-[1600px]">
+        <WeekStrip selected={day} today={today} loggedDays={loggedDays} />
+        <UpgradeHint
+          card
+          feature="history"
+          upgrade={plan.upgrade}
+          values={{ days: plan.e.historyDays ?? 0 }}
+          className="mt-5 sm:mt-6"
+        />
+      </div>
+    );
+  }
 
   const [nutrition, planMeals, loggedDays, quick] = await Promise.all([
     getMyDayNutrition(day),

@@ -8,17 +8,20 @@ import { TrainingLoadBadge } from "@/components/training-load";
 import { NavIcon } from "@/components/client-nav";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { getPlan, inHistory } from "@/lib/plan";
+import { UpgradeHint } from "@/components/upgrade";
 
 export default async function WorkoutPage() {
   const { t, locale } = await getI18n();
   // getProfile is request-cached (the layout already read it); its sex picks the athlete on each card.
-  const [groups, sessions, coached, profile] = await Promise.all([getMyProgramGroups(), getMySessions(), hasActiveCoach(), getProfile()]);
+  const [groups, allSessions, coached, profile, plan] = await Promise.all([getMyProgramGroups(), getMySessions(), hasActiveCoach(), getProfile(), getPlan()]);
 
   // Every published program the client holds is listed — the coach's and their
   // own — so nothing they built disappears when a coach's program arrives.
   // The builder link is always there for a solo client with programs: it reads
   // "edit" once they own one — the editor is where days and exercises change.
   const hasOwn = groups.some((g) => g.is_own);
+  const sessions = allSessions.filter((s) => inHistory(plan, s.at));
 
   return (
     <div>
@@ -105,6 +108,14 @@ export default async function WorkoutPage() {
               ))}
             </ul>
           )}
+          {sessions.length < allSessions.length ? (
+            <UpgradeHint
+              feature="history"
+              upgrade={plan.upgrade}
+              values={{ days: plan.e.historyDays ?? 0 }}
+              className="mx-4 mb-4 mt-1"
+            />
+          ) : null}
         </Card>
       </div>
     </div>

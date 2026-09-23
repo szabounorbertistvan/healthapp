@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   EXERCISE_RANGES,
   metricSeries,
@@ -10,6 +10,7 @@ import {
   type ExerciseSessionEntry,
   type ExerciseStats,
   type MetricPoint,
+  type RepRecord,
 } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -17,8 +18,15 @@ import { useUnits } from "@/lib/units/client";
 import { Card } from "./ui";
 
 /**
- * The numbers behind one lift: what you last did, your bests, three
- * progressions and every completed session.
+ * The numbers behind one lift: what you last did, your bests, the
+ * progressions, the rep records and every completed session.
+ *
+ * The plan decides two things, and the page decides them — this component
+ * never reads the plan. `chartsLocked` replaces the charts and rep records with
+ * whatever the page renders there (the upgrade hint), and `historySessions` is
+ * the part of the history the plan's window shows, with `historyLocked` under
+ * it when some was held back. With the paywall off the page passes no lock and
+ * every session. The summary always covers the whole history.
  *
  * All of it is computed server-side from stored rows (lib/exercise-analytics-data)
  * and handed down; this component only formats. The charts are inline SVG for
@@ -28,16 +36,27 @@ import { Card } from "./ui";
 export function ExerciseAnalytics({
   sessions,
   stats,
+  records,
   initialRange,
   todayIso,
   truncated,
+  historySessions = sessions,
+  chartsLocked = null,
+  historyLocked = null,
 }: {
   sessions: ExerciseSessionEntry[];
   stats: ExerciseStats;
+  records: RepRecord[];
   initialRange: ExerciseRangeDays;
   /** Passed from the server so the window is the reader's day, not the browser's. */
   todayIso: string;
   truncated: boolean;
+  /** The sessions the history list shows — the plan's window of `sessions`. */
+  historySessions?: ExerciseSessionEntry[];
+  /** Rendered in place of the charts and rep records when the plan does not include them. */
+  chartsLocked?: ReactNode;
+  /** Rendered under the history when the plan's window held sessions back. */
+  historyLocked?: ReactNode;
 }) {
   const { t } = useI18n();
   const d = t.clientApp.exerciseDetail;
@@ -59,19 +78,35 @@ export function ExerciseAnalytics({
       <section className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-lg font-bold tracking-tight">{d.progress}</h2>
-          <RangeTabs value={range} onChange={setRange} />
+          {chartsLocked ? null : <RangeTabs value={range} onChange={setRange} />}
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
-          <MetricChart title={d.chartWeight} metric="weight" sessions={sessions} range={range} todayIso={todayIso} />
-          <MetricChart title={d.chartVolume} metric="volume" sessions={sessions} range={range} todayIso={todayIso} />
-          <MetricChart title={d.chart1rm} metric="one_rm" sessions={sessions} range={range} todayIso={todayIso} hint={fill(d.oneRmHint, { reps: ONE_RM_MAX_REPS })} />
-        </div>
+        {chartsLocked ? (
+          <div className="mt-3">{chartsLocked}</div>
+        ) : (
+          <>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
+              {stats.bodyweight ? (
+                // Nothing was ever loaded: weight, volume and 1RM would be empty
+                // lines, and the number that moves is reps.
+                <MetricChart title={d.maxReps} metric="reps" sessions={sessions} range={range} todayIso={todayIso} />
+              ) : (
+                <>
+                  <MetricChart title={d.chartWeight} metric="weight" sessions={sessions} range={range} todayIso={todayIso} />
+                  <MetricChart title={d.chartVolume} metric="volume" sessions={sessions} range={range} todayIso={todayIso} />
+                  <MetricChart title={d.chart1rm} metric="one_rm" sessions={sessions} range={range} todayIso={todayIso} hint={fill(d.oneRmHint, { reps: ONE_RM_MAX_REPS })} />
+                </>
+              )}
+            </div>
+            {records.length > 0 ? <RepRecords records={records} /> : null}
+          </>
+        )}
       </section>
 
       <section className="mt-6">
         <h2 className="font-display text-lg font-bold tracking-tight">{d.history}</h2>
         <p className="mt-1 text-[12.5px] text-ink-faint">{d.historyHint} {d.warmupNote}</p>
-        <SessionHistory sessions={sessions} />
+        <SessionHistory sessions={historySessions} />
+        {historyLocked ? <div className="mt-3">{historyLocked}</div> : null}
       </section>
     </>
   );
@@ -91,21 +126,28 @@ function PerformanceSummary({ stats, truncated }: { stats: ExerciseStats; trunca
   return (
     <section className="mt-5">
       <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.summary}</h2>
-      <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Stat
-          label={d.last}
-          value={topLast ? `${kgToDisplay(topLast.weight_kg, u.weightUnit)} ${u.weightUnit} × ${topLast.reps}` : "—"}
-          accent
-        />
-        <Stat label={d.bestWeight} value={weight(stats.best_weight_kg, u, locale)}
-          note={stats.best_reps_at_best_weight ? fill(d.repsAtBestWeight, { reps: stats.best_reps_at_best_weight }) : undefined} />
-        <Stat label={d.bestReps} value={stats.best_reps === null ? "—" : String(stats.best_reps)} />
-        <Stat label={d.estimated1rm} value={weight(round1(stats.best_1rm), u, locale)} />
-        <Stat label={d.bestVolume} value={weight(stats.best_volume_kg, u, locale, true)} />
-        <Stat label={d.sessions} value={stats.sessions.toLocaleString(locale)} />
-        <Stat label={d.totalSets} value={stats.total_sets.toLocaleString(locale)} />
-        <Stat label={d.totalVolume} value={weight(stats.total_volume_kg, u, locale, true)} />
-      </div>
+      {stats.bodyweight ? (
+        // Nothing was ever loaded: lead with reps, and leave out the tiles that
+        // would all read "—" (weight, 1RM, volume).
+        <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <Stat label={d.last} value={topLast ? `${topLast.reps} ${d.repsUnit}` : "—"} accent />
+          <Stat label={d.maxReps} value={stats.best_reps === null ? "—" : String(stats.best_reps)} />
+          <Stat label={d.sessions} value={stats.sessions.toLocaleString(locale)} />
+          <Stat label={d.totalSets} value={stats.total_sets.toLocaleString(locale)} />
+        </div>
+      ) : (
+        <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <Stat label={d.last} value={topLast ? setLabel(topLast, u, d.repsUnit) : "—"} accent />
+          <Stat label={d.bestWeight} value={weight(stats.best_weight_kg, u, locale)}
+            note={stats.best_reps_at_best_weight ? fill(d.repsAtBestWeight, { reps: stats.best_reps_at_best_weight }) : undefined} />
+          <Stat label={d.bestReps} value={stats.best_reps === null ? "—" : String(stats.best_reps)} />
+          <Stat label={d.estimated1rm} value={weight(round1(stats.best_1rm), u, locale)} />
+          <Stat label={d.bestVolume} value={weight(stats.best_volume_kg, u, locale, true)} />
+          <Stat label={d.sessions} value={stats.sessions.toLocaleString(locale)} />
+          <Stat label={d.totalSets} value={stats.total_sets.toLocaleString(locale)} />
+          <Stat label={d.totalVolume} value={weight(stats.total_volume_kg, u, locale, true)} />
+        </div>
+      )}
       {truncated ? <p className="mt-2 text-[11.5px] text-ink-faint">{d.truncated}</p> : null}
     </section>
   );
@@ -173,9 +215,12 @@ function MetricChart({
   const { t, locale } = useI18n();
   const u = useUnits();
   const d = t.clientApp.exerciseDetail;
+  // Reps are a count; everything else is a load in the reader's unit.
+  const reps = metric === "reps";
+  const unit = reps ? d.repsUnit : u.weightUnit;
   const points = useMemo(
-    () => metricSeries(sessions, metric, range, todayIso).map((p) => ({ ...p, value: kgToDisplay(p.value, u.weightUnit) })),
-    [sessions, metric, range, todayIso, u.weightUnit],
+    () => metricSeries(sessions, metric, range, todayIso).map((p) => (reps ? p : { ...p, value: kgToDisplay(p.value, u.weightUnit) })),
+    [sessions, metric, range, todayIso, u.weightUnit, reps],
   );
 
   const fmt = useMemo(
@@ -191,12 +236,12 @@ function MetricChart({
       ) : points.length === 1 ? (
         <>
           <p className="mt-2 font-display text-[26px] font-extrabold tabular-nums leading-none">
-            {points[0].value.toLocaleString(locale)} <span className="text-base text-ink-faint">{u.weightUnit}</span>
+            {points[0].value.toLocaleString(locale)} <span className="text-base text-ink-faint">{unit}</span>
           </p>
           <p className="mt-1.5 text-[12px] text-ink-faint">{fmt.format(dayDate(points[0].day))} · {d.notEnoughForChart}</p>
         </>
       ) : (
-        <LineChart points={points} unit={u.weightUnit} fmt={fmt} locale={locale} />
+        <LineChart points={points} unit={unit} fmt={fmt} locale={locale} />
       )}
       {hint ? <p className="mt-2 text-[10.5px] text-ink-faint">{hint}</p> : null}
     </Card>
@@ -295,14 +340,16 @@ function SessionHistory({ sessions }: { sessions: ExerciseSessionEntry[] }) {
                     set.is_pr ? "bg-accent font-semibold text-accent-fg" : "bg-bg text-ink-soft"
                   }`}
                 >
-                  {kgToDisplay(set.weight_kg, u.weightUnit)} {u.weightUnit} × {set.reps}
+                  {setLabel(set, u, d.repsUnit)}
                   {set.rir !== null ? ` · ${t.clientWidgets.setLogger.rir} ${set.rir}` : ""}
                   {set.rir === null && set.rpe !== null ? ` · ${set.rpe}/10` : ""}
+                  {set.is_pr ? <span className="ml-1 text-[10px] font-bold uppercase">{d.pr}</span> : null}
                 </li>
               ))}
             </ul>
             <p className="mt-2 text-[12px] tabular-nums text-ink-faint">
-              {s.sets.length} {d.sets} · {d.volume} <b className="text-ink-soft">{weight(s.volume_kg, u, locale, true)}</b>
+              {s.sets.length} {d.sets}
+              {s.volume_kg > 0 ? <> · {d.volume} <b className="text-ink-soft">{weight(s.volume_kg, u, locale, true)}</b></> : null}
               {s.best_1rm !== null ? <> · {d.estimated1rm} <b className="text-ink-soft">{weight(round1(s.best_1rm), u, locale)}</b></> : null}
             </p>
           </Card>
@@ -312,7 +359,52 @@ function SessionHistory({ sessions }: { sessions: ExerciseSessionEntry[] }) {
   );
 }
 
+/**
+ * Heaviest load for at least N reps. A run of rep counts sharing one weight
+ * from one session reads as one row ("1–3 RM · 80 kg"), not three.
+ */
+function RepRecords({ records }: { records: RepRecord[] }) {
+  const { t, locale } = useI18n();
+  const u = useUnits();
+  const d = t.clientApp.exerciseDetail;
+  const fmt = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const runs = records.reduce<{ from: number; to: number; weight_kg: number; at: string }[]>((acc, r) => {
+    const last = acc.at(-1);
+    if (last && last.weight_kg === r.weight_kg && last.at === r.at && last.to === r.reps - 1) last.to = r.reps;
+    else acc.push({ from: r.reps, to: r.reps, weight_kg: r.weight_kg, at: r.at });
+    return acc;
+  }, []);
+  return (
+    <Card plain className="mt-3 overflow-hidden p-0">
+      <div className="px-5 pb-1 pt-[18px]">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.repRecords}</p>
+        <p className="mt-1.5 text-[12.5px] text-ink-faint">{d.repRecordsHint}</p>
+      </div>
+      <ul className="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+        {runs.map((r) => (
+          <li key={r.from} className="border-t border-line/60 px-5 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+              {r.from === r.to ? r.from : `${r.from}–${r.to}`} RM
+            </p>
+            <p className="mt-0.5 font-display text-[19px] font-extrabold tabular-nums leading-none">
+              {weight(r.weight_kg, u, locale)}
+            </p>
+            <p className="mt-1 text-[11px] tabular-nums text-ink-faint">{fmt.format(new Date(r.at))}</p>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 // ---------- formatting ----------
+
+/** One set as a gym reads it: "80 kg × 5", or "15 reps" when nothing was loaded. */
+function setLabel(set: { weight_kg: number; reps: number }, u: Units, repsUnit: string): string {
+  return set.weight_kg > 0
+    ? `${kgToDisplay(set.weight_kg, u.weightUnit)} ${u.weightUnit} × ${set.reps}`
+    : `${set.reps} ${repsUnit}`;
+}
 
 type Units = ReturnType<typeof useUnits>;
 

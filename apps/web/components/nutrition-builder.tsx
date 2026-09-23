@@ -17,6 +17,8 @@ import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";
 import { NewFoodForm, NotFoundNote } from "@/components/new-food-form";
 import { type FoodItem } from "@/lib/food-portions";
+import { usePlan } from "@/lib/plan-client";
+import { UpgradeHint } from "@/components/upgrade";
 
 // W6 · Nutrition plan builder. Targets and plan totals stay visible at all
 // times: the coach is composing against a number, and finding out afterwards
@@ -168,6 +170,8 @@ function MealCard({
 }) {
   const { t } = useI18n();
   const m = t.coachWidgets.nutritionBuilder;
+  const { e: plan, upgrade } = usePlan();
+  const canFill = plan.ingredientPlans;
   return (
     <Card plain className="sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -241,7 +245,10 @@ function MealCard({
           )}
         </div>
 
-        {open ? (
+        {/* Filling a meal with foods is Coach Pro; a Starter plan is its targets. */}
+        {open && !canFill ? (
+          <UpgradeHint feature="ingredientPlans" upgrade={upgrade} className="w-full shrink-0 self-start lg:w-80" />
+        ) : open ? (
           <div className="flex h-[clamp(32rem,82vh,64rem)] w-full shrink-0 flex-col rounded-2xl bg-bg p-3.5 lg:w-80">
             <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
               {fill(m.addTo, { name: meal.name })}

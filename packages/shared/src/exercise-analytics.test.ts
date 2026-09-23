@@ -12,6 +12,7 @@ import {
   previousWorkouts,
   progressionVs,
   relevantOneRm,
+  repRecords,
   setVolume,
   totalVolume,
   type AnalyticsSet,
@@ -403,5 +404,73 @@ describe("prefillFor", () => {
 
   it("never suggests a zero or negative load", () => {
     expect(prefillFor({ ...base, previous: null, setNumber: 1, targetWeightKg: 0 }).weight_kg).toBeNull();
+  });
+});
+
+// ---------- rep records and bodyweight (from origin/main's exercise-history) ----------
+// The fixture and expectations are the ones main's exercise-history.test.ts
+// pinned; the functions now live here so the page has one domain module.
+
+const REP_ROWS: AnalyticsSet[] = [
+  set({ session_id: "a", session_at: "2026-09-01T10:00:00Z", set_index: 1, weight_kg: 60, reps: 10 }),
+  set({ session_id: "a", session_at: "2026-09-01T10:00:00Z", set_index: 2, weight_kg: 70, reps: 5 }),
+  set({ session_id: "b", session_at: "2026-09-08T10:00:00Z", set_index: 2, weight_kg: 80, reps: 3, is_pr: true }),
+  set({ session_id: "b", session_at: "2026-09-08T10:00:00Z", set_index: 1, weight_kg: 60, reps: 12 }),
+  set({ session_id: "c", session_at: "2026-09-15T10:00:00Z", set_index: 1, weight_kg: 80, reps: 3 }),
+  set({ session_id: "c", session_at: "2026-09-15T10:00:00Z", set_index: 2, weight_kg: 0, reps: 0 }),
+];
+
+describe("repRecords", () => {
+  const records = repRecords(exerciseSessions(REP_ROWS));
+
+  it("is the heaviest load for at least N reps, so it never rises with N", () => {
+    expect(records.find((r) => r.reps === 1)?.weight_kg).toBe(80);
+    expect(records.find((r) => r.reps === 5)?.weight_kg).toBe(70);
+    expect(records.find((r) => r.reps === 10)?.weight_kg).toBe(60);
+    for (let i = 1; i < records.length; i++) expect(records[i]!.weight_kg).toBeLessThanOrEqual(records[i - 1]!.weight_kg);
+  });
+
+  it("dates a record by the first session that reached it", () => {
+    expect(records.find((r) => r.reps === 3)?.at).toBe("2026-09-08T10:00:00Z");
+  });
+
+  it("stops at ONE_RM_MAX_REPS and ignores bodyweight and zero-rep sets", () => {
+    expect(records.at(-1)?.reps).toBe(ONE_RM_MAX_REPS);
+    expect(repRecords(exerciseSessions([set({ session_id: "x", session_at: "2026-09-01T10:00:00Z", weight_kg: 0, reps: 20 })]))).toEqual([]);
+  });
+
+  it("is empty for no history", () => {
+    expect(repRecords([])).toEqual([]);
+  });
+});
+
+describe("exerciseStats · bodyweight", () => {
+  it("an exercise nobody ever loaded is bodyweight: reps lead, no 1RM", () => {
+    const stats = exerciseStats(exerciseSessions([set({ session_id: "x", session_at: "2026-09-01T10:00:00Z", weight_kg: 0, reps: 15 })]));
+    expect(stats.bodyweight).toBe(true);
+    expect(stats.best_1rm).toBeNull();
+    expect(stats.best_reps).toBe(15);
+  });
+
+  it("one loaded set is enough to make it a weighted exercise", () => {
+    expect(exerciseStats(exerciseSessions(REP_ROWS)).bodyweight).toBe(false);
+  });
+
+  it("an empty history is not bodyweight", () => {
+    expect(exerciseStats([]).bodyweight).toBe(false);
+  });
+});
+
+describe("metricSeries · reps", () => {
+  it("plots the most reps in a set per session — the bodyweight line", () => {
+    const sessions = exerciseSessions([
+      set({ session_id: "p1", session_at: "2026-09-10T10:00:00Z", weight_kg: 0, reps: 12 }),
+      set({ session_id: "p1", session_at: "2026-09-10T10:00:00Z", set_index: 2, weight_kg: 0, reps: 15 }),
+      set({ session_id: "p2", session_at: "2026-09-17T10:00:00Z", weight_kg: 0, reps: 18 }),
+    ]);
+    expect(metricSeries(sessions, "reps", null, "2026-09-20")).toEqual([
+      { day: "2026-09-10", value: 15 },
+      { day: "2026-09-17", value: 18 },
+    ]);
   });
 });

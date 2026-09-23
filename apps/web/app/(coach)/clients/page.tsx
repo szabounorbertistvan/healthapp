@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { getClients, getProfile } from "@/lib/data";
+import { getClients } from "@/lib/data";
+import { getPlan } from "@/lib/plan";
 import { Card, EmptyState, SignalBadge } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { pct, timeAgo } from "@/lib/format";
 import { InviteButton } from "@/components/invite-button";
-import { entitlementsFor /* , TIER_LABEL — Trial / Pro hidden for now */ } from "@/lib/entitlements";
+// TIER_LABEL — Trial / Pro hidden for now (was imported from "@/lib/entitlements").
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -15,8 +16,10 @@ const ICON = {
 
 export default async function ClientsPage() {
   const { t, locale } = await getI18n();
-  const [clients, profile] = await Promise.all([getClients(), getProfile()]);
-  const maxClients = entitlementsFor(profile?.tier ?? "free").maxClients;
+  const [clients, plan] = await Promise.all([getClients(), getPlan()]);
+  const maxClients = plan.e.maxClients;
+  // Signal and adherence % are Coach Pro (the dashboard carries the hint).
+  const pro = plan.e.advancedAnalytics;
   const used = clients.length;
   const limitReached = used >= maxClients;
 
@@ -93,10 +96,10 @@ export default async function ClientsPage() {
                           {t.coachApp.clients.status[c.status] ?? c.status}
                         </td>
                         <td className="px-3 py-4">
-                          {c.status === "active" ? <SignalBadge signal={c.signal} /> : <span className="text-ink-faint">—</span>}
+                          {pro && c.status === "active" ? <SignalBadge signal={c.signal} /> : <span className="text-ink-faint">—</span>}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-right">
-                          {c.status === "active" ? (
+                          {pro && c.status === "active" ? (
                             <Adherence value={c.overall_pct} />
                           ) : (
                             <span className="text-ink-faint">—</span>
@@ -144,7 +147,7 @@ export default async function ClientsPage() {
                           </span>
                         </p>
                       </div>
-                      {c.status === "active" ? <SignalBadge signal={c.signal} /> : null}
+                      {pro && c.status === "active" ? <SignalBadge signal={c.signal} /> : null}
                     </div>
                     <dl className="mt-3 flex items-end justify-between gap-3">
                       <div>
@@ -152,7 +155,7 @@ export default async function ClientsPage() {
                           {t.coachApp.clients.thAdherence}
                         </dt>
                         <dd className="mt-0.5 font-display text-[19px] font-extrabold tabular-nums leading-none">
-                          {c.status === "active" ? pct(c.overall_pct) : "—"}
+                          {pro && c.status === "active" ? pct(c.overall_pct) : "—"}
                         </dd>
                       </div>
                       <div>

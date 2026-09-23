@@ -98,17 +98,20 @@ feedback still do not exist** — nothing writes `reference_type` `set`,
 
 ## Paid tiers and the landing page
 
-**`ENTITLEMENTS` is a table of intentions, not of shipped features**
-(`packages/shared/src/entitlements.ts`). Only `maxClients` has code behind it —
-`create_invite` raises `CLIENT_LIMIT_REACHED` at 3 / 30. `progressPhotos`,
-`advancedAnalytics` and `customExerciseVideos` are read by nothing: **no client
-screen gates on an entitlement at all**. Two of the three have since shipped as
-*free* features — coach exercise videos (YouTube links) on 2026-09-16 and
-progress photos the same day — because neither is something a competitor
-charges for; the flag stays in the table as an intention nobody honours. So a paying `premium` client gets
-nothing a free one does not, and `coach_pro` buys only the bigger roster.
-The landing page and the checkout panel now mark those three with a "soon"
-badge instead of a tick (2026-09-16).
+**The paywall is built but switched off** (2026-09-23, see ENGINES.md →
+Accounts, billing, admin). Every flag in `ENTITLEMENTS` now has a gate behind
+it, but `app_flags.paywall` is off, so nobody is limited and there is still no
+way to pay: `/billing` redirects to `/account` until the switch is on for that
+person. What turning it on still needs: Stripe set up live
+(`scripts/stripe-setup.mjs`, webhook endpoint, secrets — never verified on
+this project), the billing page's own strings moved into i18n (the feature
+lists are; the rest of `components/billing.tsx` and `/billing` is English),
+and a look at every gated screen as a free and a Starter account — the gates
+were typechecked and the SQL tested live, but no screen was seen rendered
+gated. Share cards keep the brand on every plan; Premium buys Edit Stats, the
+square format and hiding the profile, not a card without the logo.
+The landing page's pricing copy (`pricingTiers`, not rendered today) was
+rewritten to match the gates; no line is "soon" any more.
 
 **No offline anything.** No IndexedDB, no outbox — the web app simply fails
 without a connection, and `sync-ingest` / `packages/shared/src/sync.ts` remain

@@ -24,12 +24,17 @@ import {
   exerciseSessions,
   exerciseStats,
   previousWorkouts,
+  repRecords,
   type ExerciseSessionEntry,
   type ExerciseStats,
+  type ExerciseVideoSource,
   type PreviousWorkout,
+  type RepRecord,
 } from "@healthapp/shared";
 import { ANALYTICS_SET_SELECT, toAnalyticsSets, type AnalyticsSetJoin } from "./exercise-analytics-map";
 import { liveUser } from "./supabase/server";
+import { activeCoachId } from "./client-training";
+import { fetchVideoLinks, resolveVideo, videoLinksFor } from "./exercise-video-links";
 import type { ClientWorkoutDay } from "./types";
 
 /**
@@ -86,6 +91,8 @@ export function getPreviousForDay(day: ClientWorkoutDay) {
 }
 
 export type ExerciseHistory = {
+  /** Heaviest load for at least N reps, N = 1…12 (repRecords). */
+  records: RepRecord[];
   sessions: ExerciseSessionEntry[];
   stats: ExerciseStats;
   /** True when the cap was hit, so the page can say the totals are a floor. */
@@ -95,7 +102,7 @@ export type ExerciseHistory = {
 /** Every completed set of one exercise, grouped into sessions and summed. */
 export async function getExerciseHistory(exerciseId: string): Promise<ExerciseHistory> {
   const live = await liveUser();
-  const blank: ExerciseHistory = { sessions: [], stats: exerciseStats([]), truncated: false };
+  const blank: ExerciseHistory = { sessions: [], stats: exerciseStats([]), records: [], truncated: false };
   if (!live) return blank;
   const { supabase, userId } = live;
 
@@ -112,7 +119,7 @@ export async function getExerciseHistory(exerciseId: string): Promise<ExerciseHi
   }
   const rows = (data ?? []) as unknown as AnalyticsSetJoin[];
   const sessions = exerciseSessions(toAnalyticsSets(rows));
-  return { sessions, stats: exerciseStats(sessions), truncated: rows.length >= HISTORY_POOL };
+  return { sessions, stats: exerciseStats(sessions), records: repRecords(sessions), truncated: rows.length >= HISTORY_POOL };
 }
 
 export type ExerciseProfile = {
@@ -127,21 +134,43 @@ export type ExerciseProfile = {
   primary_muscles: string[];
   secondary_muscles: string[];
   images: string[];
+  instructions_en: string | null;
+  instructions_ro: string | null;
+  /** The demo this person sees: their own link, else their coach's, else the row's (resolveVideo). */
+  video_url: string | null;
+  video_source: ExerciseVideoSource | null;
+  /** A custom exercise the viewer owns — its row video is theirs to clear. */
+  mine: boolean;
 };
 
 /**
- * The library row behind an id. Readable by any signed-in user for system
- * exercises and by its owner for a custom one — policy `exercises_select`,
- * unchanged.
+ * The library row behind an id, with its demo video resolved for this person.
+ * Readable by any signed-in user for system exercises and by its owner for a
+ * custom one — policy `exercises_select`, unchanged. The video links come
+ * through `exercise_video_links` RLS: your own, and those of whoever you are
+ * actively connected to. One wave: row, links and coach id together.
  */
 export async function getExerciseProfile(exerciseId: string): Promise<ExerciseProfile | null> {
   const live = await liveUser();
   if (!live) return null;
-  const { data, error } = await live.supabase
-    .from("exercises")
-    .select("id, name_en, name_ro, category, level, equipment, mechanic, force, primary_muscles, secondary_muscles, images")
-    .eq("id", exerciseId)
-    .maybeSingle();
+  const { supabase, userId } = live;
+  const [{ data, error }, linkRows, coachId] = await Promise.all([
+    supabase
+      .from("exercises")
+      .select("id, name_en, name_ro, category, level, equipment, mechanic, force, primary_muscles, secondary_muscles, images, instructions_en, instructions_ro, video_url, owner_id, source")
+      .eq("id", exerciseId)
+      .maybeSingle(),
+    fetchVideoLinks(supabase),
+    activeCoachId(userId),
+  ]);
   if (error || !data) return null;
-  return data as unknown as ExerciseProfile;
+  type Row = Omit<ExerciseProfile, "video_source" | "mine"> & { owner_id: string | null; source: string | null };
+  const { owner_id, source, ...row } = data as unknown as Row;
+  return {
+    ...row,
+    primary_muscles: row.primary_muscles ?? [],
+    secondary_muscles: row.secondary_muscles ?? [],
+    ...resolveVideo(videoLinksFor(linkRows, userId, coachId), row.id, row.video_url),
+    mine: owner_id === userId && source === "custom",
+  };
 }

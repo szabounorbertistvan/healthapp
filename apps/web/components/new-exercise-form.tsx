@@ -2,6 +2,9 @@
 import { useState, useTransition } from "react";
 import type { ExerciseSummary } from "@healthapp/shared";
 import { createCustomExercise } from "@/app/library-actions";
+import { isPlanLimitError } from "@healthapp/shared";
+import { usePlan } from "@/lib/plan-client";
+import { UpgradeHint } from "./upgrade";
 import { useI18n } from "@/lib/i18n/client";
 
 const CATEGORIES = ["strength", "stretching", "cardio", "plyometrics"] as const;
@@ -46,7 +49,9 @@ export function NewExerciseForm({
   const [mechanic, setMechanic] = useState<string>("");
   const [instructions, setInstructions] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [limitHit, setLimitHit] = useState(false);
   const [pending, startTransition] = useTransition();
+  const { e: plan, upgrade } = usePlan();
 
   const valid = name.trim().length >= 2 && primary !== "";
 
@@ -71,11 +76,23 @@ export function NewExerciseForm({
         instructions,
       });
       if (!result.ok) {
-        setError(result.message || m.couldNotCreate);
+        if (isPlanLimitError(result.message)) setLimitHit(true);
+        else setError(result.message || m.couldNotCreate);
         return;
       }
       onCreated(result.exercise);
     });
+  }
+
+  if (limitHit) {
+    return (
+      <UpgradeHint
+        card
+        feature="customExercises"
+        upgrade={upgrade}
+        values={{ limit: plan.maxCustomExercises ?? 0 }}
+      />
+    );
   }
 
   return (

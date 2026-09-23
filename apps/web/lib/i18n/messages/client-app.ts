@@ -408,6 +408,14 @@ const en = {
     noHistoryHint: "Log this exercise in a workout and its numbers appear here.",
     truncated: "The oldest sessions are not included in these totals.",
     warmupNote: "Every logged set counts — the app has no warm-up set type yet.",
+    // from origin/main's exercise page: the library link, rep records, bodyweight, how-to
+    myHistory: "My history",
+    maxReps: "Most reps",
+    repsUnit: "reps",
+    repRecords: "Rep records",
+    repRecordsHint: "The heaviest weight you have lifted for at least that many reps.",
+    pr: "PR",
+    howTo: "How to",
   },
   coachConnect: {
     haveCoach: "Do you have a coach?",
@@ -864,6 +872,14 @@ const ro: typeof en = {
     noHistoryHint: "Înregistrează exercițiul într-un antrenament și cifrele apar aici.",
     truncated: "Cele mai vechi antrenamente nu sunt incluse în aceste totaluri.",
     warmupNote: "Toate seturile înregistrate contează — aplicația nu are încă tipuri de set (încălzire).",
+    // from origin/main's exercise page: the library link, rep records, bodyweight, how-to
+    myHistory: "Istoricul meu",
+    maxReps: "Cele mai multe repetări",
+    repsUnit: "rep.",
+    repRecords: "Recorduri pe repetări",
+    repRecordsHint: "Cea mai mare greutate ridicată pentru cel puțin atâtea repetări.",
+    pr: "PR",
+    howTo: "Cum se execută",
   },
   coachConnect: {
     haveCoach: "Ai un antrenor?",

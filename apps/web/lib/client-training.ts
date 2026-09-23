@@ -4,6 +4,7 @@ import "server-only";
 import { cache } from "react";
 import {
   dailyLoad,
+  estimated1RM,
   loadTrend,
   pickProgram,
   sumLoad,
@@ -14,6 +15,7 @@ import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
 import { liveUser, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
 import { dayTypeOf, exerciseTypeOf } from "./exercise-types";
+import { fetchVideoLinks, resolveVideo, videoLinksFor } from "./exercise-video-links";
 import type {
   ClientPrRow,
   ClientProgramGroup,
@@ -56,17 +58,18 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   // whole round trip behind an otherwise single-wave Today; now the recent
   // sessions come back with everything else and are matched to their keys here.
   const today = isoDay();
-  const [{ data: rows, error }, coachId, recentSessions] = await Promise.all([
+  const [{ data: rows, error }, coachId, recentSessions, linkRows] = await Promise.all([
     supabase
       .from("programs")
       .select(`id, name, intensity_mode, coach_id, updated_at,
         program_days(id, name, week_index, day_index, muscle_groups,
           program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit,
-            exercise:exercises(name_en, name_ro, primary_muscles, category)))`)
+            exercise:exercises(name_en, name_ro, primary_muscles, category, video_url)))`)
       .eq("client_id", userId)
       .eq("status", "published"),
     activeCoachId(userId),
     recentSessionsFor(supabase, userId),
+    fetchVideoLinks(supabase),
   ]);
   // An empty list is a legitimate answer (a client with no program yet), so a
   // failed query must not be dressed up as one: returning [] here once made a
@@ -80,7 +83,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   type ExJoin = {
     id: string; exercise_id: string; position: number; target_sets: number; target_reps: string;
     target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null; circuit: number | null;
-    exercise: { name_en: string; name_ro: string | null; primary_muscles: string[]; category: string | null } | null;
+    exercise: { name_en: string; name_ro: string | null; primary_muscles: string[]; category: string | null; video_url: string | null } | null;
   };
   type DayJoin = { id: string; name: string; day_index: number; muscle_groups: string[] | null; program_exercises: ExJoin[] };
   type ProgramJoin = SelectableProgram & {
@@ -96,6 +99,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   // that is already there.
   const allDayIds = programs.flatMap((p) => (p.program_days ?? []).map((d) => d.id));
   const sessions = sessionsForDays(recentSessions, userId, allDayIds, today);
+  const links = videoLinksFor(linkRows, userId, coachId);
 
   return sortPrograms(programs).map((program) => {
     const days = [...(program.program_days ?? [])].sort((a, b) => a.day_index - b.day_index);
@@ -134,6 +138,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
               position: e.position,
               circuit: e.circuit ?? null,
               type: exerciseTypeOf(e.exercise?.primary_muscles ?? [], e.exercise?.category ?? null),
+              ...resolveVideo(links, e.exercise_id, e.exercise?.video_url),
             })),
           logged: session?.logged ?? [],
           session_id: session?.id ?? null,
@@ -246,12 +251,14 @@ export async function getWorkoutDay(dayId: string): Promise<ClientWorkoutDay | n
 function groupByExercise(sets: LoggedSetRow[]): WorkoutHistorySession["exercises"] {
   const order: string[] = [];
   const byName = new Map<string, WorkoutHistorySession["exercises"][number]["sets"]>();
+  const idOf = new Map<string, string | null>();
   const sorted = [...sets].sort((a, b) => a.at.localeCompare(b.at) || a.set_index - b.set_index);
   for (const s of sorted) {
     let bucket = byName.get(s.exercise);
     if (!bucket) {
       bucket = [];
       byName.set(s.exercise, bucket);
+      idOf.set(s.exercise, s.exercise_id ?? null);
       order.push(s.exercise);
     }
     bucket.push({
@@ -259,7 +266,7 @@ function groupByExercise(sets: LoggedSetRow[]): WorkoutHistorySession["exercises
       rpe: s.rpe, rir: s.rir, notes: s.notes, is_pr: s.is_pr,
     });
   }
-  return order.map((name) => ({ name, sets: byName.get(name) ?? [] }));
+  return order.map((name) => ({ name, exercise_id: idOf.get(name) ?? null, sets: byName.get(name) ?? [] }));
 }
 
 function summarizeSession(
@@ -388,29 +395,23 @@ export async function getMyPrs(): Promise<ClientPrRow[]> {
   // user_id is denormalized onto logged_sets precisely so this needs no join.
   const { data, error } = await supabase
     .from("logged_sets")
-    .select("weight_kg, reps, received_at, is_pr, exercise:exercises(name_en, name_ro)")
+    .select("exercise_id, weight_kg, reps, received_at, is_pr, exercise:exercises(name_en, name_ro)")
     .eq("user_id", userId)
     .eq("is_pr", true)
     .order("received_at", { ascending: false });
   if (error) return [];
   type Row = {
-    weight_kg: number | null; reps: number | null; received_at: string;
+    exercise_id: string | null; weight_kg: number | null; reps: number | null; received_at: string;
     exercise: { name_en: string; name_ro: string | null } | null;
   };
   const best = new Map<string, ClientPrRow>();
   for (const row of (data ?? []) as unknown as Row[]) {
     const name = row.exercise?.name_ro ?? row.exercise?.name_en ?? "—";
-    const oneRm = estimate(row.weight_kg ?? 0, row.reps ?? 0);
+    const oneRm = estimated1RM(row.weight_kg ?? 0, row.reps ?? 0);
     const current = best.get(name);
     if (!current || oneRm > current.best) {
-      best.set(name, { exercise: name, best: oneRm, at: row.received_at });
+      best.set(name, { exercise: name, exercise_id: row.exercise_id, best: oneRm, at: row.received_at });
     }
   }
   return [...best.values()].sort((a, b) => b.best - a.best);
-}
-
-function estimate(weight: number, reps: number): number {
-  if (weight <= 0 || reps <= 0) return 0;
-  if (reps === 1) return weight;
-  return Math.round(weight * (1 + reps / 30) * 10) / 10;
 }
