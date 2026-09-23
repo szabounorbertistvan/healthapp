@@ -2,7 +2,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProgramDetail } from "@/lib/types";
-import { addProgramDay, deleteProgram, duplicateProgramDay, publishProgram, removeProgramDay } from "@/app/builder-actions";
+import { addProgramDay, copyProgramToClient, deleteProgram, duplicateProgramDay, publishProgram, removeProgramDay } from "@/app/builder-actions";
+import Link from "next/link";
+import { usePlan } from "@/lib/plan-client";
+import { PlanTag, UpgradeHint } from "@/components/upgrade";
 import { ProgramDayEditor } from "@/components/program-day-editor";
 import { NavIcon } from "@/components/client-nav";
 import { Card, EmptyState } from "@/components/ui";
@@ -15,13 +18,20 @@ import { fill } from "@/lib/i18n";
 
 type Props = {
   program: ProgramDetail;
+  /** The coach's active clients, for "Copy to client". */
+  clients?: { id: string; name: string }[];
   muscles: string[];
   equipment: string[];
 };
 
-export function ProgramBuilder({ program, muscles, equipment }: Props) {
+export function ProgramBuilder({ program, clients = [], muscles, equipment }: Props) {
   const router = useRouter();
   const { t } = useI18n();
+  const { e: plan, upgrade } = usePlan();
+  const canCopy = plan.programCopy;
+  // Shown once a Starter coach reaches for a Pro control, right under the controls.
+  const [copyHint, setCopyHint] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
   const m = t.coachWidgets.programBuilder;
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -64,6 +74,15 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
             className="inline-flex h-11 items-center rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
           >
             {m.addDay}
+          </button>
+          <button
+            onClick={() => (canCopy ? setCopyOpen((v) => !v) : setCopyHint(true))}
+            disabled={pending}
+            aria-expanded={copyOpen}
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
+          >
+            {t.common.plan.copyProgram.button}
+            {canCopy ? null : <PlanTag label={upgrade.label} />}
           </button>
           <button
             onClick={() => run(() => publishProgram(program.id))}
@@ -148,6 +167,9 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
         </p>
       ) : null}
 
+      {copyHint && !canCopy ? <UpgradeHint card feature="programCopy" upgrade={upgrade} className="mt-4" /> : null}
+      {copyOpen && canCopy ? <CopyToClient programId={program.id} clients={clients} /> : null}
+
       <div className="mt-5 space-y-4 sm:mt-6">
         {program.days.length === 0 ? <EmptyState plain title={m.noDaysTitle} hint={m.noDaysBody} /> : null}
 
@@ -165,11 +187,12 @@ export function ProgramBuilder({ program, muscles, equipment }: Props) {
             actions={
               <>
                 <button
-                  onClick={() => run(() => duplicateProgramDay(program.id, day.id))}
+                  onClick={() => (canCopy ? run(() => duplicateProgramDay(program.id, day.id)) : setCopyHint(true))}
                   disabled={pending}
-                  className="inline-flex h-9 items-center rounded-full bg-bg px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-bg px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
                 >
                   {m.duplicate}
+                  {canCopy ? null : <PlanTag label={upgrade.label} />}
                 </button>
                 <button
                   onClick={() => { if (window.confirm(fill(t.clientApp.workout.deleteDayConfirm, { name: day.name }))) run(() => removeProgramDay(program.id, day.id)); }}
@@ -197,5 +220,65 @@ function StatusBadge({ status }: { status: ProgramDetail["status"] }) {
     <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${styles}`}>
       {t.coachWidgets.programBuilder.status[status]}
     </span>
+  );
+}
+
+/** Pick one of the coach's clients and copy this program to them as a draft. */
+function CopyToClient({ programId, clients }: { programId: string; clients: { id: string; name: string }[] }) {
+  const { t } = useI18n();
+  const c = t.common.plan.copyProgram;
+  const [target, setTarget] = useState(clients[0]?.id ?? "");
+  const [done, setDone] = useState<{ id: string; name: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (clients.length === 0) {
+    return (
+      <Card plain className="mt-4">
+        <p className="text-[13px] text-ink-soft">{c.none}</p>
+      </Card>
+    );
+  }
+  return (
+    <Card plain className="mt-4">
+      <label className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint" htmlFor="copy-target">
+        {c.pick}
+      </label>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <select
+          id="copy-target"
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          className="h-11 min-w-48 rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+        >
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>{client.name}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={pending || !target}
+          onClick={() =>
+            start(async () => {
+              setError(null);
+              setDone(null);
+              const r = await copyProgramToClient(programId, target);
+              if (r.ok && r.id) setDone({ id: r.id, name: clients.find((x) => x.id === target)?.name ?? "" });
+              else setError(r.message ?? t.coachWidgets.programBuilder.somethingWentWrong);
+            })
+          }
+          className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
+        >
+          {pending ? c.copying : c.copy}
+        </button>
+      </div>
+      {done ? (
+        <p className="mt-2.5 text-[13px] text-ink-soft" role="status">
+          {fill(c.done, { name: done.name })}{" "}
+          <Link href={`/programs/${done.id}`} className="font-semibold text-accent-ink hover:underline">{c.open}</Link>
+        </p>
+      ) : null}
+      {error ? <p className="mt-2.5 text-[13px] font-semibold text-risk">{error}</p> : null}
+    </Card>
   );
 }

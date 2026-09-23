@@ -1,4 +1,6 @@
 "use client";
+import { usePlan } from "@/lib/plan-client";
+import { UpgradeHint } from "./upgrade";
 import Link from "next/link";
 import {
   FITNESS_SCORE_MIN_WORKOUTS,
@@ -141,6 +143,7 @@ function TrendLine({ trend }: { trend: FitnessScoreTrend }) {
  */
 export function FitnessScoreCard({ view }: { view: FitnessScoreView }) {
   const x = useFitnessText();
+  const { e: plan, upgrade } = usePlan();
   const { current, trend } = view;
   return (
     <Card plain>
@@ -151,13 +154,14 @@ export function FitnessScoreCard({ view }: { view: FitnessScoreView }) {
       <div className="mt-2">
         <ScoreHeadline score={current} />
       </div>
-      {current.status === "active" ? (
+      {/* The number is free; how it moved and what it is made of are Premium. */}
+      {plan.progressCharts && current.status === "active" ? (
         <div className="mt-1.5">
           <TrendLine trend={trend} />
         </div>
       ) : null}
       <div className="mt-4">
-        <Breakdown score={current} />
+        {plan.progressCharts ? <Breakdown score={current} /> : <UpgradeHint feature="fitnessTrend" upgrade={upgrade} />}
       </div>
       <Link href="/fitness-score" className="mt-3.5 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
         {x.f.viewDetails} →
@@ -173,6 +177,7 @@ export function FitnessScoreCard({ view }: { view: FitnessScoreView }) {
  */
 export function FitnessScoreDetail({ view }: { view: FitnessScoreView }) {
   const x = useFitnessText();
+  const { e: plan, upgrade } = usePlan();
   const { current, previous, trend } = view;
   return (
     <div className="space-y-4">
@@ -188,6 +193,8 @@ export function FitnessScoreDetail({ view }: { view: FitnessScoreView }) {
         </div>
       </Card>
 
+      {plan.progressCharts ? (
+      <>
       <Card plain>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.f.trendTitle}</p>
         <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -215,6 +222,10 @@ export function FitnessScoreDetail({ view }: { view: FitnessScoreView }) {
           <Breakdown score={current} facts weights />
         </div>
       </Card>
+      </>
+      ) : (
+        <UpgradeHint card feature="fitnessTrend" upgrade={upgrade} />
+      )}
 
       <Card plain>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.f.howTitle}</p>

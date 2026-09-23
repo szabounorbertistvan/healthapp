@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProgram } from "@/lib/data";
+import { getActiveClientNames, getProgram } from "@/lib/data";
 import { exerciseFacets } from "@/lib/exercise-library";
 import { NavIcon } from "@/components/client-nav";
 import { ProgramBuilder } from "@/components/program-builder";
@@ -9,7 +9,7 @@ import { getI18n } from "@/lib/i18n/server";
 export default async function ProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const { t } = await getI18n();
   const { id } = await params;
-  const program = await getProgram(id);
+  const [program, clients] = await Promise.all([getProgram(id), getActiveClientNames()]);
   if (!program) notFound();
 
   const facets = exerciseFacets();
@@ -27,7 +27,7 @@ export default async function ProgramPage({ params }: { params: Promise<{ id: st
       <h1 className="mt-3 font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-[28px]">
         {program.name}
       </h1>
-      <ProgramBuilder program={program} muscles={facets.muscles} equipment={facets.equipment} />
+      <ProgramBuilder program={program} clients={clients} muscles={facets.muscles} equipment={facets.equipment} />
     </div>
   );
 }

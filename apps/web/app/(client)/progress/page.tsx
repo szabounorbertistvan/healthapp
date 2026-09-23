@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { getMyMeasurements, getMyPrs, getMySessions } from "@/lib/client-data";
 import { getProfile } from "@/lib/data";
 import { getMyPhotos } from "@/lib/photos-data";
+import { getPlan, inHistory } from "@/lib/plan";
+import { UpgradeHint } from "@/components/upgrade";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { ProgressPhotos } from "@/components/progress-photos";
 import { Card, EmptyState } from "@/components/ui";
@@ -19,8 +22,9 @@ import { cmToDisplay, formatWeight, kgToDisplay, weeklyTotals } from "@healthapp
  */
 export default async function ProgressPage() {
   const { t, locale } = await getI18n();
-  const [profile, measurements, prs, sessions, photos] = await Promise.all([
+  const [profile, plan, allMeasurements, allPrs, sessions, allPhotos] = await Promise.all([
     getProfile(),
+    getPlan(),
     // The whole history, not the default 12 rows: this is the one screen whose
     // job is the long view, and a trend cut off at twelve weigh-ins is a
     // different trend.
@@ -29,15 +33,26 @@ export default async function ProgressPage() {
     getMySessions(200),
     getMyPhotos(),
   ]);
+  // Free keeps the last 30 days of weigh-ins and photos and the top few PRs;
+  // the headline figures (sessions, volume, PR count) always count everything,
+  // so no number here ever disagrees with the coach's view of the same person.
+  const measurements = allMeasurements.filter((m) => inHistory(plan, m.taken_on));
+  const photos = allPhotos.filter((p) => inHistory(plan, p.date));
+  const hiddenHistory = measurements.length < allMeasurements.length;
+  const charts = plan.e.progressCharts;
+  const prs = charts ? allPrs : allPrs.slice(0, FREE_PRS_SHOWN);
+
   // This is a server component, so units come off the profile rather than the
   // client-side UnitsProvider the charts use.
   const weightUnit = profile?.weight_unit ?? "kg";
   const lengthUnit = profile?.length_unit ?? "cm";
 
-  const weights = measurements
+  // The charts and the current-weight figure read the whole series: the
+  // window only shortens the list below.
+  const weights = allMeasurements
     .filter((m) => m.weight_kg !== null)
     .map((m) => ({ label: m.taken_on.slice(5), value: m.weight_kg as number }));
-  const waists = measurements
+  const waists = allMeasurements
     .filter((m) => m.waist_cm !== null)
     .map((m) => ({ label: m.taken_on.slice(5), value: m.waist_cm as number }));
   const latest = weights.at(-1);
@@ -69,22 +84,26 @@ export default async function ProgressPage() {
           value={formatWeight(totalVolume, weightUnit, { locale, big: true }).replace(` ${weightUnit}`, "")}
           unit={weightUnit}
         />
-        <Stat icon={ICON.trophy} label={t.clientApp.progress.personalRecords} value={String(prs.length)} accent />
+        <Stat icon={ICON.trophy} label={t.clientApp.progress.personalRecords} value={String(allPrs.length)} accent />
       </div>
 
       <div className="mt-4 grid grid-cols-1 items-start gap-4 sm:mt-6 @3xl:grid-cols-2 @3xl:gap-5 @6xl:grid-cols-3 @6xl:gap-6">
         {/* ---- weight: the trend, then the weigh-in that feeds it ---- */}
         <div className="space-y-4">
-          <Card plain>
-            <SectionLabel icon={ICON.trend}>{t.clientApp.progress.weightTrend}</SectionLabel>
-            <div className="mt-3.5">
-              <Sparkline points={weights} />
-            </div>
-          </Card>
+          {charts ? (
+            <Card plain>
+              <SectionLabel icon={ICON.trend}>{t.clientApp.progress.weightTrend}</SectionLabel>
+              <div className="mt-3.5">
+                <Sparkline points={weights} />
+              </div>
+            </Card>
+          ) : (
+            <UpgradeHint card feature="charts" upgrade={plan.upgrade} />
+          )}
 
           {/* Waist moves when the scale does not — the reason to log it at all,
               so it gets its own chart rather than only a table column. */}
-          {waists.length >= 2 ? (
+          {charts && waists.length >= 2 ? (
             <Card plain>
               <SectionLabel icon={ICON.ruler}>{t.clientApp.progress.waistTrend}</SectionLabel>
               <div className="mt-3.5">
@@ -97,17 +116,25 @@ export default async function ProgressPage() {
 
           {/* Photos sit with the weigh-in, not in a gallery of their own: they
               answer the same question the scale does, on the weeks it lies. */}
-          <ProgressPhotos photos={photos} configured={cloudinaryConfigured()} />
+          <ProgressPhotos
+            photos={photos}
+            configured={cloudinaryConfigured()}
+            compare={plan.e.photoCompare}
+            olderHidden={photos.length < allPhotos.length ? (plan.e.historyDays ?? 0) : null}
+            upgrade={plan.upgrade}
+          />
         </div>
 
         {/* ---- the work behind the numbers ---- */}
-        <Card plain>
-          <SectionLabel icon={ICON.volume}>{t.clientApp.progress.weeklyVolume}</SectionLabel>
-          <p className="mt-1.5 text-[12.5px] text-ink-faint">{t.clientApp.progress.weeklyVolumeHint}</p>
-          <div className="mt-3.5">
-            <WeeklyBars buckets={volumeByWeek} />
-          </div>
-        </Card>
+        {charts ? (
+          <Card plain>
+            <SectionLabel icon={ICON.volume}>{t.clientApp.progress.weeklyVolume}</SectionLabel>
+            <p className="mt-1.5 text-[12.5px] text-ink-faint">{t.clientApp.progress.weeklyVolumeHint}</p>
+            <div className="mt-3.5">
+              <WeeklyBars buckets={volumeByWeek} />
+            </div>
+          </Card>
+        ) : null}
 
         {/* ---- best lifts ---- */}
         <Card plain className="overflow-hidden p-0">
@@ -120,7 +147,13 @@ export default async function ProgressPage() {
             <ul className="mt-1 divide-y divide-line/60">
               {prs.map((pr) => (
                 <li key={pr.exercise} className="flex items-center justify-between gap-3 px-5 py-3.5">
-                  <span className="min-w-0 truncate text-[14px] font-semibold">{pr.exercise}</span>
+                  {pr.exercise_id ? (
+                    <Link href={`/exercises/${pr.exercise_id}`} className="min-w-0 truncate text-[14px] font-semibold hover:text-accent-ink">
+                      {pr.exercise}
+                    </Link>
+                  ) : (
+                    <span className="min-w-0 truncate text-[14px] font-semibold">{pr.exercise}</span>
+                  )}
                   <span className="shrink-0 text-right">
                     <span className="font-display text-[17px] font-extrabold tabular-nums leading-none">
                       {kgToDisplay(pr.best, weightUnit)}
@@ -134,10 +167,20 @@ export default async function ProgressPage() {
               ))}
             </ul>
           )}
+          {allPrs.length > prs.length ? (
+            <UpgradeHint
+              feature="prs"
+              upgrade={plan.upgrade}
+              values={{ count: allPrs.length - prs.length, shown: prs.length }}
+              className="mx-4 mb-4 mt-1"
+            />
+          ) : null}
         </Card>
 
         {/* ---- every measurement ---- */}
-        {measurements.length === 0 ? (
+        {measurements.length === 0 && hiddenHistory ? (
+          <UpgradeHint card feature="history" upgrade={plan.upgrade} values={{ days: plan.e.historyDays ?? 0 }} />
+        ) : measurements.length === 0 ? (
           <EmptyState
             plain
             title={t.clientApp.progress.noMeasurementsTitle}
@@ -176,6 +219,14 @@ export default async function ProgressPage() {
                 </tbody>
               </table>
             </div>
+            {hiddenHistory ? (
+              <UpgradeHint
+                feature="history"
+                upgrade={plan.upgrade}
+                values={{ days: plan.e.historyDays ?? 0 }}
+                className="mx-4 mb-4 mt-2"
+              />
+            ) : null}
           </Card>
         )}
       </div>
@@ -186,6 +237,9 @@ export default async function ProgressPage() {
 /** Far past anyone's weigh-in count, but bounded: an unbounded select is how a
     read that is fine for a year becomes a timeout in the third. */
 const MEASUREMENT_HISTORY = 500;
+
+/** Personal records a plan without progress charts lists (the heaviest first). */
+const FREE_PRS_SHOWN = 3;
 
 /** The 24-box icon paths this screen uses. */
 const ICON = {

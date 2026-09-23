@@ -40,6 +40,22 @@ create a program for a client, add a day, add an exercise from the 888-row
 library, set sets/reps/RIR/rest, publish, and confirm it reaches the client's
 Today. RLS and column grants all held; `mutated()` guards every update/delete.
 
+### Exercise page (added 2026-09-23)
+
+`app/(client)/exercises/[id]` — one exercise as the signed-in person trained
+it: lifetime bests (est. 1RM, heaviest set, best session volume, sessions; most
+reps for a bodyweight exercise), a progress line with a metric switch
+(`components/exercise-trend-chart.tsx`), rep records (heaviest load for at
+least N reps, 1–12) and every session set by set. Math:
+`packages/shared/src/exercise-history.ts` (Epley via `estimated1RM`, the PR
+formula; `getMyPrs` now uses it too instead of a local copy). Read:
+`lib/exercise-history-data.ts`, one wave on `logged_sets_history_idx`. Reached
+from the library preview ("My history"), the PR list on Progress and exercise
+names in a day's history. Chart and rep records are `progressCharts`, the list
+follows `historyDays` — both open while the paywall is off. Not yet: warm-up
+sets are counted like working sets (no set types), and a coach cannot open a
+client's exercise page.
+
 ### Rest timer (added 2026-09-19)
 
 | | |
@@ -238,6 +254,43 @@ No Apple, no onboarding — see GAPS.
 a trialling user reads as their paid tier without a payment record. Stripe is
 wired (checkout + portal + webhook); monthly and ~15%-off annual prices, and an
 admin can grant a tier directly with `admin_set_tier`.
+
+**Paywall (2026-09-23, built and switched off).** Migration
+`20260923120000_paywall.sql`, test `supabase/tests/paywall.test.sql` (17
+assertions, run live inside a rolled-back transaction before applying).
+
+- *The switch* is `app_flags.paywall` (`enabled`, plus `preview_users uuid[]`
+  to turn it on for a few accounts first). Off — the state it shipped in — every
+  gate is open: `planEntitlements()` answers the role's full paid set, the limit
+  triggers let everything through, `/billing` still redirects to `/account` and
+  the coach settings hide the subscription card. Only the roster cap (3 / 30 in
+  `create_invite`) applies either way, as it always has.
+- *Tiers.* `own_tier()` is the old `effective_tier()` plus one fix (a coach
+  whose trial ended is `coach_free`, not `free`). `effective_tier()` now gives a
+  plain client **Premium while their active coach's own tier is `coach_pro`**.
+  Mirrored in `effectiveTier()` (`packages/shared/src/billing.ts`).
+- *What the app reads.* `getProfile` selects the definer view `my_plan`
+  (effective tier, own tier, `paywall`, trial, `has_stripe`) in place of the old
+  `subscriptions` select — same wave. `lib/plan.ts` `getPlan()` turns it into
+  `{ e: Entitlements, historySince, upgrade }`; both layouts mount it for client
+  components as `PlanProvider` / `usePlan()` (`lib/plan-client.tsx`).
+- *Limits SQL enforces* (`plan_limit()` mirrors `ENTITLEMENTS`, pinned by
+  `entitlements.test.ts`): own programs, custom exercises, favourite foods via
+  the `enforce_plan_limit` trigger, and barcode scans per local day via
+  `claim_barcode_scan()` (called by `lookupBarcode` beside the cache read). Each
+  raises `PLAN_LIMIT_REACHED`; screens show `UpgradeHint` (`components/upgrade.tsx`).
+- *Gates checked in app code* — display of the person's own data, or a Pro
+  control in a server action: history window (30 days of sessions, day history,
+  weigh-in list, photos, food diary), progress charts + full PR list +
+  fitness-score trend/breakdown, photo comparison, share-card customisation,
+  setting your own exercise video, coach adherence signal/reason/% and a
+  client's fitness score, duplicating a day and **Copy to client** (new, in the
+  program builder: `copyProgramToClient`), ingredient-based meal plans
+  (`addPlanFood`). Headline counts (sessions, volume, PRs) always count
+  everything, so the coach's and client's numbers never disagree.
+- To preview: `update public.app_flags set preview_users = array['<uuid>']::uuid[] where key = 'paywall';`
+  — note the seeded test accounts are all on trials or manual grants, so a
+  gate only shows once their `subscriptions` row is free and the trial is past.
 
 **Admin panel** (`app/(admin)/admin/*`, 2026-09-20). Read-mostly operations
 desk: `lib/admin/data.ts` wraps one `admin_*` RPC per page; each RPC is

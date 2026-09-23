@@ -1,29 +1,33 @@
 import { redirect } from "next/navigation";
-
-// Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
-// The route stays so old links do not 404; it sends people to the account
-// screen instead. The original page is kept verbatim below.
-export default function BillingPage() {
-  redirect("/account");
-}
-
-/*
 import { getProfile } from "@/lib/data";
+import { getI18n } from "@/lib/i18n/server";
 import { Card } from "@/components/ui";
 import { TIER_LABEL } from "@/lib/entitlements";
-import { SubscribePanel, TrialBanner } from "@/components/billing";
+import { PlanFeatureList, SubscribePanel, TrialBanner } from "@/components/billing";
 
+/**
+ * The client's plan. Only where the paywall applies (app_flags.paywall, or a
+ * preview user): until then nothing is gated, there is nothing to buy, and
+ * the route keeps sending people to Account as it has since 2026-09-17.
+ */
 export default async function BillingPage() {
-  const profile = await getProfile();
-  const tier = profile?.tier ?? "free";
-  const paid = tier === "premium" && Boolean(profile?.has_stripe);
+  const [profile, { t }] = await Promise.all([getProfile(), getI18n()]);
+  if (!profile?.paywall) redirect("/account");
+  const tier = profile.tier;
+  const paid = tier === "premium" && profile.has_stripe;
 
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">Subscription</h1>
 
       <div className="mt-5 sm:mt-6">
-        <TrialBanner trialEndsAt={profile?.trial_ends_at ?? null} paid={paid} />
+        {profile.tier_via_coach ? (
+          <div className="mb-4 rounded-3xl bg-accent-soft px-5 py-[18px] text-[13.5px] leading-relaxed text-accent-ink">
+            {t.common.plan.viaCoach}
+          </div>
+        ) : (
+          <TrialBanner trialEndsAt={profile.trial_ends_at} paid={paid} />
+        )}
       </div>
 
       <Card plain>
@@ -36,19 +40,12 @@ export default async function BillingPage() {
                 <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">Current</span>
               ) : null}
             </div>
-            <ul className="mt-2.5 space-y-1 text-[13.5px] text-ink-soft">
-              <li>✓ Training, nutrition &amp; habit logging</li>
-              <li>✓ Progress charts</li>
-              <li>— Progress photos</li>
-            </ul>
+            <PlanFeatureList list="free" className="mt-2.5" />
             <p className="mt-4 text-[13px] text-ink-faint">Free forever</p>
           </div>
-          <SubscribePanel
-            plan="premium"
-            currentTier={tier}
-            hasStripe={profile?.has_stripe ?? false}
-            returnPath="/billing"
-          />
+          {profile.tier_via_coach ? null : (
+            <SubscribePanel plan="premium" currentTier={tier} hasStripe={profile.has_stripe} returnPath="/billing" />
+          )}
         </div>
         <p className="mt-3.5 text-[12.5px] leading-relaxed text-ink-faint">
           Payments are handled by Stripe. The annual plan is 12 months minus 15%; cancel anytime
@@ -58,4 +55,3 @@ export default async function BillingPage() {
     </div>
   );
 }
-*/

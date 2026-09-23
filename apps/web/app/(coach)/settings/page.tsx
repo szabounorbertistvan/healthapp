@@ -1,8 +1,9 @@
 import { getProfile } from "@/lib/data";
-// Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
-// import { Card } from "@/components/ui";
-// import { ENTITLEMENTS, TIER_LABEL } from "@/lib/entitlements";
-// import { SubscribePanel, TrialBanner } from "@/components/billing";
+// The subscription card shows only where the paywall applies (profile.paywall:
+// app_flags.paywall, or a preview user). Hidden for everyone else since 2026-09-17.
+import { Card } from "@/components/ui";
+import { TIER_LABEL } from "@/lib/entitlements";
+import { PlanFeatureList, SubscribePanel, TrialBanner } from "@/components/billing";
 import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { ProfileForm } from "@/components/account";
@@ -12,9 +13,8 @@ export default async function SettingsPage() {
   const { t } = await getI18n();
   const profile = await getProfile();
   if (!profile) return null;
-  // const tier = profile?.tier ?? "free";
-  // const paid = tier === "coach_pro" && Boolean(profile?.has_stripe);
-  // const starter = ENTITLEMENTS.coach_free;
+  const tier = profile.tier;
+  const paid = tier === "coach_pro" && profile.has_stripe;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -43,14 +43,14 @@ export default async function SettingsPage() {
         {/* A coach trains too (My training): their own rest between sets. */}
         <RestTimerCard prefs={profile.rest_prefs} />
 
-        {/* Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
-
+        {profile.paywall ? (
+        <>
         <TrialBanner trialEndsAt={profile.trial_ends_at} paid={paid} />
 
         <Card plain>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.coachApp.settings.subscription}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            (The free plan, shaped like the paid panel next to it.)
+            {/* The free plan, shaped like the paid panel next to it. */}
             <div className="rounded-2xl bg-bg px-4 py-[18px]">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-display text-lg font-bold tracking-tight">{TIER_LABEL.coach_free}</p>
@@ -60,11 +60,7 @@ export default async function SettingsPage() {
                   </span>
                 ) : null}
               </div>
-              <ul className="mt-2.5 space-y-1 text-[13.5px] text-ink-soft">
-                <li>{t.coachApp.settings.upToBefore} <b className="text-ink">{starter.maxClients}</b> {t.coachApp.settings.upToAfter}</li>
-                <li>{t.coachApp.settings.noAnalytics}</li>
-                <li>{t.coachApp.settings.noCustomVideos}</li>
-              </ul>
+              <PlanFeatureList list="coachFree" className="mt-2.5" />
               <p className="mt-4 text-[12.5px] text-ink-faint">{t.coachApp.settings.freeForever}</p>
             </div>
             <SubscribePanel
@@ -78,7 +74,8 @@ export default async function SettingsPage() {
             {t.coachApp.settings.stripeNote}
           </p>
         </Card>
-        */}
+        </>
+        ) : null}
       </div>
     </div>
   );

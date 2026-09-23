@@ -22,3 +22,4 @@ export * from "./leaderboard";
 export * from "./program-editing";
 export * from "./fitness-score";
 export * from "./rest-timer";
+export * from "./exercise-history";

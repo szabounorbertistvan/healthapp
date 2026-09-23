@@ -4,6 +4,8 @@ import { Card, SignalBadge, EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { pct, timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { getPlan } from "@/lib/plan";
+import { UpgradeHint } from "@/components/upgrade";
 
 /**
  * The coach's morning screen: four headline figures across the top, then the
@@ -12,7 +14,10 @@ import { getI18n } from "@/lib/i18n/server";
  */
 export default async function DashboardPage() {
   const { t, locale } = await getI18n();
-  const [rows, checkIns] = await Promise.all([getDashboard(), getCheckIns()]);
+  const [rows, checkIns, plan] = await Promise.all([getDashboard(), getCheckIns(), getPlan()]);
+  // The adherence signal, its reason, the % and the at-risk count are Coach
+  // Pro. A Starter desk keeps the roster, last log, check-ins and messages.
+  const pro = plan.e.advancedAnalytics;
   const atRisk = rows.filter((r) => r.signal === "at_risk").length;
   const unread = rows.reduce((sum, r) => sum + r.unread_messages, 0);
 
@@ -34,10 +39,15 @@ export default async function DashboardPage() {
           accent={checkIns.length > 0}
         />
         <Stat href="/messages" icon={ICON.messages} label={t.coachApp.dashboard.unreadMessages} value={unread} accent={unread > 0} />
-        <Stat href="/clients" icon={ICON.risk} label={t.coachApp.dashboard.atRisk} value={atRisk} accent={atRisk > 0} />
+        {pro ? (
+          <Stat href="/clients" icon={ICON.risk} label={t.coachApp.dashboard.atRisk} value={atRisk} accent={atRisk > 0} />
+        ) : (
+          <Stat href={plan.upgrade.href} icon={ICON.risk} label={t.coachApp.dashboard.atRisk} value="—" />
+        )}
       </div>
 
       <div className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
+        {!pro && rows.length > 0 ? <UpgradeHint card feature="analytics" upgrade={plan.upgrade} /> : null}
         {rows.length === 0 ? (
           <EmptyState plain title={t.coachApp.dashboard.emptyTitle} hint={t.coachApp.dashboard.emptyHint} />
         ) : (
@@ -49,9 +59,13 @@ export default async function DashboardPage() {
                   <thead>
                     <tr className="whitespace-nowrap text-left text-[11px] uppercase tracking-wider text-ink-faint">
                       <th className="px-6 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thClient}</th>
-                      <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thSignal}</th>
-                      <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thWhy}</th>
-                      <th className="px-3 pb-2 pt-[18px] text-right font-semibold">{t.coachApp.dashboard.thAdherence}</th>
+                      {pro ? (
+                        <>
+                          <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thSignal}</th>
+                          <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thWhy}</th>
+                          <th className="px-3 pb-2 pt-[18px] text-right font-semibold">{t.coachApp.dashboard.thAdherence}</th>
+                        </>
+                      ) : null}
                       <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thLastLog}</th>
                       <th className="px-6 pb-2 pt-[18px]" />
                     </tr>
@@ -65,11 +79,15 @@ export default async function DashboardPage() {
                             <span className="text-[15px] font-semibold">{r.full_name}</span>
                           </span>
                         </td>
-                        <td className="px-3 py-4"><SignalBadge signal={r.signal} /></td>
-                        <td className="min-w-56 px-3 py-4 text-[13px] leading-relaxed text-ink-soft">{r.reason}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-right">
-                          <Adherence value={r.overall_pct} />
-                        </td>
+                        {pro ? (
+                          <>
+                            <td className="px-3 py-4"><SignalBadge signal={r.signal} /></td>
+                            <td className="min-w-56 px-3 py-4 text-[13px] leading-relaxed text-ink-soft">{r.reason}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-right">
+                              <Adherence value={r.overall_pct} />
+                            </td>
+                          </>
+                        ) : null}
                         <td className="whitespace-nowrap px-3 py-4 text-[13px] tabular-nums text-ink-faint">
                           {timeAgo(r.last_activity, locale)}
                         </td>
@@ -101,18 +119,20 @@ export default async function DashboardPage() {
                         <Avatar name={r.full_name} />
                         <span className="truncate text-[15px] font-semibold">{r.full_name}</span>
                       </span>
-                      <SignalBadge signal={r.signal} />
+                      {pro ? <SignalBadge signal={r.signal} /> : null}
                     </div>
-                    <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">{r.reason}</p>
+                    {pro ? <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">{r.reason}</p> : null}
                     <dl className="mt-3 flex items-end justify-between gap-3">
-                      <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-                          {t.coachApp.dashboard.thAdherence}
-                        </dt>
-                        <dd className="mt-1">
-                          <Adherence value={r.overall_pct} />
-                        </dd>
-                      </div>
+                      {pro ? (
+                        <div>
+                          <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                            {t.coachApp.dashboard.thAdherence}
+                          </dt>
+                          <dd className="mt-1">
+                            <Adherence value={r.overall_pct} />
+                          </dd>
+                        </div>
+                      ) : null}
                       <div>
                         <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                           {t.coachApp.dashboard.thLastLog}

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useI18n } from "@/lib/i18n/client";
 import type { WorkoutHistorySession } from "@/lib/types";
 import { shareCardFromHistory, type ShareCardProfile } from "@/lib/share-card";
@@ -86,7 +87,15 @@ export function WorkoutHistory({ sessions, share }: {
                 ) : null}
                 {session.exercises.map((exercise) => (
                   <div key={exercise.name}>
-                    <p className="text-sm font-semibold">{exercise.name}</p>
+                    <p className="text-sm font-semibold">
+                      {exercise.exercise_id ? (
+                        <Link href={`/exercises/${exercise.exercise_id}`} className="hover:text-accent-ink">
+                          {exercise.name}
+                        </Link>
+                      ) : (
+                        exercise.name
+                      )}
+                    </p>
                     <ul className="mt-1.5 flex flex-wrap gap-1.5">
                       {exercise.sets.map((raw) => {
                         const s = { ...raw, ...overrides[raw.id] };

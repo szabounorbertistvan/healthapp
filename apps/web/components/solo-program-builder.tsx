@@ -11,6 +11,9 @@ import { NavIcon } from "@/components/client-nav";
 import { Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import type { ProgramDetail } from "@/lib/types";
+import { usePlan } from "@/lib/plan-client";
+import { UpgradeHint } from "@/components/upgrade";
+import { atLimit, isPlanLimitError } from "@healthapp/shared";
 
 /** `equipment` is the library's facet list, so "create exercise" suggests the same gear names the coach sees. */
 export function SoloProgramBuilder({
@@ -34,6 +37,12 @@ export function SoloProgramBuilder({
   const [creating, setCreating] = useState(false);
   const [dayName, setDayName] = useState("");
   const [groups, setGroups] = useState<string[]>([]);
+  // The plan's cap on own programs (Free: one). Known up front from the count
+  // here; the database refuses a second one too (enforce_plan_limit), and that
+  // answer lands in the same hint.
+  const { e: plan, upgrade } = usePlan();
+  const [limitHit, setLimitHit] = useState(false);
+  const limited = limitHit || atLimit(plan.maxOwnPrograms, programs.length);
 
   function run(action: () => Promise<{ ok: boolean; message?: string }>) {
     setError(null);
@@ -44,7 +53,9 @@ export function SoloProgramBuilder({
     });
   }
 
-  const createForm = (
+  const createForm = limited ? (
+    <UpgradeHint card feature="ownPrograms" upgrade={upgrade} values={{ limit: plan.maxOwnPrograms ?? 0 }} />
+  ) : (
     <Card plain className="space-y-3 sm:p-5">
         <input
           value={name}
@@ -58,6 +69,10 @@ export function SoloProgramBuilder({
         onClick={() =>
           run(async () => {
             const result = await createSoloProgram({ name, intensityMode: "rir" });
+            if (isPlanLimitError(result.message)) {
+              setLimitHit(true);
+              return { ok: true };
+            }
             if (result.ok) {
               setName("");
               setCreating(false);

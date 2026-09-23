@@ -12,6 +12,8 @@ import { circuitSegments } from "@healthapp/shared";
 import { timeAgo } from "@/lib/format";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
+import { getPlan, inHistory } from "@/lib/plan";
+import { UpgradeHint } from "@/components/upgrade";
 
 /**
  * A training day, opened from Training. Two columns once there is room: the
@@ -29,12 +31,20 @@ export default async function WorkoutDayPage({
   const { t, locale } = await getI18n();
   const { dayId } = await params;
   // getProfile is request-cached (the layout already read it) — no extra round trip.
-  const [day, history, profile, coached] = await Promise.all([getWorkoutDay(dayId), getWorkoutDayHistory(dayId), getProfile(), hasActiveCoach()]);
+  const [day, allHistory, profile, coached, plan] = await Promise.all([
+    getWorkoutDay(dayId),
+    getWorkoutDayHistory(dayId),
+    getProfile(),
+    hasActiveCoach(),
+    getPlan(),
+  ]);
   if (!day) notFound();
   // A solo client edits their own days in the builder; a coached one edits nothing (can_edit_program).
   const editHref = day.is_own && !coached ? `/workout/build?program=${day.program_id}` : null;
   const d = t.clientApp.workoutDay;
   const inProgress = day.logged.length > 0;
+  // Sessions older than the plan's history window wait behind the hint.
+  const history = allHistory.filter((s) => inHistory(plan, s.at));
   // History is newest first, so [0] is the last time this day was trained.
   const last = history[0] ?? null;
   const logHref = `/workout/${day.day_id}/log`;
@@ -153,6 +163,15 @@ export default async function WorkoutDayPage({
               </span>
             </div>
             <WorkoutHistory sessions={history} share={{ dayName: day.day_name, profile: shareProfileOf(profile) }} />
+            {history.length < allHistory.length ? (
+              <UpgradeHint
+                card
+                feature="history"
+                upgrade={plan.upgrade}
+                values={{ days: plan.e.historyDays ?? 0 }}
+                className="mt-3"
+              />
+            ) : null}
           </section>
         </div>
       </div>

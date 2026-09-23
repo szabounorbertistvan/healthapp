@@ -12,6 +12,8 @@ import { PostCard } from "@/components/social";
 import { Card } from "@/components/ui";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
+import { getPlan } from "@/lib/plan";
+import { UpgradeHint } from "@/components/upgrade";
 
 /**
  * One client, from the coach's side: their weekly summary and 28-day fitness
@@ -35,12 +37,14 @@ export default async function CoachClientPage({
   const [clients, summary, fitness, posts] = await Promise.all([
     getClients(),
     getClientWeeklySummary(id, choice),
-    getClientFitnessScore(id),
+    // Coach Pro. getPlan is request-cached off the layout's profile read.
+    getPlan().then((plan) => (plan.e.advancedAnalytics ? getClientFitnessScore(id) : null)),
     // What the client chose to put out themselves. Since 20260921100000 an
     // active coach passes the 'followers' branch, so this is the coach's view
     // of the same cards the client's followers see — private posts excluded.
     getFeed({ author: id }),
   ]);
+  const plan = await getPlan();
   const client = clients.find((c) => c.client_id === id && c.status === "active");
   if (!client) notFound();
 
@@ -60,7 +64,7 @@ export default async function CoachClientPage({
           <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
             {client.full_name}
           </h1>
-          <SignalBadge signal={client.signal} />
+          {plan.e.advancedAnalytics ? <SignalBadge signal={client.signal} /> : null}
         </div>
         {/* The roster page has a generic "new program" button with a client
             picker; from here the client is already known, so it rides on the
@@ -82,7 +86,11 @@ export default async function CoachClientPage({
       </div>
 
       <div className="mt-4 space-y-4 sm:mt-6">
-        <FitnessScoreCoachCard view={fitness} />
+        {fitness ? (
+          <FitnessScoreCoachCard view={fitness} />
+        ) : !plan.e.advancedAnalytics ? (
+          <UpgradeHint card feature="clientScore" upgrade={plan.upgrade} />
+        ) : null}
         {summary ? (
           <WeeklySummaryCard summary={summary} switchPath={`/clients/${id}`} />
         ) : (

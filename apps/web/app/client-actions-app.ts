@@ -18,7 +18,8 @@ import { mutated } from "@/lib/supabase/mutate";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
 import { getMyPlanMeals } from "@/lib/client-nutrition";
 import type { ActionResult } from "./actions";
-import { notSignedIn } from "@/lib/action-result";
+import { notSignedIn, planLimitReached } from "@/lib/action-result";
+import { isPlanLimitError } from "@healthapp/shared";
 
 export type LogSetResult = ActionResult & { is_pr?: boolean; estimated_1rm?: number };
 
@@ -686,6 +687,8 @@ export async function toggleFavoriteFood(input: {
     carbs_100g: input.per100g.carbs,
     fat_100g: input.per100g.fat,
   });
+  // enforce_plan_limit('favorite_foods'): a star past the plan's cap.
+  if (isPlanLimitError(error?.message)) return planLimitReached;
   if (error) return { ok: false, message: error.message };
   revalidatePath("/food");
   return { ok: true, favorite: true };

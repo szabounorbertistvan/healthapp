@@ -14,14 +14,20 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   const live = await liveUser();
   if (!live) return null;
   const { supabase, userId } = live;
-  const [{ data: user }, { data: sub }] = await Promise.all([
+  const [{ data: user }, { data: sub, error: planError }] = await Promise.all([
     supabase.from("users").select("id, full_name, username, avatar_url, city, bio, sex, birth_year, timezone, check_in_weekday, leaderboard_visibility, weight_unit, length_unit, rest_prefs, role, suspended_at").eq("id", userId).single(),
-    supabase.from("subscriptions")
-      .select("tier, status, trial_ends_at, stripe_customer_id")
-      .eq("user_id", userId).maybeSingle(),
+    // my_plan (migration 20260923120000): the effective tier including one
+    // inherited from a Coach Pro, and whether the paywall applies — a
+    // definer view, because the coach's subscription is a row this person
+    // cannot read. Same wave as before; it replaced a subscriptions select.
+    supabase.from("my_plan")
+      .select("tier, own_tier, paywall, trial_ends_at, has_stripe")
+      .maybeSingle(),
   ]);
   if (!user) return null;
+  if (planError) console.error(`my_plan read failed: ${planError.message}`);
   const role = user.role as Role;
+  const plan = sub as { tier: Tier | null; own_tier: Tier | null; paywall: boolean | null; trial_ends_at: string | null; has_stripe: boolean | null } | null;
   return {
     id: user.id,
     full_name: user.full_name ?? "Coach",
@@ -39,9 +45,14 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
       (user.leaderboard_visibility as Profile["leaderboard_visibility"] | null) ?? "public",
     rest_prefs: normalizeRestPrefs(user.rest_prefs),
     role,
-    tier: effectiveTier(sub ? { ...sub, tier: sub.tier as Tier } : null, role),
-    trial_ends_at: sub?.trial_ends_at ?? null,
-    has_stripe: Boolean(sub?.stripe_customer_id),
+    // Without the view (an unapplied migration, a failed read) the person is
+    // on their role's free tier with the paywall off — every feature open,
+    // exactly the app as it was before the paywall existed.
+    tier: plan?.tier ?? effectiveTier(null, role),
+    tier_via_coach: Boolean(plan?.tier && plan.own_tier && plan.tier !== plan.own_tier),
+    paywall: plan?.paywall ?? false,
+    trial_ends_at: plan?.trial_ends_at ?? null,
+    has_stripe: Boolean(plan?.has_stripe),
     suspended_at: (user.suspended_at as string | null) ?? null,
   };
 });
@@ -71,6 +82,29 @@ export async function getDashboard(): Promise<DashboardRow[]> {
   const { data, error } = await supabase.rpc("coach_dashboard");
   if (error) throw error;
   return data ?? [];
+}
+
+/**
+ * The coach's active clients, id and name only — for pickers (copy a program
+ * to a client) that need no signals or load. One query; coach_id filtered for
+ * the same admin reason as getClients below.
+ */
+export async function getActiveClientNames(): Promise<{ id: string; name: string }[]> {
+  const live = await liveUser();
+  if (!live) return [];
+  const { supabase, userId } = live;
+  const { data, error } = await supabase
+    .from("trainer_clients")
+    .select("client:users!trainer_clients_client_id_fkey(id, full_name, username)")
+    .eq("coach_id", userId)
+    .eq("status", "active");
+  if (error) return [];
+  type Person = { id: string; full_name: string; username: string | null };
+  return (data ?? [])
+    .map((r) => r.client as unknown as Person | null)
+    .filter((c): c is Person => Boolean(c))
+    .map((c) => ({ id: c.id, name: displayName(c) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getClients(): Promise<ClientRow[]> {

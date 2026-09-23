@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { youtubeEmbedUrl, type ExerciseVideoSource } from "@healthapp/shared";
 import { setExerciseVideo } from "@/app/library-actions";
 import { useI18n } from "@/lib/i18n/client";
+import { usePlan } from "@/lib/plan-client";
+import { UpgradeHint } from "./upgrade";
 
 /**
  * An exercise's demo video, and the field anyone can use to pin their own
@@ -44,6 +46,8 @@ export function ExerciseVideo({
   const [open, setOpen] = useState(!collapsed);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Watching is free; pinning your own demo is Premium / Coach Pro.
+  const { e: plan, upgrade } = usePlan();
   const embed = youtubeEmbedUrl(saved);
   // Yours to change or remove: a link you pinned, or the row video of your own custom exercise.
   const removable = ownedSource(savedSource);
@@ -111,7 +115,9 @@ export function ExerciseVideo({
         </div>
       ) : null}
 
-      {editing ? (
+      {editing && !plan.customExerciseVideos ? (
+        <UpgradeHint feature="videos" upgrade={upgrade} className="mt-2" />
+      ) : editing ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input
             value={url}

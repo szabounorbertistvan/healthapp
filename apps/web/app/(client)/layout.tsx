@@ -11,6 +11,8 @@ import { Avatar } from "@/components/social";
 import { NotificationBell } from "@/components/notification-bell";
 import { UnitsProvider } from "@/lib/units/client";
 import { RestTimerProvider } from "@/lib/rest-timer/client";
+import { PlanProvider } from "@/lib/plan-client";
+import { getPlan } from "@/lib/plan";
 import { RestTimerBar } from "@/components/rest-timer-bar";
 import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
 
@@ -30,13 +32,15 @@ export default async function ClientLayout({ children }: { children: React.React
   if (!profile.username) redirect("/complete-profile");
   const name = displayName(profile);
   // One wave: the shell's two reads go out together with the dictionary.
-  const [{ t }, notifications, unread] = await Promise.all([
+  const [{ t }, notifications, unread, plan] = await Promise.all([
     getI18n(),
     getMyNotifications(),
     getUnreadNotificationCount(),
+    getPlan(),
   ]);
 
   return (
+    <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade }}>
     <UnitsProvider weight={profile.weight_unit} length={profile.length_unit}>
     {/* The rest timer lives here, above every (client) route, so a countdown
         started in the set logger follows the person to Today and back. */}
@@ -101,5 +105,6 @@ export default async function ClientLayout({ children }: { children: React.React
     </div>
     </RestTimerProvider>
     </UnitsProvider>
+    </PlanProvider>
   );
 }

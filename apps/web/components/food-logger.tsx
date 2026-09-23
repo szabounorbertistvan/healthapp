@@ -9,6 +9,9 @@ import { useI18n } from "@/lib/i18n/client";
 import { FOOD_GROUP_ICON, foodGroupOf } from "@/lib/food-groups";
 import type { MealSlot, QuickFood, QuickFoods } from "@/lib/types";
 import { BarcodeScanner } from "./barcode-scanner";
+import { isPlanLimitError } from "@healthapp/shared";
+import { usePlan } from "@/lib/plan-client";
+import { UpgradeHint, type PlanFeature } from "./upgrade";
 import { ProductCard } from "./product-card";
 import { NewFoodForm, NotFoundNote } from "./new-food-form";
 import { portionsFor, type FoodItem } from "@/lib/food-portions";
@@ -69,6 +72,9 @@ export function FoodLogger({
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanned, setScanned] = useState<{ food: FoodItem; barcode: string } | null>(null);
   const [creating, setCreating] = useState(false);
+  // Set when the database refused a star or a scan for the plan's limit.
+  const [limit, setLimit] = useState<PlanFeature | null>(null);
+  const { e: plan, upgrade } = usePlan();
   const [pending, startTransition] = useTransition();
   // Stars flip optimistically; the server's list only replaces this on the
   // next full render, so the set here is the source of truth while open.
@@ -112,7 +118,8 @@ export function FoodLogger({
       const result = await toggleFavoriteFood({ foodId, foodName: nameOf(food), per100g: food.per_100g });
       if (!result.ok) {
         setFavs((prev) => (was ? [toQuick(food, lastGrams), ...without(prev)] : without(prev)));
-        setError(result.message ?? fl.couldNotFavorite);
+        if (isPlanLimitError(result.message)) setLimit("favorites");
+        else setError(result.message ?? fl.couldNotFavorite);
         return;
       }
       router.refresh();
@@ -281,6 +288,10 @@ export function FoodLogger({
               // A scan must never dead-end: drop back to search with the code
               // shown, so the person can find the product by name instead.
               setScanning(false);
+              if (result.reason === "limit") {
+                setLimit("barcode");
+                return;
+              }
               setScanError(
                 result.reason === "not_found"
                   ? fill(fl.scanNotFound, { code })
@@ -324,6 +335,14 @@ export function FoodLogger({
           </div>
           {scanError ? (
             <p className="mt-2 text-xs leading-snug text-warn">{scanError}</p>
+          ) : null}
+          {limit ? (
+            <UpgradeHint
+              feature={limit}
+              upgrade={upgrade}
+              values={{ limit: (limit === "barcode" ? plan.barcodeScansPerDay : plan.maxFavoriteFoods) ?? 0 }}
+              className="mt-2"
+            />
           ) : null}
           {!showQuick && results.some((food) => food.english_only) ? (
             <p className="mt-2 text-[11px] leading-snug text-ink-faint">

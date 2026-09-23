@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { loadWorkoutShareCard } from "@/app/share-card-actions";
 import { APP_NAME } from "@/lib/brand";
+import { usePlan } from "@/lib/plan-client";
+import { PlanTag, UpgradeHint } from "./upgrade";
 import { useI18n } from "@/lib/i18n/client";
 import {
   DEFAULT_SHARE_OPTIONS,
@@ -104,6 +106,10 @@ export function ShareWorkoutDialog({ card, onClose }: { card: WorkoutShareCard; 
   const { t, locale } = useI18n();
   const s = t.common.shareCard;
   const labels = useShareLabels();
+  // The default Story card is free; the square format, Edit Stats and hiding
+  // the profile are Premium. The brand stays on every card either way.
+  const { e: plan, upgrade } = usePlan();
+  const customize = plan.shareCustomize;
   const [options, setOptions] = useState<ShareCardOptions>(DEFAULT_SHARE_OPTIONS);
   const [editing, setEditing] = useState(false);
   const [assets, setAssets] = useState<ShareAssets | null>(null);
@@ -234,6 +240,7 @@ export function ShareWorkoutDialog({ card, onClose }: { card: WorkoutShareCard; 
           </div>
         </div>
 
+        {customize ? (
         <div className="mt-4 flex items-center justify-center gap-2" role="radiogroup" aria-label={s.format}>
           {SHARE_FORMATS.map((f) => (
             <button
@@ -250,16 +257,19 @@ export function ShareWorkoutDialog({ card, onClose }: { card: WorkoutShareCard; 
             </button>
           ))}
         </div>
+        ) : null}
 
         <button
           type="button"
           onClick={() => setEditing((v) => !v)}
           aria-expanded={editing}
-          className="mt-3 min-h-10 w-full rounded-lg border border-line px-4 text-sm font-semibold hover:border-accent"
+          className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-line px-4 text-sm font-semibold hover:border-accent"
         >
           {s.editStats}
+          {customize ? null : <PlanTag label={upgrade.label} />}
         </button>
-        {editing ? (
+        {editing && !customize ? <UpgradeHint feature="share" upgrade={upgrade} className="mt-2" /> : null}
+        {editing && customize ? (
           <div className="mt-2 rounded-lg border border-line bg-bg p-3">
             <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
               {SHARE_STAT_KEYS.map((k) => (

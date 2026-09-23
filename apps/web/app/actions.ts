@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
-import { notSignedIn } from "@/lib/action-result";
+import { notSignedIn, type PlanErrorCode } from "@/lib/action-result";
 import type { RpcErrorCode } from "@healthapp/api";
 
 // `errorCode`, not `code`: createInvite below returns the *invite* code in a
@@ -19,7 +19,7 @@ export type ActionResult = {
  * "RLS let the write through with zero rows". A union rather than `string` so
  * a screen comparing against a misspelt code fails to compile.
  */
-export type ActionErrorCode = RpcErrorCode | ProfileErrorCode | "NO_ROWS";
+export type ActionErrorCode = RpcErrorCode | ProfileErrorCode | PlanErrorCode | "NO_ROWS";
 export type ProfileErrorCode =
   | "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN" | "ROLE" | "CITY" | "BIO";
 

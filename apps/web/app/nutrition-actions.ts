@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
-import { normalizeForSearch } from "@healthapp/shared";
+import { isPlanLimitError, normalizeForSearch } from "@healthapp/shared";
 import type { ActionResult } from "./actions";
-import { notSignedIn } from "@/lib/action-result";
+import { notSignedIn, upgradeRequired } from "@/lib/action-result";
+import { getPlan } from "@/lib/plan";
 
 // Nutrition plan builder writes (W6, Sprint 6).
 //
@@ -173,6 +174,8 @@ export async function addPlanFood(input: {
   grams: number;
 }): Promise<ActionResult> {
   if (input.grams <= 0) return { ok: false, message: "Grams must be above zero" };
+  // Meals with real foods are Coach Pro; a Starter plan is its four targets.
+  if (!(await getPlan()).e.ingredientPlans) return upgradeRequired;
 
   const supabase = await supabaseServer();
   const { error } = await supabase.from("planned_meal_foods").insert({
@@ -231,7 +234,7 @@ export async function publishNutritionPlan(planId: string): Promise<ActionResult
 
 export type BarcodeResult =
   | { ok: true; food: FoodItem }
-  | { ok: false; reason: "invalid" | "not_found" | "upstream" };
+  | { ok: false; reason: "invalid" | "not_found" | "upstream" | "limit" };
 
 export type NewFoodInput = {
   name: string;
@@ -300,12 +303,20 @@ export async function lookupBarcode(code: string): Promise<BarcodeResult> {
 
 
   const supabase = await supabaseServer();
-  const { data: cached } = await supabase
-    .from("foods")
-    .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
-    .eq("barcode", clean)
-    .limit(1)
-    .maybeSingle();
+  // The scan is counted against the plan's daily allowance in the same wave as
+  // the cache read (claim_barcode_scan, migration 20260923120000). With the
+  // paywall off it only counts. A failure other than the limit — the function
+  // missing, the network — must not cost anyone a scan, so only the limit stops here.
+  const [claim, { data: cached }] = await Promise.all([
+    supabase.rpc("claim_barcode_scan"),
+    supabase
+      .from("foods")
+      .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
+      .eq("barcode", clean)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (isPlanLimitError(claim.error?.message)) return { ok: false, reason: "limit" };
   if (cached) return { ok: true, food: toFoodItem(cached) };
 
   try {

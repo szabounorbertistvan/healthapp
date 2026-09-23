@@ -11,6 +11,8 @@ import { Logo, LogoMark } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Avatar } from "@/components/social";
+import { PlanProvider } from "@/lib/plan-client";
+import { getPlan } from "@/lib/plan";
 
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -20,9 +22,10 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   // the coach web area is for coaches and admins; clients have their own surface
   if (profile.role === "client") redirect("/today");
   if (!profile.username) redirect("/complete-profile");
-  const { t } = await getI18n();
+  const [{ t }, plan] = await Promise.all([getI18n(), getPlan()]);
 
   return (
+    <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade }}>
     <div className="flex min-h-screen">
       {/* The sidebar sits on the page ground, no border: the cards are the
           only surfaces, so the eye has one kind of edge to read. */}
@@ -78,5 +81,6 @@ export default async function CoachLayout({ children }: { children: React.ReactN
       </div>
       <CoachTabBar isAdmin={profile.role === "admin"} />
     </div>
+    </PlanProvider>
   );
 }

@@ -4,6 +4,7 @@ import "server-only";
 import { cache } from "react";
 import {
   dailyLoad,
+  estimated1RM,
   loadTrend,
   pickProgram,
   sumLoad,
@@ -250,12 +251,14 @@ export async function getWorkoutDay(dayId: string): Promise<ClientWorkoutDay | n
 function groupByExercise(sets: LoggedSetRow[]): WorkoutHistorySession["exercises"] {
   const order: string[] = [];
   const byName = new Map<string, WorkoutHistorySession["exercises"][number]["sets"]>();
+  const idOf = new Map<string, string | null>();
   const sorted = [...sets].sort((a, b) => a.at.localeCompare(b.at) || a.set_index - b.set_index);
   for (const s of sorted) {
     let bucket = byName.get(s.exercise);
     if (!bucket) {
       bucket = [];
       byName.set(s.exercise, bucket);
+      idOf.set(s.exercise, s.exercise_id ?? null);
       order.push(s.exercise);
     }
     bucket.push({
@@ -263,7 +266,7 @@ function groupByExercise(sets: LoggedSetRow[]): WorkoutHistorySession["exercises
       rpe: s.rpe, rir: s.rir, notes: s.notes, is_pr: s.is_pr,
     });
   }
-  return order.map((name) => ({ name, sets: byName.get(name) ?? [] }));
+  return order.map((name) => ({ name, exercise_id: idOf.get(name) ?? null, sets: byName.get(name) ?? [] }));
 }
 
 function summarizeSession(
@@ -392,31 +395,25 @@ export async function getMyPrs(): Promise<ClientPrRow[]> {
   // user_id is denormalized onto logged_sets precisely so this needs no join.
   const { data, error } = await supabase
     .from("logged_sets")
-    .select("weight_kg, reps, received_at, is_pr, exercise:exercises(name_en, name_ro)")
+    .select("exercise_id, weight_kg, reps, received_at, is_pr, exercise:exercises(name_en, name_ro)")
     .eq("user_id", userId)
     .eq("is_pr", true)
     .order("received_at", { ascending: false });
   if (error) return [];
   type Row = {
-    weight_kg: number | null; reps: number | null; received_at: string;
+    exercise_id: string | null; weight_kg: number | null; reps: number | null; received_at: string;
     exercise: { name_en: string; name_ro: string | null } | null;
   };
   const best = new Map<string, ClientPrRow>();
   for (const row of (data ?? []) as unknown as Row[]) {
     const name = row.exercise?.name_ro ?? row.exercise?.name_en ?? "—";
-    const oneRm = estimate(row.weight_kg ?? 0, row.reps ?? 0);
+    const oneRm = estimated1RM(row.weight_kg ?? 0, row.reps ?? 0);
     const current = best.get(name);
     if (!current || oneRm > current.best) {
-      best.set(name, { exercise: name, best: oneRm, at: row.received_at });
+      best.set(name, { exercise: name, exercise_id: row.exercise_id, best: oneRm, at: row.received_at });
     }
   }
   return [...best.values()].sort((a, b) => b.best - a.best);
-}
-
-function estimate(weight: number, reps: number): number {
-  if (weight <= 0 || reps <= 0) return 0;
-  if (reps === 1) return weight;
-  return Math.round(weight * (1 + reps / 30) * 10) / 10;
 }
 
 /**

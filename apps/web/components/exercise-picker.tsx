@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { exerciseRef, type ExerciseSummary } from "@healthapp/shared";
 import { renameExercise, searchExerciseLibrary } from "@/app/library-actions";
 import { useI18n } from "@/lib/i18n/client";
@@ -503,6 +504,15 @@ function ExercisePreview({
         >
           {t.common.actions.close}
         </button>
+        {/* Browsing, not picking: the way to how you have trained it. */}
+        {!onPick && exercise.id ? (
+          <Link
+            href={`/exercises/${exercise.id}`}
+            className="inline-flex h-11 items-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90"
+          >
+            {t.clientApp.exerciseDetail.myHistory}
+          </Link>
+        ) : null}
         {onPick ? (
           <button
             type="button"

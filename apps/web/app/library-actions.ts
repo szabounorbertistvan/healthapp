@@ -1,8 +1,9 @@
 "use server";
-import { filterExercises, youtubeVideoId, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
+import { filterExercises, isPlanLimitError, PLAN_LIMIT_REACHED, youtubeVideoId, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { exerciseLibrary } from "@/lib/exercise-library";
-import { notSignedIn } from "@/lib/action-result";
+import { notSignedIn, upgradeRequired } from "@/lib/action-result";
+import { getPlan } from "@/lib/plan";
 import { mutated } from "@/lib/supabase/mutate";
 import { revalidatePath } from "next/cache";
 import { activeCoachId } from "@/lib/client-training";
@@ -113,6 +114,9 @@ export async function createCustomExercise(
       "id, external_id, name_en, name_ro, category, level, force, mechanic, equipment, primary_muscles, secondary_muscles, instructions_en, images",
     )
     .single();
+  // enforce_plan_limit('custom_exercises') refuses one past the plan's cap;
+  // the form recognises the code and shows the upgrade hint instead.
+  if (isPlanLimitError(error?.message)) return { ok: false, message: PLAN_LIMIT_REACHED };
   if (error) return { ok: false, message: error.message };
   const row = data as unknown as ExerciseSummary & { external_id: string | null };
   return {
@@ -166,6 +170,8 @@ export async function setExerciseVideo(exerciseId: string, url: string): Promise
   const clean = url.trim();
   const id = clean ? youtubeVideoId(clean) : null;
   if (clean && !id) return { ok: false, message: "Paste a YouTube link" };
+  // Setting one is Premium / Coach Pro; clearing your own never is.
+  if (id && !(await getPlan()).e.customExerciseVideos) return upgradeRequired;
 
   const live = await liveUser();
   if (!live) return notSignedIn;

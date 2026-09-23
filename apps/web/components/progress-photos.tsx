@@ -6,6 +6,8 @@ import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
 import { deletePhoto, requestPhotoUpload, savePhoto, type Pose } from "@/app/photo-actions";
 import type { ProgressPhoto } from "@/lib/photos-data";
+import type { Upgrade } from "@/lib/plan-client";
+import { UpgradeHint } from "./upgrade";
 
 const POSES: readonly Pose[] = ["front", "side", "back"];
 
@@ -29,9 +31,17 @@ const MAX_BYTES = 10 * 1024 * 1024;
 export function ProgressPhotos({
   photos,
   configured,
+  compare: canCompare = true,
+  olderHidden = null,
+  upgrade,
 }: {
   photos: ProgressPhoto[];
   configured: boolean;
+  /** Side-by-side comparison is Premium; uploading and the grid are not. */
+  compare?: boolean;
+  /** The plan's history window in days when older photos were left out, else null. */
+  olderHidden?: number | null;
+  upgrade?: Upgrade;
 }) {
   const { t } = useI18n();
   const p = t.clientApp.progress;
@@ -182,7 +192,11 @@ export function ProgressPhotos({
         <p className="mt-3.5 text-[13px] text-ink-faint">{p.photosEmpty}</p>
       ) : (
         <>
-          <p className="mt-3.5 text-[11.5px] text-ink-faint">{p.compareHint}</p>
+          {canCompare ? (
+            <p className="mt-3.5 text-[11.5px] text-ink-faint">{p.compareHint}</p>
+          ) : photos.length >= 2 && upgrade ? (
+            <UpgradeHint feature="photoCompare" upgrade={upgrade} className="mt-3.5" />
+          ) : null}
           <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
             {photos.map((photo) => {
               const picked = compare.some((c) => c.id === photo.id);
@@ -190,8 +204,9 @@ export function ProgressPhotos({
                 <li key={photo.id} className="group relative">
                   <button
                     type="button"
+                    disabled={!canCompare}
                     onClick={() => toggleCompare(photo)}
-                    className={`block w-full overflow-hidden rounded-2xl ${picked ? "ring-2 ring-accent" : ""}`}
+                    className={`block w-full overflow-hidden rounded-2xl disabled:cursor-default ${picked ? "ring-2 ring-accent" : ""}`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -224,6 +239,10 @@ export function ProgressPhotos({
           </ul>
         </>
       )}
+
+      {olderHidden !== null && upgrade ? (
+        <UpgradeHint feature="history" upgrade={upgrade} values={{ days: olderHidden }} className="mt-3" />
+      ) : null}
 
       <p className="mt-3 text-[11.5px] text-ink-faint">{p.photosPrivate}</p>
     </Card>
