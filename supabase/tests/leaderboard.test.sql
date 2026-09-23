@@ -7,7 +7,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(33);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -35,12 +35,13 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('c0000000-0000-0000-0000-0000000000c2', 'norbert@lb.local', '{"full_name":"Norbert S.","username":"norbert"}'),
   ('d0000000-0000-0000-0000-0000000000d2', 'quiet@lb.local',   '{"full_name":"Quiet","username":"quiet"}'),
   ('e0000000-0000-0000-0000-0000000000e2', 'hidden@lb.local',  '{"full_name":"Hidden","username":"hidden"}'),
-  ('f0000000-0000-0000-0000-0000000000f2', 'late@lb.local',    '{"full_name":"Late","username":"late"}');
+  ('f0000000-0000-0000-0000-0000000000f2', 'late@lb.local',    '{"full_name":"Late","username":"late"}'),
+  ('90000000-0000-0000-0000-000000000092', 'unrated@lb.local', '{"full_name":"Unrated","username":"unrated"}');
 
 update public.users set timezone = 'Europe/Bucharest', created_at = '2026-01-01'
   where id in ('a0000000-0000-0000-0000-0000000000a2', 'b0000000-0000-0000-0000-0000000000b2',
                'c0000000-0000-0000-0000-0000000000c2', 'd0000000-0000-0000-0000-0000000000d2',
-               'e0000000-0000-0000-0000-0000000000e2');
+               'e0000000-0000-0000-0000-0000000000e2', '90000000-0000-0000-0000-000000000092');
 -- Late lives on UTC: the same instants fall on different days for them.
 update public.users set timezone = 'UTC', created_at = '2026-01-01' where id = 'f0000000-0000-0000-0000-0000000000f2';
 -- Norbert joined later than Andrei: the seniority tie-breaker below relies on it.
@@ -84,6 +85,25 @@ select pg_temp.session('e0000000-0000-0000-0000-0000000000e2', 0, 30);
 -- day before — and one at noon. One day for a Bucharest clock, two for a UTC one.
 select pg_temp.session('f0000000-0000-0000-0000-0000000000f2', 40, 5, 2);
 select pg_temp.session('f0000000-0000-0000-0000-0000000000f2', 40, 5, 12);
+-- Unrated: one 75 min session 50 days ago (outside every week and month
+-- window) — 80×8 @ RPE 7 on one exercise, then 20×12, 20×12, 0×15 on another
+-- with neither rpe nor rir. Only the first set carries intensity.
+insert into public.exercises (id, name_en, name_ro, source) values
+  ('e0000000-0000-0000-0000-0000000000ef', 'Crunch', 'Abdomene', 'custom');
+with s as (
+  insert into public.logged_sessions (user_id, client_generated_id, started_at, completed_at)
+  values ('90000000-0000-0000-0000-000000000092', gen_random_uuid(),
+          now() - interval '50 days', now() - interval '50 days' + interval '75 minutes')
+  returning id
+)
+insert into public.logged_sets (session_id, user_id, exercise_id, set_index, weight_kg, reps, rpe, rir, client_generated_id)
+select s.id, '90000000-0000-0000-0000-000000000092', x.ex::uuid, x.i, x.w, x.r, x.rpe, null, gen_random_uuid()
+from s, (values
+  ('e0000000-0000-0000-0000-0000000000ee', 1, 80, 8, 7::numeric),
+  ('e0000000-0000-0000-0000-0000000000ef', 2, 20, 12, null),
+  ('e0000000-0000-0000-0000-0000000000ef', 3, 20, 12, null),
+  ('e0000000-0000-0000-0000-0000000000ef', 4, 0, 15, null)
+) as x(ex, i, w, r, rpe);
 -- Quiet: an abandoned session only — not eligible anywhere.
 insert into public.logged_sessions (user_id, client_generated_id, started_at, completed_at)
 values ('d0000000-0000-0000-0000-0000000000d2', gen_random_uuid(), now(), null);
@@ -109,6 +129,8 @@ select is((select score from public.social_leaderboard('volume', 'week') where u
 select is((select score from public.social_leaderboard('training_load', 'week') where username = 'maria'),
   (2 * public.training_load_score(10000, 10, 60, 8, 1))::numeric,
   'training load is the sum of the mirrored per-session score');
+select is((select score from public.social_leaderboard('training_load', 'all') where username = 'unrated'), 30::numeric,
+  'a set with neither rpe nor rir is left out of the intensity mean (TS load 30), not averaged in as RPE 1 (23)');
 select is((select rank from public.social_leaderboard('training_load', 'week') where is_current_user), 1, 'the caller is flagged on their own row');
 select is((select count(*)::int from public.social_leaderboard('workouts', 'week') where username = 'quiet'), 0,
   'an abandoned session does not put you on the board');

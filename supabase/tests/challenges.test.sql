@@ -5,7 +5,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(14);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -108,6 +108,38 @@ select pg_temp.authenticate_as('33333333-3333-3333-3333-333333333333');
 select is(
   (select count(*)::int from public.challenge_progress_rows('c0000000-0000-0000-0000-000000000001')),
   0, 'the RPC returns nothing for a challenge the caller cannot see');
+
+-- ---------- unrated sets ----------
+-- A set with neither rpe nor rir has no intensity: it counts toward sets and
+-- volume but not the mean (effectiveRpe → null in packages/shared
+-- training-load.ts). greatest(1, NULL) is 1 in Postgres, so without the
+-- filter the three unrated sets averaged in as RPE 1 → 2.5 and load 23.
+reset role;
+insert into public.logged_sessions (id, user_id, started_at, completed_at, client_generated_id) values
+  ('a0000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222',
+   now() - interval '1 day', now() - interval '1 day' + interval '75 minutes', gen_random_uuid());
+insert into public.exercises (id, name_en, name_ro, source) values
+  ('e0000000-0000-0000-0000-000000000002', 'Crunch', 'Abdomene', 'custom');
+insert into public.logged_sets (session_id, user_id, exercise_id, set_index, reps, weight_kg, rpe, rir, client_generated_id) values
+  ('a0000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222',
+   'e0000000-0000-0000-0000-000000000001', 1, 8, 80, 7, null, gen_random_uuid()),
+  ('a0000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222',
+   'e0000000-0000-0000-0000-000000000002', 2, 12, 20, null, null, gen_random_uuid()),
+  ('a0000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222',
+   'e0000000-0000-0000-0000-000000000002', 3, 12, 20, null, null, gen_random_uuid()),
+  ('a0000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222',
+   'e0000000-0000-0000-0000-000000000002', 4, 15, 0, null, null, gen_random_uuid());
+
+select pg_temp.authenticate_as('22222222-2222-2222-2222-222222222222');
+select is(
+  (select mean_rpe from public.challenge_progress_rows('c0000000-0000-0000-0000-000000000001')
+   where kind = 'session' and sets = 4),
+  7::numeric, 'a set with neither rpe nor rir is left out of the mean, not counted as RPE 1');
+select is(
+  (select public.training_load_score(volume_kg::double precision, sets, duration_min, mean_rpe::double precision, exercises)
+   from public.challenge_progress_rows('c0000000-0000-0000-0000-000000000001')
+   where kind = 'session' and sets = 4),
+  30, 'that session scores the TypeScript load (30), not 23');
 
 select * from finish();
 rollback;
