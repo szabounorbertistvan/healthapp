@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo, LogoMark } from "@/components/logo";
 import { getI18n } from "@/lib/i18n/server";
 import { SignOutButton } from "@/components/sign-out-button";
+import { FeedbackButton } from "@/components/feedback";
 import { Avatar } from "@/components/social";
 import { PlanProvider } from "@/lib/plan-client";
 import { getPlan } from "@/lib/plan";
@@ -45,6 +46,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
           <NavLinks isAdmin={profile.role === "admin"} />
         </div>
         <div className="mt-auto space-y-3 px-1 pt-6">
+          <div className="-mx-1"><FeedbackButton /></div>
           <div className="flex items-center gap-2">
             <LanguageSelector />
             <ThemeToggle />

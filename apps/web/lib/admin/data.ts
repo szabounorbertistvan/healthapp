@@ -11,7 +11,7 @@ import { loadOf, toLoadSet, type LoadSetJoin } from "@/lib/training-load";
 import type { FitnessScoreView } from "@/lib/fitness-score-data";
 import type {
   AdminOverview, AdminUserDetail, AdminUsersPage, AppErrorsPage, AuditPage, AuthStats, ChallengeDetail, ChallengesPage,
-  DailyPoint, ExercisesPage, InvitationsPage, NotificationStats, NutritionStats, Probe, SearchResults,
+  DailyPoint, ExercisesPage, FeedbackPage, InvitationsPage, NotificationStats, NutritionStats, Probe, SearchResults,
   SocialPage, SocialPostDetail, SystemHealth, TimelineEvent, WorkoutStats,
 } from "./types";
 
@@ -173,3 +173,15 @@ export const getAdminErrorCounts = cache(async (): Promise<AppErrorsPage["stats"
   const page = await rpc<AppErrorsPage>("admin_app_errors", { p_days: 7, p_limit: 1, p_offset: 0 });
   return page.stats;
 });
+
+export type FeedbackQuery = {
+  days: number; kind?: string | null; status?: string | null; search?: string | null; limit: number; offset: number;
+};
+
+/** Bugs and suggestions people sent from the feedback dialog. */
+export function getAdminFeedback(q: FeedbackQuery): Promise<FeedbackPage> {
+  return rpc<FeedbackPage>("admin_feedback", {
+    p_days: q.days, p_kind: q.kind ?? null, p_status: q.status ?? null,
+    p_search: q.search ?? null, p_limit: q.limit, p_offset: q.offset,
+  });
+}

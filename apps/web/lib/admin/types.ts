@@ -285,3 +285,19 @@ export type AppErrorsPage = {
   total: number;
   rows: AppErrorRow[];
 };
+
+export type FeedbackRow = {
+  id: number; created_at: string; kind: "bug" | "idea" | "other"; message: string;
+  route: string | null; user_agent: string | null; locale: string | null;
+  status: "new" | "seen" | "done"; handled_at: string | null;
+  user_id: string | null; username: string | null; full_name: string | null; role: string | null;
+};
+
+export type FeedbackPage = {
+  stats: {
+    days: number; total: number; window: number; new: number; seen: number; done: number;
+    bug: number; idea: number; other: number; users: number; last_at: string | null;
+  };
+  total: number;
+  rows: FeedbackRow[];
+};

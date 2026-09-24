@@ -14,6 +14,7 @@ import { RestTimerProvider } from "@/lib/rest-timer/client";
 import { PlanProvider } from "@/lib/plan-client";
 import { getPlan } from "@/lib/plan";
 import { RestTimerBar } from "@/components/rest-timer-bar";
+import { FeedbackButton } from "@/components/feedback";
 import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -61,6 +62,7 @@ export default async function ClientLayout({ children }: { children: React.React
           <ClientNav coach={coach} />
         </div>
         <div className="mt-auto space-y-3 px-1 pt-6">
+          <div className="-mx-1"><FeedbackButton /></div>
           <div className="flex items-center gap-2">
             <NotificationBell notifications={notifications} unread={unread} placement="up" />
             <LanguageSelector />

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { NavIcon } from "./client-nav";
 import { NavSpinner } from "./spinner";
+import { FeedbackButton } from "./feedback";
 import type { Dictionary } from "@/lib/i18n";
 
 type NavKey = keyof Dictionary["common"]["nav"];
@@ -173,6 +174,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
                   <span className="flex-1">{t.common.nav.myTraining}</span>
                   <NavSpinner />
                 </Link>
+                <FeedbackButton sheet />
               </div>
             </nav>
           </div>

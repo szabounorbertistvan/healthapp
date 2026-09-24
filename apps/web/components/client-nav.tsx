@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { NavSpinner } from "./spinner";
+import { FeedbackButton } from "./feedback";
 import type { Dictionary } from "@/lib/i18n";
 
 type NavKey = keyof Dictionary["common"]["nav"];
@@ -183,6 +184,9 @@ export function ClientTabBar({ coach = false }: { coach?: boolean }) {
                 );
               })}
               {coach ? <BackToCoaching sheet /> : null}
+              <div className="mt-1 border-t border-line pt-1">
+                <FeedbackButton sheet />
+              </div>
             </nav>
           </div>
         </div>
