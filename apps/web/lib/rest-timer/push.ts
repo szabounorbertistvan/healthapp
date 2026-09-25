@@ -7,7 +7,8 @@
 //     showLocalRestNotification() through the registered service worker;
 //   · the page is frozen (locked phone): the server push, scheduled from
 //     endsAt, arriving through the same worker's `push` handler.
-// Both use the same tag, so a device that gets both shows one.
+// Both use the same tag, but iOS stacks same-tag notifications instead of
+// replacing them, so each path also looks for the other's copy first.
 //
 // Nothing here — and nothing in public/sw.js — sets a vibration pattern or
 // plays a sound. Whether the notification is an alert or a silent one is the
@@ -155,7 +156,13 @@ export async function showLocalRestNotification(input: { id: string; title: stri
   const registration = await registerRestServiceWorker();
   if (!registration) return false;
   try {
-    await registration.showNotification(input.title, restNotificationOptions(input));
+    const options = restNotificationOptions(input);
+    // iOS does not let a second notification with the same tag replace the
+    // first; it stacks them. So if the server push for this rest is already
+    // on screen (it is claimed a few seconds early), the page stays quiet.
+    const shown = await registration.getNotifications({ tag: options.tag }).catch(() => []);
+    if (shown.length > 0) return true;
+    await registration.showNotification(input.title, options);
     return true;
   } catch {
     return false;
