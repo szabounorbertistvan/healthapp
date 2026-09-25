@@ -26,7 +26,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   const [{ t }, plan] = await Promise.all([getI18n(), getPlan()]);
 
   return (
-    <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade }}>
+    <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade, libraryVideos: profile.role === "admin" }}>
     <div className="flex min-h-screen">
       {/* The sidebar sits on the page ground, no border: the cards are the
           only surfaces, so the eye has one kind of edge to read. */}

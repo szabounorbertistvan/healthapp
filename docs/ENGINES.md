@@ -99,7 +99,12 @@ value no longer equals the legacy JWT once a project carries `sb_secret_`
 keys); it uses the caller's bearer as its client key and lets the grant on
 `claim_due_rest_pushes()` decide. What has *not* been observed yet is a real
 device receiving one — the desktop app's browser pane denies notifications by
-policy. Delivery latency is up to one tick (10 s). iOS delivers Web Push only
+policy. Delivery latency is up to one tick (10 s).
+2026-09-25: an iPhone never got one while locked. Apple had been rejecting every push with
+`400 BadWebPushTopic`, because the `Topic` was `rest-<32 hex>` and RFC 8030 caps a topic at 32
+characters. The topic is now the bare uuid hex, and a test push to the live Apple endpoint
+returned `sent: 1`. Failures now come back in the function's `errors` array, which is kept in
+`net._http_response`. iOS delivers Web Push only
 to a Home-Screen-installed app, which is why the manifest exists.
 
 ---

@@ -155,48 +155,53 @@ export async function renameExercise(exerciseId: string, name: string): Promise<
 }
 
 /**
- * Pin a YouTube demo to an exercise — any exercise, the shared library
- * included. Only YouTube links are accepted and only the id is kept, because
- * the stored value ends up inside an <iframe src>; passing an arbitrary string
- * through would let a link decide what loads in the app. An empty string
- * clears it.
+ * Set an exercise's YouTube demo. Only YouTube links are accepted and only the
+ * id is kept, because the stored value ends up inside an <iframe src>; passing
+ * an arbitrary string through would let a link decide what loads in the app.
+ * An empty string clears it.
  *
- * On a custom exercise you own, the video goes on the row itself (scoped like
- * renameExercise — `owner_id = you`, `source = 'custom'`), so everyone who sees
- * that exercise sees it. Anywhere else it becomes your row in
- * exercise_video_links: you see it, and so do your clients if you coach.
+ * The video always goes on the exercise row itself, so everyone who sees the
+ * exercise sees it — and only two people may write it: the owner of a custom
+ * exercise (scoped like renameExercise, `owner_id = you`, `source = 'custom'`)
+ * and an admin, for the official library (policy exercises_admin_update).
+ * Personal links on library rows (exercise_video_links) can no longer be
+ * made; clearing is still how someone removes one left from before.
  */
 export async function setExerciseVideo(exerciseId: string, url: string): Promise<ActionResult> {
   const clean = url.trim();
   const id = clean ? youtubeVideoId(clean) : null;
   if (clean && !id) return { ok: false, message: "Paste a YouTube link" };
-  // Setting one is Premium / Coach Pro; clearing your own never is.
-  if (id && !(await getPlan()).e.customExerciseVideos) return upgradeRequired;
 
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
+  const { data: me } = await supabase.from("users").select("role").eq("id", userId).maybeSingle();
+  const admin = me?.role === "admin";
+  // On your own exercise, setting one is Premium / Coach Pro; clearing never is.
+  if (id && !admin && !(await getPlan()).e.customExerciseVideos) return upgradeRequired;
 
-  // Not mutated(): zero rows here is not a failure, it means "not your custom
-  // exercise", and the link table below is the answer for that case.
+  const video_url = id ? `https://youtu.be/${id}` : null;
+  // Not mutated(): zero rows here is not a failure, it means "not your custom exercise".
   const own = await supabase
     .from("exercises")
-    .update({ video_url: id ? `https://youtu.be/${id}` : null }, { count: "exact" })
+    .update({ video_url }, { count: "exact" })
     .eq("id", exerciseId)
     .eq("owner_id", userId)
     .eq("source", "custom");
   if (own.error) return { ok: false, message: own.error.message };
 
-  let failed: ActionResult | null = null;
   if (!own.count) {
-    const link = id
-      ? await supabase
-          .from("exercise_video_links")
-          .upsert({ user_id: userId, exercise_id: exerciseId, video_id: id }, { onConflict: "user_id,exercise_id" })
-      : await supabase.from("exercise_video_links").delete().eq("user_id", userId).eq("exercise_id", exerciseId);
-    if (link.error) failed = { ok: false, message: link.error.message };
+    if (admin) {
+      // The official list: the row every account sees.
+      const failed = await mutated(await supabase.from("exercises").update({ video_url }, { count: "exact" }).eq("id", exerciseId));
+      if (failed) return failed;
+    } else if (!id) {
+      const link = await supabase.from("exercise_video_links").delete().eq("user_id", userId).eq("exercise_id", exerciseId);
+      if (link.error) return { ok: false, message: link.error.message };
+    } else {
+      return { ok: false, message: "Only your own exercises can carry a video" };
+    }
   }
-  if (failed) return failed;
   revalidatePath("/library");
   revalidatePath("/exercises");
   revalidatePath("/workout", "layout");

@@ -41,7 +41,7 @@ export default async function ClientLayout({ children }: { children: React.React
   ]);
 
   return (
-    <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade }}>
+    <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade, libraryVideos: profile.role === "admin" }}>
     <UnitsProvider weight={profile.weight_unit} length={profile.length_unit}>
     {/* The rest timer lives here, above every (client) route, so a countdown
         started in the set logger follows the person to Today and back. */}
