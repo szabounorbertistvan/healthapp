@@ -13,7 +13,21 @@ import {
   isChallengeDifficulty,
   isChallengeType,
 } from "@healthapp/shared";
+import type { ChallengeDifficulty, ChallengeType } from "@healthapp/shared";
 import type { ChallengeCard, LeaderboardRow } from "./types";
+
+/**
+ * "Strength gain · Squat · Hard" — what a challenge counts, the lift, how
+ * hard. Here, not in components/challenges.tsx: that file is "use client",
+ * and a server component (the detail page) may not CALL a client function —
+ * Next throws at runtime, which neither tsc nor the build catches.
+ */
+export function challengeSubtitle(
+  c: { type: ChallengeType; exercise_name: string | null; difficulty: ChallengeDifficulty | null },
+  ch: { type: Partial<Record<ChallengeType, string>>; difficulty: Record<ChallengeDifficulty, string> },
+): string {
+  return [ch.type[c.type], c.exercise_name, c.difficulty ? ch.difficulty[c.difficulty] : null].filter(Boolean).join(" · ");
+}
 
 export type ChallengeCardRow = {
   id: string;
