@@ -228,7 +228,8 @@ export async function shareRoutine(programId: string, visibility?: string): Prom
  * Feature a routine on the Discover shelf and/or mark it as Voinic's. Admins
  * only: admin_set_program_flags() runs admin_assert(), and owners have no
  * column grant on either flag, so there is no other way to set them. Only a
- * public routine may carry them; the flag drops if it later leaves public.
+ * public routine may carry them, and both drop the moment a non-admin edits the
+ * routine or it leaves public (20260930150000) — they describe what was reviewed.
  */
 export async function setRoutineFlags(programId: string, featured: boolean, official: boolean): Promise<ActionResult> {
   const { t } = await getI18n();
