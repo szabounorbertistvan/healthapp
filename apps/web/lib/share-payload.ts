@@ -14,7 +14,18 @@
 // `progress` posts are deliberately absent: they are the one type whose
 // payload may carry a body weight the author typed in, and a card that travels
 // outside the app is not where that belongs.
-import type { PostPayload } from "@healthapp/shared";
+import { exerciseSnapshot, type PostPayload } from "@healthapp/shared";
+
+/**
+ * The estimated 1RM a PR post carries: exerciseSnapshot()'s — relevantOneRm(),
+ * the figure /exercises and /progress show, rounded to one decimal because a
+ * card is display. 0 when there is no estimate (bodyweight, more than 12
+ * reps), which the card below already leaves out. Posts shared before this
+ * keep the number they were published with.
+ */
+export function prShareOneRm(weight_kg: number, reps: number): number {
+  return exerciseSnapshot("", { weight_kg, reps, is_pr: true }, "").estimated_1rm ?? 0;
+}
 
 export type ShareKind = "workout" | "pr" | "streak" | "challenge" | "program";
 

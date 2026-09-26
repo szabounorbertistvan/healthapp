@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { DEFAULT_TARGETS, isPlanLimitError, swapNeighbour, validateTargets, type ExerciseTargets } from "@healthapp/shared";
+import { DEFAULT_TARGETS, isPlanLimitError, isSetType, swapNeighbour, validateTargets, type ExerciseTargets } from "@healthapp/shared";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import type { ActionResult } from "./actions";
@@ -262,6 +262,36 @@ export async function removeProgramExercise(
   return { ok: true };
 }
 
+/** How the prescribed sets are performed (normal, warm-up, drop set, AMRAP, to failure). */
+export async function setProgramExerciseSetType(
+  programId: string,
+  exerciseRowId: string,
+  setType: string,
+): Promise<ActionResult> {
+  if (!isSetType(setType)) return { ok: false, message: "Unknown set type" };
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase.from("program_exercises").update({ set_type: setType }, { count: "exact" }).eq("id", exerciseRowId),
+  );
+  if (failed) return failed;
+  programTouched(programId);
+  return { ok: true };
+}
+
+/**
+ * Copy one prescribed exercise to right after itself — targets, circuit and
+ * set type included. duplicate_program_exercise() shifts the rows below and
+ * inserts in one transaction, under the editing policies, and refuses anyone
+ * who may not edit the program (a coached client, a stranger).
+ */
+export async function duplicateProgramExercise(programId: string, exerciseRowId: string): Promise<ActionResult> {
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc("duplicate_program_exercise", { p_row: exerciseRowId });
+  if (error) return { ok: false, message: error.message };
+  programTouched(programId);
+  return { ok: true };
+}
+
 /** Duplicate a day with all its targets — the build-once move from W4. Coach Pro. */
 export async function duplicateProgramDay(programId: string, dayId: string): Promise<ActionResult> {
   if (!(await getPlan()).e.programCopy) return upgradeRequired;
@@ -270,7 +300,7 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
   const { data: source, error: readError } = await supabase
     .from("program_days")
     .select(
-      "week_index, name, program_exercises(exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, notes, circuit)",
+      "week_index, name, muscle_groups, program_exercises(exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, notes, circuit, set_type)",
     )
     .eq("id", dayId)
     .single();
@@ -284,6 +314,7 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
       week_index: source.week_index,
       day_index: dayIndex,
       name: `${source.name} (copy)`,
+      muscle_groups: source.muscle_groups ?? [],
     })
     .select("id")
     .single();
@@ -301,18 +332,16 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
   return { ok: true };
 }
 
-const COPY_EXERCISE_COLUMNS =
-  "exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, notes, circuit";
-
 /**
  * Copy a whole program — every day and every exercise with its targets — to
  * another of the coach's clients, as a draft the coach then adjusts and
  * publishes. Coach Pro.
  *
- * programs_coach_all is the guard on the target: the insert only lands for a
- * client this coach actively coaches (is_active_coach_of), whatever id comes in.
- * Days go in one insert and come back matched on (week_index, day_index),
- * which program_days holds unique per program.
+ * The same copy_program() behind Duplicate, "Copy to my programs" and Assign
+ * on the routine page: one atomic function, so a failure halfway can no longer
+ * leave a half-copied program, and the copy keeps description, level, goal,
+ * style, supersets, set types and its lineage. The function re-checks that the
+ * caller actively coaches this client and can see the source.
  */
 export async function copyProgramToClient(
   programId: string,
@@ -321,59 +350,14 @@ export async function copyProgramToClient(
   if (!(await getPlan()).e.programCopy) return upgradeRequired;
   const live = await liveUser();
   if (!live) return notSignedIn;
-  const { supabase, userId } = live;
-
-  const { data: source, error: readError } = await supabase
-    .from("programs")
-    .select(`name, notes, intensity_mode, weeks, program_days(week_index, day_index, name, muscle_groups, program_exercises(${COPY_EXERCISE_COLUMNS}))`)
-    .eq("id", programId)
-    .eq("coach_id", userId)
-    .single();
-  if (readError || !source) return { ok: false, message: readError?.message ?? "Program not found" };
-
-  const { data: created, error: programError } = await supabase
-    .from("programs")
-    .insert({
-      coach_id: userId,
-      client_id: clientId,
-      name: source.name,
-      notes: source.notes,
-      intensity_mode: source.intensity_mode,
-      weeks: source.weeks,
-      status: "draft",
-    })
-    .select("id")
-    .single();
-  if (programError || !created) return { ok: false, message: programError?.message ?? "Could not copy" };
-
-  type SourceDay = {
-    week_index: number; day_index: number; name: string; muscle_groups: string[] | null;
-    program_exercises: Record<string, unknown>[] | null;
-  };
-  const days = (source.program_days ?? []) as SourceDay[];
-  if (days.length > 0) {
-    const { data: newDays, error: dayError } = await supabase
-      .from("program_days")
-      .insert(days.map((d) => ({
-        program_id: created.id,
-        week_index: d.week_index,
-        day_index: d.day_index,
-        name: d.name,
-        muscle_groups: d.muscle_groups ?? [],
-      })))
-      .select("id, week_index, day_index");
-    if (dayError) return { ok: false, message: dayError.message };
-    const idOf = new Map((newDays ?? []).map((d) => [`${d.week_index}:${d.day_index}`, d.id as string]));
-    const rows = days.flatMap((d) =>
-      (d.program_exercises ?? []).map((e) => ({ ...e, program_day_id: idOf.get(`${d.week_index}:${d.day_index}`) })),
-    );
-    if (rows.length > 0) {
-      const { error } = await supabase.from("program_exercises").insert(rows);
-      if (error) return { ok: false, message: error.message };
-    }
-  }
+  const { data, error } = await live.supabase.rpc("copy_program", {
+    p_source: programId,
+    p_name: null,
+    p_for_client: clientId,
+  });
+  if (error) return { ok: false, message: error.message };
   revalidatePath("/programs");
-  return { ok: true, id: created.id };
+  return { ok: true, id: (data as string | null) ?? undefined };
 }
 
 /** Publish makes the program visible to the client and fires Plan updated. */

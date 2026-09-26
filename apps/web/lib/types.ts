@@ -131,6 +131,8 @@ export type ProgramExerciseRow = {
   position: number;
   /** Circuit / superset number this row belongs to (1 = A …), null when standalone. */
   circuit: number | null;
+  /** How the sets are performed (SET_TYPES). Absent on reads that do not ask for it. */
+  set_type?: string;
   /** Visual type of the exercise (exerciseTypeOf), for its thumbnail; client reads only. */
   type?: ExerciseType | null;
   /** The resolved demo (lib/exercise-video-links); client reads only. */
@@ -286,7 +288,10 @@ export type SessionSummaryRow = {
   day_name: string;
   at: string;
   sets: number;
+  /** Rounded for display. */
   volume_kg: number;
+  /** Unrounded — what totals add up. */
+  volume_exact_kg: number;
   prs: number;
   load: TrainingLoad;
 };
@@ -525,6 +530,8 @@ export type ClientMeasurementRow = {
   taken_on: string;
   weight_kg: number | null;
   waist_cm: number | null;
+  /** Every circumference logged that day, in cm — the jsonb bag, numeric values only. */
+  circumferences: Record<string, number>;
 };
 
 export type ClientPrRow = {

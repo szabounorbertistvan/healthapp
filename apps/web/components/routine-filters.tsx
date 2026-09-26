@@ -1,7 +1,8 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ROUTINE_GOALS, ROUTINE_LEVELS, type RoutineFilter } from "@healthapp/shared";
+import { isFilterActive, ROUTINE_GOALS, ROUTINE_LEVELS, ROUTINE_MAX_MINUTES, TRAINING_STYLES, type RoutineFilter } from "@healthapp/shared";
+import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { NavIcon } from "./client-nav";
 
@@ -49,7 +50,7 @@ export function RoutineFilters({
     router.push(`/routines?${next.toString()}`);
   }
 
-  const active = Boolean(filter.q || filter.level || filter.goal || filter.muscle || filter.equipment);
+  const active = isFilterActive(filter);
 
   return (
     <div className="mt-4 space-y-2.5">
@@ -80,6 +81,18 @@ export function RoutineFilters({
           onChange={(v) => push({ goal: v })}
         />
         <Select
+          label={r.allStyles}
+          value={filter.style ?? ""}
+          options={TRAINING_STYLES.map((s) => ({ value: s, label: r.style[s] }))}
+          onChange={(v) => push({ style: v })}
+        />
+        <Select
+          label={r.anyLength}
+          value={filter.maxMinutes ? String(filter.maxMinutes) : ""}
+          options={ROUTINE_MAX_MINUTES.map((m) => ({ value: String(m), label: fill(r.upToMinutes, { count: m }) }))}
+          onChange={(v) => push({ max: v })}
+        />
+        <Select
           label={r.allMuscles}
           value={filter.muscle ?? ""}
           options={muscles.map((m) => ({ value: m, label: m }))}
@@ -91,6 +104,16 @@ export function RoutineFilters({
           options={equipment.map((e) => ({ value: e, label: e }))}
           onChange={(v) => push({ equipment: v })}
         />
+        <button
+          type="button"
+          aria-pressed={filter.featured ?? false}
+          onClick={() => push({ featured: filter.featured ? null : "1" })}
+          className={`h-10 shrink-0 rounded-full px-3.5 text-[12.5px] font-semibold ${
+            filter.featured ? "bg-accent-soft text-accent-ink" : "bg-surface text-ink-soft"
+          }`}
+        >
+          {r.featuredOnly}
+        </button>
         <Select
           label={r.sortNewest}
           value={filter.sort === "most_copied" ? "most_copied" : ""}

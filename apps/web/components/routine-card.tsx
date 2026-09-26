@@ -21,15 +21,20 @@ export function RoutineCardView({ card, href }: { card: RoutineCard; href?: stri
   const { t } = useI18n();
   const r = t.clientApp.routines;
 
+  // The session length, not the whole program's: est_minutes sums every day,
+  // which on a four-day program read as a four-times-longer workout.
   const facts = [
-    fill(r.daysCount, { count: card.days }),
+    card.days_per_week === 1 ? r.perWeekOne : card.days_per_week > 0 ? fill(r.perWeek, { count: card.days_per_week }) : fill(r.daysCount, { count: card.days }),
     fill(r.exercisesCount, { count: card.exercises }),
-    card.est_minutes > 0 ? fill(r.aboutMinutes, { count: card.est_minutes }) : null,
+    card.session_minutes > 0 ? fill(r.aboutMinutes, { count: card.session_minutes }) : null,
   ].filter((x): x is string => Boolean(x));
 
   const tags = [
+    card.featured ? r.featured : null,
+    card.source === "voinic" ? r.source.voinic : null,
     card.level ? r.level[card.level] : null,
     card.goal ? r.goal[card.goal] : null,
+    card.training_style ? r.style[card.training_style] : null,
   ].filter((x): x is string => Boolean(x));
 
   return (

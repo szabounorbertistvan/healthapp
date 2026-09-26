@@ -24,6 +24,20 @@ export type RoutineGoal = (typeof ROUTINE_GOALS)[number];
 export const ROUTINE_VISIBILITIES = ["private", "followers", "public"] as const;
 export type RoutineVisibility = (typeof ROUTINE_VISIBILITIES)[number];
 
+/** How the week is split — programs.training_style. Optional, like level and goal. */
+export const TRAINING_STYLES = ["full_body", "upper_lower", "push_pull_legs", "body_part_split", "circuit", "other"] as const;
+export type TrainingStyle = (typeof TRAINING_STYLES)[number];
+
+export function isTrainingStyle(x: unknown): x is TrainingStyle {
+  return typeof x === "string" && (TRAINING_STYLES as readonly string[]).includes(x);
+}
+
+/** Session-length ceilings Discover filters on, in minutes (estimateMinutes per day, averaged). */
+export const ROUTINE_MAX_MINUTES = [30, 45, 60, 90] as const;
+
+/** Who a routine comes from, as the library shows it. */
+export type RoutineSource = "voinic" | "coach" | "user";
+
 export const ROUTINE_SORTS = ["newest", "most_copied"] as const;
 export type RoutineSort = (typeof ROUTINE_SORTS)[number];
 
@@ -63,6 +77,16 @@ export type RoutineCard = {
   muscle_groups: string[];
   equipment: string[];
   copy_count: number;
+  /** programs.weeks — how long the program runs. */
+  weeks: number;
+  /** Days in the first week — "days per week" as the card states it. */
+  days_per_week: number;
+  /** One session's estimated minutes — sessionMinutes() over the days. est_minutes is the whole program. */
+  session_minutes: number;
+  training_style: TrainingStyle | null;
+  /** Admin-set; never self-served (see premium_routines_foundation). */
+  featured: boolean;
+  source: RoutineSource;
   saved: boolean;
   is_mine: boolean;
   /** A coach wrote this one for the person reading it. */
@@ -104,6 +128,19 @@ export function estimateMinutes(
     0,
   );
   return Math.floor(seconds / 60);
+}
+
+/**
+ * A session's length: each day's estimateMinutes(), averaged over the days
+ * and rounded. Must stay identical to session_minutes in program_card_rows()
+ * (and the Discover length filter), so the card, the filter and the detail
+ * page agree. An empty day counts as a 0-minute session.
+ */
+export function sessionMinutes(
+  days: readonly (readonly { target_sets: number; rest_seconds: number | null }[])[],
+): number {
+  if (days.length === 0) return 0;
+  return Math.round(days.reduce((sum, d) => sum + estimateMinutes(d), 0) / days.length);
 }
 
 // ---------- naming a copy ----------
@@ -235,6 +272,11 @@ export type RoutineFilter = {
   muscle?: string | null;
   equipment?: string | null;
   sort?: RoutineSort;
+  style?: TrainingStyle | null;
+  /** Average session no longer than this many minutes. */
+  maxMinutes?: number | null;
+  /** Only admin-featured routines. */
+  featured?: boolean;
 };
 
 /** Everything the caller asked for, with anything unrecognised dropped. */
@@ -247,12 +289,36 @@ export function normalizeRoutineFilter(raw: Record<string, string | undefined | 
     muscle: raw.muscle?.trim() || null,
     equipment: raw.equipment?.trim() || null,
     sort: isRoutineSort(raw.sort) ? raw.sort : "newest",
+    style: isTrainingStyle(raw.style) ? raw.style : null,
+    maxMinutes: (ROUTINE_MAX_MINUTES as readonly number[]).includes(Number(raw.max)) ? Number(raw.max) : null,
+    featured: raw.featured === "1",
   };
 }
 
 /** True when any filter is narrowing the shelf — the "clear" button's condition. */
 export function isFilterActive(filter: RoutineFilter): boolean {
-  return Boolean(filter.q || filter.level || filter.goal || filter.muscle || filter.equipment);
+  return Boolean(
+    filter.q || filter.level || filter.goal || filter.muscle || filter.equipment || filter.style || filter.maxMinutes || filter.featured,
+  );
+}
+
+// ---------- source and featuring ----------
+
+/**
+ * Mirrors the source_kind expression in program_card_rows(). "Voinic" is an
+ * admin mark on a row (programs.is_official), not a special owner: the schema
+ * binds every program to a real account (client_id NOT NULL), so an official
+ * routine is one published from an account and marked by an admin.
+ */
+export function routineSource(p: { official: boolean; coach_id: string | null; author_is_coach: boolean }): RoutineSource {
+  if (p.official) return "voinic";
+  if (p.coach_id !== null || p.author_is_coach) return "coach";
+  return "user";
+}
+
+/** Mirrors admin_set_program_flags(): only a public routine may be featured or marked official. */
+export function canFeatureProgram(p: { visibility: RoutineVisibility }): boolean {
+  return p.visibility === "public";
 }
 
 export const ROUTINE_PAGE_SIZE = 20;

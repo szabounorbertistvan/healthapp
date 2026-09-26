@@ -4,7 +4,6 @@ import "server-only";
 import { cache } from "react";
 import {
   dailyLoad,
-  estimated1RM,
   loadTrend,
   pickProgram,
   sumLoad,
@@ -12,6 +11,8 @@ import {
 } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
+import { toPrRows, type BestSetRow } from "./prs-map";
+import { toSessionSummary, type SessionSummaryJoin } from "./session-summary";
 import { liveUser, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
 import { dayTypeOf, exerciseTypeOf } from "./exercise-types";
@@ -323,24 +324,7 @@ export async function getMySessions(limit = 12): Promise<SessionSummaryRow[]> {
     .order("completed_at", { ascending: false })
     .limit(limit);
   if (error) return [];
-  type SetRow = LoadSetJoin & { is_pr: boolean | null };
-  type Row = {
-    id: string; program_day_id: string | null; started_at: string; completed_at: string | null;
-    day: { name: string } | null; logged_sets: SetRow[] | null;
-  };
-  return ((data ?? []) as unknown as Row[]).map((s) => {
-    const sets = s.logged_sets ?? [];
-    return {
-      id: s.id,
-      day_id: s.program_day_id,
-      day_name: s.day?.name ?? "Session",
-      at: s.completed_at ?? s.started_at,
-      sets: sets.length,
-      volume_kg: Math.round(sets.reduce((sum, x) => sum + (x.weight_kg ?? 0) * (x.reps ?? 0), 0)),
-      prs: sets.filter((x) => x.is_pr).length,
-      load: loadOf(sets.map(toLoadSet), s.started_at, s.completed_at),
-    };
-  });
+  return ((data ?? []) as unknown as SessionSummaryJoin[]).map(toSessionSummary);
 }
 
 /**
@@ -388,30 +372,23 @@ async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
   }));
 }
 
+/**
+ * Each lift's best estimated 1RM, heaviest first — the same number the
+ * exercise page shows (relevantOneRm over completed sessions).
+ *
+ * It no longer reads the is_pr flags: those are the PR judge's verdict at log
+ * time under its own rule, and taking the best flagged set could show less
+ * than the lift's real best. exercise_best_sets() picks the best set per lift
+ * in SQL (a lifetime of sets is past PostgREST's row cap) and toPrRows()
+ * computes the value, so the formula stays in packages/shared.
+ */
 export async function getMyPrs(): Promise<ClientPrRow[]> {
   const live = await liveUser();
   if (!live) return [];
-  const { supabase, userId } = live;
-  // user_id is denormalized onto logged_sets precisely so this needs no join.
-  const { data, error } = await supabase
-    .from("logged_sets")
-    .select("exercise_id, weight_kg, reps, received_at, is_pr, exercise:exercises(name_en, name_ro)")
-    .eq("user_id", userId)
-    .eq("is_pr", true)
-    .order("received_at", { ascending: false });
-  if (error) return [];
-  type Row = {
-    exercise_id: string | null; weight_kg: number | null; reps: number | null; received_at: string;
-    exercise: { name_en: string; name_ro: string | null } | null;
-  };
-  const best = new Map<string, ClientPrRow>();
-  for (const row of (data ?? []) as unknown as Row[]) {
-    const name = row.exercise?.name_ro ?? row.exercise?.name_en ?? "—";
-    const oneRm = estimated1RM(row.weight_kg ?? 0, row.reps ?? 0);
-    const current = best.get(name);
-    if (!current || oneRm > current.best) {
-      best.set(name, { exercise: name, exercise_id: row.exercise_id, best: oneRm, at: row.received_at });
-    }
-  }
-  return [...best.values()].sort((a, b) => b.best - a.best);
+  const { supabase } = live;
+  const { data, error } = await supabase.rpc("exercise_best_sets");
+  // An empty list is a legitimate answer for a new account; a failed read
+  // (the migration not applied yet, say) must not be dressed up as one.
+  if (error) throw new Error(`Failed to load personal records: ${error.message}`);
+  return toPrRows((data ?? []) as BestSetRow[]);
 }

@@ -1,8 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { canShareProgram, copyName, type RoutineCard } from "@healthapp/shared";
-import { copyRoutine, shareRoutine, updateRoutineDetails } from "@/app/routine-actions";
+import { canShareProgram, copyName, TRAINING_STYLES, type RoutineCard } from "@healthapp/shared";
+import { copyRoutine, setRoutineFlags, shareRoutine, updateRoutineDetails } from "@/app/routine-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
@@ -219,6 +219,7 @@ export function RoutineDetailsForm({
     description: card.description ?? "",
     level: card.level ?? "",
     goal: card.goal ?? "",
+    style: card.training_style ?? "",
     visibility: card.visibility,
   });
 
@@ -231,6 +232,7 @@ export function RoutineDetailsForm({
         description: form.description,
         level: form.level || null,
         goal: form.goal || null,
+        trainingStyle: form.style || null,
         visibility: canPublish ? form.visibility : undefined,
       });
       if (!result.ok) { setError(result.message ?? r.couldNotSave); return; }
@@ -279,6 +281,8 @@ export function RoutineDetailsForm({
           options={(["beginner", "intermediate", "advanced"] as const).map((l) => ({ value: l, label: r.level[l] }))} />
         <Field label={r.allGoals} value={form.goal} onChange={(v) => setForm({ ...form, goal: v })}
           options={(["strength", "hypertrophy", "fat_loss", "endurance", "general"] as const).map((g) => ({ value: g, label: r.goal[g] }))} />
+        <Field label={r.styleLabel} value={form.style} onChange={(v) => setForm({ ...form, style: v })}
+          options={TRAINING_STYLES.map((st) => ({ value: st, label: r.style[st] }))} />
         {canPublish ? (
           <label className="flex flex-col gap-1.5 sm:col-span-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
@@ -343,5 +347,41 @@ function Field({
         ))}
       </select>
     </label>
+  );
+}
+
+/**
+ * Feature / mark-as-Voinic, for admins only — the page renders this only for
+ * an admin viewing a public routine, and admin_set_program_flags() refuses
+ * anyone else whatever the UI does.
+ */
+export function RoutineAdminFlags({ programId, featured, official }: { programId: string; featured: boolean; official: boolean }) {
+  const { t } = useI18n();
+  const r = t.clientApp.routines;
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function set(nextFeatured: boolean, nextOfficial: boolean) {
+    startTransition(async () => {
+      setError(null);
+      const result = await setRoutineFlags(programId, nextFeatured, nextOfficial);
+      if (!result.ok) { setError(result.message ?? r.couldNotFlag); return; }
+      router.refresh();
+    });
+  }
+
+  const button = "inline-flex h-9 items-center rounded-full bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-40";
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint">{r.adminFlags}</span>
+      <button type="button" disabled={pending} onClick={() => set(!featured, official)} className={button}>
+        {featured ? r.unfeature : r.feature}
+      </button>
+      <button type="button" disabled={pending} onClick={() => set(featured, !official)} className={button}>
+        {official ? r.unmarkOfficial : r.markOfficial}
+      </button>
+      {error ? <span className="text-[12px] font-semibold text-risk">{error}</span> : null}
+    </div>
   );
 }

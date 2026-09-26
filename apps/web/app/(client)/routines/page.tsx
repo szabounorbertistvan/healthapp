@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { normalizeRoutineFilter, ROUTINE_PAGE_SIZE, type RoutineCard } from "@healthapp/shared";
-import { getDiscoverRoutines, getMyRoutines, getSavedRoutines } from "@/lib/routine-data";
+import { isFilterActive, normalizeRoutineFilter, ROUTINE_PAGE_SIZE, type RoutineCard } from "@healthapp/shared";
+import { getDiscoverRoutines, getFeaturedRoutines, getMyRoutines, getSavedRoutines } from "@/lib/routine-data";
 import { exerciseFacets } from "@/lib/exercise-library";
 import { EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
@@ -36,17 +36,27 @@ export default async function RoutinesPage({
   const filter = normalizeRoutineFilter({
     q: one("q"), level: one("level"), goal: one("goal"),
     muscle: one("muscle"), equipment: one("equipment"), sort: one("sort"),
+    style: one("style"), max: one("max"), featured: one("featured"),
   });
   const page = Math.max(1, parseInt(one("page") ?? "1", 10) || 1);
 
   // Only the open tab is read. Discover is the one that pages.
   let cards: RoutineCard[] = [];
+  let featured: RoutineCard[] = [];
   let hasMore = false;
   if (tab === "mine") cards = await getMyRoutines();
   else if (tab === "saved") cards = await getSavedRoutines();
   else {
-    const found = await getDiscoverRoutines(filter, page);
+    // The Featured shelf opens an unfiltered first page — admin-curated, and
+    // shown only when there is something on it. Filtering is how people ask
+    // for something else, so a filtered shelf skips it.
+    const showFeatured = page === 1 && !isFilterActive(filter);
+    const [found, shelf] = await Promise.all([
+      getDiscoverRoutines(filter, page),
+      showFeatured ? getFeaturedRoutines() : Promise.resolve([]),
+    ]);
     cards = found.cards;
+    featured = shelf;
     hasMore = found.hasMore;
   }
 
@@ -89,9 +99,20 @@ export default async function RoutinesPage({
         <RoutineFilters filter={filter} muscles={facets.muscles} equipment={facets.equipment} />
       ) : null}
 
+      {featured.length > 0 ? (
+        <section className="mt-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{r.featuredShelf}</h2>
+          <div className="mt-2.5 grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))] sm:gap-4">
+            {featured.map((card) => (
+              <RoutineCardView key={card.id} card={card} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {cards.length === 0 ? (
         <div className="mt-5">
-          <EmptyState plain {...emptyFor(tab, filter.q || filter.level || filter.goal ? "filtered" : "none", r)} />
+          <EmptyState plain {...emptyFor(tab, isFilterActive(filter) ? "filtered" : "none", r)} />
         </div>
       ) : (
         <div className="mt-5 grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))] sm:gap-4">

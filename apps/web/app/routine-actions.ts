@@ -10,19 +10,24 @@
 import { revalidatePath } from "next/cache";
 import {
   canShareProgram,
+  isPublishable,
   isRoutineGoal,
+  isTrainingStyle,
+  validateProgram,
   isRoutineLevel,
   isRoutineVisibility,
   snapshotProgram,
   type RoutineGoal,
   type RoutineLevel,
   type RoutineVisibility,
+  type TrainingStyle,
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
 import { liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { notSignedIn } from "@/lib/action-result";
 import { getRoutineDetail } from "@/lib/routine-data";
+import { toProgramShape } from "@/lib/routine-shape";
 import type { ActionResult } from "./actions";
 
 /** Everything a routine change can touch. */
@@ -129,6 +134,7 @@ export async function updateRoutineDetails(input: {
   description?: string | null;
   level?: string | null;
   goal?: string | null;
+  trainingStyle?: string | null;
   visibility?: string | null;
 }): Promise<ActionResult> {
   const { t } = await getI18n();
@@ -151,9 +157,21 @@ export async function updateRoutineDetails(input: {
   if (input.goal !== undefined) {
     patch.goal = isRoutineGoal(input.goal) ? (input.goal as RoutineGoal) : null;
   }
+  if (input.trainingStyle !== undefined) {
+    patch.training_style = isTrainingStyle(input.trainingStyle) ? (input.trainingStyle as TrainingStyle) : null;
+  }
   if (input.visibility !== undefined && input.visibility !== null) {
     if (!isRoutineVisibility(input.visibility)) return { ok: false, message: "Unknown visibility" };
     patch.visibility = input.visibility as RoutineVisibility;
+  }
+  // Going PUBLIC is the one door validateProgram() guards: the shelf only
+  // gains complete routines. Checked only on the change — a routine that is
+  // already public (legacy, imperfect) keeps being public and editable.
+  if (patch.visibility === "public") {
+    const detail = await getRoutineDetail(input.programId);
+    if (detail && detail.card.visibility !== "public" && !isPublishable(validateProgram(toProgramShape(detail)))) {
+      return { ok: false, message: r.notPublishable };
+    }
   }
   if (Object.keys(patch).length === 0) return { ok: true };
 
@@ -203,5 +221,29 @@ export async function shareRoutine(programId: string, visibility?: string): Prom
   }
   revalidatePath("/feed");
   revalidatePath(`/routines/${programId}`);
+  return { ok: true };
+}
+
+/**
+ * Feature a routine on the Discover shelf and/or mark it as Voinic's. Admins
+ * only: admin_set_program_flags() runs admin_assert(), and owners have no
+ * column grant on either flag, so there is no other way to set them. Only a
+ * public routine may carry them; the flag drops if it later leaves public.
+ */
+export async function setRoutineFlags(programId: string, featured: boolean, official: boolean): Promise<ActionResult> {
+  const { t } = await getI18n();
+  const r = t.clientApp.routines;
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { error } = await live.supabase.rpc("admin_set_program_flags", {
+    p_program: programId,
+    p_featured: featured,
+    p_official: official,
+  });
+  if (error) {
+    if (error.code === "22023") return { ok: false, message: r.flagsOnlyPublic };
+    return { ok: false, message: r.couldNotFlag };
+  }
+  routinesTouched(programId);
   return { ok: true };
 }

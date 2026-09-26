@@ -26,3 +26,6 @@ export * from "./exercise-analytics";
 export * from "./routines";
 export * from "./mentions";
 export * from "./achievements";
+export * from "./progress";
+export * from "./nutrition-progress";
+export * from "./program-quality";

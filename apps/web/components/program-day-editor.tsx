@@ -2,11 +2,11 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import {
   DEFAULT_TARGETS, circuitLabel, circuitSegments, displayToKg, exerciseRef, kgToDisplay,
-  nextCircuit, parseDecimal, type ExerciseSummary, type ExerciseTargets,
+  nextCircuit, parseDecimal, SET_TYPES, type ExerciseSummary, type ExerciseTargets,
 } from "@healthapp/shared";
 import {
-  addProgramExercise, moveProgramDay, moveProgramExercise, removeProgramExercise, renameProgramDay,
-  replaceProgramExercise, setExerciseCircuit, updateProgramExercise,
+  addProgramExercise, duplicateProgramExercise, moveProgramDay, moveProgramExercise, removeProgramExercise, renameProgramDay,
+  replaceProgramExercise, setExerciseCircuit, setProgramExerciseSetType, updateProgramExercise,
 } from "@/app/builder-actions";
 import { ExercisePicker } from "@/components/exercise-picker";
 import { NavIcon } from "@/components/client-nav";
@@ -141,6 +141,8 @@ export function ProgramDayEditor({
                   onNewCircuit={() => run(() => setExerciseCircuit(program.id, row.id, nextCircuit(day.exercises)))}
                   onReplace={() => { setReplacing(replacing === row.id ? null : row.id); setPicking(false); setCandidate(null); }}
                   onRemove={() => run(() => removeProgramExercise(program.id, row.id))}
+                  onDuplicate={() => run(() => duplicateProgramExercise(program.id, row.id))}
+                  onSetType={(setType) => run(() => setProgramExerciseSetType(program.id, row.id, setType))}
                 />
               ))}
             </div>
@@ -245,7 +247,7 @@ function DayName({ name, disabled, onSave }: { name: string; disabled: boolean; 
 
 function ExerciseCard({
   row, intensityLabel, circuits, first, last, disabled, replacing,
-  onSave, onMove, onCircuit, onNewCircuit, onReplace, onRemove,
+  onSave, onMove, onCircuit, onNewCircuit, onReplace, onRemove, onDuplicate, onSetType,
 }: {
   row: ProgramExerciseRow;
   intensityLabel: string;
@@ -260,8 +262,11 @@ function ExerciseCard({
   onNewCircuit: () => void;
   onReplace: () => void;
   onRemove: () => void;
+  onDuplicate: () => void;
+  onSetType: (setType: string) => void;
 }) {
   const { t } = useI18n();
+  const r = t.clientApp.routines;
   const u = useUnits();
   const m = t.coachWidgets.programBuilder;
   const [values, setValues] = useState<ExerciseTargets>({
@@ -286,6 +291,9 @@ function ExerciseCard({
         </button>
         <button type="button" disabled={disabled || last} onClick={() => onMove(1)} aria-label={m.moveDown} title={m.moveDown} className={`${iconButton} hover:bg-surface`}>
           <NavIcon d={CHEVRON_DOWN} className="h-4 w-4" />
+        </button>
+        <button type="button" onClick={onDuplicate} disabled={disabled} title={r.duplicateExercise} aria-label={r.duplicateExercise} className={`${iconButton} hover:bg-surface`}>
+          <NavIcon d={COPY_ICON} className="h-4 w-4" />
         </button>
         <button type="button" onClick={onRemove} disabled={disabled} title={m.removeExercise} aria-label={m.removeExercise} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-faint hover:bg-risk-soft hover:text-risk disabled:opacity-50">
           <NavIcon d="M6 6 18 18M18 6 6 18" className="h-4 w-4" />
@@ -328,10 +336,22 @@ function ExerciseCard({
             {circuits.map((c) => <option key={c} value={c}>{circuitLabel(c)}</option>)}
             <option value="new">{m.newCircuit}</option>
           </select></label>
+        <label className="col-span-3 flex flex-col gap-1 sm:col-span-2"><span className={label}>{r.setTypeLabel}</span>
+          <select
+            value={row.set_type ?? "normal"}
+            disabled={disabled}
+            onChange={(e) => onSetType(e.target.value)}
+            className={cell}
+          >
+            {SET_TYPES.map((st) => <option key={st} value={st}>{r.setType[st]}</option>)}
+          </select></label>
       </div>
     </div>
   );
 }
+
+/** Two overlapping sheets — "duplicate". */
+const COPY_ICON = "M9 9h11v11H9zM5 15H4V4h11v1";
 
 /** The step between picking an exercise and adding it: its prescription, and the circuit it joins. */
 function AddExerciseForm({

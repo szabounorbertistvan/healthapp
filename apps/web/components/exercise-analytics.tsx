@@ -202,7 +202,7 @@ function RangeTabs({ value, onChange }: { value: ExerciseRangeDays; onChange: (v
  * Points sit at their real position in time, so a month off looks like a month
  * off rather than one step to the right.
  */
-function MetricChart({
+export function MetricChart({
   title, metric, sessions, range, todayIso, hint,
 }: {
   title: string;
@@ -212,7 +212,7 @@ function MetricChart({
   todayIso: string;
   hint?: string;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const u = useUnits();
   const d = t.clientApp.exerciseDetail;
   // Reps are a count; everything else is a load in the reader's unit.
@@ -222,6 +222,26 @@ function MetricChart({
     () => metricSeries(sessions, metric, range, todayIso).map((p) => (reps ? p : { ...p, value: kgToDisplay(p.value, u.weightUnit) })),
     [sessions, metric, range, todayIso, u.weightUnit, reps],
   );
+  return <PointsChart title={title} points={points} unit={unit} hint={hint} />;
+}
+
+/**
+ * A titled card over already-converted points: nothing in the window, a single
+ * figure, or the line. Shared by the exercise page and the progress dashboard
+ * (body weight, circumferences), so "one point is not a trend" reads the same
+ * everywhere.
+ */
+export function PointsChart({
+  title, points, unit, hint,
+}: {
+  title: string;
+  /** Oldest first, in the reader's unit. */
+  points: MetricPoint[];
+  unit: string;
+  hint?: string;
+}) {
+  const { t, locale } = useI18n();
+  const d = t.clientApp.exerciseDetail;
 
   const fmt = useMemo(
     () => new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "short" }),

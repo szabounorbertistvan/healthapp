@@ -8,6 +8,9 @@ import {
   estimateMinutes,
   isFilterActive,
   normalizeRoutineFilter,
+  routineSource,
+  sessionMinutes,
+  canFeatureProgram,
   snapshotProgram,
   canShareProgram,
   SET_WORK_SECONDS,
@@ -36,6 +39,12 @@ function card(over: Partial<RoutineCard> = {}): RoutineCard {
     author_name: "Solo",
     author_username: "solo",
     author_avatar: null,
+    weeks: 4,
+    days_per_week: 3,
+    session_minutes: 45,
+    training_style: null,
+    featured: false,
+    source: "user",
     days: 6,
     exercises: 24,
     total_sets: 72,
@@ -246,13 +255,14 @@ describe("normalizeRoutineFilter", () => {
       equipment: "barbell", sort: "most_copied",
     })).toEqual({
       q: "push", level: "advanced", goal: "strength", muscle: "chest",
-      equipment: "barbell", sort: "most_copied",
+      equipment: "barbell", sort: "most_copied", style: null, maxMinutes: null, featured: false,
     });
   });
 
   it("drops anything it does not — a hand-typed URL cannot smuggle a value in", () => {
     expect(normalizeRoutineFilter({ level: "godlike", goal: "vibes", sort: "trending" })).toEqual({
       q: undefined, level: null, goal: null, muscle: null, equipment: null, sort: "newest",
+      style: null, maxMinutes: null, featured: false,
     });
   });
 
@@ -264,5 +274,63 @@ describe("normalizeRoutineFilter", () => {
     expect(isFilterActive(normalizeRoutineFilter({}))).toBe(false);
     expect(isFilterActive(normalizeRoutineFilter({ muscle: "chest" }))).toBe(true);
     expect(isFilterActive(normalizeRoutineFilter({ sort: "most_copied" }))).toBe(false);
+  });
+});
+
+describe("normalizeRoutineFilter — premium library filters", () => {
+  it("reads a known training style, a supported session length and the featured switch", () => {
+    expect(normalizeRoutineFilter({ style: "push_pull_legs", max: "45", featured: "1" })).toMatchObject({
+      style: "push_pull_legs", maxMinutes: 45, featured: true,
+    });
+  });
+
+  it("drops an unknown style, an unsupported length and any other featured value", () => {
+    expect(normalizeRoutineFilter({ style: "bro", max: "37", featured: "yes" })).toMatchObject({
+      style: null, maxMinutes: null, featured: false,
+    });
+  });
+
+  it("counts the new filters as active", () => {
+    expect(isFilterActive(normalizeRoutineFilter({ style: "full_body" }))).toBe(true);
+    expect(isFilterActive(normalizeRoutineFilter({ max: "60" }))).toBe(true);
+    expect(isFilterActive(normalizeRoutineFilter({ featured: "1" }))).toBe(true);
+  });
+});
+
+describe("routineSource", () => {
+  it("an admin-marked program is Voinic's, whoever holds the row", () => {
+    expect(routineSource({ official: true, coach_id: null, author_is_coach: true })).toBe("voinic");
+  });
+
+  it("a coach's program — for a client, or a template from their own account — is a coach's", () => {
+    expect(routineSource({ official: false, coach_id: "c1", author_is_coach: true })).toBe("coach");
+    expect(routineSource({ official: false, coach_id: null, author_is_coach: true })).toBe("coach");
+  });
+
+  it("anything else was made by a user", () => {
+    expect(routineSource({ official: false, coach_id: null, author_is_coach: false })).toBe("user");
+  });
+});
+
+describe("canFeatureProgram", () => {
+  it("only a public program may be featured — a shelf must not point at what readers cannot open", () => {
+    expect(canFeatureProgram({ visibility: "public" })).toBe(true);
+    expect(canFeatureProgram({ visibility: "followers" })).toBe(false);
+    expect(canFeatureProgram({ visibility: "private" })).toBe(false);
+  });
+});
+
+describe("sessionMinutes", () => {
+  it("averages each day's whole minutes and rounds — the SQL session_minutes figure", () => {
+    // day 1: 3·(40+60)=300 s → 5 min; day 2: 4·(40+90)=520 s → 8 min (floor); mean 6.5 → 7
+    expect(sessionMinutes([
+      [{ target_sets: 3, rest_seconds: 60 }],
+      [{ target_sets: 4, rest_seconds: null }],
+    ])).toBe(7);
+  });
+
+  it("is 0 for a routine with no days, and counts an empty day as 0 minutes", () => {
+    expect(sessionMinutes([])).toBe(0);
+    expect(sessionMinutes([[], [{ target_sets: 3, rest_seconds: 60 }]])).toBe(3); // (0 + 5) / 2 = 2.5 → 3
   });
 });

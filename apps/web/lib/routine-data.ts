@@ -24,6 +24,8 @@ function toCards(data: unknown): RoutineCard[] {
     ...row,
     muscle_groups: row.muscle_groups ?? [],
     equipment: row.equipment ?? [],
+    featured: Boolean(row.featured),
+    source: row.source ?? "user",
   }));
 }
 
@@ -94,12 +96,28 @@ export async function getDiscoverRoutines(
     p_sort: filter.sort ?? "newest",
     p_limit: ROUTINE_PAGE_SIZE + 1,
     p_offset: (current - 1) * ROUTINE_PAGE_SIZE,
+    p_style: filter.style ?? null,
+    p_max_minutes: filter.maxMinutes ?? null,
+    p_featured: filter.featured ?? false,
   });
   if (error) {
     throw new Error(`Failed to load Discover: ${error.message}`);
   }
   const rows = toCards(data);
   return { cards: rows.slice(0, ROUTINE_PAGE_SIZE), hasMore: rows.length > ROUTINE_PAGE_SIZE, page: current };
+}
+
+/**
+ * The Featured shelf: admin-marked public routines, newest first. The same
+ * discover_programs() read with its featured filter — no second path, and
+ * nothing ranked by an algorithm.
+ */
+export async function getFeaturedRoutines(limit = 6): Promise<RoutineCard[]> {
+  const live = await liveUser();
+  if (!live) return [];
+  const { data, error } = await live.supabase.rpc("discover_programs", { p_featured: true, p_limit: limit });
+  if (error) throw new Error(`Failed to load featured routines: ${error.message}`);
+  return toCards(data);
 }
 
 export type RoutineDay = {
@@ -119,6 +137,11 @@ export type RoutineDay = {
     target_weight_kg: number | null;
     target_rpe: number | null;
     rest_seconds: number | null;
+    set_type: string;
+    notes: string | null;
+    equipment: string | null;
+    /** False when the library row is gone or unreadable — an orphan prescription. */
+    exercise_known: boolean;
   }[];
 };
 
@@ -148,8 +171,8 @@ export async function getRoutineDetail(programId: string): Promise<RoutineDetail
       .select(`intensity_mode,
         program_days(id, name, week_index, day_index, muscle_groups,
           program_exercises(id, exercise_id, position, circuit, target_sets, target_reps,
-            target_weight_kg, target_rpe, rest_seconds,
-            exercise:exercises(name_en, name_ro)))`)
+            target_weight_kg, target_rpe, rest_seconds, set_type, notes,
+            exercise:exercises(name_en, name_ro, equipment)))`)
       .eq("id", programId)
       .maybeSingle(),
   ]);
@@ -162,8 +185,8 @@ export async function getRoutineDetail(programId: string): Promise<RoutineDetail
   type ExJoin = {
     id: string; exercise_id: string; position: number; circuit: number | null;
     target_sets: number; target_reps: string; target_weight_kg: number | null;
-    target_rpe: number | null; rest_seconds: number | null;
-    exercise: { name_en: string; name_ro: string | null } | null;
+    target_rpe: number | null; rest_seconds: number | null; set_type: string | null; notes: string | null;
+    exercise: { name_en: string; name_ro: string | null; equipment: string | null } | null;
   };
   type DayJoin = {
     id: string; name: string; week_index: number; day_index: number;
@@ -194,13 +217,17 @@ export async function getRoutineDetail(programId: string): Promise<RoutineDetail
           target_weight_kg: e.target_weight_kg,
           target_rpe: e.target_rpe,
           rest_seconds: e.rest_seconds,
+          set_type: e.set_type ?? "normal",
+          notes: e.notes,
+          equipment: e.exercise?.equipment ?? null,
+          exercise_known: e.exercise !== null,
         })),
     }));
 
   return { card, intensity_mode: row.intensity_mode, days };
 }
 
-export type RoutineUsage = { copies: number; users: number; sessions: number; completed: number };
+export type RoutineUsage = { copies: number; users: number; sessions: number; completed: number; saves: number };
 
 /** Aggregate counts only — how much a routine is trained, never by whom. */
 export async function getRoutineUsage(programId: string): Promise<RoutineUsage | null> {

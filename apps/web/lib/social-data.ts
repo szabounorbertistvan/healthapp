@@ -7,13 +7,13 @@ import {
   KUDOS_PAGE_SIZE,
   canSeePost,
   feedPage,
-  estimated1RM,
   type PostPayload,
 } from "@healthapp/shared";
 import { currentActorId } from "./actor";
 import { supabaseServer } from "./supabase/server";
 import { loadOf } from "./training-load";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
+import { prShareOneRm } from "./share-payload";
 import type {
   CommentPage, CommentThread, FeedPage, FeedPost, KudosGiver, KudosPage, MutualFollowers,
   PersonRow, PostComment, ProfileBadge, ShareableSession, SocialPrivacy, SocialProfile,
@@ -357,7 +357,7 @@ export async function getShareableSession(sessionId: string): Promise<ShareableS
     load: load.score,
     prs: sets.filter((x) => x.is_pr).map((x) => ({
       set_id: x.id, exercise: x.exercise, weight_kg: x.weight_kg, reps: x.reps,
-      estimated_1rm: estimated1RM(x.weight_kg, x.reps), shared: sharedPr.has(x.exercise),
+      estimated_1rm: prShareOneRm(x.weight_kg, x.reps), shared: sharedPr.has(x.exercise),
     })),
     already_shared: existing.some((p) => p.type === "workout"),
   };

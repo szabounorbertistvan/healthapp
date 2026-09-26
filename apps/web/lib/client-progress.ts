@@ -49,6 +49,9 @@ export async function getMyMeasurements(limit = 12): Promise<ClientMeasurementRo
       taken_on: m.date,
       weight_kg: m.weight_kg,
       waist_cm: m.circumferences?.waist ?? null,
+      circumferences: Object.fromEntries(
+        Object.entries(m.circumferences ?? {}).filter((e): e is [string, number] => typeof e[1] === "number"),
+      ),
     }))
     .reverse();
 }

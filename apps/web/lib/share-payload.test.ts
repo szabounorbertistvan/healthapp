@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canShareExternally, sharePayloadFromPost, type ShareLabels } from "./share-payload";
+import { canShareExternally, prShareOneRm, sharePayloadFromPost, type ShareLabels } from "./share-payload";
 import type { PostPayload } from "@healthapp/shared";
 
 const LABELS: ShareLabels = {
@@ -111,5 +111,25 @@ describe("canShareExternally", () => {
       visibility: "public",
       payload: { kind: "progress", weight_kg: 80, photo_path: null },
     })).toBe(false);
+  });
+});
+
+describe("prShareOneRm", () => {
+  it("is the exercise page's estimate (relevantOneRm), rounded to the one decimal a card shows", () => {
+    // 72.5 × 5 → 84.583… → 84.6, the same figure /exercises and /progress show.
+    expect(prShareOneRm(72.5, 5)).toBe(84.6);
+  });
+
+  it("takes a single rep at face value", () => {
+    expect(prShareOneRm(140, 1)).toBe(140);
+  });
+
+  it("has no estimate past 12 reps — 0, which the card already leaves out", () => {
+    // The old rule claimed 60 × 20 = 100 kg.
+    expect(prShareOneRm(60, 20)).toBe(0);
+  });
+
+  it("has no estimate for a bodyweight set", () => {
+    expect(prShareOneRm(0, 10)).toBe(0);
   });
 });
