@@ -1,5 +1,5 @@
 import type {
-  AdherenceResult, ChallengeStatus, ChallengeType, LoadTrend, Macros, PostPayload, PostType,
+  AdherenceResult, ChallengeCategory, ChallengeDifficulty, ChallengeStatus, ChallengeType, ChallengeUnit, LoadTrend, Macros, PostPayload, PostType,
   PostVisibility, TrainingLoad,
 } from "@healthapp/shared";
 import type { ExerciseVideoSource, LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
@@ -315,30 +315,42 @@ export type ChallengeCard = {
   title: string;
   description: string | null;
   type: ChallengeType;
+  /** What the number counts — derived from the type. */
+  unit: ChallengeUnit;
+  category: ChallengeCategory;
+  difficulty: ChallengeDifficulty | null;
+  /** The lift an exercise / strength challenge is about, in the reader's language. */
+  exercise_name: string | null;
   target: number;
   start_date: string;
   end_date: string;
   visibility: "public" | "private";
   participants: number;
   joined: boolean;
-  /** Persisted the first time the target was reached; null until then. */
+  /** Stamped by the database the first time the target was reached; null until then. */
   completed_at: string | null;
-  /** Progress in the challenge unit (count / points / kg / days); 0 when not joined. */
+  /** Progress in the challenge unit, exact, computed in SQL; 0 when not joined. */
   progress: number;
+  /** progress / target × 100, exact and unclamped; 0 when not joined. */
   pct: number;
+  /** 25 / 50 / 75 / 100 steps the database has stamped. */
+  milestones: number[];
   status: ChallengeStatus;
   days_remaining: number;
   can_join: boolean;
   /** True when the viewer created it — only then is deleting offered. */
   mine: boolean;
+  /** creator_id null: a Voinic challenge nobody can edit. */
+  is_platform: boolean;
 };
 
+/** A board row: rank (ties share it), username and total — never an id. */
 export type LeaderboardRow = {
   rank: number;
-  user_id: string;
   name: string;
   value: number;
   me: boolean;
+  completed: boolean;
 };
 
 export type ChallengeDetail = ChallengeCard & {

@@ -1,5 +1,5 @@
--- pgTAP · challenges: who sees what, who may join, and that the progress RPC
--- hands out rollups only for challenges the caller can see.
+-- pgTAP · challenges: who sees what, who may join, and that progress and the
+-- board are only readable for challenges the caller can see.
 --
 -- Run with a local stack up:  npm run db:test
 
@@ -93,21 +93,22 @@ select is(
   (select count(*)::int from public.challenge_participants where user_id = '33333333-3333-3333-3333-333333333333'),
   0, 'a client leaves a challenge by deleting their own row');
 
--- ---------- progress RPC ----------
+-- ---------- progress ----------
+-- Progress is computed in SQL (challenge_value via challenge_cards /
+-- challenge_leaderboard, 20261001100000); the per-session rollup RPC that
+-- used to hand every participant's sessions to the browser is closed.
 select pg_temp.authenticate_as('22222222-2222-2222-2222-222222222222');
 select is(
-  (select count(*)::int from public.challenge_progress_rows('c0000000-0000-0000-0000-000000000001')
-   where kind = 'session'),
-  1, 'the RPC returns the participant''s own session rollup');
+  (select value from public.challenge_cards('c0000000-0000-0000-0000-000000000001')),
+  1::numeric, 'a participant reads their own progress: one completed session in the window');
 select is(
-  (select volume_kg from public.challenge_progress_rows('c0000000-0000-0000-0000-000000000001')
-   where kind = 'session'),
-  640::numeric, 'the rollup carries volume (80 kg × 8)');
+  (select count(*)::int from public.challenge_leaderboard('c0000000-0000-0000-0000-000000000001')),
+  1, 'and the board of their own private challenge');
 
 select pg_temp.authenticate_as('33333333-3333-3333-3333-333333333333');
 select is(
-  (select count(*)::int from public.challenge_progress_rows('c0000000-0000-0000-0000-000000000001')),
-  0, 'the RPC returns nothing for a challenge the caller cannot see');
+  (select count(*)::int from public.challenge_leaderboard('c0000000-0000-0000-0000-000000000001')),
+  0, 'the board is empty for a challenge the caller cannot see');
 
 select * from finish();
 rollback;

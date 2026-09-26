@@ -54,6 +54,10 @@ export function notificationHref(category: string, payload: Record<string, unkno
     const profile = id(payload, "profile_id");
     return profile ? `/people/${profile}#achievements` : null;
   }
+  if (category === "challenge_milestone") {
+    const challenge = id(payload, "challenge_id");
+    return challenge ? `/challenges/${challenge}` : null;
+  }
 
   const screen = typeof payload?.screen === "string" ? payload.screen : null;
   return (screen && SCREEN_HREF[screen]) || null;
@@ -67,7 +71,9 @@ export type NotificationSentence =
   | "comment_reply"
   | "new_mention"
   | "new_mention_post"
-  | "badge_earned";
+  | "badge_earned"
+  | "challenge_milestone"
+  | "challenge_completed";
 
 /**
  * Which sentence a row reads as. A mention in a caption and a mention in a
@@ -83,9 +89,27 @@ export function notificationSentence(category: string, payload: Record<string, u
       return category;
     case "new_mention":
       return id(payload, "comment_id") ? "new_mention" : "new_mention_post";
+    // challenge_sync() writes one row per challenge per read: the highest step
+    // newly reached, and 100 when the challenge was just completed.
+    case "challenge_milestone":
+      return payload?.milestone === 100 ? "challenge_completed" : "challenge_milestone";
     default:
       return null;
   }
+}
+
+/**
+ * The step and the challenge's titles a challenge_milestone row carries, or
+ * null for anything that is not one of the four steps.
+ */
+export function challengeNotice(
+  payload: Record<string, unknown> | null,
+): { milestone: 25 | 50 | 75 | 100; en: string; ro: string } | null {
+  const m = payload?.milestone;
+  if (m !== 25 && m !== 50 && m !== 75 && m !== 100) return null;
+  const en = typeof payload?.title_en === "string" ? payload.title_en : "";
+  const ro = typeof payload?.title_ro === "string" ? payload.title_ro : en;
+  return { milestone: m, en, ro };
 }
 
 /** The person a notification is about, for the avatar. Null for engine rows. */

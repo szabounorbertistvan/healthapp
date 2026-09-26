@@ -27,6 +27,10 @@ export function useNotificationHeadline() {
       const name = n.badge ? (locale === "ro" ? n.badge.ro : n.badge.en) : n.body ?? "";
       return fill(s.notified.badge_earned, { name });
     }
+    if ((n.sentence === "challenge_milestone" || n.sentence === "challenge_completed") && n.challenge) {
+      const name = locale === "ro" ? n.challenge.ro : n.challenge.en;
+      return fill(s.notified[n.sentence], { name, pct: n.challenge.milestone });
+    }
     if (n.sentence && n.actor) return fill(s.notified[n.sentence], { name: n.actor.name });
     return n.title;
   };

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { ChallengeStatus } from "@healthapp/shared";
+import { CHALLENGE_MILESTONES, type ChallengeStatus } from "@healthapp/shared";
 import { deleteChallenge, joinChallenge, leaveChallenge } from "@/app/challenge-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -21,6 +21,11 @@ const TYPE_ICON: Record<ChallengeCardRow["type"], string> = {
   training_load: "M4 18a8 8 0 1 1 16 0M12 18l4-5",
   volume: "M4 19h16M7 19V9M12 19V5M17 19v-6",
   active_days: "M8 3v3M16 3v3M5 6h14v14H5zM4 10h16M9 15l2 2 4-4",
+  exercise_sessions: "M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11",
+  strength_gain: "M4 17l5-5 3 3 7-7M15 8h5v5",
+  check_ins: "M9 4h6v3H9zM6 5h12v16H6zM9 13l2 2 4-4",
+  nutrition_days: "M7 3v7a2 2 0 0 0 4 0V3M9 10v11M16 3c-1.5 2-2 4-2 7h4c0-3-.5-5-2-7zM16 10v11",
+  habit_completions: "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M8 12l3 3 5-6",
 };
 
 const STATUS_TONE: Record<ChallengeStatus, string> = {
@@ -42,10 +47,13 @@ export function ChallengeStatusBadge({ status }: { status: ChallengeStatus }) {
 /** "318 / 500" in the challenge's unit, locale-formatted. */
 export function useChallengeFormat() {
   const { t, locale } = useI18n();
-  const nf = new Intl.NumberFormat(locale === "ro" ? "ro-RO" : "en-GB");
+  // Progress arrives exact from the database (21.25 kg stays 21.25): one
+  // decimal is where the page rounds, never before.
+  const nf = new Intl.NumberFormat(locale === "ro" ? "ro-RO" : "en-GB", { maximumFractionDigits: 1 });
   const df = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "short" });
   return {
     n: (v: number) => nf.format(v),
+    pct: (v: number) => `${nf.format(v)}%`,
     date: (day: string) => df.format(parseDay(day)),
     unit: (type: ChallengeCardRow["type"]) => t.common.challenges.unit[type],
   };
@@ -75,9 +83,40 @@ export function deadlineText(c: ChallengeCardRow, t: ReturnType<typeof useI18n>[
   return c.days_remaining === 1 ? ch.oneDayRemaining : fill(ch.daysRemaining, { days: c.days_remaining });
 }
 
+/** "Workouts · Squat · Hard" — what the challenge counts, and how hard. */
+export function challengeSubtitle(c: ChallengeCardRow, ch: ReturnType<typeof useI18n>["t"]["common"]["challenges"]): string {
+  return [ch.type[c.type], c.exercise_name, c.difficulty ? ch.difficulty[c.difficulty] : null].filter(Boolean).join(" · ");
+}
+
+/** The four steps, filled as the database stamped them. */
+export function ChallengeMilestones({ reached }: { reached: number[] }) {
+  const { t } = useI18n();
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.challenges.milestones}</p>
+      <ol className="mt-1.5 flex gap-1.5">
+        {CHALLENGE_MILESTONES.map((m) => {
+          const done = reached.includes(m);
+          return (
+            <li
+              key={m}
+              aria-label={`${m}%${done ? " ✓" : ""}`}
+              className={`flex h-8 flex-1 items-center justify-center rounded-xl text-[12px] font-bold tabular-nums ${
+                done ? "bg-accent text-accent-fg" : "bg-bg text-ink-faint"
+              }`}
+            >
+              {m}%
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
 export function ChallengeCard({ challenge: c }: { challenge: ChallengeCardRow }) {
   const { t } = useI18n();
-  const { n, date, unit } = useChallengeFormat();
+  const { n, pct, date, unit } = useChallengeFormat();
   const ch = t.common.challenges;
   const completed = c.status === "completed";
   return (
@@ -88,11 +127,14 @@ export function ChallengeCard({ challenge: c }: { challenge: ChallengeCardRow })
             <NavIcon d={TYPE_ICON[c.type]} className="h-11 w-11 shrink-0 text-accent-ink" />
             <div className="min-w-0">
               <h3 className="truncate font-display text-lg font-bold tracking-tight">{c.title}</h3>
-              <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.type[c.type]}</p>
+              <p className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{challengeSubtitle(c, ch)}</p>
             </div>
           </div>
           <ChallengeStatusBadge status={c.status} />
         </div>
+        {c.is_platform ? (
+          <p className="mt-2 inline-flex w-fit rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-accent-ink">{ch.platform}</p>
+        ) : null}
         {c.description ? <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{c.description}</p> : null}
         <div className="mt-3.5">
           <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
@@ -108,7 +150,7 @@ export function ChallengeCard({ challenge: c }: { challenge: ChallengeCardRow })
                 </span>
               )}
             </span>
-            {c.joined ? <span className="font-semibold tabular-nums text-ink-soft">{c.pct}%</span> : null}
+            {c.joined ? <span className="font-semibold tabular-nums text-ink-soft">{pct(c.pct)}</span> : null}
           </div>
           <div className="mt-1.5">
             <ChallengeProgressBar pct={c.joined ? c.pct : 0} completed={completed} />
@@ -211,7 +253,12 @@ export function JoinLeaveButton({ challenge: c }: { challenge: ChallengeCardRow 
   );
 }
 
-export function Leaderboard({ rows, type }: { rows: LeaderboardRow[]; type: ChallengeCardRow["type"] }) {
+/**
+ * The board: the top of it plus the reader's own row, ranked by the database
+ * (ties share a rank). `total` is the participant count — the rows are a
+ * window onto the board, not all of it.
+ */
+export function Leaderboard({ rows, type, total }: { rows: LeaderboardRow[]; type: ChallengeCardRow["type"]; total: number }) {
   const { t } = useI18n();
   const { n, unit } = useChallengeFormat();
   const ch = t.common.challenges;
@@ -221,13 +268,13 @@ export function Leaderboard({ rows, type }: { rows: LeaderboardRow[]; type: Chal
       <div className="flex items-baseline justify-between gap-3 px-5 pb-3 pt-[18px]">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.leaderboard}</p>
         {mine ? (
-          <p className="text-[12.5px] tabular-nums text-ink-soft">{fill(ch.yourRank, { rank: mine.rank, total: rows.length })}</p>
+          <p className="text-[12.5px] tabular-nums text-ink-soft">{fill(ch.yourRank, { rank: mine.rank, total })}</p>
         ) : null}
       </div>
       <ol className="divide-y divide-line/60 border-t border-line/60">
         {rows.map((r) => (
           <li
-            key={r.user_id}
+            key={`${r.rank}-${r.name}`}
             className={`flex min-h-12 items-center gap-3 px-5 py-3 text-[14px] ${r.me ? "bg-accent-soft" : ""}`}
           >
             <span className={`w-7 shrink-0 tabular-nums ${r.rank <= 3 ? "font-bold text-accent-ink" : "text-ink-faint"}`}>

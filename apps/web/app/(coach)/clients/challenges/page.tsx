@@ -16,7 +16,7 @@ export default async function CoachChallengesPage() {
   const { t, locale } = await getI18n();
   const ch = t.common.challenges;
   const rows = await getCoachChallenges();
-  const nf = new Intl.NumberFormat(locale === "ro" ? "ro-RO" : "en-GB");
+  const nf = new Intl.NumberFormat(locale === "ro" ? "ro-RO" : "en-GB", { maximumFractionDigits: 1 });
 
   return (
     // A list of cards: as many columns as fit, never a card under 380px.
@@ -65,7 +65,7 @@ export default async function CoachChallengesPage() {
                           </span>
                           <span className="shrink-0 text-[12.5px] tabular-nums text-ink-faint">
                             <b className="font-display text-[15px] font-extrabold text-ink">{nf.format(cl.progress)}</b> /{" "}
-                            {nf.format(c.target)} · {cl.pct}%
+                            {nf.format(c.target)} · {nf.format(cl.pct)}%
                           </span>
                         </div>
                         <div className="mt-2">

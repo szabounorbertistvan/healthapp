@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { notificationActorId, notificationHref, notificationSentence, parseNotificationCursor } from "./notification-href";
+import { challengeNotice, notificationActorId, notificationHref, notificationSentence, parseNotificationCursor } from "./notification-href";
 
 const POST = "11111111-1111-4111-8111-111111111111";
 const COMMENT = "22222222-2222-4222-8222-222222222222";
@@ -77,5 +77,25 @@ describe("parseNotificationCursor", () => {
     expect(parseNotificationCursor(`2026-09-23T17:00:00Z|${POST}),user_id.neq.x`)).toBeNull();
     expect(parseNotificationCursor(`2026-09-23T17:00:00Z,id.gt.0|${POST}`)).toBeNull();
     expect(parseNotificationCursor(`2026-09-23T17:00:00Z|not-a-uuid`)).toBeNull();
+  });
+});
+
+describe("challenge notifications", () => {
+  const challenge = "c5000000-0000-0000-0000-000000000001";
+
+  it("link to the challenge", () => {
+    expect(notificationHref("challenge_milestone", { challenge_id: challenge, milestone: 50 })).toBe(`/challenges/${challenge}`);
+    expect(notificationHref("challenge_milestone", { challenge_id: "../admin", milestone: 50 })).toBeNull();
+  });
+
+  it("read as a milestone, or as completion at 100 %", () => {
+    expect(notificationSentence("challenge_milestone", { milestone: 50 })).toBe("challenge_milestone");
+    expect(notificationSentence("challenge_milestone", { milestone: 100 })).toBe("challenge_completed");
+  });
+
+  it("carry the step and both titles, and nothing that is not one of the four steps", () => {
+    expect(challengeNotice({ milestone: 75, title_en: "Volume", title_ro: "Volum" })).toEqual({ milestone: 75, en: "Volume", ro: "Volum" });
+    expect(challengeNotice({ milestone: 60, title_en: "Volume" })).toBeNull();
+    expect(challengeNotice(null)).toBeNull();
   });
 });

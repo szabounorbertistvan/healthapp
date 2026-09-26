@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CHALLENGE_TYPES } from "@healthapp/shared";
+import { CHALLENGE_DIFFICULTIES, CHALLENGE_TYPES, isChallengeType, requiresExercise } from "@healthapp/shared";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
@@ -23,7 +23,10 @@ function defaultWindow() {
  * Start your own challenge. Collapsed by default: the page is a list of
  * challenges to join, and a permanently open form would push them below it.
  */
-export function ChallengeCreate() {
+export function ChallengeCreate({ exercises }: {
+  /** Lifts the person has logged with load — what an exercise / strength challenge can be about. */
+  exercises: { id: string; name: string }[];
+}) {
   const { t } = useI18n();
   const ch = t.common.challenges;
   const router = useRouter();
@@ -39,7 +42,10 @@ export function ChallengeCreate() {
     startDate: window0.start,
     endDate: window0.end,
     visibility: "public" as "public" | "private",
+    difficulty: "" as string,
+    exerciseId: "" as string,
   });
+  const needsExercise = isChallengeType(form.type) && requiresExercise(form.type);
 
   function submit() {
     setError(null);
@@ -47,6 +53,8 @@ export function ChallengeCreate() {
       const result = await createChallenge({
         ...form,
         targetValue: Number(form.targetValue),
+        difficulty: form.difficulty || null,
+        exerciseId: needsExercise ? form.exerciseId || null : null,
       });
       if (!result.ok) {
         setError(result.message ?? ch.unknownType);
@@ -110,6 +118,25 @@ export function ChallengeCreate() {
             ))}
           </select>
         </label>
+        {needsExercise ? (
+          <label className="block text-[13px] font-semibold text-ink-soft sm:col-span-2">
+            {ch.exerciseLabel}
+            {exercises.length === 0 ? (
+              <p className="mt-1.5 text-[12.5px] font-normal text-ink-faint">{ch.noLoggedExercises}</p>
+            ) : (
+              <select
+                className={FIELD}
+                value={form.exerciseId}
+                onChange={(e) => setForm({ ...form, exerciseId: e.target.value })}
+              >
+                <option value="">{ch.exercisePick}</option>
+                {exercises.map((x) => (
+                  <option key={x.id} value={x.id}>{x.name}</option>
+                ))}
+              </select>
+            )}
+          </label>
+        ) : null}
         <label className="block text-[13px] font-semibold text-ink-soft">
           {ch.targetLabel} <span className="text-ink-faint">({ch.unit[form.type as keyof typeof ch.unit]})</span>
           <input
@@ -138,6 +165,24 @@ export function ChallengeCreate() {
           />
         </label>
       </div>
+
+      <p className="mt-2 text-[12px] text-ink-faint">
+        {isChallengeType(form.type) ? ch.typeHint[form.type] : null}
+      </p>
+
+      <label className="mt-3.5 block text-[13px] font-semibold text-ink-soft">
+        {ch.difficultyLabel}
+        <select
+          className={FIELD}
+          value={form.difficulty}
+          onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
+        >
+          <option value="">—</option>
+          {CHALLENGE_DIFFICULTIES.map((d) => (
+            <option key={d} value={d}>{ch.difficulty[d]}</option>
+          ))}
+        </select>
+      </label>
 
       <label className="mt-3.5 block text-[13px] font-semibold text-ink-soft">
         {ch.visibilityLabel}

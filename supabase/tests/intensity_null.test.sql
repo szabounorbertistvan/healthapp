@@ -104,6 +104,10 @@ select is(public.effective_rpe(null, 10), 1::numeric, 'effective_rpe: RIR 10 cla
 -- Rows as the app reads them, with the load challenges-data.ts computes from
 -- them (trainingLoadFromStats ≡ training_load_score).
 select pg_temp.authenticate_as('6d000000-0000-0000-0000-000000000001');
+-- challenge_progress_rows() is closed to `authenticated` since 20261001100000
+-- (progress moved to challenge_value); the rollup's math is still what these
+-- assertions pin, so it is read as the owner role with the member's claims.
+reset role;
 create temp table rows_now as
 select r.*, public.training_load_score(r.volume_kg::double precision, r.sets, r.duration_min,
                                        r.mean_rpe::double precision, r.exercises) as load

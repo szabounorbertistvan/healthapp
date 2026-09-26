@@ -1,184 +1,21 @@
-// Server-side reads for challenges. Same contract as client-data.ts: everything
-// goes through Supabase under RLS. All progress is derived — challengeProgress() over session rollups and active
-// days — never read from a column, so nothing a client types can move it.
-import { isoDay } from "./dates";
+// Server-side reads for challenges.
+//
+// Progress, completion, milestones and ranks are computed in the database
+// (20261001100000_advanced_challenges): challenge_cards() folds the caller's
+// logged rows for every challenge they can see — and stamps milestones and
+// completion once, server-side — challenge_leaderboard() ranks participants,
+// coach_challenge_progress() gives a coach their clients' standing. This file
+// only maps rows (lib/challenge-map) and sorts; nothing a client sends is ever
+// read as progress.
 import "server-only";
-import {
-  canJoin,
-  challengeProgress,
-  challengeStatus,
-  daysRemaining,
-  isChallengeComplete,
-  isChallengeType,
-  progressPct,
-  rankParticipants,
-  trainingLoadFromStats,
-  type ChallengeActivity,
-  type ChallengeType,
-} from "@healthapp/shared";
-import { liveUser, supabaseServer } from "./supabase/server";
 import { getI18n } from "./i18n/server";
-import { getProfile, getRoster } from "./data";
-import { loadOf } from "./training-load";
-import type { ChallengeCard, ChallengeDetail, CoachChallengeRow, LeaderboardRow } from "./types";
+import { getProfile } from "./data";
+import { liveUser, supabaseServer } from "./supabase/server";
+import { toChallengeCard, toLeaderboard, type ChallengeCardRow, type LeaderboardDbRow } from "./challenge-map";
+import type { ChallengeCard, ChallengeDetail, CoachChallengeRow } from "./types";
 
-type Row = {
-  id: string;
-  title_en: string;
-  title_ro: string;
-  description_en: string | null;
-  description_ro: string | null;
-  type: string;
-  target_value: number | string;
-  start_date: string;
-  end_date: string;
-  visibility: "public" | "private";
-  /** null for the platform-seeded challenges. */
-  creator_id?: string | null;
-};
-
-/** Everything one person's standing in a challenge is built from. */
-type Standing = { joined: boolean; completed_at: string | null; participants: number; activity: ChallengeActivity };
-
-async function toCard(
-  row: Row,
-  standing: Standing,
-  today: string,
-  viewerId?: string,
-): Promise<ChallengeCard | null> {
-  if (!isChallengeType(row.type)) return null;
-  const { locale } = await getI18n();
-  const target = Number(row.target_value);
-  const window = { start_date: row.start_date, end_date: row.end_date };
-  const progress = standing.joined ? challengeProgress(row.type, standing.activity, window) : 0;
-  const completed = standing.completed_at !== null || (standing.joined && isChallengeComplete(progress, target));
-  return {
-    id: row.id,
-    title: locale === "ro" ? row.title_ro : row.title_en,
-    description: locale === "ro" ? row.description_ro : row.description_en,
-    type: row.type,
-    target,
-    start_date: row.start_date,
-    end_date: row.end_date,
-    visibility: row.visibility,
-    participants: standing.participants,
-    joined: standing.joined,
-    completed_at: standing.completed_at,
-    progress,
-    pct: progressPct(progress, target),
-    status: challengeStatus(window, today, completed),
-    days_remaining: daysRemaining(row.end_date, today),
-    can_join: !standing.joined && canJoin(window, today),
-    mine: Boolean(viewerId && row.creator_id === viewerId),
-  };
-}
-
-// ---------- live ----------
-
-type ProgressRow = {
-  user_id: string;
-  full_name: string | null;
-  username: string | null;
-  kind: "session" | "day";
-  day: string;
-  sets: number | null;
-  volume_kg: number | string | null;
-  duration_min: number | null;
-  mean_rpe: number | string | null;
-  exercises: number | null;
-};
-
-/** Fold the RPC's rollups into one ChallengeActivity per participant. */
-function activitiesFrom(rows: ProgressRow[]): Map<string, { name: string; activity: ChallengeActivity }> {
-  const out = new Map<string, { name: string; activity: ChallengeActivity }>();
-  for (const r of rows) {
-    let entry = out.get(r.user_id);
-    if (!entry) {
-      entry = { name: r.username ?? r.full_name ?? "—", activity: { sessions: [], active_days: [] } };
-      out.set(r.user_id, entry);
-    }
-    if (r.kind === "day") {
-      entry.activity.active_days.push(r.day);
-      continue;
-    }
-    const load = trainingLoadFromStats({
-      volume_kg: Number(r.volume_kg ?? 0),
-      sets: r.sets ?? 0,
-      duration_min: r.duration_min,
-      intensity: r.mean_rpe === null ? null : Number(r.mean_rpe),
-      exercises: r.exercises,
-    });
-    entry.activity.sessions.push({ day: r.day, load: load.score, volume_kg: load.volume_kg });
-  }
-  return out;
-}
-
-async function livePersistCompletion(
-  supabase: Awaited<ReturnType<typeof supabaseServer>>,
-  challengeId: string,
-  userId: string,
-  card: ChallengeCard,
-) {
-  if (card.completed_at !== null || !card.joined || !isChallengeComplete(card.progress, card.target)) return;
-  const stamp = new Date().toISOString();
-  const { error } = await supabase
-    .from("challenge_participants")
-    .update({ completed_at: stamp })
-    .eq("challenge_id", challengeId)
-    .eq("user_id", userId)
-    .is("completed_at", null);
-  if (!error) card.completed_at = stamp;
-}
-
-// ---------- public API ----------
-
-/** Every challenge the person can see, with their own standing. Newest deadline first. */
-export async function getMyChallenges(): Promise<ChallengeCard[]> {
-  const today = isoDay();
-  const live = await liveUser();
-  if (!live) return [];
-  const { supabase, userId } = live;
-  const [{ data: rows }, { data: parts }] = await Promise.all([
-    supabase.from("challenges").select("*").order("end_date", { ascending: false }),
-    supabase.from("challenge_participants").select("challenge_id, user_id, completed_at"),
-  ]);
-  type Part = { challenge_id: string; user_id: string; completed_at: string | null };
-  const partRows = (parts ?? []) as Part[];
-  const EMPTY: ChallengeActivity = { sessions: [], active_days: [] };
-
-  // One progress RPC per joined challenge, but issued together rather than one
-  // after the other: someone in six challenges was paying six sequential round
-  // trips before a single card could render.
-  const entries = ((rows ?? []) as Row[]).map((row) => {
-    const members = partRows.filter((p) => p.challenge_id === row.id);
-    return { row, members, mine: members.find((p) => p.user_id === userId) ?? null };
-  });
-  const activities = await Promise.all(
-    entries.map(async ({ row, mine }) => {
-      if (!mine) return EMPTY;
-      const { data } = await supabase.rpc("challenge_progress_rows", { p_challenge: row.id });
-      return activitiesFrom((data ?? []) as ProgressRow[]).get(userId)?.activity ?? EMPTY;
-    }),
-  );
-
-  const built = await Promise.all(
-    entries.map(({ row, members, mine }, i) =>
-      toCard(
-        row,
-        { joined: mine !== null, completed_at: mine?.completed_at ?? null, participants: members.length, activity: activities[i] },
-        today,
-        userId,
-      ),
-    ),
-  );
-
-  const cards = built.filter((c): c is ChallengeCard => c !== null);
-  // Awarding a completion is a write, but each one touches a different row, so
-  // they go out together too. livePersistCompletion is a no-op for a card that
-  // is not newly complete, which is the overwhelming majority of them.
-  await Promise.all(cards.map((card) => livePersistCompletion(supabase, card.id, userId, card)));
-  return sortCards(cards);
-}
+/** How many rows a detail page's board shows — the caller's own row is always added. */
+const BOARD_SIZE = 20;
 
 /** Active first, then upcoming, then finished; nearest deadline first within a group. */
 function sortCards(cards: ChallengeCard[]): ChallengeCard[] {
@@ -186,104 +23,74 @@ function sortCards(cards: ChallengeCard[]): ChallengeCard[] {
   return [...cards].sort((a, b) => order[a.status] - order[b.status] || a.end_date.localeCompare(b.end_date));
 }
 
-/** One challenge with the leaderboard — null for a private single-person challenge. */
-export async function getChallenge(id: string): Promise<ChallengeDetail | null> {
-  const today = isoDay();
+async function cards(p_challenge: string | null): Promise<ChallengeCard[]> {
   const live = await liveUser();
-  if (!live) return null;
-  const { supabase, userId } = live;
-  const { data: row } = await supabase.from("challenges").select("*").eq("id", id).maybeSingle();
-  if (!row || !isChallengeType((row as Row).type)) return null;
-  const r = row as Row;
-  const [{ data: parts }, { data: progress }] = await Promise.all([
-    supabase.from("challenge_participants").select("user_id, completed_at").eq("challenge_id", id),
-    supabase.rpc("challenge_progress_rows", { p_challenge: id }),
+  if (!live) return [];
+  const [{ locale }, { data, error }] = await Promise.all([
+    getI18n(),
+    live.supabase.rpc("challenge_cards", { p_challenge }),
   ]);
-  type Part = { user_id: string; completed_at: string | null };
-  const members = (parts ?? []) as Part[];
-  const mine = members.find((p) => p.user_id === userId) ?? null;
-  const activities = activitiesFrom((progress ?? []) as ProgressRow[]);
-  const card = await toCard(
-    r,
-    {
-      joined: mine !== null,
-      completed_at: mine?.completed_at ?? null,
-      participants: members.length,
-      activity: activities.get(userId)?.activity ?? { sessions: [], active_days: [] },
-    },
-    today,
-    userId,
-  );
-  if (!card) return null;
-  await livePersistCompletion(supabase, id, userId, card);
-  const entries = members.map((p) => {
-    const a = activities.get(p.user_id);
-    return {
-      user_id: p.user_id,
-      name: a?.name ?? "—",
-      me: p.user_id === userId,
-      value: a ? challengeProgress(r.type as ChallengeType, a.activity, r) : 0,
-    };
-  });
-  return { ...card, leaderboard: leaderboardOf(r.visibility, entries) };
+  // An empty list is a legitimate answer; a failed read must not look like one.
+  if (error) throw new Error(`Failed to load challenges: ${error.message}`);
+  return ((data ?? []) as ChallengeCardRow[])
+    .map((r) => toChallengeCard(r, locale))
+    .filter((c): c is ChallengeCard => c !== null);
 }
 
-function leaderboardOf(
-  visibility: "public" | "private",
-  entries: { user_id: string; name: string; me: boolean; value: number }[],
-): LeaderboardRow[] | null {
-  if (entries.length === 0) return null;
-  if (visibility === "private" && entries.length === 1) return null;
-  return rankParticipants(entries);
+/** Every challenge the person can see, with their own standing. One round trip. */
+export async function getMyChallenges(): Promise<ChallengeCard[]> {
+  return sortCards(await cards(null));
+}
+
+/** One challenge with its board — the board is null for a private single-person challenge. */
+export async function getChallenge(id: string): Promise<ChallengeDetail | null> {
+  const live = await liveUser();
+  if (!live) return null;
+  const [list, { data: board, error }] = await Promise.all([
+    cards(id),
+    live.supabase.rpc("challenge_leaderboard", { p_challenge: id, p_limit: BOARD_SIZE }),
+  ]);
+  const card = list[0];
+  if (!card) return null;
+  if (error) throw new Error(`Failed to load the leaderboard for ${id}: ${error.message}`);
+  return { ...card, leaderboard: toLeaderboard((board ?? []) as LeaderboardDbRow[], card.visibility) };
 }
 
 /**
  * The coach's view: every challenge one of their active clients has joined,
- * with each client's progress. Live, RLS shows the coach exactly those
- * participant rows and the RPC scores them; nothing extra to filter.
+ * with each client's progress — two round trips in total, never one per
+ * challenge.
  */
 export async function getCoachChallenges(): Promise<CoachChallengeRow[]> {
-  const today = isoDay();
   const profile = await getProfile();
   if (!profile || (profile.role !== "coach" && profile.role !== "admin")) return [];
   const supabase = await supabaseServer();
-  // RLS also shows the coach every participant of a public challenge, so the
-  // rows are narrowed to the active roster here.
-  const roster = new Set((await getRoster()).map((c) => c.id));
-  if (roster.size === 0) return [];
-  const { data: parts } = await supabase
-    .from("challenge_participants")
-    .select("challenge_id, user_id, completed_at")
-    .in("user_id", [...roster]);
-  type Part = { challenge_id: string; user_id: string; completed_at: string | null };
-  const partRows = (parts ?? []) as Part[];
-  const ids = [...new Set(partRows.map((p) => p.challenge_id))];
-  if (ids.length === 0) return [];
-  const { data: rows } = await supabase.from("challenges").select("*").in("id", ids);
+  const [{ data: progress, error }, all] = await Promise.all([
+    supabase.rpc("coach_challenge_progress"),
+    cards(null),
+  ]);
+  if (error) throw new Error(`Failed to load clients' challenges: ${error.message}`);
+  type Row = { challenge_id: string; client_id: string; username: string; value: number | string; completed: boolean };
+  const byChallenge = new Map<string, Row[]>();
+  for (const r of (progress ?? []) as Row[]) {
+    const list = byChallenge.get(r.challenge_id) ?? [];
+    list.push(r);
+    byChallenge.set(r.challenge_id, list);
+  }
   const out: CoachChallengeRow[] = [];
-  for (const row of (rows ?? []) as Row[]) {
-    if (!isChallengeType(row.type)) continue;
-    const members = partRows.filter((p) => p.challenge_id === row.id);
-    const { data: progress } = await supabase.rpc("challenge_progress_rows", { p_challenge: row.id });
-    const activities = activitiesFrom((progress ?? []) as ProgressRow[]);
-    const card = await toCard(
-      row,
-      { joined: false, completed_at: null, participants: members.length, activity: { sessions: [], active_days: [] } },
-      today,
-    );
-    if (!card) continue;
-    const target = Number(row.target_value);
+  for (const card of all) {
+    const clients = byChallenge.get(card.id);
+    if (!clients) continue;
     out.push({
       challenge: card,
-      clients: members.map((p) => {
-        const a = activities.get(p.user_id);
-        const value = a ? challengeProgress(row.type as ChallengeType, a.activity, row) : 0;
+      clients: clients.map((c) => {
+        const value = Number(c.value);
         return {
-          client_id: p.user_id,
-          name: a?.name ?? "—",
+          client_id: c.client_id,
+          name: c.username,
           progress: value,
-          pct: progressPct(value, target),
-          completed: p.completed_at !== null || isChallengeComplete(value, target),
+          pct: card.target > 0 ? (value * 100) / card.target : 0,
+          completed: c.completed,
         };
       }),
     });

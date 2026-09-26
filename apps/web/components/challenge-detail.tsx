@@ -10,7 +10,7 @@ const CHECK = "m5 12 5 5 9-10";
 /** "318 / 500 points · 64%" — the big numbers on the detail page. */
 export function ChallengeNumbers({ challenge: c }: { challenge: ChallengeCard }) {
   const { t } = useI18n();
-  const { n, unit } = useChallengeFormat();
+  const { n, pct, unit } = useChallengeFormat();
   const ch = t.common.challenges;
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
@@ -22,7 +22,7 @@ export function ChallengeNumbers({ challenge: c }: { challenge: ChallengeCard })
       </p>
       <p className="text-right">
         <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.progress}</span>
-        <b className="font-display text-xl font-extrabold tabular-nums leading-none">{c.joined ? c.pct : 0}%</b>
+        <b className="font-display text-xl font-extrabold tabular-nums leading-none">{pct(c.joined ? c.pct : 0)}</b>
       </p>
     </div>
   );

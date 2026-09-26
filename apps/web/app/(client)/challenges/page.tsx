@@ -1,18 +1,39 @@
 import { getMyChallenges } from "@/lib/challenges-data";
+import { getMyPrs } from "@/lib/client-data";
 import { EmptyState } from "@/components/ui";
 import { ChallengeCard } from "@/components/challenges";
 import { ChallengeCreate } from "@/components/challenge-create";
+import { ChallengeFilters } from "@/components/challenge-filters";
 import { getI18n } from "@/lib/i18n/server";
-import type { ChallengeStatus } from "@healthapp/shared";
+import { matchesChallengeFilter, normalizeChallengeFilter, type ChallengeStatus } from "@healthapp/shared";
 
 /**
  * Every challenge the client can see, grouped by where it stands for them.
- * Progress on each card is derived at read time — see lib/challenges-data.ts.
+ * Progress on each card comes from the database (challenge_cards), and the
+ * filters in the URL are applied here, server-side, before anything renders.
  */
-export default async function ChallengesPage() {
+export default async function ChallengesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { t } = await getI18n();
   const ch = t.common.challenges;
-  const cards = await getMyChallenges();
+  const params = await searchParams;
+  const one = (key: string) => (Array.isArray(params[key]) ? params[key][0] : params[key]);
+  const filter = normalizeChallengeFilter({
+    status: one("status"), category: one("category"), difficulty: one("difficulty"),
+    duration: one("duration"), q: one("q"),
+  });
+  // The lifts an exercise challenge can be about: every loaded lift this
+  // person has logged (its best set is what exercise_best_sets returns).
+  const [all, prs] = await Promise.all([getMyChallenges(), getMyPrs()]);
+  const exercises = prs
+    .filter((p): p is typeof p & { exercise_id: string } => p.exercise_id !== null)
+    .map((p) => ({ id: p.exercise_id, name: p.exercise }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const cards = all.filter((c) => matchesChallengeFilter(c, filter));
+  const filtered = cards.length < all.length;
   const groups: ChallengeStatus[] = ["active", "upcoming", "completed", "ended"];
 
   return (
@@ -20,10 +41,11 @@ export default async function ChallengesPage() {
     <div className="mx-auto max-w-[1600px]">
       <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{ch.title}</h1>
 
-      <ChallengeCreate />
+      <ChallengeCreate exercises={exercises} />
+      {all.length > 0 ? <ChallengeFilters filter={filter} /> : null}
       {cards.length === 0 ? (
         <div className="mt-4">
-          <EmptyState title={ch.empty} hint={ch.emptyHint} />
+          {filtered ? <EmptyState title={ch.noResults} hint={ch.emptyHint} /> : <EmptyState title={ch.empty} hint={ch.emptyHint} />}
         </div>
       ) : (
         <div className="mt-4 space-y-6">

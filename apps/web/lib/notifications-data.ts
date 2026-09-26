@@ -1,7 +1,7 @@
 import "server-only";
 import { liveUser } from "./supabase/server";
 import {
-  notificationActorId, notificationHref, notificationSentence, parseNotificationCursor, type NotificationSentence,
+  challengeNotice, notificationActorId, notificationHref, notificationSentence, parseNotificationCursor, type NotificationSentence,
 } from "./notification-href";
 
 /**
@@ -31,6 +31,8 @@ export type NotificationRow = {
   actor: { id: string; name: string; username: string | null; avatar_url: string | null } | null;
   /** A badge row's name in both languages, so the card reads in the reader's. */
   badge: { en: string; ro: string } | null;
+  /** The step and the challenge's titles, for a challenge_milestone row. */
+  challenge: { milestone: 25 | 50 | 75 | 100; en: string; ro: string } | null;
 };
 
 export const NOTIFICATION_PAGE_SIZE = 20;
@@ -102,6 +104,7 @@ export async function getNotificationPage(
       badge: typeof n.payload?.name_en === "string"
         ? { en: n.payload.name_en, ro: typeof n.payload.name_ro === "string" ? n.payload.name_ro : n.payload.name_en }
         : null,
+      challenge: n.category === "challenge_milestone" ? challengeNotice(n.payload) : null,
     };
   });
   const last = items[items.length - 1];

@@ -1,15 +1,17 @@
 "use server";
-// Join and leave a challenge. Progress is never written — it is derived from
-// logged sessions at read time (lib/challenges-data.ts) — so these are the
-// only two writes the feature has, plus the completed_at stamp the reads make.
+// Join, leave, create and delete a challenge. Progress, milestones and
+// completion are never written here — the database computes and stamps them
+// (challenge_cards / challenge_sync, 20261001100000); participants have no
+// UPDATE on their own row at all.
 import { revalidatePath } from "next/cache";
-import { canJoin, isChallengeType } from "@healthapp/shared";
+import { isChallengeDifficulty, isChallengeType, requiresExercise } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
 import { liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
-import { isoDay } from "@/lib/dates";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function touched(id: string) {
   revalidatePath("/challenges");
@@ -22,15 +24,17 @@ export async function joinChallenge(id: string): Promise<ActionResult> {
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
-  // RLS (participants_join) refuses an ended challenge too; checking here
-  // gives the person a translated reason instead of a policy error.
-  const { data: ch } = await supabase.from("challenges").select("start_date, end_date").eq("id", id).maybeSingle();
+  const { data: ch } = await supabase.from("challenges").select("id").eq("id", id).maybeSingle();
   if (!ch) return { ok: false, message: t.common.challenges.notFound };
-  if (!canJoin(ch, isoDay())) return { ok: false, message: t.common.challenges.endedCannotJoin };
+  // participants_join decides "has it ended?" on the member's own calendar
+  // (my_local_today); its refusal is translated rather than pre-checked here
+  // against the server's clock, which may be a day off.
   const { error } = await supabase
     .from("challenge_participants")
     .upsert({ challenge_id: id, user_id: userId }, { onConflict: "challenge_id,user_id", ignoreDuplicates: true });
-  if (error) return { ok: false, message: error.message };
+  if (error) {
+    return { ok: false, message: error.code === "42501" ? t.common.challenges.endedCannotJoin : error.message };
+  }
   touched(id);
   return { ok: true };
 }
@@ -69,6 +73,9 @@ export async function createChallenge(input: {
   startDate: string;
   endDate: string;
   visibility: "public" | "private";
+  difficulty?: string | null;
+  /** Required for exercise_sessions / strength_gain, refused for every other type. */
+  exerciseId?: string | null;
 }): Promise<ActionResult & { id?: string }> {
   const { t } = await getI18n();
   const name = input.name.trim();
@@ -80,6 +87,12 @@ export async function createChallenge(input: {
   // A window that ends before it starts would pass the check constraint only by
   // accident of ordering; catching it here gives a translated reason.
   if (input.endDate < input.startDate) return { ok: false, message: t.common.challenges.badWindow };
+  if (requiresExercise(input.type) && !UUID.test(input.exerciseId ?? "")) {
+    return { ok: false, message: t.common.challenges.exerciseMissing };
+  }
+  if (input.difficulty && !isChallengeDifficulty(input.difficulty)) {
+    return { ok: false, message: t.common.challenges.unknownDifficulty };
+  }
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -88,8 +101,10 @@ export async function createChallenge(input: {
   const { data, error } = await supabase
     .from("challenges")
     .insert({
-      name_en: name,
-      name_ro: name,
+      // The columns are title_*; this action wrote name_* and so never
+      // created a challenge at all.
+      title_en: name,
+      title_ro: name,
       description_en: input.description?.trim() || null,
       description_ro: input.description?.trim() || null,
       type: input.type,
@@ -98,6 +113,8 @@ export async function createChallenge(input: {
       end_date: input.endDate,
       creator_id: userId,
       visibility: input.visibility,
+      difficulty: input.difficulty || null,
+      exercise_id: requiresExercise(input.type) ? input.exerciseId : null,
     })
     .select("id")
     .single();
