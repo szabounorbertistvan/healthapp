@@ -127,6 +127,24 @@ body:has(.app-dialog[open]) {
   }
 }
 
+/* iOS Safari zooms the page in when a field under 16px takes focus, and never
+   zooms back out. Only iOS understands -webkit-touch-callout, so desktop and
+   Android keep their text-sm fields. Raising the small size tokens on the
+   field itself (Tailwind's text-xs/text-sm read them there) leaves bigger
+   fields alone. Not maximum-scale=1: that would also kill pinch-zoom. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    --text-xs: 16px;
+    --text-sm: 16px;
+  }
+  /* Arbitrary text-[13px]-style sizes (admin filters) bypass the tokens. */
+  :is(input, select, textarea)[class*="text-[1"] {
+    font-size: 16px;
+  }
+}
+
 /* Range inputs (set intensity, macro split) take the brand accent. */
 input[type="range"] {
   accent-color: var(--color-accent);
