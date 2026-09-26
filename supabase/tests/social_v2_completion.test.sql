@@ -159,7 +159,7 @@ select is((select workouts from public.social_profile('6b000000-0000-0000-0000-0
 -- ---------- 3. the Fitness Score snapshot ----------
 -- Publishing and sharing a score with real sessions behind it, and every
 -- attempt to publish a made-up one, live in social_v2_cleanup.test.sql since
--- 20260926100000 moved the computation into the database.
+-- 20260930130000 moved the computation into the database.
 select throws_ok($$ update public.users set fitness_score_public = 99 where id = '6b000000-0000-0000-0000-00000000000a' $$,
   '42501', null, 'the snapshot column cannot be written directly');
 

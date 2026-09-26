@@ -1,6 +1,6 @@
 -- HealthApp schema · social v2, completed
 --
--- 20260924100000_social_v2 gave the feed replies, comment mentions and the
+-- 20260930110000_social_v2 gave the feed replies, comment mentions and the
 -- notifications they produce. This one finishes the job without rewriting it:
 -- can_see_post() is still the one post-visibility predicate, and every table
 -- and RPC below builds on the ones already there.
@@ -546,7 +546,7 @@ create trigger social_post_mentions_notify after insert on public.social_post_me
   for each row execute function public.notify_post_mention();
 
 -- ---------- the feed and one post, now carrying caption mentions ----------
--- Same select as 20260924100000 plus one column; the return shape changes, so
+-- Same select as 20260930110000 plus one column; the return shape changes, so
 -- both are dropped and recreated. The coach branch from 20260921100000 stays.
 drop function if exists public.social_feed(int, timestamptz, uuid, text, text);
 create function public.social_feed(

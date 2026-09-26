@@ -48,7 +48,7 @@ Today. RLS and column grants all held; `mutated()` guards every update/delete.
 | Reads | [lib/social-data.ts](../apps/web/lib/social-data.ts) — `getPost`, `getComments`, `getMentionCandidates`, `getSuggestedPeople`, `getMutualFollowers`; [lib/notifications-data.ts](../apps/web/lib/notifications-data.ts) gains actors |
 | Writes | `addComment(postId, body, parentId)`, `mentionCandidates`, `loadComments` in [app/social-actions.ts](../apps/web/app/social-actions.ts); `markNotificationRead` in `client-actions-app.ts` |
 | Maths | [packages/shared/src/mentions.ts](../packages/shared/src/mentions.ts) — `extractMentionHandles`, `commentSegments`, `mentionQueryAt`, `applyMention`, `resolveMentions` |
-| Migration | `20260924100000_social_v2.sql` |
+| Migration | `20260930110000_social_v2.sql` |
 | Tables | `social_comments.parent_id`, new `social_comment_mentions`. Two new notification categories |
 | Components | `comment-thread.tsx`, `notification-list.tsx` |
 | Tests | `mentions.test.ts` (27), `share-payload.test.ts` (13), `supabase/tests/social_v2.test.sql` (37 pgTAP) |
@@ -103,7 +103,7 @@ project.
 | Reads | `getProfileBadges`, `getMySocialPrivacy`, `getReplies`, paged `searchPeople` in [lib/social-data.ts](../apps/web/lib/social-data.ts); `getProfileRoutines` in `lib/routine-data.ts`; `getNotificationPage` in [lib/notifications-data.ts](../apps/web/lib/notifications-data.ts) |
 | Writes | `editComment`, `loadReplies`, `shareAchievement`, `shareFitnessScore`, `publishFitnessScore`, `updateSocialPrivacy` in `app/social-actions.ts`; `loadNotifications` in `client-actions-app.ts`. Caption mentions are written by `insertPost` |
 | Maths | [packages/shared/src/achievements.ts](../packages/shared/src/achievements.ts) — `earnedBadges`, `longestRun`, `fitnessScorePostPayload`, `canSeeStats`, `canSeeFitnessScore`, `followState`; [lib/notification-href.ts](../apps/web/lib/notification-href.ts) — routing, sentence, cursor |
-| Migration | `20260925100000_social_v2_completion.sql` |
+| Migration | `20260930120000_social_v2_completion.sql` |
 | Tables | `users.stats_visibility` / `fitness_score_visibility` / `fitness_score_public(_at)`, `social_comments.edited_at`, new `social_post_mentions`; post types `achievement`, `fitness_score`; notification category `badge_earned`; four badges added to the catalog |
 | Components | `social-v2.tsx` (BadgeShelf, ShareFitnessScore, SocialPrivacyCard, PeopleSearchBox, MentionText, mention suggester), `social-skeleton.tsx` |
 | Tests | `achievements.test.ts` (22), `notification-href.test.ts` (12), `supabase/tests/social_v2_completion.test.sql` (66 pgTAP) |
@@ -143,7 +143,7 @@ fixed list at or under the score).
 with the same `now()`, so `created_at` alone would skip one at a page boundary.
 
 **The Fitness Score is the database's number when it leaves the owner's
-screen** (`20260926100000_social_v2_cleanup.sql`). `fitness_score_of()` is
+screen** (`20260930130000_social_v2_cleanup.sql`). `fitness_score_of()` is
 `fitnessScore()` composed over `training_load_score()` — the same formula,
 pinned by `apps/web/lib/fitness-score-parity.test.ts` and
 `supabase/tests/social_v2_cleanup.test.sql`, which score one fixture to the

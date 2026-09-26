@@ -1,5 +1,5 @@
 // Achievements, Fitness Score milestones and profile privacy — the rules the
-// database enforces in 20260925100000_social_v2_completion.sql, mirrored so
+// database enforces in 20260930120000_social_v2_completion.sql, mirrored so
 // the app and SQL cannot disagree about who earned what or who may see it.
 //
 //   award_badges_for()     ⇄ earnedBadges()

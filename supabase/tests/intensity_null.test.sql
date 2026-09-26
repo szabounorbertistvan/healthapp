@@ -1,4 +1,4 @@
--- pgTAP · a set with no RPE and no RIR has no intensity (20260927100000).
+-- pgTAP · a set with no RPE and no RIR has no intensity (20260930140000).
 --
 -- greatest(1, NULL) is 1 in Postgres, and every SQL training-load rollup used
 -- to average least(10, greatest(1, coalesce(rpe, 10 - rir))) — so a set

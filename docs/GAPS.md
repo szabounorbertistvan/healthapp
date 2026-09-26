@@ -219,7 +219,7 @@ them the section renders a "not configured" note instead of a broken upload.
   the schema has no per-exercise muscle *weighting*, so a set of chin-ups would
   count once for lats and once for biceps as if they were equal work.
 - **Workout / PR / streak post payloads are built by server actions, not
-  re-derived in SQL.** The Fitness Score (since 20260926100000) and achievement
+  re-derived in SQL.** The Fitness Score (since 20260930130000) and achievement
   posts are recomputed by the database; the other data posts still trust the
   action that built them, so an owner calling PostgREST directly could post a
   workout tile about themselves that no session backs. It can only misstate
@@ -231,7 +231,7 @@ them the section renders a "not configured" note instead of a broken upload.
   `reps = 0` sets, let a negative weight subtract volume, and window challenges
   on `started_at::date` (UTC) rather than the member's timezone. None of them
   turns a missing intensity into 1 (`avg` skips NULLs), so they were left out
-  of the 20260927100000 fix; aligning them means routing them through
+  of the 20260930140000 fix; aligning them means routing them through
   `effective_rpe()` and the same rollup the challenges use.
 - **SQL challenge / leaderboard rollups count exercises over `reps > 0` sets
   only**; `loadOf()` counts every exercise on the session. A session where an

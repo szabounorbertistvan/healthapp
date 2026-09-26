@@ -27,7 +27,7 @@
 -- migrations; the only edit in each is the intensity expression:
 --   challenge_progress_rows  ← 20260912100000_challenges.sql
 --   social_leaderboard       ← 20260916120000_leaderboard_following.sql
---   fitness_score_of         ← 20260926100000_social_v2_cleanup.sql
+--   fitness_score_of         ← 20260930130000_social_v2_cleanup.sql
 --     (already correct via a hand-written filter; now uses the same function,
 --      which gives the same numbers — social_v2_cleanup.test.sql still pins them)
 -- Criteria, periods, ranking, visibility and RLS are untouched. Sets WITH an

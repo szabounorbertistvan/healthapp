@@ -23,7 +23,7 @@
 --
 -- 2. Posts get `edited_at`, stamped by a trigger when the caption changes, and
 --    the feed carries it so the card can say "edited". The update grant stays
---    exactly as 20260925100000 left it: text, visibility, deleted_at.
+--    exactly as 20260930120000 left it: text, visibility, deleted_at.
 
 -- ---------- 1. the score, computed where it can be trusted ----------
 create or replace function public.fitness_score_of(p_user uuid)
@@ -137,7 +137,7 @@ $$;
 revoke execute on function public.set_public_fitness_score() from public, anon;
 grant execute on function public.set_public_fitness_score() to authenticated;
 
--- The guard, as in 20260925100000, except a Fitness Score post: the score,
+-- The guard, as in 20260930120000, except a Fitness Score post: the score,
 -- milestone and band the caller sent are thrown away and replaced by the
 -- author's real ones. A score still building cannot be shared at all.
 create or replace function public.social_posts_guard()
@@ -202,7 +202,7 @@ drop trigger if exists social_posts_edited on public.social_posts;
 create trigger social_posts_edited before update on public.social_posts
   for each row execute function public.social_posts_mark_edited();
 
--- The feed and one post carry edited_at. Same select as 20260925100000 plus
+-- The feed and one post carry edited_at. Same select as 20260930120000 plus
 -- the column; the return shape changes, so both are dropped and recreated.
 drop function if exists public.social_feed(int, timestamptz, uuid, text, text);
 create function public.social_feed(
