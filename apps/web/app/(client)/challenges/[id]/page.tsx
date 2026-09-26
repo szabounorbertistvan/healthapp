@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { getChallenge } from "@/lib/challenges-data";
 import { Card } from "@/components/ui";
 import {
-  ChallengeMilestones, ChallengeProgressBar, ChallengeStatusBadge, JoinLeaveButton, Leaderboard, challengeSubtitle,
+  ChallengeMilestones, ChallengeProgressBar, ChallengeStatusBadge, JoinLeaveButton, Leaderboard,
 } from "@/components/challenges";
+import { challengeSubtitle } from "@/lib/challenge-map";
 import { ChallengeDeadline, ChallengeNumbers } from "@/components/challenge-detail";
 import { ShareChallenge } from "@/components/share-challenge";
 import { fill } from "@/lib/i18n";

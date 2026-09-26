@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toChallengeCard, toLeaderboard, type ChallengeCardRow } from "./challenge-map";
+import { challengeSubtitle, toChallengeCard, toLeaderboard, type ChallengeCardRow } from "./challenge-map";
 
 function row(over: Partial<ChallengeCardRow> = {}): ChallengeCardRow {
   return {
@@ -77,5 +77,16 @@ describe("toLeaderboard", () => {
   it("a private challenge with only its creator has nothing to rank", () => {
     expect(toLeaderboard([{ ...rows[1]!, participant_count: 1 }], "private")).toBeNull();
     expect(toLeaderboard([], "public")).toBeNull();
+  });
+});
+
+describe("challengeSubtitle — usable from server components (not in a 'use client' file)", () => {
+  const ch = {
+    type: { workouts: "Workouts", strength_gain: "Strength gain" },
+    difficulty: { easy: "Easy", medium: "Medium", hard: "Hard" },
+  };
+  it("joins the type, the exercise and the difficulty, skipping what is missing", () => {
+    expect(challengeSubtitle({ type: "strength_gain", exercise_name: "Squat", difficulty: "hard" }, ch)).toBe("Strength gain · Squat · Hard");
+    expect(challengeSubtitle({ type: "workouts", exercise_name: null, difficulty: null }, ch)).toBe("Workouts");
   });
 });

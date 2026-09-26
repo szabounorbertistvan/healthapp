@@ -8,6 +8,7 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { parseDay } from "@/lib/week";
 import type { ChallengeCard as ChallengeCardRow, LeaderboardRow } from "@/lib/types";
+import { challengeSubtitle } from "@/lib/challenge-map";
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
 
@@ -81,11 +82,6 @@ export function deadlineText(c: ChallengeCardRow, t: ReturnType<typeof useI18n>[
   if (c.status === "ended") return fill(ch.endedOn, { date: date(c.end_date) });
   if (c.status === "completed" && c.completed_at) return fill(ch.completedOn, { date: date(c.completed_at.slice(0, 10)) });
   return c.days_remaining === 1 ? ch.oneDayRemaining : fill(ch.daysRemaining, { days: c.days_remaining });
-}
-
-/** "Workouts · Squat · Hard" — what the challenge counts, and how hard. */
-export function challengeSubtitle(c: ChallengeCardRow, ch: ReturnType<typeof useI18n>["t"]["common"]["challenges"]): string {
-  return [ch.type[c.type], c.exercise_name, c.difficulty ? ch.difficulty[c.difficulty] : null].filter(Boolean).join(" · ");
 }
 
 /** The four steps, filled as the database stamped them. */
