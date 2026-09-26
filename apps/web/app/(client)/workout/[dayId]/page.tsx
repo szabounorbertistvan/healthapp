@@ -7,6 +7,8 @@ import { Card } from "@/components/ui";
 import { Athlete } from "@/components/athlete";
 import { NavIcon } from "@/components/client-nav";
 import { WorkoutHistory } from "@/components/workout-history";
+import { DayExerciseRow } from "@/components/day-exercise-row";
+import { getExerciseSummaries } from "@/lib/exercise-summaries";
 import { TrainingLoadCard } from "@/components/training-load";
 import { circuitSegments } from "@healthapp/shared";
 import { timeAgo } from "@/lib/format";
@@ -39,6 +41,8 @@ export default async function WorkoutDayPage({
     getPlan(),
   ]);
   if (!day) notFound();
+  // Only this day's exercises, for the detail popup each row opens — one small query, not the library.
+  const details = await getExerciseSummaries(day.exercises.flatMap((e) => (e.exercise_id ? [e.exercise_id] : [])));
   // A solo client edits their own days in the builder; a coached one edits nothing (can_edit_program).
   const editHref = day.is_own && !coached ? `/workout/build?program=${day.program_id}` : null;
   const d = t.clientApp.workoutDay;
@@ -50,15 +54,14 @@ export default async function WorkoutDayPage({
   const logHref = `/workout/${day.day_id}/log`;
   const scale = day.intensity_mode === "rpe" ? "RPE" : "RIR";
 
+  // A tap opens the exercise's detail popup, the same one the library shows.
   const row = (e: (typeof day.exercises)[number]) => (
-    <div key={e.id} className="flex items-baseline gap-3.5 rounded-[20px] bg-surface px-4 py-3.5 xl:px-[18px]">
-      <p className="truncate text-[15px] font-semibold">{e.exercise}</p>
-      <p className="shrink-0 text-[13px] tabular-nums text-ink-faint">
-        {e.sets}×{e.reps}
-        {e.rpe_value !== null ? ` · ${scale} ${e.rpe_value}` : ""}
-        {e.weight_kg ? ` · ${e.weight_kg} kg` : ""}
-      </p>
-    </div>
+    <DayExerciseRow
+      key={e.id}
+      exercise={e.exercise_id ? details[e.exercise_id] ?? null : null}
+      name={e.exercise}
+      prescription={`${e.sets}×${e.reps}${e.rpe_value !== null ? ` · ${scale} ${e.rpe_value}` : ""}${e.weight_kg ? ` · ${e.weight_kg} kg` : ""}`}
+    />
   );
 
   return (

@@ -73,6 +73,13 @@ export async function resolveAppError(errorId: number, allAlike: boolean, _reaso
     ["/admin", "/admin/errors", "/admin/system", "/admin/activity"]);
 }
 
+/** Move a feedback item along new → seen → done. The RPC writes the audit row. */
+export async function setFeedbackStatus(feedbackId: number, status: "new" | "seen" | "done"): Promise<ActionResult> {
+  if (!Number.isInteger(feedbackId) || feedbackId <= 0) return { ok: false, message: "Invalid id" };
+  if (status !== "new" && status !== "seen" && status !== "done") return { ok: false, message: "Invalid status" };
+  return call("admin_set_feedback_status", { p_id: feedbackId, p_status: status }, ["/admin/feedback", "/admin/activity"]);
+}
+
 /**
  * Called by the login form when a password sign-in is refused. GoTrue keeps
  * no record of a wrong password, so this is the only trace. Metadata only —

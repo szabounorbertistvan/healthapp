@@ -3,7 +3,16 @@ import { createContext, useContext } from "react";
 import { ENTITLEMENTS, TIER_LABEL, type Entitlements } from "@healthapp/shared";
 
 export type Upgrade = { href: string; label: string };
-export type ClientPlan = { e: Entitlements; upgrade: Upgrade };
+export type ClientPlan = {
+  e: Entitlements;
+  upgrade: Upgrade;
+  /**
+   * May set the YouTube demo of an official library exercise — admins only.
+   * Everyone else puts a video only on their own custom exercises. Role, not
+   * tier; it rides here because every layout mounts this.
+   */
+  libraryVideos: boolean;
+};
 
 /**
  * The signed-in person's plan for client components, mounted by both layouts
@@ -16,6 +25,7 @@ export type ClientPlan = { e: Entitlements; upgrade: Upgrade };
 const PlanContext = createContext<ClientPlan>({
   e: ENTITLEMENTS.coach_pro,
   upgrade: { href: "/billing", label: TIER_LABEL.premium },
+  libraryVideos: false,
 });
 
 export function PlanProvider({ plan, children }: { plan: ClientPlan; children: React.ReactNode }) {

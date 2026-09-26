@@ -9,6 +9,8 @@ import { shareProfileOf } from "@/lib/share-card-data";
 import { WorkoutDoneShare } from "@/components/workout-done-share";
 import { ShareWorkoutButton } from "@/components/share-workout";
 import { StreakAfterWorkout } from "@/components/streak";
+import { AiReview } from "@/components/ai-review";
+import { getWorkoutReviewPrompt } from "@/lib/ai-review";
 import { getI18n } from "@/lib/i18n/server";
 
 /**
@@ -26,10 +28,11 @@ export default async function WorkoutDonePage({
   params: Promise<{ dayId: string }>;
   searchParams: Promise<{ session?: string }>;
 }) {
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   const [{ dayId }, { session }] = await Promise.all([params, searchParams]);
-  const [shareable, streak, profile] = await Promise.all([
+  const [shareable, streak, profile, prompt] = await Promise.all([
     session ? getShareableSession(session) : null, getMyStreak(), getProfile(),
+    session ? getWorkoutReviewPrompt(session, dayId, locale, t) : null,
   ]);
   if (!shareable) redirect("/today");
   const s = t.common.social;
@@ -40,6 +43,7 @@ export default async function WorkoutDonePage({
       <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{s.workoutCompleted}</h1>
       {streak ? <StreakAfterWorkout view={streak} /> : null}
       <WorkoutDoneShare session={shareable} photoUploads={cloudinaryConfigured()} />
+      {prompt ? <AiReview prompt={prompt} /> : null}
       <div className="flex flex-wrap gap-3">
         <ShareWorkoutButton
           card={card}

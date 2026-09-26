@@ -58,7 +58,7 @@ Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
 check-ins, messages, settings. `(admin)` = the admin panel under `/admin`
 (overview, users, users/[id], activity, auth, invitations, workouts,
 exercises (+ /translate), foods, nutrition, social, challenges, notifications,
-system, search) — its own layout, gated by `lib/admin/guard.ts` and, in the
+feedback, errors, system, search) — its own layout, gated by `lib/admin/guard.ts` and, in the
 database, by `admin_assert()` inside every `admin_*` RPC
 (`20260920100000_admin_panel.sql`; reads in `lib/admin/data.ts`, writes in
 `app/admin-actions.ts`, strings in `messages/admin.ts`). `(client)` = today, workout (list of every
@@ -67,7 +67,9 @@ published program → `workout/[dayId]` day overview + per-day history →
 check-in, coach, billing. Ungrouped: landing `page.tsx`, login, complete-profile
 (username / sex / age / coach-or-client for accounts that signed up without
 them — both layouts redirect there while `users.username` is null), privacy,
-terms, get-the-app. Profile editing (photo, city, bio, units, time zone) is the
+terms, get-the-app. **Send feedback** (`components/feedback.tsx`, in both sidebars and both
+phone "More" sheets) writes through `submit_feedback()` (capped 10/hour) and is
+read only by an admin on `/admin/feedback`. Profile editing (photo, city, bio, units, time zone) is the
 shared `ProfileForm` in `components/account.tsx`, mounted on the client's
 `/account` and the coach's `/settings`; the avatar is a public Cloudinary
 upload (`lib/cloudinary.ts`), unlike progress photos.

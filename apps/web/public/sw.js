@@ -31,16 +31,27 @@ self.addEventListener("push", (event) => {
   const id = String(payload.id || "");
   const url = typeof payload.url === "string" && payload.url.startsWith("/") ? payload.url : "/today";
   const alert = payload.alert !== false;
+  const tag = "rest-" + id;
+  // A push must always show something (iOS revokes the subscription of a
+  // worker that swallows pushes), and iOS stacks same-tag notifications
+  // instead of replacing them. So close the page's own copy of this rest,
+  // if it got there first, and then show the push's.
   event.waitUntil(
-    self.registration.showNotification(String(payload.title || ""), {
-      body: String(payload.body || ""),
-      tag: "rest-" + id,
-      renotify: false,
-      silent: !alert,
-      requireInteraction: alert,
-      icon: "/icon.png",
-      data: { url, id },
-    }),
+    self.registration
+      .getNotifications({ tag })
+      .then((existing) => existing.forEach((n) => n.close()))
+      .catch(() => undefined)
+      .then(() =>
+        self.registration.showNotification(String(payload.title || ""), {
+          body: String(payload.body || ""),
+          tag,
+          renotify: false,
+          silent: !alert,
+          requireInteraction: alert,
+          icon: "/icon.png",
+          data: { url, id },
+        }),
+      ),
   );
 });
 

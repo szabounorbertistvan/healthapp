@@ -408,7 +408,7 @@ function Thumb({ exercise, onOpen }: { exercise: ExerciseSummary; onOpen: () => 
  * instructions that came with the row. A native <dialog>, so Escape and the
  * backdrop close it — same treatment as the sign-in modal.
  */
-function ExercisePreview({
+export function ExercisePreview({
   exercise,
   onClose,
   onPick,

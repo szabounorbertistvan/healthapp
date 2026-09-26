@@ -8,8 +8,9 @@ import { usePlan } from "@/lib/plan-client";
 import { UpgradeHint } from "./upgrade";
 
 /**
- * An exercise's demo video, and the field anyone can use to pin their own
- * YouTube link to it — library rows included. What arrives here is already
+ * An exercise's demo video, and the field to set it: the owner of a custom
+ * exercise on theirs, an admin on the official library — everyone else just
+ * watches. Either way the link lands on the exercise row (setExerciseVideo). What arrives here is already
  * resolved (pickExerciseVideo: yours, else your coach's, else the row's);
  * `source` says which, so a coach's pick reads as theirs and "remove" only
  * appears on a link that is yours to remove.
@@ -40,16 +41,18 @@ export function ExerciseVideo({
   const router = useRouter();
   const [saved, setSaved] = useState(videoUrl ?? "");
   const [savedSource, setSavedSource] = useState<ExerciseVideoSource | null>(videoUrl ? (source ?? null) : null);
-  const ownedSource = (src: ExerciseVideoSource | null) => src === "own" || (mine && src === "exercise");
+  // Watching is free; pinning your own demo is Premium / Coach Pro.
+  const { e: plan, upgrade, libraryVideos } = usePlan();
+  const canPin = mine || libraryVideos;
+  // "own" is a personal link left from before only admins set library videos; it can still be removed.
+  const ownedSource = (src: ExerciseVideoSource | null) => src === "own" || (canPin && src === "exercise");
   const [url, setUrl] = useState(ownedSource(savedSource) ? saved : "");
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(!collapsed);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  // Watching is free; pinning your own demo is Premium / Coach Pro.
-  const { e: plan, upgrade } = usePlan();
   const embed = youtubeEmbedUrl(saved);
-  // Yours to change or remove: a link you pinned, or the row video of your own custom exercise.
+  // Yours to change or remove: the row video of an exercise you may edit, or an old personal link.
   const removable = ownedSource(savedSource);
 
   // A save ends in router.refresh(); take the re-resolved answer when it lands
@@ -70,13 +73,16 @@ export function ExerciseVideo({
       // Optimistic until the refresh brings back the resolved answer. On your
       // own custom exercise the action writes the row, everywhere else a link.
       setSaved(next);
-      setSavedSource(next ? (mine ? "exercise" : "own") : null);
+      setSavedSource(next ? "exercise" : null);
       setUrl(next);
       setEditing(false);
       if (next) setOpen(true);
       router.refresh();
     });
   }
+
+  // Nothing to watch and nothing this person may add: no block at all.
+  if (!embed && !canPin && !editing) return null;
 
   if (collapsed && !open) {
     return (
@@ -115,7 +121,7 @@ export function ExerciseVideo({
         </div>
       ) : null}
 
-      {editing && !plan.customExerciseVideos ? (
+      {editing && !libraryVideos && !plan.customExerciseVideos ? (
         <UpgradeHint feature="videos" upgrade={upgrade} className="mt-2" />
       ) : editing ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -148,13 +154,15 @@ export function ExerciseVideo({
         </div>
       ) : (
         <div className="mt-2 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="text-[12.5px] font-semibold text-accent-ink hover:underline"
-          >
-            {embed ? (removable ? v.change : v.useOwn) : v.add}
-          </button>
+          {canPin ? (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="text-[12.5px] font-semibold text-accent-ink hover:underline"
+            >
+              {embed ? (removable ? v.change : v.useOwn) : v.add}
+            </button>
+          ) : null}
           {removable ? (
             <button
               type="button"

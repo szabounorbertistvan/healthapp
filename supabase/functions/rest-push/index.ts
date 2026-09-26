@@ -89,6 +89,7 @@ Deno.serve(async (req) => {
   let sent = 0;
   let failed = 0;
   const gone: string[] = [];
+  const errors: string[] = [];
   const results = await Promise.allSettled(
     due.flatMap((row) =>
       (byUser.get(row.user_id) ?? []).map(async (sub) => {
@@ -101,7 +102,11 @@ Deno.serve(async (req) => {
               urgency: webpush.Urgency.High,
               // One topic per rest: a push service that still holds an
               // undelivered one for this rest replaces it rather than queuing.
-              topic: `rest-${row.id.replace(/-/g, "").slice(0, 32)}`,
+              // RFC 8030 caps a topic at 32 base64url characters — the bare
+              // uuid hex is exactly that. Apple enforces it (400
+              // BadWebPushTopic, so nothing ever reached an iPhone while this
+              // carried a "rest-" prefix); FCM does not.
+              topic: row.id.replace(/-/g, "").slice(0, 32),
             },
           );
           sent++;
@@ -113,6 +118,14 @@ Deno.serve(async (req) => {
             gone.push(sub.id);
           } else {
             failed++;
+            // Kept on the response (which pg_net stores in net._http_response)
+            // so a rejection by the push service can be read back from SQL.
+            const detail = error instanceof webpush.PushMessageError
+              ? `${error.response.status} ${(await error.response.text().catch(() => "")).slice(0, 200)}`
+              : String(error).slice(0, 200);
+            const host = new URL(sub.endpoint).host;
+            errors.push(`${host}: ${detail}`);
+            console.error("rest-push failed", host, detail);
           }
         }
       }),
@@ -124,7 +137,7 @@ Deno.serve(async (req) => {
     await supabase.from("push_subscriptions").delete().in("id", gone);
   }
 
-  return json({ due: due.length, sent, failed, unsubscribed: gone.length });
+  return json({ due: due.length, sent, failed, unsubscribed: gone.length, errors });
 });
 
 function json(body: unknown, status = 200): Response {
