@@ -31,7 +31,7 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
   return (
     <div className="mx-auto max-w-3xl">
       <Link
-        href={`/people/${me}#achievements`}
+        href={`/people/${me}?tab=achievements`}
         className="inline-flex h-9 items-center gap-1.5 rounded-full bg-surface pl-3 pr-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
       >
         <NavIcon d={BACK} className="h-4 w-4 [stroke-width:2.2]" />

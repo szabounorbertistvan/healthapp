@@ -389,6 +389,48 @@ export type FeedPost = {
   /** Set by the database when the author changed the caption. */
   edited_at: string | null;
   mine: boolean;
+  /** In the viewer's own saved list. Private: never counted, never shown to the author. */
+  saved: boolean;
+  /**
+   * On a share (type 'shared_post'): the original, exactly as this reader may
+   * see it right now — or null when they may not (deleted, hidden, author
+   * suspended). Never a copy kept from when it was shared.
+   */
+  shared: SharedOriginal | null;
+  /**
+   * Up to two top-level comments, newest first — social_comment_preview(),
+   * carried inside the feed row. Empty when there are none, when the reader
+   * may not see them, or on a page that does not carry previews.
+   */
+  comment_preview: CommentPreviewItem[];
+  /** The viewer has muted the author (only reachable on their profile, /saved or a post page). */
+  author_muted: boolean;
+};
+
+/** One comment in a card's preview: only what the preview shows. */
+export type CommentPreviewItem = {
+  id: string;
+  user_id: string;
+  author_name: string;
+  author_avatar: string | null;
+  body: string;
+  created_at: string;
+  edited_at: string | null;
+  mentions: { user_id: string; username: string }[];
+};
+
+/** The original post inside a share, as social_shared_original() returns it. */
+export type SharedOriginal = {
+  id: string;
+  user_id: string;
+  author_name: string;
+  author_avatar: string | null;
+  type: PostType;
+  text: string | null;
+  payload: PostPayload;
+  visibility: PostVisibility;
+  created_at: string;
+  mentions: { user_id: string; username: string }[];
 };
 
 export type FeedPage = { items: FeedPost[]; next_cursor: string | null };
@@ -461,6 +503,10 @@ export type SocialProfile = {
   stats_visibility: "public" | "followers" | "private" | null;
   fitness_score_visibility: "public" | "followers" | "private" | null;
   me: boolean;
+  /** The viewer blocked this person: the page opens only so they can unblock. */
+  blocked: boolean;
+  /** The viewer muted this person. */
+  muted: boolean;
 };
 
 /** One earned badge, as the profile shows it. `shared` is only ever true for the owner. */
@@ -516,6 +562,8 @@ export type PersonRow = {
   username: string | null;
   avatar_url: string | null;
   is_following: boolean;
+  /** They follow the viewer — on the follow lists, from the same query. */
+  follows_me?: boolean;
   city?: string | null;
   /** How many people I follow also follow them — only on suggestions. */
   mutuals?: number;
@@ -626,3 +674,33 @@ export type QuickFood = {
 };
 
 export type QuickFoods = { recent: QuickFood[]; favorites: QuickFood[] };
+
+// ---------- stories ----------
+
+/** One author in the stories row — social_story_tray(). */
+export type StoryTrayItem = {
+  user_id: string;
+  name: string;
+  avatar_url: string | null;
+  is_me: boolean;
+  /** Live stories the viewer may see. */
+  stories: number;
+  /** Of those, not yet opened by the viewer (always 0 on your own). */
+  unseen: number;
+  latest_at: string;
+};
+
+/** One live story — social_user_stories(). */
+export type Story = {
+  id: string;
+  body: string;
+  background: "gold" | "night" | "paper";
+  created_at: string;
+  expires_at: string;
+  seen: boolean;
+  /** Only on your own stories; null on everyone else's. */
+  view_count: number | null;
+};
+
+/** Who opened one of your stories — social_story_viewers(). */
+export type StoryViewerRow = { user_id: string; name: string; avatar_url: string | null; viewed_at: string };

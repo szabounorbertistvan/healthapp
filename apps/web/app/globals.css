@@ -38,6 +38,12 @@
   --color-tile-soft: #5b574f;
   --color-tile-accent: #8a6510;
   --color-tile-line: #dcd8cf;
+  /* Story backgrounds. Deliberately NOT overridden by the light theme: a
+     story is a picture someone made, and looks the same on every screen. */
+  --color-story-night: #0b0b0d;
+  --color-story-night-ink: #f2efe8;
+  --color-story-paper: #f2efe8;
+  --color-story-paper-ink: #0b0b0d;
   --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
   --font-display: var(--font-exo2), var(--font-inter), system-ui, sans-serif;
 }
@@ -495,6 +501,129 @@ body::before {
     .glass--hover,
     .glass--pressed {
       transform: none;
+    }
+  }
+}
+
+/* ==========================================================================
+   Social — the feed's few shared pieces that utilities cannot say on their
+   own. Everything else (sizes, type scale, gaps) is class strings in
+   lib/social-ui.ts, built from the palette tokens above; nothing here adds a
+   colour, it only arranges the ones the theme already defines.
+   ========================================================================== */
+@layer components {
+  /* A horizontal strip that scrolls by touch or trackpad but draws no bar. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The story ring: a gold arc, read like the progress rings elsewhere in
+     the app rather than a rainbow. A 2.5px band of the ring, a 2px gap in the
+     page colour, then the avatar. `--seen` is the same ring, spent. */
+  .story-ring {
+    border-radius: 9999px;
+    padding: 2.5px;
+    background: conic-gradient(
+      from 200deg,
+      var(--color-accent-ink),
+      var(--color-accent) 35%,
+      var(--color-accent) 70%,
+      var(--color-accent-ink)
+    );
+  }
+  .story-ring--seen {
+    background: var(--color-line);
+  }
+  .story-ring > * {
+    border-radius: 9999px;
+    box-shadow: 0 0 0 2px var(--color-bg);
+  }
+
+  /* Kudos given: one short pop of the flame, then still. */
+  .kudos-pop {
+    animation: kudos-pop 220ms cubic-bezier(0.2, 0.7, 0.2, 1.4);
+  }
+  @keyframes kudos-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.22); }
+    100% { transform: scale(1); }
+  }
+
+  /* A carousel of post photos: native scroll-snap, one frame per swipe. */
+  .snap-frames {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+  }
+  .snap-frames > * {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kudos-pop {
+      animation: none;
+    }
+  }
+}
+
+/* Double tap on a post's media: the flame swells in, holds, and fades. */
+@layer components {
+  .kudos-burst {
+    animation: kudos-burst 800ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  @keyframes kudos-burst {
+    0% { opacity: 0; transform: scale(0.4); }
+    18% { opacity: 1; transform: scale(1.12); }
+    32% { transform: scale(1); }
+    72% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.06); }
+  }
+  /* Reduced motion: no growth, just a brief appearance. */
+  @keyframes kudos-burst-still {
+    0%, 100% { opacity: 0; }
+    20%, 70% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .kudos-burst {
+      animation: kudos-burst-still 600ms linear forwards;
+    }
+  }
+}
+
+/* Stories viewer: a short fade-and-settle as it opens; none when asked for less motion. */
+@layer components {
+  .story-enter {
+    animation: story-enter 200ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  @keyframes story-enter {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .story-enter {
+      animation: none;
+    }
+  }
+}
+
+/* A sheet (share): rises a few pixels into place; still when asked for less motion. */
+@layer components {
+  .sheet-enter[open] {
+    animation: sheet-enter 200ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  @keyframes sheet-enter {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet-enter[open] {
+      animation: none;
     }
   }
 }

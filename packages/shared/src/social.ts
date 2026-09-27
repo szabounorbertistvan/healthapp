@@ -9,12 +9,13 @@ import type { AchievementPostPayload, FitnessScorePostPayload } from "./achievem
 
 export type PostType =
   | "workout" | "pr" | "challenge_completed" | "progress" | "text" | "streak" | "program"
-  | "achievement" | "fitness_score";
+  | "achievement" | "fitness_score" | "shared_post";
 export type PostVisibility = "public" | "followers" | "private";
 export type ReactionType = "kudos";
 
 export const POST_TYPES: readonly PostType[] = [
   "workout", "pr", "challenge_completed", "progress", "text", "streak", "program", "achievement", "fitness_score",
+  "shared_post",
 ];
 export const POST_VISIBILITIES: readonly PostVisibility[] = ["public", "followers", "private"];
 
@@ -105,9 +106,34 @@ export type StreakPostPayload = {
   title: string;
 };
 
+/**
+ * "Share to Voinic": a post that points at another post. Only the reference
+ * travels — never a copy of the original's words or tile. The database
+ * rebuilds this payload itself (social_posts_guard): it resolves a share of
+ * a share to the original, and refuses anything the sharer may not see.
+ * Readers see the original only while THEY may see it, so deleting or
+ * hiding the original empties every share of it.
+ */
+export type SharedPostPayload = {
+  kind: "shared_post";
+  original_post_id: string;
+};
+
 export type PostPayload =
   | WorkoutPostPayload | PrPostPayload | ChallengePostPayload | ProgressPostPayload | StreakPostPayload
-  | ProgramPostPayload | AchievementPostPayload | FitnessScorePostPayload | null;
+  | ProgramPostPayload | AchievementPostPayload | FitnessScorePostPayload | SharedPostPayload | null;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The id shape Postgres gives every post. Anything else is not a post id. */
+export function isPostId(v: unknown): v is string {
+  return typeof v === "string" && UUID.test(v);
+}
+
+/** The payload of a share: the original's id and nothing else. Null for a malformed id. */
+export function sharedPostPayload(originalPostId: string): SharedPostPayload | null {
+  return isPostId(originalPostId) ? { kind: "shared_post", original_post_id: originalPostId.toLowerCase() } : null;
+}
 
 /**
  * A data post's payload names its own type (social_posts_guard enforces the
@@ -116,6 +142,11 @@ export type PostPayload =
  */
 export function payloadMatchesType(type: PostType, payload: PostPayload): boolean {
   if (type === "text") return payload === null;
+  // A share is nothing but its reference: no payload, or extra keys, is not a share.
+  if (type === "shared_post") {
+    return payload !== null && payload.kind === "shared_post"
+      && Object.keys(payload).length === 2 && isPostId(payload.original_post_id);
+  }
   return payload === null || payload.kind === type;
 }
 
@@ -267,4 +298,19 @@ export function kudosSummary(
 /** The flip the card shows before the server answers. Applying it twice restores the input. */
 export function toggleKudosState(state: { my_kudos: boolean; kudos_count: number }): { my_kudos: boolean; kudos_count: number } {
   return { my_kudos: !state.my_kudos, kudos_count: Math.max(0, state.kudos_count + (state.my_kudos ? -1 : 1)) };
+}
+
+// ---------- following ----------
+
+/**
+ * What the follow button says, from the two real edges social_profile /
+ * social_follow_list return. Someone who follows you and whom you do not
+ * follow gets "Follow back"; the relationship itself ("Follows you",
+ * "Mutual") is the chip beside it — see followState().
+ */
+export type FollowButtonState = "follow" | "follow_back" | "following";
+
+export function followButtonState(p: { is_following: boolean; follows_me?: boolean | null }): FollowButtonState {
+  if (p.is_following) return "following";
+  return p.follows_me ? "follow_back" : "follow";
 }

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getSuggestedPeople, searchPeople } from "@/lib/social-data";
-import { Card } from "@/components/ui";
-import { Avatar, FollowButton } from "@/components/social";
+import { PeopleList } from "@/components/people-list";
 import { PeopleSearchBox } from "@/components/social-v2";
+import { currentActorId } from "@/lib/actor";
+import { SOCIAL } from "@/lib/social-ui";
 import { NavIcon } from "@/components/client-nav";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
@@ -32,10 +33,21 @@ export default async function PeoplePage({
   const { q = "", city = "", page = "1" } = await searchParams;
   const s = t.common.social;
   const searching = q.trim().length >= 2 || city.trim().length >= 2;
-  const [results, suggested] = await Promise.all([
+  const [results, suggested, viewer] = await Promise.all([
     searching ? searchPeople(q, city || null, Number(page)) : Promise.resolve(null),
     searching ? Promise.resolve([] as PersonRow[]) : getSuggestedPeople(),
+    currentActorId(),
   ]);
+  // Why this person is here, in words: shared connections when there are any,
+  // otherwise how many people follow them; with the handle and city in front.
+  const detail = (p: PersonRow) => {
+    const reason = p.mutuals
+      ? fill(s.mutualsCount, { count: p.mutuals })
+      : p.followers
+        ? p.followers === 1 ? s.followersCountOne : fill(s.followersCount, { count: p.followers })
+        : "";
+    return [p.username && p.username !== p.name ? `@${p.username}` : "", p.city ?? "", reason].filter(Boolean).join(" · ");
+  };
 
   const pageHref = (n: number) => {
     const next = new URLSearchParams();
@@ -46,18 +58,18 @@ export default async function PeoplePage({
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={SOCIAL.column}>
       <Link
         href="/feed"
-        className="inline-flex h-9 items-center gap-1.5 rounded-full bg-surface pl-3 pr-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+        className="inline-flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface pl-3 pr-4 text-[13px] font-semibold text-ink-soft hover:text-ink"
       >
         <NavIcon d={BACK} className="h-4 w-4 [stroke-width:2.2]" />
         {s.feed}
       </Link>
-      <h1 className="mt-4 font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{s.discoverPeople}</h1>
+      <h1 className="mt-4 font-display text-[22px] font-extrabold tracking-tight sm:text-2xl">{s.people}</h1>
 
       {/* useSearchParams needs a Suspense boundary to prerender. */}
-      <Suspense fallback={<div className="mt-5 h-[42px] rounded-2xl bg-surface sm:mt-6" />}>
+      <Suspense fallback={<div className="mt-4 h-11 rounded-2xl border border-line bg-surface" />}>
         <PeopleSearchBox placeholder={s.searchPlaceholder} cityPlaceholder={s.cityFilter} submitLabel={s.findPeople} />
       </Suspense>
 
@@ -67,23 +79,23 @@ export default async function PeoplePage({
             <>
               <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">{s.suggested}</h2>
               <div className="mt-2.5">
-                <PeopleList people={suggested} labels={{ mutuals: s.mutualsCount, followers: s.followersCount }} />
+                <PeopleList people={suggested} viewerId={viewer} detail={detail} />
               </div>
             </>
           ) : (
             <p className="text-[13px] text-ink-faint">{s.searchHint}</p>
           )
         ) : results.items.length === 0 ? (
-          <p className="text-[13px] text-ink-faint">{s.noResults}</p>
+          <p className="rounded-2xl border border-line bg-surface px-5 py-10 text-center text-[13.5px] text-ink-soft">{s.noResults}</p>
         ) : (
           <>
-            <PeopleList people={results.items} labels={{ mutuals: s.mutualsCount, followers: s.followersCount }} />
+            <PeopleList people={results.items} viewerId={viewer} detail={detail} />
             {results.hasMore || results.page > 1 ? (
               <nav className="mt-4 flex items-center justify-between gap-3">
                 {results.page > 1 ? (
                   <Link
                     href={pageHref(results.page - 1)}
-                    className="inline-flex h-10 items-center rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+                    className="inline-flex h-11 items-center rounded-full border border-line bg-surface px-4 text-[13px] font-semibold text-ink-soft hover:text-ink"
                   >
                     ←
                   </Link>
@@ -91,7 +103,7 @@ export default async function PeoplePage({
                 {results.hasMore ? (
                   <Link
                     href={pageHref(results.page + 1)}
-                    className="inline-flex h-10 items-center rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+                    className="inline-flex h-11 items-center rounded-full border border-line bg-surface px-4 text-[13px] font-semibold text-ink-soft hover:text-ink"
                   >
                     {s.peopleMore}
                   </Link>
@@ -102,37 +114,5 @@ export default async function PeoplePage({
         )}
       </div>
     </div>
-  );
-}
-
-/** One list shape for search results and suggestions alike. */
-function PeopleList({ people, labels }: { people: PersonRow[]; labels: { mutuals: string; followers: string } }) {
-  return (
-    <Card plain className="overflow-hidden p-0">
-      <ul className="divide-y divide-line/60">
-        {people.map((p) => {
-          // Why this person is here, in words: shared connections when there
-          // are any, otherwise how many people follow them.
-          const reason = p.mutuals
-            ? fill(labels.mutuals, { count: p.mutuals })
-            : p.followers
-              ? fill(labels.followers, { count: p.followers })
-              : "";
-          const detail = [p.username ? `@${p.username}` : "", p.city ?? "", reason].filter(Boolean).join(" · ");
-          return (
-            <li key={p.id} className="flex min-h-14 items-center gap-3 px-5 py-3">
-              <Link href={`/people/${p.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                <Avatar name={p.name} url={p.avatar_url} size="h-10 w-10" />
-                <span className="min-w-0">
-                  <span className="block truncate text-[14.5px] font-semibold">{p.name}</span>
-                  <span className="block truncate text-[12.5px] text-ink-faint">{detail}</span>
-                </span>
-              </Link>
-              <FollowButton userId={p.id} following={p.is_following} compact />
-            </li>
-          );
-        })}
-      </ul>
-    </Card>
   );
 }

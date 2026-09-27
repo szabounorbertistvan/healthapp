@@ -17,6 +17,8 @@ import {
   validateComment,
   validateFollow,
   validatePostEdit,
+  isPostId,
+  sharedPostPayload,
   validatePostText,
   workoutPostPayload,
   type ChallengePostPayload,
@@ -54,11 +56,17 @@ function visibilityOf(input: string | undefined): PostVisibility {
 
 // ---------- follows ----------
 
+/**
+ * Follow someone. Idempotent: the upsert ignores the unique pair, so a double
+ * tap or a retry leaves one edge, and the new_follower trigger only ever
+ * writes one notification per pair. Yourself is refused here, and again by
+ * the check constraint on social_follows.
+ */
 export async function follow(targetId: string): Promise<ActionResult> {
   const { t } = await getI18n();
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
-  if (uid === targetId) return { ok: false, message: t.common.social.cannotFollowSelf };
+  if (validateFollow(uid, targetId, new Set()) === "self") return { ok: false, message: t.common.social.cannotFollowSelf };
   const supabase = await supabaseServer();
   const { error } = await supabase
     .from("social_follows")
@@ -68,13 +76,18 @@ export async function follow(targetId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/**
+ * Stop following someone. Idempotent on purpose, unlike the other writes that
+ * go through mutated(): the delete is filtered to the caller's own edge, so
+ * zero rows can only mean "already not following" — a second tap or a retry
+ * racing the first — which is the state that was asked for, not a failure.
+ */
 export async function unfollow(targetId: string): Promise<ActionResult> {
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
   const supabase = await supabaseServer();
-  const result = await supabase.from("social_follows").delete({ count: "exact" }).eq("follower_id", uid).eq("following_id", targetId);
-  const failure = await mutated(result);
-  if (failure) return failure;
+  const { error } = await supabase.from("social_follows").delete().eq("follower_id", uid).eq("following_id", targetId);
+  if (error) return { ok: false, message: error.message };
   touched();
   return { ok: true };
 }
@@ -326,6 +339,68 @@ export async function editPost(postId: string, text: string): Promise<ActionResu
   await writeMentions(supabase, "post", postId, clean ?? "", true);
   touched([`/feed/${postId}`]);
   return { ok: true };
+}
+
+// ---------- save ----------
+
+/**
+ * Save or unsave a post — the state asked for, not a toggle, so a retry or a
+ * race lands where the tap meant. Both directions are idempotent: saving
+ * twice is ignored by the primary key, unsaving what is not saved is done.
+ * RLS allows a save only of a post the caller may see now; nobody is told,
+ * and nothing counts saves.
+ */
+export async function setPostSaved(postId: string, save: boolean): Promise<ActionResult> {
+  const { t } = await getI18n();
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  if (!isPostId(postId)) return { ok: false, message: t.common.social.postNotFound };
+  const supabase = await supabaseServer();
+  const { error } = save
+    ? await supabase
+        .from("social_post_saves")
+        .upsert({ user_id: uid, post_id: postId }, { onConflict: "user_id,post_id", ignoreDuplicates: true })
+    : await supabase.from("social_post_saves").delete().eq("user_id", uid).eq("post_id", postId);
+  if (error) {
+    // 42501: RLS refused it — the post is gone or not visible to this user.
+    return { ok: false, message: error.code === "42501" ? t.common.social.postNotFound : t.common.social.saveError };
+  }
+  revalidatePath("/saved");
+  return { ok: true };
+}
+
+// ---------- share to Voinic ----------
+
+/**
+ * Share someone else's post to your own feed, with an optional caption of
+ * your own. Only the id of the post travels; the database (social_posts_guard)
+ * checks the sharer may see it, resolves a share of a share to its original,
+ * refuses your own post, and rebuilds the payload itself — so nothing here,
+ * and nothing a hand-made request sends, can put words in the original's
+ * mouth or change who wrote it. The sharer is always the signed-in user.
+ */
+export async function sharePost(postId: string, text: string, visibility?: string): Promise<PostResult> {
+  const { t } = await getI18n();
+  const s = t.common.social;
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  const payload = sharedPostPayload(postId);
+  if (!payload) return { ok: false, message: s.shareFailed };
+  const caption = validatePostEdit("shared_post", text ?? "");
+  if (!caption.ok) return { ok: false, message: s.textInvalid };
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase
+    .from("social_posts")
+    .insert({ user_id: uid, type: "shared_post", text: caption.text, payload, visibility: visibilityOf(visibility) })
+    .select("id")
+    .single();
+  if (error) {
+    // 22023 from the guard: your own post. P0002: missing, deleted or not yours to see.
+    return { ok: false, message: error.code === "22023" ? s.cannotShareOwn : s.shareFailed };
+  }
+  if (caption.text) await writeMentions(supabase, "post", data.id as string, caption.text);
+  touched();
+  return { ok: true, postId: data.id as string };
 }
 
 // ---------- kudos ----------

@@ -1,76 +1,119 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { getFollowList, getSocialProfile } from "@/lib/social-data";
 import { currentActorId } from "@/lib/actor";
-import { Card } from "@/components/ui";
-import { Avatar, FollowButton } from "@/components/social";
+import { PeopleList } from "@/components/people-list";
+import { ListSearchBox } from "@/components/social-v2";
 import { NavIcon } from "@/components/client-nav";
 import { getI18n } from "@/lib/i18n/server";
+import { SOCIAL } from "@/lib/social-ui";
+import type { PersonRow } from "@/lib/types";
 
 const BACK = "m15 6-6 6 6 6";
 
 /**
  * /people/[id]/followers and /people/[id]/following — who follows a person
- * and whom they follow, one page at a time (?before= is the cursor, plain
- * links). Each row is the person's public profile, with the viewer's own
- * Follow / Following state on it; the viewer's own row shows no button.
+ * and whom they follow, with the two lists as tabs, a search over the whole
+ * list, and one page at a time (?before= is the cursor, ?q= the search, both
+ * plain links, so back and forward work).
+ *
+ * The counts in the tabs are social_profile's server-side counts, never the
+ * number of rows loaded; they and the list apply the same rule, so an account
+ * that is suspended or being deleted is in neither. Each row carries the
+ * viewer's own two edges to that person, from the same query.
  */
 export default async function FollowListPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string; list: string }>;
-  searchParams: Promise<{ before?: string }>;
+  searchParams: Promise<{ before?: string; q?: string }>;
 }) {
   const { t } = await getI18n();
-  const [{ id, list }, { before }] = await Promise.all([params, searchParams]);
+  const [{ id, list }, { before, q }] = await Promise.all([params, searchParams]);
   if (list !== "followers" && list !== "following") notFound();
-  const [profile, page, viewer] = await Promise.all([getSocialProfile(id), getFollowList(id, list, before ?? null), currentActorId()]);
+  const query = q?.trim() ?? "";
+  // One wave: the header's counts and the page of rows are independent reads.
+  const [profile, page, viewer] = await Promise.all([
+    getSocialProfile(id),
+    getFollowList(id, list, before ?? null, query || null),
+    currentActorId(),
+  ]);
   if (!profile) notFound();
   const s = t.common.social;
-  const title = list === "followers" ? s.followers : s.followingCount;
-  const count = list === "followers" ? profile.followers : profile.following;
+
+  const base = `/people/${id}/${list}`;
+  const tabs = [
+    { key: "followers", label: s.followers, count: profile.followers },
+    { key: "following", label: s.followingCount, count: profile.following },
+  ] as const;
+
+  const empty = query
+    ? s.noResults
+    : list === "followers"
+      ? (profile.me ? s.noFollowersMine : s.noFollowers)
+      : (profile.me ? s.noFollowingMine : s.noFollowing);
+
+  // The second line of a row: how this person relates to the viewer, when
+  // they relate at all; otherwise their handle, when it adds anything.
+  const detail = (p: PersonRow) =>
+    p.is_following && p.follows_me ? s.relationMutual
+    : p.follows_me ? s.relationFollowsYou
+    : p.username && p.username !== p.name ? `@${p.username}` : "";
+
+  const next = new URLSearchParams();
+  if (query) next.set("q", query);
+  if (page.next_cursor) next.set("before", page.next_cursor);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={SOCIAL.column}>
       <Link
         href={`/people/${id}`}
-        className="inline-flex h-9 items-center gap-1.5 rounded-full bg-surface pl-3 pr-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+        className="inline-flex h-10 max-w-full items-center gap-1.5 rounded-full border border-line bg-surface pl-3 pr-4 text-[13px] font-semibold text-ink-soft hover:text-ink"
       >
         <NavIcon d={BACK} className="h-4 w-4 [stroke-width:2.2]" />
-        <span className="max-w-[14rem] truncate">{profile.name}</span>
+        <span className="truncate">{profile.name}</span>
       </Link>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{title}</h1>
-        <span className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold tabular-nums text-ink-faint">{count}</span>
+      <nav className="mt-4 grid grid-cols-2 border-b border-line" aria-label={profile.name}>
+        {tabs.map((tab) => {
+          const active = tab.key === list;
+          return (
+            <Link
+              key={tab.key}
+              href={`/people/${id}/${tab.key}`}
+              aria-current={active ? "page" : undefined}
+              className={`-mb-px flex h-12 items-center justify-center gap-1.5 border-b-2 text-[14px] font-semibold transition-colors ${
+                active ? "border-accent text-ink" : "border-transparent text-ink-faint hover:text-ink-soft"
+              }`}
+            >
+              <span className="tabular-nums">{tab.count}</span>
+              <span className="truncate">{tab.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="mt-4">
+        {/* useSearchParams needs a Suspense boundary to prerender. */}
+        <Suspense fallback={<div className="h-11 rounded-2xl border border-line bg-surface" />}>
+          <ListSearchBox key={list} basePath={base} placeholder={s.searchList} />
+        </Suspense>
       </div>
 
-      <Card plain className="mt-5 overflow-hidden p-0 sm:mt-6">
+      <div className="mt-3">
         {page.items.length === 0 ? (
-          <p className="px-5 py-8 text-center text-[13px] text-ink-faint">{list === "followers" ? s.noFollowers : s.noFollowing}</p>
+          <p className="rounded-2xl border border-line bg-surface px-5 py-10 text-center text-[13.5px] text-ink-soft">{empty}</p>
         ) : (
-          <ul className="divide-y divide-line/60">
-            {page.items.map((p) => (
-              <li key={p.id} className="flex min-h-14 items-center gap-3 px-5 py-3">
-                <Link href={`/people/${p.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                  <Avatar name={p.name} url={p.avatar_url} size="h-10 w-10" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[14.5px] font-semibold">{p.name}</span>
-                    {p.username ? <span className="block truncate text-[12.5px] text-ink-faint">@{p.username}</span> : null}
-                  </span>
-                </Link>
-                {p.id !== viewer ? <FollowButton userId={p.id} following={p.is_following} compact /> : null}
-              </li>
-            ))}
-          </ul>
+          <PeopleList people={page.items} viewerId={viewer} detail={detail} />
         )}
-      </Card>
+      </div>
 
       {page.next_cursor ? (
         <Link
-          href={`/people/${id}/${list}?before=${encodeURIComponent(page.next_cursor)}`}
-          className="mt-4 flex h-11 items-center justify-center rounded-2xl bg-surface px-5 text-[13px] font-semibold text-ink-soft hover:text-ink"
+          href={`${base}?${next}`}
+          className="mt-4 flex h-11 items-center justify-center rounded-2xl border border-line bg-surface px-5 text-[13px] font-semibold text-ink-soft hover:text-ink"
         >
           {s.loadMore}
         </Link>

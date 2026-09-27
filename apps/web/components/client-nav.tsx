@@ -25,6 +25,8 @@ const items: { href: string; key: NavKey; icon: string }[] = [
   { href: "/challenges", key: "challenges", icon: "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" },
   { href: "/achievements", key: "achievements", icon: "M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12M8.2 13.6 7 22l5-3 5 3-1.2-8.4" },
   { href: "/feed", key: "feed", icon: "M4 5h16v11H9l-5 4z" },
+  // Private bookmarks — only ever the signed-in person's own list.
+  { href: "/saved", key: "saved", icon: "M6 3h12v18l-6-4.5L6 21z" },
   // The bell is a glance from any screen; this is the full list, with who did
   // what. Not in TAB_HREFS — the phone's four tabs are the daily loop.
   { href: "/notifications", key: "notifications", icon: "M12 4a5 5 0 0 0-5 5v3l-1.5 3h13L17 12V9a5 5 0 0 0-5-5M10 18a2 2 0 0 0 4 0" },

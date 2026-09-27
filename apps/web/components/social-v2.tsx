@@ -14,6 +14,7 @@ import {
   mentionCandidates, publishFitnessScore, shareAchievement, shareFitnessScore, updateSocialPrivacy,
 } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
+import { splitHashtags } from "@/lib/post-card";
 import { useI18n } from "@/lib/i18n/client";
 import type { PersonRow, ProfileBadge, SocialPrivacy } from "@/lib/types";
 import { NavIcon } from "./client-nav";
@@ -63,20 +64,36 @@ export function BadgeGlyph({ icon, className = "h-5 w-5" }: { icon: string | nul
  * there is no HTML anywhere in this path.
  */
 export function MentionText({
-  text, mentions, className,
+  text, mentions, className, lead, hashtags = false,
 }: {
   text: string;
   mentions: { user_id: string; username: string }[];
   className?: string;
+  /** Rendered first, inline — a caption opens with its author's name. */
+  lead?: React.ReactNode;
+  /** Set #tags apart visually. Styling only — nothing is linked or looked up. */
+  hashtags?: boolean;
 }) {
   const segments = commentSegments(text, mentions);
   return (
     <p className={className}>
+      {lead}
       {segments.map((segment, i) =>
         segment.kind === "mention" ? (
           <Link key={i} href={`/people/${segment.user_id}`} className="font-semibold text-accent-ink hover:underline">
             {segment.text}
           </Link>
+        ) : hashtags ? (
+          // Text nodes only: a caption is never parsed as markup.
+          <span key={i}>
+            {splitHashtags(segment.text).map((piece, j) =>
+              piece.kind === "tag" ? (
+                <span key={j} className="font-medium text-accent-ink">{piece.text}</span>
+              ) : (
+                piece.text
+              ),
+            )}
+          </span>
         ) : (
           <span key={i}>{segment.text}</span>
         ),
@@ -405,8 +422,8 @@ export function PeopleSearchBox({ placeholder, cityPlaceholder, submitLabel }: {
   }, [q, city, router]);
 
   return (
-    <form className="mt-5 flex flex-wrap gap-2 sm:mt-6" role="search" aria-busy={pending}>
-      <label className="flex h-[42px] min-w-[10rem] flex-1 items-center gap-2.5 rounded-2xl bg-surface px-3.5">
+    <form className="mt-4 flex flex-wrap gap-2" role="search" aria-busy={pending}>
+      <label className="flex h-11 min-w-[10rem] flex-1 items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 focus-within:border-accent">
         <NavIcon d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3" className={`h-[17px] w-[17px] shrink-0 ${pending ? "animate-pulse text-accent" : "text-ink-faint"}`} />
         <input
           name="q"
@@ -420,7 +437,7 @@ export function PeopleSearchBox({ placeholder, cityPlaceholder, submitLabel }: {
       </label>
       {/* City is free text on the profile and already shown there, so it is
           a filter rather than a new kind of data. */}
-      <label className="flex h-[42px] min-w-[8rem] items-center gap-2.5 rounded-2xl bg-surface px-3.5">
+      <label className="flex h-11 min-w-[8rem] items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 focus-within:border-accent">
         <input
           name="city"
           value={city}
@@ -433,10 +450,59 @@ export function PeopleSearchBox({ placeholder, cityPlaceholder, submitLabel }: {
       </label>
       <button
         type="submit"
-        className="flex h-[42px] shrink-0 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90"
+        className="flex h-11 shrink-0 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90"
       >
         {submitLabel}
       </button>
+    </form>
+  );
+}
+
+/**
+ * The search box on a followers / following list. Like PeopleSearchBox, the
+ * text travels through the URL (?q=), debounced, so the list stays a server
+ * render and the database does the matching over the whole list — never a
+ * filter over the page already on screen. Typing drops the page cursor: a new
+ * search starts from the top.
+ */
+export function ListSearchBox({ basePath, placeholder }: { basePath: string; placeholder: string }) {
+  const router = useRouter();
+  const params = useSearchParams();
+  const [q, setQ] = useState(params.get("q") ?? "");
+  const [pending, start] = useTransition();
+  const first = useRef(true);
+
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      const next = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
+      start(() => router.replace(`${basePath}${next}`, { scroll: false }));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [q, basePath, router]);
+
+  return (
+    <form role="search" aria-busy={pending} onSubmit={(e) => e.preventDefault()}>
+      <label className="flex h-11 items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 focus-within:border-accent">
+        <NavIcon
+          d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"
+          className={`h-[17px] w-[17px] shrink-0 ${pending ? "animate-pulse text-accent" : "text-ink-faint"}`}
+        />
+        <input
+          type="search"
+          name="q"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          autoComplete="off"
+          enterKeyHint="search"
+          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-faint"
+        />
+      </label>
     </form>
   );
 }

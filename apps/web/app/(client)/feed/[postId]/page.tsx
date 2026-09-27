@@ -22,7 +22,7 @@ export default async function PostPage({ params }: { params: Promise<{ postId: s
   if (!data) notFound();
   return (
     // One post and its comments — a document, so a readable column.
-    <div className="mx-auto max-w-[680px]">
+    <div className="mx-auto w-full max-w-[500px]">
       <Link
         href="/feed"
         className="inline-flex h-9 items-center gap-1.5 rounded-full bg-surface pl-3 pr-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
@@ -32,7 +32,10 @@ export default async function PostPage({ params }: { params: Promise<{ postId: s
       </Link>
       <div className="mt-4 space-y-4">
         <PostCard post={data.post} detail />
-        <CommentThread postId={postId} page={data.comments} />
+        {/* The comment button on the card jumps here. */}
+        <div id="comments" className="scroll-mt-24">
+          <CommentThread postId={postId} page={data.comments} />
+        </div>
       </div>
     </div>
   );

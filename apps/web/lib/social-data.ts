@@ -16,7 +16,7 @@ import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
 import { prShareOneRm } from "./share-payload";
 import type {
   CommentPage, CommentThread, FeedPage, FeedPost, KudosGiver, KudosPage, MutualFollowers,
-  PersonRow, PostComment, ProfileBadge, ShareableSession, SocialPrivacy, SocialProfile,
+  CommentPreviewItem, PersonRow, PostComment, ProfileBadge, ShareableSession, SharedOriginal, SocialPrivacy, SocialProfile,
 } from "./types";
 import type { FeedScope } from "@healthapp/shared";
 
@@ -43,12 +43,7 @@ export async function getFeed(
     p_scope: opts.scope ?? "following",
     p_type: opts.type ?? null,
   });
-  type Row = Omit<FeedPost, "mine" | "payload" | "mentions"> & {
-    payload: PostPayload | null; author_username: string | null; mentions: RawMention[] | null;
-  };
-  const rows = ((data ?? []) as Row[]).map((r) => ({
-    ...r, payload: r.payload ?? null, mentions: resolvedMentions(r.mentions), edited_at: r.edited_at ?? null, mine: r.user_id === viewer,
-  }));
+  const rows = ((data ?? []) as FeedRow[]).map((r) => toFeedPost(r, viewer));
   const items = rows.slice(0, FEED_PAGE_SIZE);
   return { items, next_cursor: rows.length > FEED_PAGE_SIZE ? items[items.length - 1]!.created_at : null };
 }
@@ -69,15 +64,60 @@ export async function getPost(id: string): Promise<{ post: FeedPost; comments: C
     supabase.rpc("social_post", { p_post: id }),
     getComments(id),
   ]);
-  type Row = Omit<FeedPost, "mine" | "mentions"> & { mentions: RawMention[] | null };
-  const found = ((rows ?? []) as Row[])[0];
+  const found = ((rows ?? []) as FeedRow[])[0];
   if (!found) return null;
+  return { post: toFeedPost(found, viewer), comments };
+}
+
+/**
+ * One row of social_feed / social_post / social_saved_posts, as the card
+ * wants it. `saved` and `shared` default when absent, so the page keeps
+ * working against a database that has not had 20261005100000 yet.
+ */
+type FeedRow = Omit<FeedPost, "mine" | "payload" | "mentions" | "saved" | "shared" | "comment_preview" | "author_muted"> & {
+  payload: PostPayload | null;
+  author_username: string | null;
+  mentions: RawMention[] | null;
+  saved?: boolean | null;
+  shared?: (Omit<SharedOriginal, "mentions"> & { mentions: RawMention[] | null }) | null;
+  comment_preview?: (Omit<CommentPreviewItem, "mentions"> & { mentions: RawMention[] | null })[] | null;
+  author_muted?: boolean | null;
+};
+
+function toFeedPost(r: FeedRow, viewer: string): FeedPost {
   return {
-    post: {
-      ...found, payload: found.payload ?? null, mentions: resolvedMentions(found.mentions),
-      edited_at: found.edited_at ?? null, mine: found.user_id === viewer,
-    },
-    comments,
+    ...r,
+    payload: r.payload ?? null,
+    mentions: resolvedMentions(r.mentions),
+    edited_at: r.edited_at ?? null,
+    mine: r.user_id === viewer,
+    saved: r.saved ?? false,
+    shared: r.shared ? { ...r.shared, payload: r.shared.payload ?? null, mentions: resolvedMentions(r.shared.mentions) } : null,
+    // Absent (social_post, or a database without 20261006100000): no preview, never an error.
+    comment_preview: (r.comment_preview ?? []).map((c) => ({ ...c, mentions: resolvedMentions(c.mentions) })),
+    author_muted: r.author_muted ?? false,
+  };
+}
+
+/**
+ * The signed-in person's saved posts, newest save first, cursor on the save
+ * time. social_saved_posts() takes no user: it is always the caller's own
+ * list, and it drops anything they may no longer see.
+ */
+export async function getSavedPosts(before: string | null = null): Promise<FeedPage> {
+  const viewer = await currentActorId();
+  if (!viewer) return { items: [], next_cursor: null };
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("social_saved_posts", { p_limit: FEED_PAGE_SIZE + 1, p_before: before });
+  if (error) {
+    console.error("saved posts read failed:", error.message);
+    return { items: [], next_cursor: null };
+  }
+  const rows = (data ?? []) as (FeedRow & { saved_at: string })[];
+  const page = rows.slice(0, FEED_PAGE_SIZE);
+  return {
+    items: page.map((r) => toFeedPost(r, viewer)),
+    next_cursor: rows.length > FEED_PAGE_SIZE ? page[page.length - 1]!.saved_at : null,
   };
 }
 
@@ -192,8 +232,10 @@ export async function getSocialProfile(userId: string): Promise<SocialProfile | 
   if (!viewer) return null;
   const supabase = await supabaseServer();
   const { data } = await supabase.rpc("social_profile", { p_user: userId });
-  const row = ((data ?? []) as Omit<SocialProfile, "me">[])[0];
-  return row ? { ...row, me: row.id === viewer } : null;
+  type Row = Omit<SocialProfile, "me" | "blocked" | "muted"> & { blocked?: boolean | null; muted?: boolean | null };
+  const row = ((data ?? []) as Row[])[0];
+  // blocked / muted default off against a database without 20261007100000.
+  return row ? { ...row, me: row.id === viewer, blocked: row.blocked ?? false, muted: row.muted ?? false } : null;
 }
 
 /**
@@ -293,21 +335,28 @@ export const FOLLOW_PAGE_SIZE = 20;
 export type FollowPage = { items: PersonRow[]; next_cursor: string | null };
 
 /**
- * Who follows / is followed by a person, newest first, one page. Served by
- * social_follow_list() (security definer — users_select would hide the
- * names) with whether the viewer follows each of them folded in, so a list
- * of 20 is one round trip and no per-row lookups.
+ * Who follows / is followed by a person, newest first, one page, optionally
+ * narrowed by a search. Served by social_follow_list() (security definer —
+ * users_select would hide the names) with both edges between the viewer and
+ * each row folded in, so a list of 20 is one round trip and no per-row
+ * lookups. The search runs in the database, over the whole list, not over the
+ * page already loaded; suspended and deleting accounts are never in it.
  */
 export async function getFollowList(
   userId: string,
   which: "followers" | "following",
   before: string | null = null,
+  query: string | null = null,
 ): Promise<FollowPage> {
   const viewer = await currentActorId();
   if (!viewer) return { items: [], next_cursor: null };
   const supabase = await supabaseServer();
+  const q = query?.trim() ?? "";
+  // p_query only when there is a search: without it the call also resolves
+  // against the pre-20261003100000 four-argument function, so the lists keep
+  // working while a deploy and its migration land in either order.
   const { data } = await supabase.rpc("social_follow_list", {
-    p_user: userId, p_which: which, p_limit: FOLLOW_PAGE_SIZE + 1, p_before: before,
+    p_user: userId, p_which: which, p_limit: FOLLOW_PAGE_SIZE + 1, p_before: before, ...(q ? { p_query: q } : {}),
   });
   type Row = PersonRow & { followed_at: string };
   const rows = (data ?? []) as Row[];

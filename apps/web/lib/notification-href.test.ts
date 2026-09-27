@@ -31,7 +31,7 @@ describe("notificationHref", () => {
   });
 
   it("falls back to the profile shelf for a slug outside the catalog", () => {
-    expect(notificationHref("badge_earned", { badge_slug: "../admin", profile_id: PERSON })).toBe(`/people/${PERSON}#achievements`);
+    expect(notificationHref("badge_earned", { badge_slug: "../admin", profile_id: PERSON })).toBe(`/people/${PERSON}?tab=achievements`);
     expect(notificationHref("badge_earned", { badge_slug: "retired-badge" })).toBeNull();
   });
 

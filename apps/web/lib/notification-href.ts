@@ -59,7 +59,7 @@ export function notificationHref(category: string, payload: Record<string, unkno
     const slug = payload?.badge_slug;
     if (isBadgeSlug(slug)) return `/achievements/${slug}`;
     const profile = id(payload, "profile_id");
-    return profile ? `/people/${profile}#achievements` : null;
+    return profile ? `/people/${profile}?tab=achievements` : null;
   }
   if (category === "challenge_milestone") {
     const challenge = id(payload, "challenge_id");
