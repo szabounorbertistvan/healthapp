@@ -76,17 +76,27 @@ select is((select current_days from public.social_streak('b0000000-0000-0000-000
   'no workouts → streak 0');
 
 -- ---------- streak posts ----------
+-- Since 20261012100000 a streak post must name a streak that happened: a
+-- real seven-day run, 56 to 50 days ago, is added for it (the runs above
+-- are three and five days long). Written as the owner, like the rows above.
+reset role;
+select set_config('request.jwt.claims', '', true);
+insert into public.logged_sessions (user_id, client_generated_id, started_at, completed_at)
+select 'a0000000-0000-0000-0000-0000000000a1', gen_random_uuid(),
+       (((now() at time zone 'Europe/Bucharest')::date - d) || ' 12:00') ::timestamp at time zone 'Europe/Bucharest',
+       (((now() at time zone 'Europe/Bucharest')::date - d) || ' 13:00') ::timestamp at time zone 'Europe/Bucharest'
+from generate_series(50, 56) as d;
 select pg_temp.authenticate_as('a0000000-0000-0000-0000-0000000000a1');
-select lives_ok($$
+select lives_ok(format($f$
   insert into public.social_posts (user_id, type, payload, visibility)
   values ('a0000000-0000-0000-0000-0000000000a1', 'streak',
-          '{"kind":"streak","streak_days":7,"milestone":7,"achieved_at":"2026-09-12","streak_start":"2026-09-06","title":"7 Day Streak"}', 'public')
-$$, 'a streak milestone can be shared');
-select throws_ok($$
+          '{"kind":"streak","streak_days":7,"milestone":7,"achieved_at":"2026-09-12","streak_start":"%s","title":"7 Day Streak"}', 'public')
+$f$, to_char((now() at time zone 'Europe/Bucharest')::date - 56, 'YYYY-MM-DD')), 'a streak milestone can be shared');
+select throws_ok(format($f$
   insert into public.social_posts (user_id, type, payload, visibility)
   values ('a0000000-0000-0000-0000-0000000000a1', 'streak',
-          '{"kind":"streak","streak_days":8,"milestone":7,"achieved_at":"2026-09-12","streak_start":"2026-09-06","title":"7 Day Streak"}', 'public')
-$$, '23505', null, 'the same milestone of the same streak is shared once');
+          '{"kind":"streak","streak_days":8,"milestone":7,"achieved_at":"2026-09-12","streak_start":"%s","title":"7 Day Streak"}', 'public')
+$f$, to_char((now() at time zone 'Europe/Bucharest')::date - 56, 'YYYY-MM-DD')), '23505', null, 'the same milestone of the same streak is shared once');
 
 select * from finish();
 rollback;

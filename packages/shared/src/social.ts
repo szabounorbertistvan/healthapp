@@ -72,6 +72,12 @@ export type PrPostPayload = {
   reps: number;
   estimated_1rm: number;
   date: string;
+  /**
+   * Which set this is — sent when sharing, never stored: the database
+   * (social_posts_guard, 20261012100000) finds the set, checks it is the
+   * author's flagged PR, and rebuilds every number above from it.
+   */
+  set_id?: string;
 };
 
 export type ChallengePostPayload = {
@@ -148,6 +154,28 @@ export function payloadMatchesType(type: PostType, payload: PostPayload): boolea
       && Object.keys(payload).length === 2 && isPostId(payload.original_post_id);
   }
   return payload === null || payload.kind === type;
+}
+
+/**
+ * The request to share one PR: the set it is, plus the snapshot fields the
+ * type needs. The database (social_posts_guard) finds the set by `set_id`,
+ * checks it is the author's own flagged PR in the named session, rebuilds
+ * every number from it and drops `set_id` — the numbers here are never
+ * what gets stored.
+ */
+export function prPostPayload(
+  pr: { set_id: string; exercise: string; weight_kg: number; reps: number; estimated_1rm: number },
+  date: string,
+): PrPostPayload {
+  return {
+    kind: "pr",
+    exercise: pr.exercise,
+    weight_kg: pr.weight_kg,
+    reps: pr.reps,
+    estimated_1rm: pr.estimated_1rm,
+    date,
+    set_id: pr.set_id,
+  };
 }
 
 /** Build a workout post from a scored session. Only aggregates cross into the feed. */

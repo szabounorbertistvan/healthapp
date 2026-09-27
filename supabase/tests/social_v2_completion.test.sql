@@ -14,6 +14,14 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(59);
 
+-- Created here, as the owner, so security definer runs as the owner.
+create or replace function pg_temp.space_replies()
+returns void language sql security definer as $fn$
+  update public.social_comments
+  set created_at = now() + (substring(body from 7)::int || ' seconds')::interval
+  where parent_id = '6bc00000-0000-0000-0000-000000000001' and body like 'reply %';
+$fn$;
+
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
 begin
@@ -239,8 +247,10 @@ select throws_ok($$ select public.user_can_see_post('6b000000-0000-0000-0000-000
   '42501', null, 'the on-behalf visibility check is not callable by users');
 
 select pg_temp.authenticate_as('6b000000-0000-0000-0000-00000000000f');
-select is((select jsonb_array_length(mentions) from public.social_post('6bb00000-0000-0000-0000-000000000002')), 2,
-  'the post carries its resolved mentions');
+-- Since 20261012100000 a mention is kept only for someone who may see the
+-- post: the stranger named in this followers-only post is not mentioned.
+select is((select jsonb_array_length(mentions) from public.social_post('6bb00000-0000-0000-0000-000000000002')), 1,
+  'the post carries its resolved mentions — only people who may see it');
 
 -- ---------- 7. comment edits ----------
 insert into public.social_comments (id, post_id, user_id, body) values
@@ -272,10 +282,14 @@ insert into public.social_follows (follower_id, following_id) values
 
 -- ---------- 8. replies are paged ----------
 select pg_temp.authenticate_as('6b000000-0000-0000-0000-00000000000a');
-insert into public.social_comments (post_id, user_id, body, parent_id, created_at)
+insert into public.social_comments (post_id, user_id, body, parent_id)
 select '6bb00000-0000-0000-0000-000000000002', '6b000000-0000-0000-0000-00000000000a', 'reply ' || g,
-       '6bc00000-0000-0000-0000-000000000001', now() + (g || ' seconds')::interval
+       '6bc00000-0000-0000-0000-000000000001'
 from generate_series(1, 5) g;
+-- One transaction means one now(); the replies are spaced a second apart so
+-- their order is defined. A client cannot send created_at (20261011100000),
+-- so the owner spaces them, after the inserts went through RLS.
+select pg_temp.space_replies();
 
 select pg_temp.authenticate_as('6b000000-0000-0000-0000-00000000000f');
 select is((select count(*)::int from public.social_post_comments('6bb00000-0000-0000-0000-000000000002')

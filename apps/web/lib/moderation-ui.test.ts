@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { commonMessages } from "./i18n/messages/common";
 import { REPORT_REASONS } from "@healthapp/shared";
-import { postMenuActions, profileMenuActions, sheetReducer, type SheetStep } from "./moderation-ui";
+import { commentMenuActions, postMenuActions, profileMenuActions, sheetReducer, type SheetStep } from "./moderation-ui";
 
 describe("postMenuActions", () => {
   it("your own post: edit and delete, nothing else", () => {
@@ -21,6 +21,15 @@ describe("postMenuActions", () => {
   });
 });
 
+describe("commentMenuActions", () => {
+  it("someone else's comment: report it or block its author", () => {
+    expect(commentMenuActions({ mine: false })).toEqual(["report", "block"]);
+  });
+  it("your own comment: nothing here (the thread has Edit and Delete)", () => {
+    expect(commentMenuActions({ mine: true })).toEqual([]);
+  });
+});
+
 describe("profileMenuActions", () => {
   it("offers nothing on your own profile", () => {
     expect(profileMenuActions({ me: true, muted: false, blocked: false })).toEqual([]);
@@ -35,10 +44,24 @@ describe("profileMenuActions", () => {
 describe("sheetReducer — the confirm flows", () => {
   const menu: SheetStep = { step: "menu" };
 
-  it("mute is one tap: straight to the request, then done", () => {
-    const pending = sheetReducer(menu, { type: "choose", action: "mute" });
-    expect(pending).toEqual({ step: "pending", from: "menu" });
+  it("mute asks first too; cancelling sends nothing", () => {
+    const confirm = sheetReducer(menu, { type: "choose", action: "mute" });
+    expect(confirm).toEqual({ step: "confirm-mute" });
+    expect(sheetReducer(confirm, { type: "back" })).toEqual(menu);
+    const pending = sheetReducer(confirm, { type: "confirm" });
+    expect(pending).toEqual({ step: "pending", from: "confirm-mute" });
     expect(sheetReducer(pending, { type: "result", ok: true, what: "muted" })).toEqual({ step: "done", what: "muted" });
+  });
+
+  it("undoing is one tap: unmute and unblock go straight to the request", () => {
+    expect(sheetReducer(menu, { type: "choose", action: "unmute" })).toEqual({ step: "pending", from: "menu" });
+    expect(sheetReducer(menu, { type: "choose", action: "unblock" })).toEqual({ step: "pending", from: "menu" });
+  });
+
+  it("a failed mute goes back to its confirmation, not to done", () => {
+    const failed = sheetReducer({ step: "pending", from: "confirm-mute" }, { type: "result", ok: false, what: "muted" });
+    expect(failed).toEqual({ step: "error", back: "confirm-mute" });
+    expect(sheetReducer(failed, { type: "back" })).toEqual({ step: "confirm-mute" });
   });
 
   it("block asks first; only the confirmation sends it", () => {

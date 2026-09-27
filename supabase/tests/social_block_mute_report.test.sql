@@ -184,8 +184,8 @@ select is((select count(*)::int from public.social_feed(50) where user_id = '1a0
 -- ================= REPORT =================
 select pg_temp.authenticate_as('1a000000-0000-0000-0000-00000000000c');
 select lives_ok($$ select public.social_report('post', '1b000000-0000-0000-0000-00000000000b', 'spam') $$, 'C reports B''s post');
-select lives_ok($$ select public.social_report('post', '1b000000-0000-0000-0000-00000000000b', 'harassment') $$,
-  'reporting it again is accepted…');
+select lives_ok($$ select public.social_report('post', '1b000000-0000-0000-0000-00000000000b', 'spam') $$,
+  'reporting it again, for the same reason, is accepted…');
 select lives_ok($$ select public.social_report('user', '1a000000-0000-0000-0000-00000000000b', 'other', '  keeps posting ads  ') $$,
   'C reports B the person, with details');
 select throws_ok($$ select public.social_report('user', '1a000000-0000-0000-0000-00000000000c', 'spam') $$,

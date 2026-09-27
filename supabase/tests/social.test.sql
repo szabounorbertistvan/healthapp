@@ -7,6 +7,12 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(39);
 
+-- Created here, as the owner, so security definer runs as the owner.
+create or replace function pg_temp.backdate_kudos(p_post uuid, p_user uuid, p_by interval)
+returns void language sql security definer as $fn$
+  update public.social_reactions set created_at = now() - p_by where post_id = p_post and user_id = p_user;
+$fn$;
+
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
 begin
@@ -78,10 +84,17 @@ select lives_ok($$
   insert into public.social_posts (user_id, type, text, visibility)
   values ('a0000000-0000-0000-0000-00000000000a', 'text', 'hello', 'followers')
 $$, 'a user creates a text post');
+-- A workout post needs a real completed session of the author's since
+-- 20261012100000: the database rebuilds the snapshot from it (the numbers
+-- sent below are ignored).
+insert into public.logged_sessions (id, user_id, client_generated_id, started_at, completed_at)
+values ('9e000000-0000-0000-0000-00000000000a', 'a0000000-0000-0000-0000-00000000000a', gen_random_uuid(),
+        now() - interval '2 hours', now() - interval '1 hour');
 select lives_ok($$
-  insert into public.social_posts (user_id, type, payload, visibility)
+  insert into public.social_posts (user_id, type, payload, visibility, activity_id)
   values ('a0000000-0000-0000-0000-00000000000a', 'workout',
-          '{"kind":"workout","name":"Legs","date":"2026-09-12","duration_min":60,"exercises":3,"sets":10,"volume_kg":9586,"load":61,"prs":1}', 'public')
+          '{"kind":"workout","name":"Legs","date":"2026-09-12","duration_min":60,"exercises":3,"sets":10,"volume_kg":9586,"load":61,"prs":1}', 'public',
+          '9e000000-0000-0000-0000-00000000000a')
 $$, 'a user creates a workout post from a snapshot');
 select throws_ok($$
   insert into public.social_posts (user_id, type, text, visibility)
@@ -97,14 +110,18 @@ select is((select text from public.social_posts where id = '90000000-0000-0000-0
 
 -- ---------- kudos ----------
 -- Alex (follows Maria) on Maria's public post.
--- created_at is spelled out because every row in this file is written inside
--- one transaction, where now() is the same instant for all of them: the givers
--- would tie and `order by created_at` — what the feed names them by — would be
--- free to return either order. In the app each kudos is its own transaction.
+-- The time is then moved back a minute because every row in this file is
+-- written inside one transaction, where now() is the same instant for all of
+-- them: the givers would tie and `order by created_at` — what the feed names
+-- them by — would be free to return either order. In the app each kudos is its
+-- own transaction. Since 20261011100000 a client cannot send created_at, so
+-- the owner moves it (pg_temp.backdate_kudos), after the insert went through
+-- RLS as the giver.
 select lives_ok($$
-  insert into public.social_reactions (post_id, user_id, created_at)
-  values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a', now() - interval '1 minute')
+  insert into public.social_reactions (post_id, user_id)
+  values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a')
 $$, 'kudos on a visible public post');
+select pg_temp.backdate_kudos('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a', interval '1 minute');
 select throws_ok($$
   insert into public.social_reactions (post_id, user_id)
   values ('90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a')

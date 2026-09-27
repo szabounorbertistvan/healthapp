@@ -4,6 +4,7 @@ import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { Avatar } from "./social";
 import { Card } from "./ui";
+import { boardRowHref } from "@/lib/leaderboard-map";
 
 const MEDALS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
@@ -33,7 +34,7 @@ export async function LeaderboardCard({
   const row = (r: LeaderboardRow) => (
     <li key={r.user_id}>
       <Link
-        href={`/people/${r.user_id}`}
+        href={boardRowHref(r.user_id) ?? "/leaderboards"}
         className={`flex min-h-14 items-center gap-3 px-5 py-2.5 ${r.is_current_user ? "bg-accent-soft" : "hover:bg-bg/60"}`}
         aria-current={r.is_current_user ? "true" : undefined}
       >

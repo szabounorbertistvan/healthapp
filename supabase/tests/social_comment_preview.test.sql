@@ -78,7 +78,7 @@ select is(
   'two comments, newest top-level first — the thread''s own order; no replies, no suspended author');
 select is(
   (select comment_count from public.social_feed(50, null, null, 'all') where id = '2d000000-0000-0000-0000-000000000001'),
-  5, 'the total is the existing server-side count, not the two in the preview');
+  4, 'the total is the server-side count, not the two in the preview — and, since 20261013100000, only the 4 the reader can see (not the suspended author''s)');
 select is(
   (select jsonb_array_length(comment_preview) from public.social_feed(50, null, null, 'all')
    where id = '2d000000-0000-0000-0000-000000000004'),

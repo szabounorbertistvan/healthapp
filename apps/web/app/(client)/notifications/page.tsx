@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getNotificationPage, getUnreadNotificationCount } from "@/lib/notifications-data";
+import { getProfile } from "@/lib/data";
 import { NotificationList } from "@/components/notification-list";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -19,9 +20,10 @@ export default async function NotificationsPage({
   const { t } = await getI18n();
   const { filter } = await searchParams;
   const unreadOnly = filter === "unread";
-  const [page, unread] = await Promise.all([
+  const [page, unread, profile] = await Promise.all([
     getNotificationPage({ unreadOnly }),
     getUnreadNotificationCount(),
+    getProfile(),
   ]);
   const n = t.common.notifications;
 
@@ -51,7 +53,14 @@ export default async function NotificationsPage({
         {tab("unread", n.filterUnread)}
       </nav>
       {/* Keyed on the filter so switching tabs starts a fresh list and cursor. */}
-      <NotificationList key={unreadOnly ? "unread" : "all"} page={page} unread={unread} unreadOnly={unreadOnly} />
+      <NotificationList
+        key={unreadOnly ? "unread" : "all"}
+        page={page}
+        unread={unread}
+        unreadOnly={unreadOnly}
+        now={new Date().toISOString()}
+        timeZone={profile?.timezone ?? "Europe/Bucharest"}
+      />
     </div>
   );
 }

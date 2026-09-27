@@ -20,6 +20,15 @@ export function postMenuActions(s: { mine: boolean; muted: boolean; blocked: boo
 }
 
 /**
+ * A comment's menu: report it, or block its author. Your own comment keeps
+ * the thread's own Edit / Delete, so this offers nothing there. No mute:
+ * mute is about someone's posts in your feed, not a thread you are reading.
+ */
+export function commentMenuActions(s: { mine: boolean }): MenuAction[] {
+  return s.mine ? [] : ["report", "block"];
+}
+
+/**
  * A profile's ••• menu. Nothing on your own. Blocked: unblock and report
  * only — muting someone you have blocked would be a second switch for
  * something already hidden.
@@ -35,10 +44,11 @@ export function profileMenuActions(s: { me: boolean; muted: boolean; blocked: bo
 export type SheetStep =
   | { step: "menu" }
   | { step: "confirm-block" }
+  | { step: "confirm-mute" }
   | { step: "report"; reason: ReportReason | null; details: string }
-  | { step: "pending"; from: "menu" | "confirm-block" | "report" }
+  | { step: "pending"; from: "menu" | "confirm-block" | "confirm-mute" | "report" }
   | { step: "done"; what: "muted" | "unmuted" | "blocked" | "unblocked" | "reported" }
-  | { step: "error"; back: "menu" | "confirm-block" | "report" };
+  | { step: "error"; back: "menu" | "confirm-block" | "confirm-mute" | "report" };
 
 export type SheetEvent =
   | { type: "choose"; action: "mute" | "unmute" | "block" | "unblock" | "report" }
@@ -50,9 +60,9 @@ export type SheetEvent =
   | { type: "back" };
 
 /**
- * Mute, unmute and unblock go straight to the request; Block asks first;
- * Report asks for a reason. One request at a time: while one is pending,
- * every other event is ignored. A failure lands on an error step that goes
+ * Block and Mute ask first; Unmute and Unblock go straight to the request
+ * (undoing is never the risky direction); Report asks for a reason. One
+ * request at a time: while one is pending, every other event is ignored. A failure lands on an error step that goes
  * back to where it came from — nothing is assumed to have happened.
  */
 export function sheetReducer(state: SheetStep, event: SheetEvent): SheetStep {
@@ -64,10 +74,13 @@ export function sheetReducer(state: SheetStep, event: SheetEvent): SheetStep {
     case "choose":
       if (state.step !== "menu") return state;
       if (event.action === "block") return { step: "confirm-block" };
+      if (event.action === "mute") return { step: "confirm-mute" };
       if (event.action === "report") return { step: "report", reason: null, details: "" };
       return { step: "pending", from: "menu" };
     case "confirm":
-      return state.step === "confirm-block" ? { step: "pending", from: "confirm-block" } : state;
+      return state.step === "confirm-block" || state.step === "confirm-mute"
+        ? { step: "pending", from: state.step }
+        : state;
     case "reason":
       return state.step === "report" ? { ...state, reason: event.reason } : state;
     case "details":

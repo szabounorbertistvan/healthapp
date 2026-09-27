@@ -15,6 +15,7 @@ import {
   type LeaderboardScope,
 } from "@healthapp/shared";
 import { supabaseServer } from "./supabase/server";
+import { splitBoard } from "./leaderboard-map";
 
 type Row = {
   rank: number;
@@ -67,10 +68,9 @@ export const getLeaderboard = cache(
       secondary: Number(r.secondary_score),
       is_current_user: r.is_current_user,
     }));
-    return {
-      entries: rows.filter((r) => r.rank <= LEADERBOARD_TOP),
-      me: rows.find((r) => r.is_current_user) ?? null,
-      total: rows.reduce((max, r) => Math.max(max, r.rank), 0),
-    };
+    // The server's rows as sent (lib/leaderboard-map): after a block the
+    // ranks can skip a number and the top reaches past rank N, so nothing
+    // here filters or renumbers by rank.
+    return splitBoard(rows, LEADERBOARD_TOP);
   },
 );

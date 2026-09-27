@@ -34,7 +34,7 @@ export default async function PostPage({ params }: { params: Promise<{ postId: s
         <PostCard post={data.post} detail />
         {/* The comment button on the card jumps here. */}
         <div id="comments" className="scroll-mt-24">
-          <CommentThread postId={postId} page={data.comments} />
+          <CommentThread postId={postId} page={data.comments} commentCount={data.post.comment_count} />
         </div>
       </div>
     </div>

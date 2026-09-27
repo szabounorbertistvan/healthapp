@@ -6,12 +6,14 @@
  * request is refused before it is spent; it is never the only one.
  */
 
-export const REPORT_REASONS = ["spam", "harassment", "inappropriate", "false_information", "other"] as const;
+export const REPORT_REASONS = [
+  "spam", "harassment", "hate", "inappropriate", "false_information", "impersonation", "scam", "other",
+] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
 export const REPORT_DETAILS_MAX = 500;
 
-export type ReportTarget = "post" | "user";
+export type ReportTarget = "post" | "comment" | "user";
 
 export function isReportReason(v: unknown): v is ReportReason {
   return typeof v === "string" && (REPORT_REASONS as readonly string[]).includes(v);

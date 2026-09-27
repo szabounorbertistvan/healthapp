@@ -5,7 +5,7 @@ import { REPORT_DETAILS_MAX, REPORT_REASONS, type ReportTarget } from "@healthap
 import { reportContent, setBlocked, setMuted } from "@/app/moderation-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
-import { postMenuActions, profileMenuActions, sheetReducer, type MenuAction } from "@/lib/moderation-ui";
+import { commentMenuActions, postMenuActions, profileMenuActions, sheetReducer, type MenuAction } from "@/lib/moderation-ui";
 import { SOCIAL } from "@/lib/social-ui";
 import { NavIcon } from "./client-nav";
 
@@ -17,26 +17,35 @@ const FLAG = "M5 21V4M5 4h11l-2 4 2 4H5";
 const CHECK = "m5 12 5 5 9-10";
 
 type Target = { userId: string; name: string };
+type Changed = "muted" | "unmuted" | "blocked" | "unblocked";
 
 /**
- * The ••• for someone else's post or profile: Mute / Unmute, Block / Unblock,
- * Report — never both halves of a pair (postMenuActions / profileMenuActions).
- * Opens one sheet: a bottom sheet on a phone, a dialog from `sm`.
+ * The ••• for someone else's post, comment or profile: Mute / Unmute,
+ * Block / Unblock, Report — never both halves of a pair (postMenuActions /
+ * commentMenuActions / profileMenuActions). Opens one sheet: a bottom sheet
+ * on a phone, a dialog from `sm`. `onChanged` lets the caller update at once
+ * (a blocked author's post leaves the screen) before the refresh lands.
  */
-export function ModerationMenuButton({ target, postId, muted, blocked, place }: {
+export function ModerationMenuButton({ target, postId, commentId, muted, blocked, place, onChanged, size = "default" }: {
   target: Target;
   /** Set for a post's menu: Report then reports the post, not the person. */
   postId?: string;
+  /** Set for a comment's menu: Report then reports the comment. */
+  commentId?: string;
   muted: boolean;
   blocked: boolean;
-  place: "post" | "profile";
+  place: "post" | "profile" | "comment";
+  onChanged?: (what: Changed) => void;
+  size?: "default" | "small";
 }) {
   const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const [open, toggle] = useReducer((v: boolean) => !v, false);
   const actions = place === "post"
     ? postMenuActions({ mine: false, muted, blocked })
-    : profileMenuActions({ me: false, muted, blocked });
+    : place === "comment"
+      ? commentMenuActions({ mine: false })
+      : profileMenuActions({ me: false, muted, blocked });
   if (actions.length === 0) return null;
 
   return (
@@ -46,14 +55,22 @@ export function ModerationMenuButton({ target, postId, muted, blocked, place }: 
         aria-label={fill(t.common.moderation.more, { name: target.name })}
         aria-haspopup="dialog"
         onClick={toggle}
-        className={`${SOCIAL.iconButton} shrink-0 text-ink-faint hover:bg-bg hover:text-ink`}
+        className={`${size === "small" ? "inline-flex h-8 w-8 items-center justify-center rounded-full" : SOCIAL.iconButton} shrink-0 text-ink-faint hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-accent`}
       >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+        <svg viewBox="0 0 24 24" className={size === "small" ? "h-4 w-4" : "h-5 w-5"} fill="currentColor" aria-hidden>
           <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
         </svg>
       </button>
       {open ? (
-        <ModerationSheet dialogRef={ref} target={target} postId={postId} actions={actions} onClose={toggle} />
+        <ModerationSheet
+          dialogRef={ref}
+          target={target}
+          postId={postId}
+          commentId={commentId}
+          actions={actions}
+          onChanged={onChanged}
+          onClose={toggle}
+        />
       ) : null}
     </>
   );
@@ -68,11 +85,13 @@ export function ModerationMenuButton({ target, postId, muted, blocked, place }: 
  * assumed to have happened. After a change the page refreshes on close, and
  * the server decides what is left to see.
  */
-function ModerationSheet({ dialogRef, target, postId, actions, onClose }: {
+function ModerationSheet({ dialogRef, target, postId, commentId, actions, onChanged, onClose }: {
   dialogRef: React.RefObject<HTMLDialogElement | null>;
   target: Target;
   postId?: string;
+  commentId?: string;
   actions: MenuAction[];
+  onChanged?: (what: Changed) => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
@@ -92,17 +111,20 @@ function ModerationSheet({ dialogRef, target, postId, actions, onClose }: {
     const r = action === "mute" || action === "unmute"
       ? await setMuted(target.userId, action === "mute")
       : await setBlocked(target.userId, action === "block");
-    if (r.ok) changed.current = true;
     const what = ({ mute: "muted", unmute: "unmuted", block: "blocked", unblock: "unblocked" } as const)[action];
+    if (r.ok) {
+      changed.current = true;
+      onChanged?.(what);
+    }
     dispatch({ type: "result", ok: r.ok, what });
   }
 
   async function sendReport() {
     if (state.step !== "report" || !state.reason) return;
-    const kind: ReportTarget = postId ? "post" : "user";
+    const kind: ReportTarget = commentId ? "comment" : postId ? "post" : "user";
     const { reason, details } = state;
     dispatch({ type: "submit" });
-    const r = await reportContent(kind, postId ?? target.userId, reason, reason === "other" ? details : "");
+    const r = await reportContent(kind, commentId ?? postId ?? target.userId, reason, reason === "other" ? details : "");
     dispatch({ type: "result", ok: r.ok, what: "reported" });
   }
 
@@ -136,7 +158,7 @@ function ModerationSheet({ dialogRef, target, postId, actions, onClose }: {
                 : a === "unmute" ? fill(m.unmute, name)
                 : a === "block" ? fill(m.block, name)
                 : a === "unblock" ? fill(m.unblock, name)
-                : postId ? m.reportPost : fill(m.reportUser, name);
+                : commentId ? m.reportComment : postId ? m.reportPost : fill(m.reportUser, name);
               const icon = a === "mute" ? MUTE : a === "unmute" ? UNMUTE : a === "report" ? FLAG : BLOCK;
               const risky = a === "block" || a === "report";
               return (
@@ -146,7 +168,8 @@ function ModerationSheet({ dialogRef, target, postId, actions, onClose }: {
                   disabled={pending}
                   onClick={() => {
                     dispatch({ type: "choose", action: a });
-                    if (a === "mute" || a === "unmute" || a === "unblock") void run(a);
+                    // Undoing is one tap; Mute and Block ask first (sheetReducer).
+                    if (a === "unmute" || a === "unblock") void run(a);
                   }}
                   className={`${row} ${risky ? "text-risk" : ""}`}
                 >
@@ -173,6 +196,26 @@ function ModerationSheet({ dialogRef, target, postId, actions, onClose }: {
                 className="h-11 rounded-2xl bg-risk px-5 font-display text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
               >
                 {m.blockConfirm}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {state.step === "confirm-mute" || (pending && state.from === "confirm-mute") ? (
+          <div>
+            <p className="font-display text-lg font-bold tracking-tight">{fill(m.muteTitle, name)}</p>
+            <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{m.muteBody}</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" disabled={pending} onClick={() => dispatch({ type: "back" })} className="h-11 rounded-2xl px-4 text-[13px] font-semibold text-ink-soft hover:bg-bg hover:text-ink">
+                {m.cancel}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => { dispatch({ type: "confirm" }); void run("mute"); }}
+                className="h-11 rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
+              >
+                {m.muteConfirm}
               </button>
             </div>
           </div>

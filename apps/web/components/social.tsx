@@ -696,6 +696,9 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
             muted={post.author_muted}
             blocked={false}
             place="post"
+            // Blocked: gone from here at once. Muted: the refresh decides —
+            // it leaves the feed but stays on the author's own profile.
+            onChanged={(what) => { if (what === "blocked") setRemoved(true); }}
           />
         ) : (
           // Keeps the header one height whether or not the menu is there.

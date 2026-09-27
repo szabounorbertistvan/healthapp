@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { COMMENT_MAX, applyMention, commentSegments, mentionQueryAt } from "@healthapp/shared";
 import { addComment, deleteComment, editComment, loadComments, loadReplies, mentionCandidates } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
+import { hiddenReplies, threadTotal } from "@/lib/comment-thread-model";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
 import { Avatar, useSocialFormat } from "./social";
+import { ModerationMenuButton } from "./moderation";
 import { NavIcon } from "./client-nav";
 import type { CommentPage, CommentThread as Thread, PersonRow, PostComment } from "@/lib/types";
 
@@ -19,7 +21,7 @@ import type { CommentPage, CommentThread as Thread, PersonRow, PostComment } fro
  * (social_comment_depth_guard), and a thread that nests further is a thread
  * nobody can read on a 375px phone.
  */
-export function CommentThread({ postId, page }: { postId: string; page: CommentPage }) {
+export function CommentThread({ postId, page, commentCount }: { postId: string; page: CommentPage; commentCount?: number }) {
   const { t } = useI18n();
   const router = useRouter();
   const s = t.common.social;
@@ -35,8 +37,9 @@ export function CommentThread({ postId, page }: { postId: string; page: CommentP
     setCursor(page.next_cursor);
   }, [page]);
 
-  // reply_count is the real number under each comment, not just the ones on screen.
-  const total = threads.reduce((sum, c) => sum + 1 + Math.max(c.reply_count, c.replies.length), 0);
+  // The post's comment_count — the number the feed card printed — not just
+  // the pages on screen.
+  const total = threadTotal(commentCount, threads);
 
   return (
     <Card plain className="p-5">
@@ -116,7 +119,7 @@ function Replies({ thread, postId, onReply }: {
   useEffect(() => setMore([]), [thread.replies]);
 
   const shown = [...thread.replies, ...more];
-  const hidden = Math.max(0, thread.reply_count - shown.length);
+  const hidden = hiddenReplies(thread.reply_count, shown.length);
   if (shown.length === 0) return null;
 
   return (
@@ -171,6 +174,10 @@ function CommentRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.body);
   const [error, setError] = useState<string | null>(null);
+  // Blocking the author from this comment's menu takes it off the screen at
+  // once; the refresh then confirms it (the thread hides blocked people).
+  const [gone, setGone] = useState(false);
+  if (gone) return null;
 
   return (
     <div id={`comment-${comment.id}`} className="flex items-start gap-2.5 scroll-mt-24">
@@ -256,6 +263,19 @@ function CommentRow({
             >
               {s.deleteComment}
             </button>
+          ) : null}
+          {!comment.mine ? (
+            <span className="ml-auto">
+              <ModerationMenuButton
+                target={{ userId: comment.user_id, name: comment.author_name }}
+                commentId={comment.id}
+                muted={false}
+                blocked={false}
+                place="comment"
+                size="small"
+                onChanged={(what) => { if (what === "blocked") setGone(true); }}
+              />
+            </span>
           ) : null}
         </div>
       </div>

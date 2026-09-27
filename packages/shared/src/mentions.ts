@@ -140,6 +140,27 @@ export function applyMention(
 }
 
 /**
+ * What an edit changes in the stored mention rows: the people newly named, and
+ * the people no longer named. Someone named before and after is in neither —
+ * their row stays, so they are never notified twice for one comment.
+ *
+ * The database prunes the "no longer named" rows itself when the text changes
+ * (social_*_mentions_prune, 20261013100000); `remove` is the same set, sent so
+ * the write does not depend on the trigger having run first.
+ */
+export function mentionChanges(
+  stored: readonly string[],
+  next: readonly MentionRef[],
+): { add: MentionRef[]; remove: string[] } {
+  const had = new Set(stored);
+  const keep = new Set(next.map((m) => m.user_id));
+  return {
+    add: next.filter((m) => !had.has(m.user_id)),
+    remove: [...had].filter((id) => !keep.has(id)),
+  };
+}
+
+/**
  * Resolve typed handles against what the lookup returned.
  *
  * Handles with no user are dropped silently: the text stays in the comment and

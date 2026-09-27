@@ -13,15 +13,18 @@ import {
   isBadgeSlug,
   isProfileVisibility,
   payloadMatchesType,
+  mentionChanges,
   resolveMentions,
   validateComment,
   validateFollow,
   validatePostEdit,
   isPostId,
+  prPostPayload,
   sharedPostPayload,
   validatePostText,
   workoutPostPayload,
   type ChallengePostPayload,
+  type MentionRef,
   type PostPayload,
   type PostType,
   type PostVisibility,
@@ -137,9 +140,10 @@ type Supabase = Awaited<ReturnType<typeof supabaseServer>>;
  * trigger decides who hears about it, as the mentioned person (a mention
  * grants nothing).
  *
- * `replace` is for an edit: the old rows go first, so a handle that was
- * removed stops being a link. People already notified for this comment are
- * not notified again (notify_new_mention dedupes on comment_id).
+ * `replace` is for an edit: only the difference is written (mentionChanges).
+ * A handle that was removed stops being a link — the database also prunes it
+ * when the text changes — and a handle that stayed keeps its row, so nobody
+ * is notified twice for one comment or post.
  */
 async function writeMentions(
   supabase: Supabase,
@@ -150,20 +154,28 @@ async function writeMentions(
 ): Promise<void> {
   const table = target === "post" ? "social_post_mentions" : "social_comment_mentions";
   const column = target === "post" ? "post_id" : "comment_id";
-  if (replace) {
-    const { error } = await supabase.from(table).delete().eq(column, id);
-    if (error) console.error(`${table} not cleared:`, error.message);
-  }
   const handles = extractMentionHandles(text);
-  if (handles.length === 0) return;
-  const { data: known } = await supabase.rpc("social_resolve_handles", { p_handles: handles });
-  type HandleRow = { id: string; username: string };
-  const mentions = resolveMentions(
-    handles,
-    ((known ?? []) as HandleRow[]).map((k) => ({ user_id: k.id, username: k.username })),
-  );
-  if (mentions.length === 0) return;
-  const { error } = await supabase.from(table).insert(mentions.map((m) => ({ [column]: id, user_id: m.user_id })));
+  let mentions: MentionRef[] = [];
+  if (handles.length > 0) {
+    const { data: known } = await supabase.rpc("social_resolve_handles", { p_handles: handles });
+    type HandleRow = { id: string; username: string };
+    mentions = resolveMentions(
+      handles,
+      ((known ?? []) as HandleRow[]).map((k) => ({ user_id: k.id, username: k.username })),
+    );
+  }
+  let add = mentions;
+  if (replace) {
+    const { data: rows } = await supabase.from(table).select("user_id").eq(column, id);
+    const change = mentionChanges(((rows ?? []) as { user_id: string }[]).map((r) => r.user_id), mentions);
+    add = change.add;
+    if (change.remove.length > 0) {
+      const { error } = await supabase.from(table).delete().eq(column, id).in("user_id", change.remove);
+      if (error) console.error(`${table} not cleared:`, error.message);
+    }
+  }
+  if (add.length === 0) return;
+  const { error } = await supabase.from(table).insert(add.map((m) => ({ [column]: id, user_id: m.user_id })));
   if (error) console.error(`${table} not written:`, error.message);
 }
 
@@ -249,7 +261,9 @@ export async function sharePr(sessionId: string, setId: string, visibility?: str
   const pr = s?.prs.find((p) => p.set_id === setId);
   if (!s || !pr) return { ok: false, message: t.common.social.notFound };
   if (pr.shared) return { ok: true };
-  const payload: PrPostPayload = { kind: "pr", exercise: pr.exercise, weight_kg: pr.weight_kg, reps: pr.reps, estimated_1rm: pr.estimated_1rm, date: s.date };
+  // The database rebuilds every number from the set named here
+  // (social_posts_guard) and keeps nothing else we send.
+  const payload: PrPostPayload = prPostPayload(pr, s.date);
   return insertPost({ type: "pr", text: null, payload, visibility: visibilityOf(visibility), activity_id: sessionId });
 }
 

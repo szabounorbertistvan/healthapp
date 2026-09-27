@@ -53,6 +53,75 @@ export async function getNotificationPage(
 ): Promise<NotificationPage> {
   const live = await liveUser();
   if (!live) return { items: [], next_cursor: null };
+  const { supabase } = live;
+  const limit = Math.max(1, Math.min(opts.limit ?? NOTIFICATION_PAGE_SIZE, 50));
+  const before = parseNotificationCursor(opts.before);
+
+  // social_notification_feed (20261008100000): rows, actors and snippets in
+  // one round trip. The snippet is the comment or caption as it is NOW and
+  // only while the reader may see it; an actor hidden from the reader (block,
+  // suspension, deletion) comes back as null.
+  const { data, error } = await supabase.rpc("social_notification_feed", {
+    p_limit: limit + 1,
+    p_before_at: before?.at ?? null,
+    p_before_id: before?.id ?? null,
+    p_unread_only: Boolean(opts.unreadOnly),
+  });
+  if (error) {
+    // PGRST202: the function is not there yet — a database without the
+    // migration. Read the table directly, as before it.
+    if (error.code === "PGRST202") return legacyNotificationPage(opts);
+    console.error("notifications read failed:", error.message);
+    return { items: [], next_cursor: null };
+  }
+  type FeedRow = {
+    id: string; category: string; title: string; snippet: string | null;
+    payload: Record<string, unknown> | null; created_at: string; read_at: string | null;
+    actor_id: string | null; actor_name: string | null; actor_username: string | null; actor_avatar: string | null;
+  };
+  const rows = (data ?? []) as FeedRow[];
+  const items = rows.slice(0, limit).map((n) => toRow(n, {
+    body: n.snippet,
+    actor: n.actor_id && n.actor_name
+      ? { id: n.actor_id, name: n.actor_name, username: n.actor_username, avatar_url: n.actor_avatar }
+      : null,
+  }));
+  const last = items[items.length - 1];
+  return { items, next_cursor: rows.length > limit && last ? `${last.created_at}|${last.id}` : null };
+}
+
+/** One notification row as the card wants it. */
+function toRow(
+  n: { id: string; category: string; title: string; payload: Record<string, unknown> | null; created_at: string; read_at: string | null },
+  extra: { body: string | null; actor: NotificationRow["actor"] },
+): NotificationRow {
+  return {
+    id: n.id,
+    category: n.category,
+    sentence: notificationSentence(n.category, n.payload),
+    title: n.title,
+    body: extra.body,
+    href: notificationHref(n.category, n.payload),
+    created_at: n.created_at,
+    read: n.read_at !== null,
+    actor: extra.actor,
+    badge: typeof n.payload?.name_en === "string"
+      ? { en: n.payload.name_en, ro: typeof n.payload.name_ro === "string" ? n.payload.name_ro : n.payload.name_en }
+      : null,
+    challenge: n.category === "challenge_milestone" ? challengeNotice(n.payload) : null,
+  };
+}
+
+/**
+ * The read from before 20261008100000: the table directly (RLS keeps it to
+ * the reader's own rows) and one RPC for every actor on the page. Kept only
+ * so the page works against a database the migration has not reached yet.
+ */
+async function legacyNotificationPage(
+  opts: { before?: string | null; unreadOnly?: boolean; limit?: number },
+): Promise<NotificationPage> {
+  const live = await liveUser();
+  if (!live) return { items: [], next_cursor: null };
   const { supabase, userId } = live;
   const limit = Math.max(1, Math.min(opts.limit ?? NOTIFICATION_PAGE_SIZE, 50));
 
@@ -91,21 +160,7 @@ export async function getNotificationPage(
 
   const items = page.map((n) => {
     const actorId = notificationActorId(n.payload);
-    return {
-      id: n.id,
-      category: n.category,
-      sentence: notificationSentence(n.category, n.payload),
-      title: n.title,
-      body: n.body,
-      href: notificationHref(n.category, n.payload),
-      created_at: n.created_at,
-      read: n.read_at !== null,
-      actor: actorId ? actors.get(actorId) ?? null : null,
-      badge: typeof n.payload?.name_en === "string"
-        ? { en: n.payload.name_en, ro: typeof n.payload.name_ro === "string" ? n.payload.name_ro : n.payload.name_en }
-        : null,
-      challenge: n.category === "challenge_milestone" ? challengeNotice(n.payload) : null,
-    };
+    return toRow(n, { body: n.body, actor: actorId ? actors.get(actorId) ?? null : null });
   });
   const last = items[items.length - 1];
   return { items, next_cursor: rows.length > limit && last ? `${last.created_at}|${last.id}` : null };

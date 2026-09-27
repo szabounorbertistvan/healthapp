@@ -3,6 +3,7 @@ import {
   applyMention,
   commentSegments,
   extractMentionHandles,
+  mentionChanges,
   mentionQueryAt,
   MENTIONS_MAX,
   resolveMentions,
@@ -162,5 +163,51 @@ describe("resolveMentions", () => {
 
   it("is empty when nothing was typed", () => {
     expect(resolveMentions([], [MARIA, NORB])).toEqual([]);
+  });
+});
+
+describe("mentionChanges — what an edit writes", () => {
+  const fan = { user_id: "f", username: "fan" };
+  const sam = { user_id: "s", username: "sam" };
+  const xen = { user_id: "x", username: "xen" };
+
+  it("adds only the newly named, removes only the no-longer named", () => {
+    expect(mentionChanges(["f"], [fan, sam])).toEqual({ add: [sam], remove: [] });
+    expect(mentionChanges(["f", "s"], [sam])).toEqual({ add: [], remove: ["f"] });
+    expect(mentionChanges(["f"], [sam])).toEqual({ add: [sam], remove: ["f"] });
+  });
+
+  it("never re-inserts someone still named, so nobody is notified twice", () => {
+    const change = mentionChanges(["f", "s"], [sam, fan]);
+    expect(change.add).toEqual([]);
+    expect(change.remove).toEqual([]);
+  });
+
+  it("an edit to the same text changes nothing (idempotent)", () => {
+    const first = mentionChanges([], [fan, sam]);
+    const stored = first.add.map((m) => m.user_id);
+    expect(mentionChanges(stored, [fan, sam])).toEqual({ add: [], remove: [] });
+  });
+
+  it("drops a historical row the text never named", () => {
+    // written before the database checked mentions: x is stored, not named
+    expect(mentionChanges(["f", "x"], [fan])).toEqual({ add: [], remove: ["x"] });
+  });
+
+  it("removing every handle removes every row", () => {
+    expect(mentionChanges(["f", "s", "x"], [])).toEqual({ add: [], remove: ["f", "s", "x"] });
+  });
+
+  it("nothing stored and nothing named is empty", () => {
+    expect(mentionChanges([], [])).toEqual({ add: [], remove: [] });
+  });
+
+  it("a duplicate stored id is removed once", () => {
+    expect(mentionChanges(["x", "x"], [])).toEqual({ add: [], remove: ["x"] });
+  });
+
+  it("the handles resolved from an edit feed straight into the diff", () => {
+    const next = resolveMentions(extractMentionHandles("hi @Sam and @fan, not @nobody"), [fan, sam, xen]);
+    expect(mentionChanges(["f", "x"], next)).toEqual({ add: [sam], remove: ["x"] });
   });
 });
