@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import type { PostVisibility } from "@healthapp/shared";
-import { displayToKg, kudosSummary, toggleKudosState, POST_TEXT_MAX } from "@healthapp/shared";
+import { displayToKg, isAchievementRarity, kudosSummary, toggleKudosState, POST_TEXT_MAX } from "@healthapp/shared";
 import {
   createProgressPost, createTextPost, deletePost, editPost, follow, loadKudos, requestPostPhotoUpload, toggleKudos, unfollow,
 } from "@/app/social-actions";
@@ -277,6 +277,12 @@ function PostMedia({ post }: { post: FeedPost }) {
             {(locale === "ro" ? p.name_ro : p.name_en) ?? p.badge_slug}
           </p>
         </div>
+        {/* Rarity as the catalog had it when shared; older posts carry none. */}
+        {isAchievementRarity(p.rarity) ? (
+          <p className="mt-2.5 text-[11px] font-bold uppercase tracking-wider opacity-75">
+            {t.common.achievements.rarities[p.rarity]}
+          </p>
+        ) : null}
       </div>
     );
   }

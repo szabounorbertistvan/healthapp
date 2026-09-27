@@ -25,9 +25,14 @@ describe("notificationHref", () => {
     expect(notificationHref("new_mention", { post_id: POST, actor_id: PERSON })).toBe(`/feed/${POST}`);
   });
 
-  it("sends a badge to the achievements on the owner's profile", () => {
-    expect(notificationHref("badge_earned", { badge_slug: "first-pr", profile_id: PERSON })).toBe(`/people/${PERSON}#achievements`);
-    expect(notificationHref("badge_earned", { badge_slug: "first-pr" })).toBeNull();
+  it("sends a badge to its own achievement page", () => {
+    expect(notificationHref("badge_earned", { badge_slug: "first-pr", profile_id: PERSON })).toBe("/achievements/first-pr");
+    expect(notificationHref("badge_earned", { badge_slug: "bench-100" })).toBe("/achievements/bench-100");
+  });
+
+  it("falls back to the profile shelf for a slug outside the catalog", () => {
+    expect(notificationHref("badge_earned", { badge_slug: "../admin", profile_id: PERSON })).toBe(`/people/${PERSON}#achievements`);
+    expect(notificationHref("badge_earned", { badge_slug: "retired-badge" })).toBeNull();
   });
 
   it("resolves engine rows by screen, and nothing unknown", () => {

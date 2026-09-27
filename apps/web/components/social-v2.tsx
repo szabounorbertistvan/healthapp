@@ -6,7 +6,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { applyMention, commentSegments, mentionQueryAt, type PostVisibility, type ProfileVisibility } from "@healthapp/shared";
+import {
+  applyMention, commentSegments, isAchievementRarity, mentionQueryAt,
+  type AchievementRarity, type PostVisibility, type ProfileVisibility,
+} from "@healthapp/shared";
 import {
   mentionCandidates, publishFitnessScore, shareAchievement, shareFitnessScore, updateSocialPrivacy,
 } from "@/app/social-actions";
@@ -27,7 +30,26 @@ const BADGE_GLYPH: Record<string, string> = {
   check: CHECK,
   target: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8M12 12h.01",
   food: "M7 3v8a3 3 0 0 0 6 0V3M10 3v18M17 3c-1.5 1-2 3-2 6s.5 4 2 4v8",
+  weight: "M6 20h12l-2-11H8zM9.5 9a2.5 2.5 0 1 1 5 0",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14h2M12 14h2M16 14h.01",
+  barbell: "M2 12h20M5 8v8M8 6v12M16 6v12M19 8v8",
 };
+
+const RARITY_TONE: Record<AchievementRarity, string> = {
+  common: "bg-surface text-ink-soft",
+  rare: "bg-accent-soft text-accent-ink",
+  epic: "bg-warn-soft text-warn",
+  legendary: "bg-accent text-accent-fg",
+};
+
+/** The badge's catalog rarity. A label on the badge — never a comparison between people. */
+export function RarityChip({ rarity, label }: { rarity: AchievementRarity; label: string }) {
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider ${RARITY_TONE[rarity]}`}>
+      {label}
+    </span>
+  );
+}
 
 export function BadgeGlyph({ icon, className = "h-5 w-5" }: { icon: string | null | undefined; className?: string }) {
   return <NavIcon d={BADGE_GLYPH[icon ?? ""] ?? BADGE_GLYPH.trophy!} className={className} />;
@@ -146,6 +168,7 @@ export function MentionSuggestions({ people, onPick }: { people: PersonRow[]; on
 export function BadgeShelf({ badges, mine }: { badges: ProfileBadge[]; mine: boolean }) {
   const { t, locale } = useI18n();
   const s = t.common.social;
+  const a = t.common.achievements;
   const df = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
   return (
     <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -155,8 +178,19 @@ export function BadgeShelf({ badges, mine }: { badges: ProfileBadge[]; mine: boo
             <BadgeGlyph icon={b.icon} className="h-5 w-5 [stroke-width:2.1]" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] font-semibold">{locale === "ro" ? b.name_ro : b.name_en}</span>
-            <span className="block text-[11.5px] text-ink-faint">{df.format(new Date(b.awarded_at))}</span>
+            {/* The owner's badge opens its detail page; nobody else's does —
+                that page is the owner's progress, not a public record. */}
+            {mine ? (
+              <Link href={`/achievements/${b.slug}`} className="block truncate text-[13.5px] font-semibold hover:underline">
+                {locale === "ro" ? b.name_ro : b.name_en}
+              </Link>
+            ) : (
+              <span className="block truncate text-[13.5px] font-semibold">{locale === "ro" ? b.name_ro : b.name_en}</span>
+            )}
+            <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-ink-faint">
+              {isAchievementRarity(b.rarity) ? <RarityChip rarity={b.rarity} label={a.rarities[b.rarity]} /> : null}
+              {df.format(new Date(b.awarded_at))}
+            </span>
           </span>
           {mine ? <ShareBadge slug={b.slug} shared={b.shared} label={s.shareAchievement} doneLabel={s.achievementShared} /> : null}
         </li>
@@ -165,7 +199,7 @@ export function BadgeShelf({ badges, mine }: { badges: ProfileBadge[]; mine: boo
   );
 }
 
-function ShareBadge({ slug, shared, label, doneLabel }: { slug: string; shared: boolean; label: string; doneLabel: string }) {
+export function ShareBadge({ slug, shared, label, doneLabel }: { slug: string; shared: boolean; label: string; doneLabel: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [done, setDone] = useState(shared);

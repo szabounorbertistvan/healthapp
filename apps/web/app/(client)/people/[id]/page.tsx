@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { followState } from "@healthapp/shared";
+import { followState, summarizeAchievements } from "@healthapp/shared";
 import { getFeed, getMutualFollowers, getProfileBadges, getSocialProfile } from "@/lib/social-data";
 import { getProfileRoutines } from "@/lib/routine-data";
 import { fill } from "@/lib/i18n";
@@ -195,10 +195,29 @@ export default async function PersonPage({
           RPC returns nothing otherwise, so an empty list here is honest. */}
       {profile.stats_visible ? (
         <section id="achievements" className="mt-6 scroll-mt-24">
-          <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">
-            {s.achievements}
-            {badges.length > 0 ? <span className="ml-1.5 tabular-nums text-ink-faint">{badges.length}</span> : null}
-          </h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">
+              {s.achievements}
+              {badges.length > 0 ? <span className="ml-1.5 tabular-nums text-ink-faint">{badges.length}</span> : null}
+            </h2>
+            {profile.me ? (
+              <Link href="/achievements" className="text-[12.5px] font-semibold text-accent-ink hover:underline">
+                {t.common.achievements.seeAll}
+              </Link>
+            ) : null}
+          </div>
+          {/* Earned counts per category — of what this reader may see, which
+              social_badges() already limited to the person's privacy setting. */}
+          {badges.length > 0 ? (
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {summarizeAchievements(badges.map((b) => ({ ...b, earned: true }))).byCategory.map((c) => (
+                <li key={c.category} className="rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-ink-soft">
+                  {t.common.achievements.categories[c.category]}
+                  <span className="ml-1 tabular-nums text-ink-faint">{c.earned}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <div className="mt-2.5">
             {badges.length > 0 ? (
               <BadgeShelf badges={badges} mine={profile.me} />

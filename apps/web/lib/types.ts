@@ -471,6 +471,32 @@ export type ProfileBadge = {
   icon: string | null;
   awarded_at: string;
   shared: boolean;
+  category: string;
+  rarity: string;
+  kind: string;
+  metric: string;
+  target: number;
+};
+
+/**
+ * One catalog entry with the signed-in person's own progress, from
+ * achievement_progress(). `current_value` is computed in the database from
+ * their rows; nothing in the app ever writes it.
+ */
+export type AchievementRow = {
+  slug: string;
+  name_en: string;
+  name_ro: string;
+  icon: string | null;
+  category: string;
+  rarity: string;
+  kind: string;
+  metric: string;
+  target: number;
+  current_value: number;
+  awarded_at: string | null;
+  shared: boolean;
+  sort: number;
 };
 
 /** The owner's privacy settings and published score, for the account screen. */

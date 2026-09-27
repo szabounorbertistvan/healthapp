@@ -6,12 +6,15 @@
  * cron jobs write — carries `payload.screen`. The social triggers do not: kudos
  * writes `post_id`, a follow writes `follower_id`, a badge writes
  * `profile_id`, so those resolve by category. Anything unrecognised renders as
- * a plain row rather than a link that 404s.
+ * a plain row rather than a link that 404s. A badge links to its own detail
+ * page when the slug is in the catalog.
  *
  * Every id that reaches a URL is checked to be a uuid first: a payload is
  * written by triggers today, but the href is the one place a malformed value
  * would turn into a navigation.
  */
+
+import { isBadgeSlug } from "@healthapp/shared";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -51,6 +54,10 @@ export function notificationHref(category: string, payload: Record<string, unkno
     return commentId ? `/feed/${postId}#comment-${commentId}` : `/feed/${postId}`;
   }
   if (category === "badge_earned") {
+    // The row is the owner's own, so it opens their detail page for the
+    // badge; a slug outside the catalog falls back to the profile shelf.
+    const slug = payload?.badge_slug;
+    if (isBadgeSlug(slug)) return `/achievements/${slug}`;
     const profile = id(payload, "profile_id");
     return profile ? `/people/${profile}#achievements` : null;
   }

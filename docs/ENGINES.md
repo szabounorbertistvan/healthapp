@@ -136,6 +136,34 @@ refuses an achievement the author has not earned and rebuilds its payload
 from the catalog, and bounds a Fitness Score post (0..100, a milestone from the
 fixed list at or under the score).
 
+### Advanced achievements (added 2026-09-27, not yet applied to the live DB)
+
+| | |
+|---|---|
+| Client | `/achievements` (category filter via `?c=`, progress per badge), `/achievements/[slug]` (requirement, progress, earned date, how it's counted, share); profile `#achievements` gains rarity, per-category counts and a link for the owner; nav entry "Achievements" |
+| Reads | `getMyAchievements` in [lib/achievements-data.ts](../apps/web/lib/achievements-data.ts) — one call to `achievement_progress()` |
+| Maths | `ACHIEVEMENT_CATALOG`, `achievementProgress`, `isEligible`, `strengthFacts`, `summarizeAchievements`, `categoriesPresent` in `packages/shared/src/achievements.ts`; text in [lib/achievement-format.ts](../apps/web/lib/achievement-format.ts) |
+| Migration | `20261002100000_advanced_achievements.sql` |
+| Tests | `achievements.test.ts` (50), `achievement-format.test.ts` (8), `notification-href.test.ts` (16), `supabase/tests/advanced_achievements.test.sql` (60 pgTAP) |
+
+**The catalog carries the rule.** `badges` gained `category`, `rarity`, `kind`
+(standard | advanced — metadata, nothing gates on it), `metric`, `target`,
+`active`. `award_badges_for(user, notify, metrics)` asks
+`achievement_facts()` for the metrics of badges the person does not hold yet
+and inserts every active badge whose `facts[metric] >= target`
+(`award_badges_from_facts`). A new milestone is a catalog row. 34 badges: the
+original 12 plus workouts 250/500/1000, volume 100k/500k/1M kg, active days
+30/90/180/365, PRs 25/50/100, bench 100 / squat 140 / deadlift 180 kg (weight
+lifted, library lift only), a 1,000 kg estimated-1RM total, food-logged days
+30/100 and challenges 5/10/25.
+
+**Triggers:** `logged_sessions` (all metrics), `check_ins` (`checkins`),
+`challenge_participants` (`challenges`), and statement-level triggers on
+`food_logs` and `habit_logs` that run once per insert statement and only while
+a badge they could move is still missing. `achievement_progress()` (own rows
+only, no user argument) also awards anything already satisfied before
+answering — a backstop through the same idempotent path.
+
 **Replies page.** A thread carries its first three replies and `reply_count`;
 `social_comment_replies()` serves the rest on a cursor.
 
