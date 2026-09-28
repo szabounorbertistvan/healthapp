@@ -334,12 +334,13 @@ export function validatePostText(input: string): string | null {
 }
 
 /**
- * A caption edit. A text post is its text, so it keeps 1–500 characters; a
- * data post (workout, PR, badge…) is its snapshot, so its caption may be
- * cleared entirely. `ok: false` means refuse; `text: null` means "no caption".
+ * A caption edit. A text post is its text, so it keeps 1–500 characters —
+ * unless it carries a photo, which is then the post; a data post (workout,
+ * PR, badge…) is its snapshot, so its caption may be cleared entirely.
+ * `ok: false` means refuse; `text: null` means "no caption".
  */
-export function validatePostEdit(type: PostType, input: string): { ok: true; text: string | null } | { ok: false } {
-  if (input.trim().length === 0 && type !== "text") return { ok: true, text: null };
+export function validatePostEdit(type: PostType, input: string, hasPhoto = false): { ok: true; text: string | null } | { ok: false } {
+  if (input.trim().length === 0 && (type !== "text" || hasPhoto)) return { ok: true, text: null };
   const clean = validatePostText(input);
   return clean ? { ok: true, text: clean } : { ok: false };
 }

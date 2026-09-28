@@ -17,7 +17,7 @@ import { APP_NAME } from "@/lib/brand";
 import { preparePhoto } from "@/lib/image-prepare";
 import type { OverlayStatValues } from "@/lib/photo-overlay";
 import { renderPhotoStory, storyFileName } from "@/lib/photo-story";
-import { deliverShareImage } from "@/lib/share-card-render";
+import { canShareFile, deliverShareImage } from "@/lib/share-card-render";
 import type { CommentPage, FeedPost, KudosGiver, ShareableSession } from "@/lib/types";
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
@@ -468,6 +468,7 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
     try {
       const blob = await renderPhotoStory({
         photoUrl: photo.url, width: photo.width, height: photo.height, overlay: photo.overlay, stats: overlayStats, brand: APP_NAME,
+        workout: p?.kind === "workout" ? { kicker: s.workoutPost, name: p.name, date: f.day(p.date) } : null,
       });
       const date = p?.kind === "workout" ? p.date : post.created_at.slice(0, 10);
       const how = await deliverShareImage(blob, storyFileName(date), p?.kind === "workout" ? p.name : APP_NAME);
@@ -512,13 +513,17 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
               setEditError(null);
               setEditing(true);
             }}
-            // Delete stays where it has always been: on the post's own page.
-            onDelete={detail ? () =>
+            // Delete from the feed too, behind a confirmation: the menu is
+            // one tap from the caption, and a post is not something to lose to
+            // a slip. From the post's own page the deletion leads back to the feed.
+            onDelete={() => {
+              if (!window.confirm(s.deletePostConfirm)) return;
               startTransition(async () => {
                 await deletePost(post.id);
-                router.push("/feed");
+                if (detail) router.push("/feed");
                 router.refresh();
-              }) : undefined}
+              });
+            }}
             onStory={photo && photo.width && photo.height ? downloadStory : undefined}
             storyBusy={story === "busy"}
           />
@@ -577,7 +582,7 @@ export function PostCard({ post, detail = false }: { post: FeedPost; detail?: bo
             <button
               type="submit"
               // A text post needs words; a workout or badge may lose its caption.
-              disabled={pending || (post.type === "text" && draft.trim().length === 0)}
+              disabled={pending || (post.type === "text" && !photo && draft.trim().length === 0)}
               className="h-10 rounded-xl bg-accent px-4 font-display text-[13px] font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
             >
               {s.saveEdit}
@@ -677,6 +682,7 @@ function PostMenu({ pending, onEdit, onDelete, onStory, storyBusy = false }: {
   const s = t.common.social;
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const canShare = useCanShareFiles();
 
   useEffect(() => {
     if (!open) return;
@@ -716,7 +722,7 @@ function PostMenu({ pending, onEdit, onDelete, onStory, storyBusy = false }: {
           </button>
           {onStory ? (
             <button type="button" role="menuitem" disabled={storyBusy} onClick={() => { setOpen(false); onStory(); }} className={`${item} text-ink hover:bg-bg`}>
-              {storyBusy ? t.common.actions.loading : s.downloadStory}
+              {storyBusy ? t.common.actions.loading : canShare ? s.shareStory : s.downloadStory}
             </button>
           ) : null}
           {onDelete ? (
@@ -1100,7 +1106,8 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
             </button>
             <button
               type="submit"
-              disabled={pending || text.trim().length === 0}
+              // Words or a picture: either one is a post.
+              disabled={pending || (text.trim().length === 0 && !photo)}
               className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
             >
               {s.post}
@@ -1151,9 +1158,29 @@ function photoInput(photo: PostPhoto | null, overlay: PhotoOverlay | null): Post
 }
 
 /**
- * "Download for Story": the photo with its overlay at 1080×1920 and the mark
- * in the corner, through the native share sheet where there is one, saved as
- * a file otherwise. Works before and after the post goes out — the picture is
+ * Whether this browser can hand a JPEG to the native share sheet — phones
+ * can, and that sheet is where Instagram (Story, Feed) and Facebook live;
+ * there is no web API that opens Instagram with a picture ready to post, so
+ * the sheet IS the share button. Desktops get a download instead, and the
+ * label says which it will be.
+ */
+function useCanShareFiles(): boolean {
+  const [can, setCan] = useState(false);
+  useEffect(() => {
+    try {
+      setCan(canShareFile(new File([new Uint8Array(4)], "story.jpg", { type: "image/jpeg" })));
+    } catch {
+      setCan(false);
+    }
+  }, []);
+  return can;
+}
+
+/**
+ * "Share to Instagram, Facebook…" on a phone, "Download for Story" on a
+ * desktop: the photo with its overlay at 1080×1920 and the mark in the
+ * corner, through the native share sheet where there is one, saved as a file
+ * otherwise. Works before and after the post goes out — the picture is
  * already on Cloudinary either way.
  */
 function StoryDownload({ photo, overlay, stats, title, date }: {
@@ -1164,12 +1191,17 @@ function StoryDownload({ photo, overlay, stats, title, date }: {
   date: string;
 }) {
   const { t } = useI18n();
+  const f = useSocialFormat();
   const s = t.common.social;
   const [status, setStatus] = useState<"idle" | "busy" | "ready" | "shared" | "failed">("idle");
+  const canShare = useCanShareFiles();
   async function run() {
     setStatus("busy");
     try {
-      const blob = await renderPhotoStory({ photoUrl: photo.previewUrl, width: photo.width, height: photo.height, overlay, stats, brand: APP_NAME });
+      const blob = await renderPhotoStory({
+        photoUrl: photo.previewUrl, width: photo.width, height: photo.height, overlay, stats, brand: APP_NAME,
+        workout: { kicker: s.workoutPost, name: title, date: f.day(date) },
+      });
       const how = await deliverShareImage(blob, storyFileName(date), title);
       setStatus(how === "shared" ? "shared" : how === "saved" ? "ready" : "idle");
     } catch {
@@ -1184,8 +1216,8 @@ function StoryDownload({ photo, overlay, stats, title, date }: {
         disabled={status === "busy"}
         className="inline-flex h-11 items-center gap-2 rounded-2xl bg-bg px-4 text-[13px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
       >
-        <NavIcon d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" className="h-[18px] w-[18px]" />
-        {status === "busy" ? t.common.actions.loading : s.downloadStory}
+        <NavIcon d={canShare ? "M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 15V3m0 0-4 4m4-4 4 4" : "M12 4v11m0 0-4-4m4 4 4-4M5 19h14"} className="h-[18px] w-[18px]" />
+        {status === "busy" ? t.common.actions.loading : canShare ? s.shareStory : s.downloadStory}
       </button>
       {status === "ready" || status === "shared" || status === "failed" ? (
         <p role="status" className={`mt-1.5 text-[12px] ${status === "failed" ? "text-risk" : "text-accent-ink"}`}>

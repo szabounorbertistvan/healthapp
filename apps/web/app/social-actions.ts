@@ -14,6 +14,7 @@ import {
   isReactionType,
   normalizePostPhoto,
   payloadMatchesType,
+  postPhotoOf,
   resolveMentions,
   validateComment,
   validatePostEdit,
@@ -173,12 +174,14 @@ export async function createTextPost(text: string, visibility?: string, photo?: 
   const { t } = await getI18n();
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
-  const clean = validatePostText(text);
-  if (!clean) return { ok: false, message: t.common.social.textInvalid };
   const picture = await resolvePostPhoto(uid, photo, false);
+  // A photo is a post on its own; words are optional next to it. Without a
+  // photo the words are the post, so 1–500 of them.
+  const clean = validatePostEdit("text", text, Boolean(picture.photo_url));
+  if (!clean.ok) return { ok: false, message: t.common.social.textInvalid };
   return insertPost({
     type: "text",
-    text: clean,
+    text: clean.text,
     payload: picture.photo_url ? { kind: "text", ...picture } : null,
     visibility: visibilityOf(visibility),
   });
@@ -194,12 +197,13 @@ export async function createProgressPost(
   const { t } = await getI18n();
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
-  const clean = validatePostText(text);
-  if (!clean) return { ok: false, message: t.common.social.textInvalid };
   const payload: ProgressPostPayload = { kind: "progress", ...(await resolvePostPhoto(uid, photo, false)) };
+  // Same rule as a text post: the photo alone is enough, otherwise the words are required.
+  const clean = validatePostEdit("text", text, Boolean(payload.photo_url));
+  if (!clean.ok) return { ok: false, message: t.common.social.textInvalid };
   // Kept as entered, to the two decimals the measurements column holds — never rounded to a whole kilo.
   if (typeof weightKg === "number" && Number.isFinite(weightKg) && weightKg > 0) payload.weight_kg = Math.round(weightKg * 100) / 100;
-  return insertPost({ type: "progress", text: clean, payload, visibility: visibilityOf(visibility) });
+  return insertPost({ type: "progress", text: clean.text, payload, visibility: visibilityOf(visibility) });
 }
 
 /**
@@ -346,14 +350,14 @@ export async function editPost(postId: string, text: string): Promise<ActionResu
   // Own and not deleted — anything else reads as absent, never as someone else's.
   const { data: post } = await supabase
     .from("social_posts")
-    .select("type")
+    .select("type, payload")
     .eq("id", postId)
     .eq("user_id", uid)
     .is("deleted_at", null)
     .maybeSingle();
   if (!post) return { ok: false, message: t.common.social.postNotFound };
 
-  const edit = validatePostEdit(post.type as PostType, text);
+  const edit = validatePostEdit(post.type as PostType, text, postPhotoOf((post.payload ?? null) as PostPayload) !== null);
   if (!edit.ok) return { ok: false, message: t.common.social.textInvalid };
   const clean = edit.text;
 

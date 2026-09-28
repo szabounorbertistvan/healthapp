@@ -99,7 +99,7 @@ project.
 
 | | |
 |---|---|
-| Client | `/feed` (composer with photo, inline comment box on every card), `workout/[dayId]/done` (share panel: photo, figures/text on the photo, "Download for Story"), the "…" menu of an own post (story download) |
+| Client | `/feed` (composer with photo, inline comment thread behind the icon, delete behind a confirmation in the "…" menu), `workout/[dayId]/done` (share panel: photo, figures/text on the photo, "Download for Story"), the "…" menu of an own post (story download) |
 | Reads | unchanged RPC names; `social_feed()` / `social_post()` now carry `kudos_count`, `love_count`, `my_reaction`; `social_post_kudos()` carries `type` |
 | Writes | `react(postId, pressed)` → `social_react()`; `createTextPost` / `createProgressPost` / `shareWorkout` take a `PostPhotoInput` (public_id, version, pixel size, overlay) in [app/social-actions.ts](../apps/web/app/social-actions.ts) |
 | Maths | [packages/shared/src/social.ts](../packages/shared/src/social.ts) — `applyReaction`, `normalizePhotoOverlay`, `normalizePostPhoto`, `postPhotoOf`; [lib/photo-overlay.ts](../apps/web/lib/photo-overlay.ts) — the overlay's geometry; [lib/image-prepare.ts](../apps/web/lib/image-prepare.ts) — `photoFrame` |
@@ -141,11 +141,25 @@ server: clamped, known keys only, text cleaned and capped at 80; anything
 malformed is "no overlay", never an error. A workout post from before overlays
 existed keeps its bottom gradient with the name and headline numbers.
 
-**Download for Story** paints the photo full width on a blurred, dimmed copy of
-itself at 1080×1920, the overlay at the same fractions, and the Voinic mark +
-wordmark in the lower right, then hands the JPEG to the native share sheet (or
-a download). The canvas needs the Cloudinary copy (CORS), so it works once the
-upload has finished — before or after the post goes out.
+**A photo is a post.** A text or progress post needs words only when it has
+no picture (`validatePostEdit(type, text, hasPhoto)`); with one, the caption
+is optional and may be cleared on edit.
+
+**Share to Instagram, Facebook…** is the native share sheet: there is no web
+API that opens Instagram with a picture ready to post, and Facebook takes only
+public links, so on a phone the story button hands the JPEG to the sheet
+(where both apps are targets) and says so; a desktop gets a download and the
+label says that instead (`useCanShareFiles`). The story is full-bleed: the
+picture cover-fits 1080×1920 (centred crop), a scrim rises from the bottom,
+and on it sit the workout's kicker, name and date with a row of its figures —
+unless the author already placed the figures on the photo, which then stay
+where they were put (and the name moves to the top if they reach the bottom
+area). Everything the author placed is mapped through the crop and kept inside
+the frame (`placeInFrame`); a text or progress post gets the picture, its text
+and the mark only. Mocks of the alternatives (card on a brand gradient, card on
+the photo's own colours) were rejected on 2026-09-28 in favour of this. The
+canvas needs the Cloudinary copy (CORS), so it works once the upload has
+finished — before or after the post goes out.
 
 **Notifications read like a feed.** `NotificationRowView` (notification-list.tsx)
 is one row for both the bell and `/notifications`: the actor's avatar with what
