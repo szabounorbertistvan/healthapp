@@ -10,6 +10,8 @@ import { useI18n } from "@/lib/i18n/client";
 const CATEGORIES = ["strength", "stretching", "cardio", "plyometrics"] as const;
 const LEVELS = ["beginner", "intermediate", "expert"] as const;
 const MECHANICS = ["compound", "isolation"] as const;
+/** The select's "Other…" row; never sent to the server as equipment. */
+const OTHER_GEAR = "__other__";
 
 const inputClass =
   "w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent";
@@ -43,7 +45,9 @@ export function NewExerciseForm({
   const [name, setName] = useState(initialName);
   const [primary, setPrimary] = useState(initialMuscle);
   const [secondary, setSecondary] = useState<string[]>([]);
-  const [gear, setGear] = useState("");
+  const [gearChoice, setGearChoice] = useState("");
+  const [gearCustom, setGearCustom] = useState("");
+  const gear = gearChoice === OTHER_GEAR ? gearCustom : gearChoice;
   const [category, setCategory] = useState<string>("strength");
   const [level, setLevel] = useState<string>("");
   const [mechanic, setMechanic] = useState<string>("");
@@ -123,18 +127,32 @@ export function NewExerciseForm({
             ))}
           </select>
         </label>
+        {/* A real <select>, not an <input list>: a datalist on a phone is
+            keyboard suggestions on Android and nothing at all on iOS, and its
+            arrow answers no tap. The library's equipment is the list; "Other…"
+            opens a text field for what is not in it. */}
         <label className="flex flex-col gap-1">
           <span className={labelClass}>{m.equipment}</span>
-          <input
-            list="new-exercise-equipment"
-            value={gear}
-            onChange={(e) => setGear(e.target.value)}
-            placeholder={m.equipmentPlaceholder}
+          <select
+            value={gearChoice}
+            onChange={(e) => { setGearChoice(e.target.value); if (e.target.value !== OTHER_GEAR) setGearCustom(""); }}
             className={inputClass}
-          />
-          <datalist id="new-exercise-equipment">
-            {equipment.map((item) => <option key={item} value={item} />)}
-          </datalist>
+          >
+            <option value="">—</option>
+            {equipment.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+            <option value={OTHER_GEAR}>{m.equipmentOther}</option>
+          </select>
+          {gearChoice === OTHER_GEAR ? (
+            <input
+              autoFocus
+              value={gearCustom}
+              onChange={(e) => setGearCustom(e.target.value)}
+              placeholder={m.equipmentPlaceholder}
+              className={inputClass}
+            />
+          ) : null}
         </label>
       </div>
 
