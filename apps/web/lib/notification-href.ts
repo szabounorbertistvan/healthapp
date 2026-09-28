@@ -120,6 +120,11 @@ export function notificationActorId(payload: Record<string, unknown> | null): st
   return id(payload, "actor_id") ?? id(payload, "follower_id");
 }
 
+/** The post a social row is about, if it names one. */
+export function notificationPostId(payload: Record<string, unknown> | null): string | null {
+  return id(payload, "post_id");
+}
+
 /**
  * The cursor is "created_at|id", not created_at alone: one award run writes
  * several notifications in one transaction, all with the same now(), and a

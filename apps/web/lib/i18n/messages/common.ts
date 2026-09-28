@@ -100,6 +100,9 @@ const en = {
     loadOlder: "Load older",
     noUnread: "No unread notifications.",
     loadFailed: "Could not load more. Try again.",
+    groupToday: "Today",
+    groupWeek: "This week",
+    groupEarlier: "Earlier",
   },
   exerciseVideo: {
     title: "Demo video",
@@ -167,8 +170,8 @@ const en = {
     unread: "Unread",
     notified: {
       new_follower: "{name} started following you.",
-      new_kudos: "{name} gave Kudos to your post.",
-      new_love: "{name} sent a peach to your post.",
+      new_kudos: "{name} reacted to your post.",
+      new_love: "{name} reacted to your post.",
       new_comment: "{name} commented on your post.",
       comment_reply: "{name} replied to your comment.",
       new_mention: "{name} mentioned you in a comment.",
@@ -884,6 +887,9 @@ const ro: typeof en = {
     loadOlder: "Mai vechi",
     noUnread: "Nicio notificare necitită.",
     loadFailed: "Nu s-au putut încărca. Încearcă din nou.",
+    groupToday: "Azi",
+    groupWeek: "Săptămâna aceasta",
+    groupEarlier: "Mai vechi",
   },
   exerciseVideo: {
     title: "Video demonstrativ",
@@ -951,8 +957,8 @@ const ro: typeof en = {
     unread: "Necitit",
     notified: {
       new_follower: "{name} a început să te urmărească.",
-      new_kudos: "{name} ți-a dat Kudos la postare.",
-      new_love: "{name} ți-a trimis o piersică la postare.",
+      new_kudos: "{name} a reacționat la postarea ta.",
+      new_love: "{name} a reacționat la postarea ta.",
       new_comment: "{name} a comentat la postarea ta.",
       comment_reply: "{name} ți-a răspuns la comentariu.",
       new_mention: "{name} te-a menționat într-un comentariu.",

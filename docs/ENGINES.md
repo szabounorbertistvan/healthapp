@@ -147,6 +147,16 @@ wordmark in the lower right, then hands the JPEG to the native share sheet (or
 a download). The canvas needs the Cloudinary copy (CORS), so it works once the
 upload has finished — before or after the post goes out.
 
+**Notifications read like a feed.** `NotificationRowView` (notification-list.tsx)
+is one row for both the bell and `/notifications`: the actor's avatar with what
+they did in the corner (the arm, the peach, a comment, a follow, a trophy), the
+sentence with the name in bold ("relu19 zice că ești Peachy."), the comment's
+words when there are any, when — and on the right the post it happened on
+(its photo, or a tile for its kind). `getNotificationPage` fetches those posts
+in the same wave as the actors. The page groups rows into today / this week /
+earlier. Opening the bell marks everything read and clears the badge at once;
+the rows that were new stay highlighted while the panel is open.
+
 **Comments are one tap away.** The comment icon on a feed card opens the
 thread under it (`CommentThread` in `embedded` mode: first page fetched on
 open, box focused); a post reloads that page, never the feed. The post's own

@@ -5,23 +5,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
-import { timeAgo } from "@/lib/format";
 import type { NotificationRow } from "@/lib/notifications-data";
-import { markNotificationRead, markNotificationsRead } from "@/app/client-actions-app";
+import { markNotificationsRead } from "@/app/client-actions-app";
 import { NavIcon } from "./client-nav";
-import { useNotificationHeadline } from "./notification-list";
+import { NotificationRowView } from "./notification-list";
 
 /**
  * The bell and its panel. The rows are handed down from the layout, which
  * already reads them server-side — the panel does not fetch, so opening it
  * costs nothing and works on the first paint.
  *
- * Opening marks everything read. That is the honest behaviour for a list whose
- * whole content is reminders: keeping a badge alive after someone has looked at
- * it trains them to ignore it. The badge clears on the tap, not when the write
- * comes back, and the two bells (sidebar and phone header) each keep their own
- * count of what this browser has dismissed — whichever one you open, the
- * server write and the refresh that follows settle both.
+ * Opening marks everything read — the way the big feeds do it: the badge is
+ * "there is something you have not seen", and opening the panel is seeing
+ * it. The badge clears on the tap, not when the write comes back; the rows
+ * that were new keep their highlight while the panel stays open, so what was
+ * new is still visible; the refresh that follows settles both bells
+ * (sidebar and phone header).
  */
 export function NotificationBell({
   notifications,
@@ -45,18 +44,20 @@ export function NotificationBell({
    */
   placement?: "up" | "down";
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const n = t.common.notifications;
-  const headline = useNotificationHeadline();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  // How many notifications had been read away by this browser. It is a count,
-  // not a flag, because the layout keeps handing this component a fresh
-  // `unread`: a flag stayed true and hid a badge that had legitimately come
-  // back, and it reset to false on every remount, which put the old badge
-  // straight back while the refresh was still in flight.
-  const [dismissed, setDismissed] = useState(0);
-  const [pending, start] = useTransition();
+  // When this browser last opened the panel. Until the refresh lands the
+  // layout still hands down the old `unread`, so the badge is computed from
+  // the rows instead: only what arrived after this moment counts. A plain
+  // "dismissed" flag hid badges that had legitimately come back; a count
+  // double-subtracted once the refresh had already removed them.
+  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
+  // The rows that were unread when the panel opened: highlighted while it is
+  // open, even though the server has already marked them read.
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
+  const [, start] = useTransition();
   const box = useRef<HTMLDivElement>(null);
   // The portalled sheet is not a DOM descendant of `box`, so the outside-click
   // test has to know about it separately or a tap on a row would dismiss the
@@ -86,56 +87,33 @@ export function NotificationBell({
     };
   }, [open]);
 
-  /**
-   * Opening the panel does NOT mark anything read.
-   *
-   * It used to: the badge cleared on open, which meant glancing at the bell
-   * destroyed the one piece of state unread is for. Reading a notification is
-   * an interaction — following it, or asking for all of them at once.
-   */
-  function readOne(id: string) {
-    setDismissed((d) => d + 1);
-    start(async () => {
-      await markNotificationRead(id);
-      router.refresh();
-    });
-  }
-
-  /** The explicit "mark all as read" control, and only that. */
-  function readAll() {
-    if (unread <= dismissed) return;
-    setDismissed(unread);
-    start(async () => {
-      await markNotificationsRead();
-      router.refresh();
-    });
-  }
+  const badge = dismissedAt === null
+    ? unread
+    : notifications.filter((item) => !item.read && Date.parse(item.created_at) > dismissedAt).length;
 
   function toggle() {
     const next = !open;
-    if (next && placement === "down") {
-      const strip = box.current?.closest("header");
-      setSheetTop((strip?.getBoundingClientRect().bottom ?? 0) + 6);
+    if (next) {
+      if (placement === "down") {
+        const strip = box.current?.closest("header");
+        setSheetTop((strip?.getBoundingClientRect().bottom ?? 0) + 6);
+      }
+      setFresh(new Set(notifications.filter((item) => !item.read).map((item) => item.id)));
+      if (badge > 0) {
+        setDismissedAt(Date.now());
+        start(async () => {
+          await markNotificationsRead();
+          router.refresh();
+        });
+      }
     }
     setOpen(next);
   }
 
-  const badge = Math.max(0, unread - dismissed);
-
   const body = (
     <>
-      <div className="flex items-baseline justify-between gap-2 px-4 pb-1.5 pt-4">
+      <div className="px-4 pb-1.5 pt-4">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{n.title}</p>
-        {badge > 0 ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={readAll}
-            className="text-[11.5px] font-semibold text-accent-ink hover:underline disabled:opacity-50"
-          >
-            {t.common.social.markAllRead}
-          </button>
-        ) : null}
       </div>
       {notifications.length === 0 ? (
         <div className="px-4 pb-4 pt-1">
@@ -145,31 +123,16 @@ export function NotificationBell({
       ) : (
         <ul className="max-h-[min(60vh,26rem)] divide-y divide-line/60 overflow-y-auto">
           {notifications.map((item) => {
-            const row = (
-              <>
-                <p className="text-[13.5px] font-semibold leading-snug">{headline(item)}</p>
-                {item.body && item.sentence !== "badge_earned" ? (
-                  <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-soft">{item.body}</p>
-                ) : null}
-                <p className="mt-1 text-[11.5px] text-ink-faint">{timeAgo(item.created_at, locale)}</p>
-              </>
-            );
+            const unreadRow = !item.read || fresh.has(item.id);
+            const row = <NotificationRowView notification={item} unread={unreadRow} compact />;
             return (
-              <li key={item.id} className={item.read ? "" : "bg-accent-soft/40"}>
+              <li key={item.id} className={unreadRow ? "bg-accent-soft/40" : ""}>
                 {item.href ? (
-                  // Reading one by following it counts too — the panel may have
-                  // been opened by keyboard, and leaving the badge up after a
-                  // tap is exactly the behaviour this component argues against.
-                  // Following one reads that one. The rest keep their state.
-                  <Link
-                    href={item.href}
-                    onClick={() => { if (!item.read) readOne(item.id); setOpen(false); }}
-                    className="block px-4 py-3 hover:bg-bg/60"
-                  >
+                  <Link href={item.href} onClick={() => setOpen(false)} className="block hover:bg-bg/60">
                     {row}
                   </Link>
                 ) : (
-                  <div className="px-4 py-3">{row}</div>
+                  row
                 )}
               </li>
             );
