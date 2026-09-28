@@ -74,6 +74,7 @@ export function notificationHref(category: string, payload: Record<string, unkno
 export type NotificationSentence =
   | "new_follower"
   | "new_kudos"
+  | "new_love"
   | "new_comment"
   | "comment_reply"
   | "new_mention"
@@ -88,8 +89,10 @@ export type NotificationSentence =
  */
 export function notificationSentence(category: string, payload: Record<string, unknown> | null): NotificationSentence | null {
   switch (category) {
-    case "new_follower":
+    // One category for both reactions; the payload says which arrived.
     case "new_kudos":
+      return payload?.reaction === "love" ? "new_love" : "new_kudos";
+    case "new_follower":
     case "new_comment":
     case "comment_reply":
     case "badge_earned":
@@ -122,6 +125,11 @@ export function challengeNotice(
 /** The person a notification is about, for the avatar. Null for engine rows. */
 export function notificationActorId(payload: Record<string, unknown> | null): string | null {
   return id(payload, "actor_id") ?? id(payload, "follower_id");
+}
+
+/** The post a social row is about, if it names one. */
+export function notificationPostId(payload: Record<string, unknown> | null): string | null {
+  return id(payload, "post_id");
 }
 
 /**

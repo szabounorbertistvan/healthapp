@@ -125,16 +125,23 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
         </button>
       </div>
 
+      {/* The form takes the list's place and its scroll: inside the day
+          editor the picker is a fixed-height box whose only scroller is the
+          list, and a form sitting above the list was clipped at the box's
+          bottom on a phone — the Save button out of reach whatever was
+          picked. */}
       {creating ? (
-        <NewExerciseForm
-          muscles={muscles}
-          equipment={equipment}
-          initialName={q}
-          initialMuscle={muscle}
-          canAdd={Boolean(onPick)}
-          onCreated={onCreated}
-          onCancel={() => setCreating(false)}
-        />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <NewExerciseForm
+            muscles={muscles}
+            equipment={equipment}
+            initialName={q}
+            initialMuscle={muscle}
+            canAdd={Boolean(onPick)}
+            onCreated={onCreated}
+            onCancel={() => setCreating(false)}
+          />
+        </div>
       ) : null}
 
       {created ? (
@@ -161,7 +168,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
         ) : null}
       </div>
 
-      <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[12.5px] text-ink-faint">
+      <p className={`flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[12.5px] text-ink-faint ${creating ? "hidden" : ""}`}>
         <span>
           {loading
             ? m.searching
@@ -184,7 +191,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
 
       {/* As many columns as fit, never a card under 300px: one on a phone and
           inside the day editor's narrow box, several across a wide library. */}
-      <ul ref={listRef} className="grid min-h-0 flex-1 auto-rows-min content-start gap-2 overflow-y-auto sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
+      <ul ref={listRef} className={`grid min-h-0 flex-1 auto-rows-min content-start gap-2 overflow-y-auto sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] ${creating ? "hidden" : ""}`}>
         {results.map((exercise) => (
           <li
             key={exerciseRef(exercise)}
@@ -286,7 +293,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
 
       {/* Pager: the same shape as the admin desks, so a long list always says
           where you are. Hidden while a single page holds everything. */}
-      {!loading && pages > 1 ? (
+      {!loading && !creating && pages > 1 ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12.5px] tabular-nums text-ink-faint">
             {fill(m.showingRange, { first, last, total })}

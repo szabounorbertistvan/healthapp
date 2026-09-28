@@ -1,27 +1,47 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+<<<<<<< HEAD
 import { useEffect, useOptimistic, useReducer, useRef, useState, useTransition } from "react";
 import type { PostVisibility } from "@healthapp/shared";
 import { displayToKg, followButtonState, isAchievementRarity, toggleKudosState, POST_TEXT_MAX } from "@healthapp/shared";
 import {
   createProgressPost, createTextPost, deletePost, editPost, follow, loadKudos, requestPostPhotoUpload, setPostSaved, sharePost,
   toggleKudos, unfollow,
+=======
+import { useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import type { PhotoOverlay, PostVisibility, ReactionType } from "@healthapp/shared";
+import { applyReaction, displayToKg, kudosSummary, postPhotoOf, POST_TEXT_MAX, type ReactionState } from "@healthapp/shared";
+import {
+  createProgressPost, createTextPost, deletePost, editPost, follow, loadComments, loadKudos, react, requestPostPhotoUpload, unfollow,
+  type PostPhotoInput,
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { parseDay } from "@/lib/week";
 import { durationLabel } from "@/lib/share-card";
-import type { FeedPost, KudosGiver, ShareableSession } from "@/lib/types";
+import { APP_NAME } from "@/lib/brand";
+import { preparePhoto } from "@/lib/image-prepare";
+import type { OverlayStatValues } from "@/lib/photo-overlay";
+import { renderPhotoStory, storyFileName } from "@/lib/photo-story";
+import { canShareFile, deliverShareImage } from "@/lib/share-card-render";
+import type { CommentPage, FeedPost, KudosGiver, ShareableSession } from "@/lib/types";
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
 import { SOCIAL } from "@/lib/social-ui";
 import { captionFolds, doubleTapGives, giveNeedsUndo, isDoubleTap, postAge } from "@/lib/post-card";
 import { canRepost, canWebShare, postShareUrl, saveReducer, shareTargets } from "@/lib/post-share";
 import { BadgeGlyph, MentionSuggestions, MentionText, useMentionSuggest } from "./social-v2";
+<<<<<<< HEAD
 import { CommentPreview } from "./comment-preview";
 import { ModerationMenuButton } from "./moderation";
+=======
+import { ReactionIcon } from "./reaction-icons";
+import { PhotoFrame, PhotoOverlayEditor } from "./photo-overlay";
+import { CommentThread } from "./comment-thread";
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 
 // ---------- small pieces ----------
 
@@ -136,6 +156,7 @@ function Stat({ value, unit, label }: { value: string; unit?: string; label: str
   );
 }
 
+<<<<<<< HEAD
 type FrameTone = "gold" | "tile" | "plain";
 const FRAME_TONE: Record<FrameTone, string> = {
   gold: "bg-accent text-accent-fg",
@@ -210,13 +231,55 @@ function hasMedia(post: FeedPost) {
  * a record, a finished challenge, a badge, a Fitness Score milestone, a
  * streak — are gold with the number as the hero. A shared routine is plain:
  * it is an invitation to train, not a result.
+=======
+/** A workout's figures, formatted for the reader, keyed the way the photo overlay wants them. */
+export function useOverlayStats(w: { duration_min: number | null; volume_kg: number; sets: number; exercises: number; load: number; prs: number } | null): OverlayStatValues {
+  const { t } = useI18n();
+  const f = useSocialFormat();
+  const s = t.common.social;
+  if (!w) return {};
+  const dur = f.duration(w.duration_min);
+  return {
+    ...(dur ? { duration: { value: dur, label: s.statDuration } } : {}),
+    volume: { value: f.n(w.volume_kg), unit: "kg", label: s.statVolume },
+    sets: { value: f.n(w.sets), label: s.statSets },
+    exercises: { value: f.n(w.exercises), label: s.statExercises },
+    load: { value: f.n(w.load), label: s.statLoad },
+    ...(w.prs > 0 ? { prs: { value: f.n(w.prs), label: s.statPrs } } : {}),
+  };
+}
+
+/**
+ * The photo on a text or progress post, with whatever sits on it. `splash`
+ * is the double-tap layer the card mounts over every photo.
  */
-function PostMedia({ post }: { post: FeedPost }) {
+function PostPhoto({ post, splash }: { post: FeedPost; splash: React.ReactNode }) {
+  const photo = postPhotoOf(post.payload);
+  if (!photo) return null;
+  return (
+    <div className="mx-3 overflow-hidden rounded-2xl">
+      <PhotoFrame src={photo.url} width={photo.width} height={photo.height} overlay={photo.overlay} stats={{}}>
+        {splash}
+      </PhotoFrame>
+    </div>
+  );
+}
+
+/**
+ * The post's "media", where a photo would sit on Instagram: a workout is an
+ * inverse tile with its figures large, a record or a milestone a solid gold
+ * tile with the number as the hero. Text and progress posts have a photo or
+ * nothing.
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
+ */
+function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }) {
   const { t, locale } = useI18n();
   const f = useSocialFormat();
   const s = t.common.social;
   const p = post.payload;
-  if (!p || p.kind === "progress") return null;
+  const overlayStats = useOverlayStats(p?.kind === "workout" ? p : null);
+  if (!p) return null;
+  if (p.kind === "progress" || p.kind === "text") return <PostPhoto post={post} splash={splash} />;
 
   const hero = "font-display text-[48px] font-black leading-none tracking-tight tabular-nums sm:text-[56px]";
   const title = "font-display text-[26px] font-extrabold leading-[1.1] tracking-tight sm:text-[28px]";
@@ -224,6 +287,7 @@ function PostMedia({ post }: { post: FeedPost }) {
 
   if (p.kind === "workout") {
     const dur = f.duration(p.duration_min);
+<<<<<<< HEAD
     const photo = typeof p.photo_url === "string" && p.photo_url.startsWith("https://") ? p.photo_url : null;
     const prChip = p.prs > 0 ? (
       <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 text-[11.5px] font-bold text-accent-fg">
@@ -275,6 +339,12 @@ function PostMedia({ post }: { post: FeedPost }) {
         }
       >
         <div className={`grid gap-3 ${dur ? "grid-cols-2 min-[400px]:grid-cols-4" : "grid-cols-3"}`}>
+=======
+    const photo = postPhotoOf(p);
+    const stats = (
+      <>
+        <div className={`grid gap-3 ${dur ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
           {dur ? <Stat value={dur} label={s.statDuration} /> : null}
           <Stat value={f.n(p.volume_kg)} unit="kg" label={s.statVolume} />
           <Stat value={f.n(p.sets)} label={s.statSets} />
@@ -291,7 +361,54 @@ function PostMedia({ post }: { post: FeedPost }) {
           </span>
           {prChip}
         </div>
+<<<<<<< HEAD
       </MediaFrame>
+=======
+      </>
+    );
+
+    // With a photo the card becomes what people came for: the picture full
+    // bleed, and either what the author placed on it (the figures, a line of
+    // text — the overlay) or, on a post from before overlays existed, the
+    // workout's name and headline numbers behind a gradient at the bottom.
+    // The rest of the figures sit underneath on the tile. Without a photo it
+    // is the tile alone, exactly as before.
+    const scrim = photo !== null && !photo.overlay?.stats;
+    return (
+      <div className="mx-3 overflow-hidden rounded-2xl bg-tile text-tile-ink">
+        {photo ? (
+          <PhotoFrame src={photo.url} width={photo.width} height={photo.height} overlay={photo.overlay} stats={overlayStats}>
+            {scrim ? (
+              // The scrim exists so white text is legible on any photo; it is
+              // opaque at the bottom and clear at the top, so the picture is
+              // never dimmed where nothing sits on it.
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-5 pb-4 pt-14 text-white">
+                <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-white/70">
+                  <NavIcon d={DUMBBELL} className="h-3.5 w-3.5" />
+                  {s.workoutPost}
+                </span>
+                <p className="mt-1 truncate font-display text-[24px] font-extrabold leading-tight tracking-tight">{p.name}</p>
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 text-[12.5px] font-semibold tabular-nums text-white/85">
+                  {dur ? <span>{dur}</span> : null}
+                  <span>{fill(s.volume, { kg: f.n(p.volume_kg) })}</span>
+                  <span>{fill(s.setsCount, { count: p.sets })}</span>
+                </p>
+              </div>
+            ) : null}
+            {splash}
+          </PhotoFrame>
+        ) : null}
+        <div className="px-5 pb-5 pt-4">
+          {scrim ? null : (
+            <>
+              <BlockLabel icon={DUMBBELL} tone="text-tile-accent">{s.workoutPost}</BlockLabel>
+              <p className="mb-4 mt-1 truncate font-display text-[26px] font-extrabold leading-tight tracking-tight">{p.name}</p>
+            </>
+          )}
+          {stats}
+        </div>
+      </div>
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
     );
   }
 
@@ -501,6 +618,7 @@ function DoubleTapMedia({ onDoubleTap, children }: { onDoubleTap: () => void; ch
 // ---------- the card ----------
 
 /**
+<<<<<<< HEAD
  * One post, in the order the big feeds taught everyone to read:
  *
  *   header   avatar · name · what it is · who can see it          •••
@@ -522,6 +640,95 @@ function DoubleTapMedia({ onDoubleTap, children }: { onDoubleTap: () => void; ch
  *
  * `bleed` is for the feed column: on a phone the card loses its edges and
  * runs to the screen's, and gets them back from `sm`.
+=======
+ * The reactions on one post. `press` is a button: the same one again takes
+ * the reaction back, the other one replaces it (applyReaction mirrors
+ * social_react). The state is local and moves at once; the server action
+ * runs behind it, queued so two quick presses reach the database in order,
+ * and the row it answers with is what the card settles on. Nothing refreshes
+ * the page: a reaction is one small write, not a reason to re-render the
+ * feed. Other people's counts arrive with the next navigation, and a refresh
+ * from elsewhere on the page (a comment) re-seeds the state from the row.
+ * `burst` changes whenever a reaction was GIVEN, which is what the sparks and
+ * the splash key off; taking one back is quiet.
+ */
+function useReactions(post: FeedPost) {
+  const [error, setError] = useState<string | null>(null);
+  const [burst, setBurst] = useState<{ type: ReactionType; at: number } | null>(null);
+  const [state, setState] = useState<ReactionState>({ my_reaction: post.my_reaction, kudos_count: post.kudos_count, love_count: post.love_count });
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+
+  // The row is the truth whenever it arrives anew.
+  useEffect(() => {
+    setState({ my_reaction: post.my_reaction, kudos_count: post.kudos_count, love_count: post.love_count });
+  }, [post.my_reaction, post.kudos_count, post.love_count]);
+
+  const press = useCallback((pressed: ReactionType, opts: { onlyGive?: boolean } = {}) => {
+    if (post.mine) return;
+    setState((cur) => {
+      // A double-tap on the photo gives, never takes back — Instagram's rule,
+      // and the one that keeps a stray second tap from undoing the first.
+      if (opts.onlyGive && cur.my_reaction === pressed) {
+        setBurst({ type: pressed, at: Date.now() });
+        return cur;
+      }
+      if (cur.my_reaction !== pressed) setBurst({ type: pressed, at: Date.now() });
+      setError(null);
+      queue.current = queue.current.then(async () => {
+        const r = await react(post.id, pressed);
+        if (!r.ok) {
+          setError(r.message ?? "Error");
+          setState(cur); // back to what the card showed before this press
+          return;
+        }
+        // Two presses raced and the database settled differently: follow the row.
+        const settled = r.reaction ?? null;
+        setState((now) => (now.my_reaction === settled ? now : applyReaction(now, settled ?? now.my_reaction!)));
+      });
+      return applyReaction(cur, pressed);
+    });
+  }, [post.mine, post.id]);
+
+  return { state, press, error, burst };
+}
+
+/**
+ * Double-tap (or double-click) on the photo: kudos, with the arm blooming in
+ * the middle of the picture. Wraps the photo's own children so the overlay's
+ * pointer-events: none stays intact.
+ */
+function DoubleTap({ onDouble, burst }: { onDouble: () => void; burst: { type: ReactionType; at: number } | null }) {
+  const last = useRef(0);
+  return (
+    <>
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden
+        className="absolute inset-0 cursor-default"
+        onPointerUp={(e) => {
+          if (e.pointerType === "mouse") return; // mice double-click
+          const now = Date.now();
+          if (now - last.current < 320) { last.current = 0; onDouble(); } else last.current = now;
+        }}
+        onDoubleClick={onDouble}
+      />
+      {burst ? (
+        <span key={burst.at} className="pointer-events-none absolute inset-0 grid place-items-center">
+          <ReactionIcon type={burst.type} className="reaction-splash h-[28cqw] w-[28cqw] max-h-40 max-w-40" />
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * One post, laid out like the feeds people already know: header (who, when,
+ * who can see it), media, caption, then the action row and the "X reacted"
+ * line under it. The comment icon opens the thread right there, box focused
+ * — one tap to comment, not three. The detail page adds the delete control
+ * for own posts and keeps the thread below the card instead.
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
  */
 export function PostCard({ post, detail = false, bleed = false, removeOnUnsave = false }: {
   post: FeedPost;
@@ -538,6 +745,7 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
   const save = useSave(post);
   const s = t.common.social;
   const p = post.payload;
+<<<<<<< HEAD
   const media = hasMedia(post);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(post.text ?? "");
@@ -633,6 +841,41 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
         ) : null}
       </>
     ) : null;
+=======
+  const caption = p !== null; // text under a tile, a photo or an eyebrow reads as a caption; alone it is the post
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(post.text ?? "");
+  const [editError, setEditError] = useState<string | null>(null);
+  const reactions = useReactions(post);
+  const photo = postPhotoOf(p);
+  const overlayStats = useOverlayStats(p?.kind === "workout" ? p : null);
+  const [story, setStory] = useState<"idle" | "busy" | "ready" | "shared" | "failed">("idle");
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState(post.comment_count);
+  useEffect(() => setCommentCount(post.comment_count), [post.comment_count]);
+
+  // The story export of an own post's photo — the same picture and overlay
+  // the card shows, at 1080×1920 with the mark in the corner.
+  async function downloadStory() {
+    if (!photo || !photo.width || !photo.height) return;
+    setStory("busy");
+    try {
+      const blob = await renderPhotoStory({
+        photoUrl: photo.url, width: photo.width, height: photo.height, overlay: photo.overlay, stats: overlayStats, brand: APP_NAME,
+        workout: p?.kind === "workout" ? { kicker: s.workoutPost, name: p.name, date: f.day(p.date) } : null,
+      });
+      const date = p?.kind === "workout" ? p.date : post.created_at.slice(0, 10);
+      const how = await deliverShareImage(blob, storyFileName(date), p?.kind === "workout" ? p.name : APP_NAME);
+      setStory(how === "shared" ? "shared" : how === "saved" ? "ready" : "idle");
+    } catch {
+      setStory("failed");
+    }
+  }
+
+  const splash = post.mine ? null : (
+    <DoubleTap onDouble={() => reactions.press("kudos", { onlyGive: true })} burst={reactions.burst} />
+  );
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 
   return (
     <article
@@ -673,6 +916,7 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
               setEditError(null);
               setEditing(true);
             }}
+<<<<<<< HEAD
             onDelete={() =>
               startTransition(async () => {
                 setEditError(null);
@@ -686,6 +930,21 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
                 router.refresh();
               })
             }
+=======
+            // Delete from the feed too, behind a confirmation: the menu is
+            // one tap from the caption, and a post is not something to lose to
+            // a slip. From the post's own page the deletion leads back to the feed.
+            onDelete={() => {
+              if (!window.confirm(s.deletePostConfirm)) return;
+              startTransition(async () => {
+                await deletePost(post.id);
+                if (detail) router.push("/feed");
+                router.refresh();
+              });
+            }}
+            onStory={photo && photo.width && photo.height ? downloadStory : undefined}
+            storyBusy={story === "busy"}
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
           />
         ) : !post.mine ? (
           // Someone else's post: Mute / Block / Report. A blocked author's posts
@@ -706,6 +965,7 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
         )}
       </header>
 
+<<<<<<< HEAD
       {media ? (
         // A share shows its original (links inside, so no double tap); a
         // shared routine is a link too: a double tap would be two taps on it.
@@ -739,11 +999,90 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
         save={save}
         comment={
           // Same place either way: the post's own page, where the thread is.
+=======
+      <PostMedia post={post} splash={splash} />
+      {story === "ready" || story === "shared" || story === "failed" ? (
+        <p role="status" className={`mt-2 px-5 text-[12px] ${story === "failed" ? "text-risk" : "text-accent-ink"}`}>
+          {story === "failed" ? s.storyFailed : story === "shared" ? s.storyShared : s.storyReady}
+        </p>
+      ) : null}
+
+      {p?.kind === "progress" ? (
+        <div className="px-5">
+          <BlockLabel icon={TREND}>{s.progressUpdate}</BlockLabel>
+        </div>
+      ) : null}
+      {editing ? (
+        // Only the caption is editable: the tile above is the snapshot, and
+        // the database refuses any other column (column-level update grant).
+        <form
+          className="px-5 pt-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setEditError(null);
+            startTransition(async () => {
+              const r = await editPost(post.id, draft);
+              if (!r.ok) {
+                setEditError(r.message ?? s.textInvalid);
+                return;
+              }
+              setEditing(false);
+              router.refresh();
+            });
+          }}
+        >
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.slice(0, POST_TEXT_MAX))}
+            maxLength={POST_TEXT_MAX}
+            rows={3}
+            aria-label={s.editPost}
+            className="w-full resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
+          />
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <span className="mr-auto text-[11px] tabular-nums text-ink-faint">{draft.length}/{POST_TEXT_MAX}</span>
+            <button
+              type="button"
+              onClick={() => { setEditing(false); setEditError(null); }}
+              className="h-10 rounded-xl px-3.5 text-[13px] font-semibold text-ink-faint hover:bg-bg hover:text-ink"
+            >
+              {s.cancelEdit}
+            </button>
+            <button
+              type="submit"
+              // A text post needs words; a workout or badge may lose its caption.
+              disabled={pending || (post.type === "text" && !photo && draft.trim().length === 0)}
+              className="h-10 rounded-xl bg-accent px-4 font-display text-[13px] font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
+            >
+              {s.saveEdit}
+            </button>
+          </div>
+          {editError ? <p className="mt-1.5 text-xs text-risk">{editError}</p> : null}
+        </form>
+      ) : post.text ? (
+        // Handles are links only where a social_post_mentions row says so.
+        <MentionText
+          text={post.text}
+          mentions={post.mentions ?? []}
+          className={`whitespace-pre-wrap break-words px-5 leading-relaxed ${caption ? "mt-3 text-[15px]" : "text-[17px]"}`}
+        />
+      ) : null}
+      {p?.kind === "progress" && typeof p.weight_kg === "number" ? (
+        <p className="mt-1 px-5 text-[12.5px] tabular-nums text-ink-faint">{f.n(p.weight_kg)} kg</p>
+      ) : null}
+
+      <Reactions
+        post={post}
+        reactions={reactions}
+        comments={
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
           detail ? (
             <a href="#comments" aria-label={s.commentAction} title={s.commentAction} className={`${SOCIAL.iconButton} text-ink hover:text-ink-soft`}>
               <NavIcon d={COMMENT} className={SOCIAL.icon} />
             </a>
           ) : (
+<<<<<<< HEAD
             <Link href={`/feed/${post.id}`} aria-label={s.commentAction} title={s.commentAction} className={`${SOCIAL.iconButton} text-ink hover:text-ink-soft`}>
               <NavIcon d={COMMENT} className={SOCIAL.icon} />
             </Link>
@@ -764,11 +1103,32 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
           {f.when(post.created_at)}
         </time>
       </p>
+=======
+            <button
+              type="button"
+              onClick={() => setCommentsOpen((v) => !v)}
+              aria-expanded={commentsOpen}
+              title={s.comments}
+              className={`inline-flex h-10 cursor-pointer items-center gap-2 rounded-full px-2.5 font-semibold transition-colors ${
+                commentsOpen ? "bg-bg text-ink" : "text-ink-soft hover:bg-bg hover:text-ink"
+              }`}
+            >
+              <NavIcon d={COMMENT} className="h-[22px] w-[22px]" />
+              <span className="text-[14px] tabular-nums">{commentCount}</span>
+            </button>
+          )
+        }
+      />
+      {commentsOpen && !detail ? (
+        <InlineComments postId={post.id} onPosted={() => setCommentCount((n) => n + 1)} />
+      ) : null}
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
     </article>
   );
 }
 
 /**
+<<<<<<< HEAD
  * The "…" menu on your own post: edit the caption, or delete. Delete asks
  * twice — the second tap is the confirmation — because it cannot be undone
  * from here. Closes on an outside click or Escape; not a modal, so it traps
@@ -776,11 +1136,57 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
  * behind one yet, and a menu of things that do nothing is worse than none.
  */
 function PostMenu({ pending, onEdit, onDelete }: { pending: boolean; onEdit: () => void; onDelete: () => void }) {
+=======
+ * The thread under a feed card, opened by the comment icon: the first page
+ * of comments (with replies), fetched when it opens, and the box already
+ * focused — the icon was tapped to write. A post reloads the page of
+ * comments, never the feed; the count on the icon moves with `onPosted`.
+ */
+function InlineComments({ postId, onPosted }: { postId: string; onPosted: () => void }) {
+  const [page, setPage] = useState<CommentPage | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    loadComments(postId).then((p) => { if (alive) setPage(p); });
+    return () => { alive = false; };
+  }, [postId]);
+
+  return (
+    <div className="mt-1 px-3 pb-2">
+      <CommentThread
+        postId={postId}
+        page={page ?? { items: [], next_cursor: null }}
+        embedded
+        autoFocus
+        loading={page === null}
+        onPosted={() => {
+          onPosted();
+          loadComments(postId).then(setPage);
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * The "…" menu on your own post: edit the caption, download the photo as a
+ * story, or delete. Closes on an outside click or Escape; not a modal, so it
+ * traps nothing.
+ */
+function PostMenu({ pending, onEdit, onDelete, onStory, storyBusy = false }: {
+  pending: boolean;
+  onEdit: () => void;
+  onDelete?: () => void;
+  onStory?: () => void;
+  storyBusy?: boolean;
+}) {
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
   const { t } = useI18n();
   const s = t.common.social;
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const canShare = useCanShareFiles();
 
   useEffect(() => {
     if (!open) {
@@ -821,6 +1227,7 @@ function PostMenu({ pending, onEdit, onDelete }: { pending: boolean; onEdit: () 
           <button type="button" role="menuitem" onClick={() => { setOpen(false); onEdit(); }} className={`${item} text-ink hover:bg-bg`}>
             {s.editPost}
           </button>
+<<<<<<< HEAD
           <button
             type="button"
             role="menuitem"
@@ -834,12 +1241,31 @@ function PostMenu({ pending, onEdit, onDelete }: { pending: boolean; onEdit: () 
           >
             {confirming ? s.deleteConfirm : s.deletePost}
           </button>
+=======
+          {onStory ? (
+            <button type="button" role="menuitem" disabled={storyBusy} onClick={() => { setOpen(false); onStory(); }} className={`${item} text-ink hover:bg-bg`}>
+              {storyBusy ? t.common.actions.loading : canShare ? s.shareStory : s.downloadStory}
+            </button>
+          ) : null}
+          {onDelete ? (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={pending}
+              onClick={() => { setOpen(false); onDelete(); }}
+              className={`${item} text-risk hover:bg-risk-soft`}
+            >
+              {s.deletePost}
+            </button>
+          ) : null}
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
         </div>
       ) : null}
     </div>
   );
 }
 
+<<<<<<< HEAD
 // ---------- the action bar ----------
 
 /**
@@ -900,6 +1326,121 @@ function ActionBar({ post, kudos, save, comment }: { post: FeedPost; kudos: Kudo
           className={`${SOCIAL.iconButton} text-ink hover:text-ink-soft`}
         >
           <NavIcon d={SEND} className={`${SOCIAL.icon} -translate-y-px`} />
+=======
+// ---------- reactions ----------
+
+/** The gold sparks that fly out of a button when a reaction is given. */
+function Sparks({ at }: { at: number }) {
+  return (
+    <span key={at} className="reaction-burst" aria-hidden>
+      {Array.from({ length: 8 }, (_, i) => (
+        <i key={i} style={{ "--angle": `${i * 45}deg` } as React.CSSProperties} />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * The action row: the arm and the peach, each with its count, then the
+ * comments control the card passes in; under it the "Norbert, Maria and 3
+ * others reacted" line, which opens the list of who pressed what. The state
+ * is the card's (useReactions), so a double-tap on the photo and a press on
+ * the row are the same flip.
+ */
+function Reactions({ post, reactions, comments }: {
+  post: FeedPost;
+  reactions: ReturnType<typeof useReactions>;
+  comments: React.ReactNode;
+}) {
+  const { t } = useI18n();
+  const [listOpen, setListOpen] = useState(false);
+  // Which press has finished popping, so the class comes off and the next
+  // press restarts the animation without remounting the picture (a remount blinks).
+  const [popped, setPopped] = useState<string | null>(null);
+  const s = t.common.social;
+  const { state, press, error, burst } = reactions;
+  const total = state.kudos_count + state.love_count;
+
+  // The names travel with the row; when the viewer's own press is in flight
+  // the count moves but the names do not — kudosSummary keeps them consistent.
+  const summary = kudosSummary(total, post.kudos_names);
+  const line = (() => {
+    const { first, second, others } = summary;
+    if (first === null) return null;
+    if (second === null) {
+      if (others === 0) return fill(s.kudosByOne, { name: first });
+      if (others === 1) return fill(s.kudosByOneAndOne, { name: first });
+      return fill(s.kudosByOneAndOthers, { name: first, others });
+    }
+    if (others === 0) return fill(s.kudosByTwo, { name: first, second });
+    if (others === 1) return fill(s.kudosByThree, { name: first, second });
+    return fill(s.kudosBy, { name: first, second, others });
+  })();
+
+  const openList = () => { if (total > 0) setListOpen(true); };
+
+  const button = (type: ReactionType) => {
+    const count = type === "kudos" ? state.kudos_count : state.love_count;
+    const on = state.my_reaction === type;
+    const popKey = burst ? `${burst.at}:${burst.type}` : null;
+    const popping = burst?.type === type && popped !== popKey;
+    const countEl = <span className="text-[14px] tabular-nums">{count}</span>;
+    if (post.mine) {
+      // Own post: nothing to give, so the pill opens the list instead.
+      return (
+        <button
+          type="button"
+          onClick={openList}
+          disabled={total === 0}
+          aria-label={`${s.reactionLabel[type]}: ${count}`}
+          title={s.seeReactions}
+          className="inline-flex h-10 items-center gap-1.5 rounded-full px-2.5 font-semibold text-ink-soft enabled:cursor-pointer enabled:hover:bg-bg enabled:hover:text-ink"
+        >
+          <ReactionIcon type={type} className="h-[26px] w-[26px]" muted={count === 0} />
+          {countEl}
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => press(type)}
+        aria-pressed={on}
+        aria-label={on ? s.removeReaction : s.giveReaction[type]}
+        title={s.giveReaction[type]}
+        className={`relative inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full px-2.5 font-semibold transition-colors ${
+          on ? "bg-accent-soft text-accent-ink" : "text-ink-soft hover:bg-bg hover:text-ink"
+        }`}
+      >
+        <span className="relative grid place-items-center">
+          <span
+            className={`grid place-items-center ${popping ? "reaction-pop" : ""}`}
+            onAnimationEnd={(e) => { if (e.animationName === "reaction-pop") setPopped(popKey); }}
+          >
+            <ReactionIcon type={type} className="h-[26px] w-[26px]" muted={!on} />
+          </span>
+          {popping ? <Sparks at={burst!.at} /> : null}
+        </span>
+        {countEl}
+      </button>
+    );
+  };
+
+  return (
+    <div className="mt-3 px-3">
+      <div className="flex items-center gap-0.5">
+        {button("kudos")}
+        {button("love")}
+        {comments}
+      </div>
+      {line ? (
+        <button
+          type="button"
+          onClick={openList}
+          className="mt-0.5 block max-w-full cursor-pointer truncate px-2.5 text-left text-[13px] text-ink-soft hover:text-ink"
+        >
+          {fill(summary.second === null && summary.others === 0 ? s.reactionsFromOne : s.reactionsFrom, { names: line })}
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
         </button>
         <button
           type="button"
@@ -1177,7 +1718,8 @@ function SharedEmbed({ post }: { post: FeedPost }) {
   );
 }
 
-/** Who gave kudos — a native <dialog>, first page on open, "Load more" for the rest. */
+
+/** Who reacted, and how — a native <dialog>, first page on open, "Load more" for the rest. */
 function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void }) {
   const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
@@ -1212,14 +1754,14 @@ function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void 
       onClose={onClose}
       onClick={(e) => { if (e.target === e.currentTarget) ref.current?.close(); }}
       onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); ref.current?.close(); } }}
-      aria-label={s.kudos}
+      aria-label={s.reactions}
       className="app-dialog m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl bg-surface p-0 text-ink"
     >
       <div className="p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
-            <NavIcon d={FLAME} className="h-[19px] w-[19px] text-accent" />
-            {s.kudos}
+            <ReactionIcon type="kudos" className="h-[22px] w-[22px]" />
+            {s.reactions}
           </p>
           <button
             type="button"
@@ -1233,14 +1775,15 @@ function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void 
         {items === null ? (
           <p className="py-6 text-center text-sm text-ink-faint">{t.common.actions.loading}</p>
         ) : items.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ink-faint">{s.noKudosYet}</p>
+          <p className="py-6 text-center text-sm text-ink-faint">{s.noReactionsYet}</p>
         ) : (
           <ul className="max-h-[60vh] divide-y divide-line/60 overflow-y-auto">
             {items.map((k) => (
               <li key={k.user_id}>
                 <Link href={`/people/${k.user_id}`} className="flex min-h-12 items-center gap-3 rounded-xl px-1 hover:bg-bg">
                   <Avatar name={k.name} url={k.avatar_url} size="h-9 w-9" />
-                  <span className="min-w-0 truncate text-sm font-semibold">{k.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">{k.name}</span>
+                  <ReactionIcon type={k.type} className="h-6 w-6" />
                 </Link>
               </li>
             ))}
@@ -1273,7 +1816,7 @@ function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void 
  * the big feeds do it; a tap opens the real form (text, who can see it, the
  * progress opt-in) in place. `me` is the signed-in reader, for the avatar.
  */
-export function Composer({ me }: { me?: { name: string; avatar_url: string | null } }) {
+export function Composer({ me, photoUploads = false }: { me?: { name: string; avatar_url: string | null }; photoUploads?: boolean }) {
   const { t } = useI18n();
   const u = useUnits();
   const router = useRouter();
@@ -1284,6 +1827,8 @@ export function Composer({ me }: { me?: { name: string; avatar_url: string | nul
   const [includeWeight, setIncludeWeight] = useState(false);
   const [weight, setWeight] = useState("");
   const [visibility, setVisibility] = useState<PostVisibility>("followers");
+  const [photo, setPhoto] = useState<PostPhoto | null>(null);
+  const [overlay, setOverlay] = useState<PhotoOverlay | null>(null);
   const [error, setError] = useState<string | null>(null);
   const mention = useMentionSuggest(null);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -1320,10 +1865,13 @@ export function Composer({ me }: { me?: { name: string; avatar_url: string | nul
                   text,
                   visibility,
                   includeWeight ? displayToKg(Number(weight.replace(",", ".")), u.weightUnit) : null,
+                  photoInput(photo, overlay),
                 )
-              : await createTextPost(text, visibility);
+              : await createTextPost(text, visibility, photoInput(photo, overlay));
             if (!r.ok) setError(r.message ?? "Error");
-            else { setText(""); setWeight(""); setIncludeWeight(false); setProgress(false); setOpen(false); mention.clear(); }
+            else {
+              setText(""); setWeight(""); setIncludeWeight(false); setProgress(false); setPhoto(null); setOverlay(null); setOpen(false); mention.clear();
+            }
             router.refresh();
           });
         }}
@@ -1360,6 +1908,24 @@ export function Composer({ me }: { me?: { name: string; avatar_url: string | nul
             className="min-w-0 flex-1 resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
           />
         </div>
+        {photoUploads ? (
+          <div className="mt-3 space-y-3">
+            <PhotoPicker photo={photo} onChange={(next) => { setPhoto(next); setOverlay(null); }} disabled={pending} />
+            {photo ? (
+              // Only text goes on a photo here; the workout's figures belong to
+              // a workout post (the share panel after a session).
+              <PhotoOverlayEditor
+                src={photo.previewUrl}
+                width={photo.width}
+                height={photo.height}
+                stats={null}
+                value={overlay}
+                onChange={setOverlay}
+                disabled={pending}
+              />
+            ) : null}
+          </div>
+        ) : null}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <VisibilityPicker value={visibility} onChange={setVisibility} />
           <span className="text-[11px] tabular-nums text-ink-faint">{text.length}/{POST_TEXT_MAX}</span>
@@ -1395,7 +1961,8 @@ export function Composer({ me }: { me?: { name: string; avatar_url: string | nul
             </button>
             <button
               type="submit"
-              disabled={pending || text.trim().length === 0}
+              // Words or a picture: either one is a post.
+              disabled={pending || (text.trim().length === 0 && !photo)}
               className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
             >
               {s.post}
@@ -1494,11 +2061,87 @@ export function FollowButton({ userId, following, followsMe = false, compact = f
 
 // ---------- share panel (workout done) ----------
 
-export type PostPhoto = { publicId: string; version: number; previewUrl: string };
+/** An uploaded post photo as the browser holds it: Cloudinary's handle, the pixel size it sent, a preview. */
+export type PostPhoto = { publicId: string; version: number; width: number; height: number; previewUrl: string };
+
+function photoInput(photo: PostPhoto | null, overlay: PhotoOverlay | null): PostPhotoInput | null {
+  return photo ? { publicId: photo.publicId, version: photo.version, width: photo.width, height: photo.height, overlay } : null;
+}
+
+/**
+ * Whether this browser can hand a JPEG to the native share sheet — phones
+ * can, and that sheet is where Instagram (Story, Feed) and Facebook live;
+ * there is no web API that opens Instagram with a picture ready to post, so
+ * the sheet IS the share button. Desktops get a download instead, and the
+ * label says which it will be.
+ */
+function useCanShareFiles(): boolean {
+  const [can, setCan] = useState(false);
+  useEffect(() => {
+    try {
+      setCan(canShareFile(new File([new Uint8Array(4)], "story.jpg", { type: "image/jpeg" })));
+    } catch {
+      setCan(false);
+    }
+  }, []);
+  return can;
+}
+
+/**
+ * "Share to Instagram, Facebook…" on a phone, "Download for Story" on a
+ * desktop: the photo with its overlay at 1080×1920 and the mark in the
+ * corner, through the native share sheet where there is one, saved as a file
+ * otherwise. Works before and after the post goes out — the picture is
+ * already on Cloudinary either way.
+ */
+function StoryDownload({ photo, overlay, stats, title, date }: {
+  photo: PostPhoto;
+  overlay: PhotoOverlay | null;
+  stats: OverlayStatValues;
+  title: string;
+  date: string;
+}) {
+  const { t } = useI18n();
+  const f = useSocialFormat();
+  const s = t.common.social;
+  const [status, setStatus] = useState<"idle" | "busy" | "ready" | "shared" | "failed">("idle");
+  const canShare = useCanShareFiles();
+  async function run() {
+    setStatus("busy");
+    try {
+      const blob = await renderPhotoStory({
+        photoUrl: photo.previewUrl, width: photo.width, height: photo.height, overlay, stats, brand: APP_NAME,
+        workout: { kicker: s.workoutPost, name: title, date: f.day(date) },
+      });
+      const how = await deliverShareImage(blob, storyFileName(date), title);
+      setStatus(how === "shared" ? "shared" : how === "saved" ? "ready" : "idle");
+    } catch {
+      setStatus("failed");
+    }
+  }
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={run}
+        disabled={status === "busy"}
+        className="inline-flex h-11 items-center gap-2 rounded-2xl bg-bg px-4 text-[13px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
+      >
+        <NavIcon d={canShare ? "M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 15V3m0 0-4 4m4-4 4 4" : "M12 4v11m0 0-4-4m4 4 4-4M5 19h14"} className="h-[18px] w-[18px]" />
+        {status === "busy" ? t.common.actions.loading : canShare ? s.shareStory : s.downloadStory}
+      </button>
+      {status === "ready" || status === "shared" || status === "failed" ? (
+        <p role="status" className={`mt-1.5 text-[12px] ${status === "failed" ? "text-risk" : "text-accent-ink"}`}>
+          {status === "failed" ? s.storyFailed : status === "shared" ? s.storyShared : s.storyReady}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export function SharePanel({ session, onShare, onSharePr, photoUploads = false }: {
   session: ShareableSession;
-  onShare: (visibility: PostVisibility, text: string, photo: { publicId: string; version: number } | null) => Promise<{ ok: boolean; message?: string }>;
+  onShare: (visibility: PostVisibility, text: string, photo: PostPhotoInput | null) => Promise<{ ok: boolean; message?: string }>;
   onSharePr: (setId: string, visibility: PostVisibility) => Promise<{ ok: boolean; message?: string }>;
   /** Whether Cloudinary is configured; without it the photo button is not offered. */
   photoUploads?: boolean;
@@ -1511,9 +2154,11 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
   const [text, setText] = useState("");
   const [shared, setShared] = useState(session.already_shared);
   const [photo, setPhoto] = useState<PostPhoto | null>(null);
+  const [overlay, setOverlay] = useState<PhotoOverlay | null>(null);
   const [sharedPrs, setSharedPrs] = useState<Set<string>>(new Set(session.prs.filter((p) => p.shared).map((p) => p.set_id)));
   const [error, setError] = useState<string | null>(null);
   const s = t.common.social;
+  const overlayStats = useOverlayStats({ ...session, prs: session.prs.length });
 
   return (
     <div className="space-y-4">
@@ -1540,30 +2185,47 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
               placeholder={s.composerPlaceholder}
               className="h-11 w-full rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent"
             />
-            {photoUploads ? <PhotoPicker photo={photo} onChange={setPhoto} disabled={pending} /> : null}
+            {photoUploads ? <PhotoPicker photo={photo} onChange={(next) => { setPhoto(next); setOverlay(null); }} disabled={pending} /> : null}
+            {photo ? (
+              <PhotoOverlayEditor
+                src={photo.previewUrl}
+                width={photo.width}
+                height={photo.height}
+                stats={overlayStats}
+                value={overlay}
+                onChange={setOverlay}
+                disabled={pending}
+              />
+            ) : null}
             <VisibilityPicker value={visibility} onChange={setVisibility} />
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                startTransition(async () => {
-                  setError(null);
-                  const r = await onShare(visibility, text, photo ? { publicId: photo.publicId, version: photo.version } : null);
-                  if (!r.ok) setError(r.message ?? "Error");
-                  else setShared(true);
-                  router.refresh();
-                })
-              }
-              className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50 sm:w-auto"
-            >
-              {s.shareToFeed}
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  startTransition(async () => {
+                    setError(null);
+                    const r = await onShare(visibility, text, photoInput(photo, overlay));
+                    if (!r.ok) setError(r.message ?? "Error");
+                    else setShared(true);
+                    router.refresh();
+                  })
+                }
+                className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50 sm:w-auto"
+              >
+                {s.shareToFeed}
+              </button>
+              {photo ? <StoryDownload photo={photo} overlay={overlay} stats={overlayStats} title={session.name} date={session.date} /> : null}
+            </div>
           </div>
         ) : (
-          <p className="mt-4 flex items-center gap-1.5 text-sm font-semibold text-accent-ink">
-            <NavIcon d={CHECK} className="h-4 w-4 [stroke-width:2.4]" />
-            {s.shared}
-          </p>
+          <div className="mt-4 space-y-3">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-accent-ink">
+              <NavIcon d={CHECK} className="h-4 w-4 [stroke-width:2.4]" />
+              {s.shared}
+            </p>
+            {photo ? <StoryDownload photo={photo} overlay={overlay} stats={overlayStats} title={session.name} date={session.date} /> : null}
+          </div>
         )}
         {error ? <p className="mt-2 text-xs text-risk">{error}</p> : null}
       </Card>
@@ -1610,19 +2272,24 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
 }
 
 
-/** How big a post photo may be before the browser refuses to send it. */
-const POST_PHOTO_MAX_BYTES = 8 * 1024 * 1024;
+/**
+ * How big a file the picker accepts. Generous, because the browser shrinks
+ * it (lib/image-prepare.ts) before anything is sent: what leaves the phone
+ * is a JPEG no wider than 1600px, typically 200–400 KB.
+ */
+const POST_PHOTO_MAX_BYTES = 25 * 1024 * 1024;
 
 /**
- * "Add a photo" for a workout post — the gym selfie.
+ * "Add a photo" for a post — the gym selfie.
  *
  * `capture="environment"` is deliberately *not* set: on a phone the picker
  * offers both the camera and the library, and someone who wants a selfie wants
  * the front camera, which only the unhinted picker lets them choose. The file
- * goes straight to Cloudinary under a signature this server minted
- * (requestPostPhotoUpload), so it never passes through a server action body,
- * and the post only carries the public_id and version — the URL itself is
- * rebuilt server-side when the post is written.
+ * is resized and cropped on the device (preparePhoto), then goes straight to
+ * Cloudinary under a signature this server minted (requestPostPhotoUpload),
+ * so it never passes through a server action body; the post only carries the
+ * public_id, version and pixel size — the URL itself is rebuilt server-side
+ * when the post is written.
  */
 function PhotoPicker({ photo, onChange, disabled }: {
   photo: PostPhoto | null;
@@ -1632,31 +2299,47 @@ function PhotoPicker({ photo, onChange, disabled }: {
   const { t } = useI18n();
   const s = t.common.social;
   const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"idle" | "preparing" | "uploading">("idle");
   const [error, setError] = useState<string | null>(null);
 
   async function upload(file: File) {
     setError(null);
     if (!file.type.startsWith("image/")) { setError(s.photoNotImage); return; }
     if (file.size > POST_PHOTO_MAX_BYTES) { setError(s.photoTooLarge); return; }
-    setBusy(true);
+    setBusy("preparing");
+    let preview: string | null = null;
     try {
+      const prepared = await preparePhoto(file);
+      preview = prepared.previewUrl;
+      setBusy("uploading");
       const permission = await requestPostPhotoUpload();
       if (!permission.ok || !permission.ticket) { setError(permission.message ?? s.photoFailed); return; }
       const ticket = permission.ticket;
       const body = new FormData();
-      body.append("file", file);
+      body.append("file", prepared.blob, "photo.jpg");
       body.append("api_key", ticket.apiKey);
       for (const [key, value] of Object.entries(ticket.fields)) body.append(key, value);
       const response = await fetch(`https://api.cloudinary.com/v1_1/${ticket.cloudName}/image/upload`, { method: "POST", body });
       if (!response.ok) { setError(s.photoFailed); return; }
       const uploaded = (await response.json()) as { public_id?: string; version?: number; secure_url?: string };
       if (!uploaded.public_id || !uploaded.version) { setError(s.photoFailed); return; }
-      onChange({ publicId: uploaded.public_id, version: uploaded.version, previewUrl: uploaded.secure_url ?? "" });
+      // The preview stays the local object URL (instant, no second download);
+      // the story export loads Cloudinary's copy when there is one, since a
+      // canvas can only draw a same-origin or CORS-served image.
+      onChange({
+        publicId: uploaded.public_id,
+        version: uploaded.version,
+        width: prepared.width,
+        height: prepared.height,
+        previewUrl: uploaded.secure_url ?? prepared.previewUrl,
+      });
+      if (uploaded.secure_url) URL.revokeObjectURL(prepared.previewUrl);
+      preview = null;
     } catch {
       setError(s.photoFailed);
     } finally {
-      setBusy(false);
+      if (preview) URL.revokeObjectURL(preview);
+      setBusy("idle");
       if (fileRef.current) fileRef.current.value = "";
     }
   }
@@ -1678,7 +2361,7 @@ function PhotoPicker({ photo, onChange, disabled }: {
           </span>
           <button
             type="button"
-            disabled={disabled || busy}
+            disabled={disabled || busy !== "idle"}
             onClick={() => onChange(null)}
             className="inline-flex h-10 items-center rounded-2xl px-3.5 text-[13px] font-semibold text-ink-faint hover:bg-bg hover:text-risk disabled:opacity-50"
           >
@@ -1688,12 +2371,12 @@ function PhotoPicker({ photo, onChange, disabled }: {
       ) : (
         <button
           type="button"
-          disabled={disabled || busy}
+          disabled={disabled || busy !== "idle"}
           onClick={() => fileRef.current?.click()}
           className="inline-flex h-11 items-center gap-2 rounded-2xl bg-bg px-4 text-[13px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
         >
           <NavIcon d="M4 8h3l1.5-2h7L17 8h3v11H4zM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7" className="h-[18px] w-[18px]" />
-          {busy ? t.common.actions.loading : s.photoAdd}
+          {busy === "preparing" ? s.photoPreparing : busy === "uploading" ? t.common.actions.loading : s.photoAdd}
         </button>
       )}
       <p className="mt-1.5 text-[12px] leading-relaxed text-ink-faint">{s.photoHint}</p>

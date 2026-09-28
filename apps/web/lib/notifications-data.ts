@@ -1,8 +1,19 @@
 import "server-only";
+import { postPhotoOf, type PostPayload } from "@healthapp/shared";
 import { liveUser } from "./supabase/server";
 import {
-  challengeNotice, notificationActorId, notificationHref, notificationSentence, parseNotificationCursor, type NotificationSentence,
+  challengeNotice, notificationActorId, notificationHref, notificationPostId, notificationSentence, parseNotificationCursor,
+  type NotificationSentence,
 } from "./notification-href";
+
+/** What the thumbnail says about a post without a photo: the workout's name, the PR's exercise, the caption. */
+function postLabel(p: { type: string; text: string | null; payload: PostPayload | null }): string | null {
+  const payload = p.payload;
+  if (payload?.kind === "workout") return payload.name;
+  if (payload?.kind === "pr") return payload.exercise;
+  if (payload?.kind === "program") return payload.name;
+  return p.text ? p.text.slice(0, 60) : null;
+}
 
 /**
  * In-app notifications.
@@ -33,6 +44,13 @@ export type NotificationRow = {
   badge: { en: string; ro: string } | null;
   /** The step and the challenge's titles, for a challenge_milestone row. */
   challenge: { milestone: 25 | 50 | 75 | 100; en: string; ro: string } | null;
+  /**
+   * The post a social row points at, for the thumbnail on the right: its
+   * photo when it has one, otherwise its kind and a short label (the
+   * workout's name, the PR's exercise, the caption). Null for an engine row
+   * or a post since deleted.
+   */
+  post: { id: string; type: string; label: string | null; photo_url: string | null } | null;
 };
 
 export const NOTIFICATION_PAGE_SIZE = 20;
@@ -153,14 +171,48 @@ async function legacyNotificationPage(
   const actorIds = [...new Set(page.map((n) => notificationActorId(n.payload)).filter((id): id is string => Boolean(id)))];
   type Actor = { id: string; name: string; username: string | null; avatar_url: string | null };
   const actors = new Map<string, Actor>();
-  if (actorIds.length > 0) {
-    const { data: people } = await supabase.rpc("notification_actors", { p_ids: actorIds });
-    for (const person of ((people ?? []) as Actor[])) actors.set(person.id, person);
-  }
+  // The posts the rows point at are the reader's own (a reaction, a comment
+  // or a mention on your post) or ones you may see (a mention in a comment),
+  // so posts_select answers directly. Same wave as the actors.
+  const postIds = [...new Set(page.map((n) => notificationPostId(n.payload)).filter((id): id is string => Boolean(id)))];
+  type Post = { id: string; type: string; text: string | null; payload: PostPayload | null };
+  const posts = new Map<string, NotificationRow["post"]>();
+  await Promise.all([
+    (async () => {
+      if (actorIds.length === 0) return;
+      const { data: people } = await supabase.rpc("notification_actors", { p_ids: actorIds });
+      for (const person of ((people ?? []) as Actor[])) actors.set(person.id, person);
+    })(),
+    (async () => {
+      if (postIds.length === 0) return;
+      const { data: rows } = await supabase.from("social_posts").select("id, type, text, payload").in("id", postIds).is("deleted_at", null);
+      for (const p of ((rows ?? []) as Post[])) posts.set(p.id, { id: p.id, type: p.type, label: postLabel(p), photo_url: postPhotoOf(p.payload)?.url ?? null });
+    })(),
+  ]);
 
   const items = page.map((n) => {
     const actorId = notificationActorId(n.payload);
+<<<<<<< HEAD
     return toRow(n, { body: n.body, actor: actorId ? actors.get(actorId) ?? null : null });
+=======
+    const postId = notificationPostId(n.payload);
+    return {
+      id: n.id,
+      category: n.category,
+      sentence: notificationSentence(n.category, n.payload),
+      title: n.title,
+      body: n.body,
+      href: notificationHref(n.category, n.payload),
+      created_at: n.created_at,
+      read: n.read_at !== null,
+      actor: actorId ? actors.get(actorId) ?? null : null,
+      badge: typeof n.payload?.name_en === "string"
+        ? { en: n.payload.name_en, ro: typeof n.payload.name_ro === "string" ? n.payload.name_ro : n.payload.name_en }
+        : null,
+      challenge: n.category === "challenge_milestone" ? challengeNotice(n.payload) : null,
+      post: postId ? posts.get(postId) ?? null : null,
+    };
+>>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
   });
   const last = items[items.length - 1];
   return { items, next_cursor: rows.length > limit && last ? `${last.created_at}|${last.id}` : null };
