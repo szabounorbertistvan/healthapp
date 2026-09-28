@@ -95,6 +95,63 @@ body weight the author typed in.
 pgTAP suites pass; the signed-in pages have not been opened against the live
 project.
 
+### Reactions, photos on any post, the overlay and the story export (added 2026-09-28)
+
+| | |
+|---|---|
+| Client | `/feed` (composer with photo, inline comment box on every card), `workout/[dayId]/done` (share panel: photo, figures/text on the photo, "Download for Story"), the "…" menu of an own post (story download) |
+| Reads | unchanged RPC names; `social_feed()` / `social_post()` now carry `kudos_count`, `love_count`, `my_reaction`; `social_post_kudos()` carries `type` |
+| Writes | `react(postId, pressed)` → `social_react()`; `createTextPost` / `createProgressPost` / `shareWorkout` take a `PostPhotoInput` (public_id, version, pixel size, overlay) in [app/social-actions.ts](../apps/web/app/social-actions.ts) |
+| Maths | [packages/shared/src/social.ts](../packages/shared/src/social.ts) — `applyReaction`, `normalizePhotoOverlay`, `normalizePostPhoto`, `postPhotoOf`; [lib/photo-overlay.ts](../apps/web/lib/photo-overlay.ts) — the overlay's geometry; [lib/image-prepare.ts](../apps/web/lib/image-prepare.ts) — `photoFrame` |
+| Migration | `20261002100000_reactions_and_post_photos.sql` (applied live 2026-09-28) |
+| Tables | `social_reactions.type in ('kudos','love')`, unique `(post_id, user_id)`; `social_posts_guard` keeps a text post's payload when it is a photo |
+| Components | `reaction-icons.tsx` + `public/reactions/` (the arm and the peach, PNGs), `photo-overlay.tsx` (`PhotoFrame`, `PhotoOverlayEditor`), `lib/photo-story.ts` (the 1080×1920 canvas), the reactions row / `useReactions` / `DoubleTap` / `InlineComments` in `social.tsx`; `CommentComposer` is exported from `comment-thread.tsx` |
+| Tests | `social.test.ts` (reactions, overlay, photo fields), `photo-overlay.test.ts`, `image-prepare.test.ts`, `supabase/tests/reactions.test.sql` (23 pgTAP) |
+
+**One reaction per person.** The arm (`kudos`) and the peach (`love`) are two
+values of one row: pressing the other one replaces it, pressing the same one
+again takes it back. `social_react()` does the flip atomically as the caller,
+so `reactions_insert` (`can_kudos_post`) still decides who may react. The card
+keeps the state locally and moves it at once through `applyReaction`, which
+mirrors the SQL; the action runs behind it, queued so quick presses land in
+order, and its answer is what the card settles on. Neither the action nor the
+card revalidates or refreshes the page: a reaction is one 200 ms write, and a
+full feed re-render on every press is what made the button feel slow. A double-tap on a photo gives the arm and
+never takes it back (Instagram's rule). The notification category stays
+`new_kudos`; `payload.reaction` says which one arrived and picks the sentence.
+
+**The icons are files, not emoji.** 💪 and 🍑 render differently on every
+platform, so `public/reactions/` carries the pictures relu supplied, cut out
+of their white background into transparent 256px PNGs. `reaction-icons.tsx`
+shows them as `<img>`; the unpressed state is the same picture desaturated.
+
+**Photos are shrunk on the device, not on Cloudinary.** `preparePhoto` decodes
+through an `<img>` (EXIF-oriented), crops to at most 4:5 tall / 16:9 wide,
+scales the long edge to 1600 and uploads a JPEG; the post stores `photo_w` /
+`photo_h` so the card reserves the exact box. The signed-upload path is
+unchanged.
+
+**The overlay is fractions, not pixels.** Everything placed on a photo — the
+workout's figures as a small grid, one line of free text — is stored as a
+centre in 0..1 of the photo's width and height plus a size (s/m/l), and every
+font on it is a fraction of the photo's width (`cqw` in the DOM, `× width` on
+the canvas). So the 360px phone card, the 680px desktop card and the story
+export show the same thing. `normalizePhotoOverlay` is the last word on the
+server: clamped, known keys only, text cleaned and capped at 80; anything
+malformed is "no overlay", never an error. A workout post from before overlays
+existed keeps its bottom gradient with the name and headline numbers.
+
+**Download for Story** paints the photo full width on a blurred, dimmed copy of
+itself at 1080×1920, the overlay at the same fractions, and the Voinic mark +
+wordmark in the lower right, then hands the JPEG to the native share sheet (or
+a download). The canvas needs the Cloudinary copy (CORS), so it works once the
+upload has finished — before or after the post goes out.
+
+**Comments are one tap away.** The comment icon on a feed card opens the
+thread under it (`CommentThread` in `embedded` mode: first page fetched on
+open, box focused); a post reloads that page, never the feed. The post's own
+page keeps the full thread as before.
+
 ### Social v2 completion: privacy, badges, achievements (added 2026-09-25)
 
 | | |

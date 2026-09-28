@@ -30,7 +30,12 @@ export default async function CoachLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen">
       {/* The sidebar sits on the page ground, no border: the cards are the
           only surfaces, so the eye has one kind of edge to read. */}
-      <aside className="hidden w-60 shrink-0 flex-col px-3.5 pb-5 pt-6 sm:flex">
+      {/* Sticky and viewport-tall: the row container is as tall as the page,
+          so without this the bottom block (feedback, sign-out) sat at the end
+          of a long feed, a full scroll away. Only the nav list scrolls; the
+          aside itself must not clip, or the bell's popover (wider than the
+          sidebar) would be cut off. */}
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col self-start px-3.5 pb-5 pt-6 sm:flex">
         <Link href="/" className="flex items-center gap-2 px-2.5">
           <Logo size="sm" />
         </Link>
@@ -42,7 +47,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
             {/* Trial / Pro hidden for now: · <span className="font-semibold text-accent-ink">{TIER_LABEL[profile.tier]}</span> */}
           </span>
         </Link>
-        <div className="mt-4">
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
           <NavLinks isAdmin={profile.role === "admin"} />
         </div>
         <div className="mt-auto space-y-3 px-1 pt-6">

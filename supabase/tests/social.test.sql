@@ -123,8 +123,8 @@ select throws_ok($$
 $$, '42501', null, 'nobody can give kudos in someone else''s name');
 select is((select kudos_count from public.social_feed(20, null, null) where id = '90000000-0000-0000-0000-000000000001'),
   1, 'the feed counts the kudos');
-select is((select my_kudos from public.social_feed(20, null, null) where id = '90000000-0000-0000-0000-000000000001'),
-  true, 'the feed knows the caller gave it');
+select is((select my_reaction from public.social_feed(20, null, null) where id = '90000000-0000-0000-0000-000000000001'),
+  'kudos', 'the feed knows the caller gave it');
 select is((select kudos_names from public.social_feed(20, null, null) where id = '90000000-0000-0000-0000-000000000001'),
   array['alex'], 'the feed names the giver');
 select is((select count(*)::int from public.social_post_kudos('90000000-0000-0000-0000-000000000001', 20, null)),

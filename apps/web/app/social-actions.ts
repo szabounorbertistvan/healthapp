@@ -6,25 +6,27 @@ import { revalidatePath } from "next/cache";
 import {
   POST_VISIBILITIES,
   STREAK_SHARE_MIN,
-  canKudos,
   payloadIsSafe,
   extractMentionHandles,
   fitnessScorePostPayload,
   isBadgeSlug,
   isProfileVisibility,
+  isReactionType,
+  normalizePostPhoto,
   payloadMatchesType,
   resolveMentions,
   validateComment,
-  validateFollow,
   validatePostEdit,
   validatePostText,
   workoutPostPayload,
   type ChallengePostPayload,
   type PostPayload,
+  type PostPhotoFields,
   type PostType,
   type PostVisibility,
   type PrPostPayload,
   type ProgressPostPayload,
+  type ReactionType,
   type StreakPostPayload,
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
@@ -154,19 +156,47 @@ async function writeMentions(
   if (error) console.error(`${table} not written:`, error.message);
 }
 
-export async function createTextPost(text: string, visibility?: string): Promise<PostResult> {
+/**
+ * What the browser hands back after uploading a picture: the public_id and
+ * version Cloudinary answered with, the pixel size it uploaded (it resized the
+ * file itself before sending), and what it placed on top of the picture.
+ */
+export type PostPhotoInput = {
+  publicId: string;
+  version: number;
+  width?: number | null;
+  height?: number | null;
+  overlay?: unknown;
+};
+
+export async function createTextPost(text: string, visibility?: string, photo?: PostPhotoInput | null): Promise<PostResult> {
   const { t } = await getI18n();
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   const clean = validatePostText(text);
   if (!clean) return { ok: false, message: t.common.social.textInvalid };
-  return insertPost({ type: "text", text: clean, payload: null, visibility: visibilityOf(visibility) });
+  const picture = await resolvePostPhoto(uid, photo, false);
+  return insertPost({
+    type: "text",
+    text: clean,
+    payload: picture.photo_url ? { kind: "text", ...picture } : null,
+    visibility: visibilityOf(visibility),
+  });
 }
 
-/** A progress post: text, optionally the weight the author typed in. Never read from measurements. */
-export async function createProgressPost(text: string, visibility?: string, weightKg?: number | null): Promise<PostResult> {
+/** A progress post: text, optionally the weight the author typed in, optionally a picture. Never read from measurements. */
+export async function createProgressPost(
+  text: string,
+  visibility?: string,
+  weightKg?: number | null,
+  photo?: PostPhotoInput | null,
+): Promise<PostResult> {
   const { t } = await getI18n();
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
   const clean = validatePostText(text);
   if (!clean) return { ok: false, message: t.common.social.textInvalid };
-  const payload: ProgressPostPayload = { kind: "progress", photo_path: null };
+  const payload: ProgressPostPayload = { kind: "progress", ...(await resolvePostPhoto(uid, photo, false)) };
   // Kept as entered, to the two decimals the measurements column holds — never rounded to a whole kilo.
   if (typeof weightKg === "number" && Number.isFinite(weightKg) && weightKg > 0) payload.weight_kg = Math.round(weightKg * 100) / 100;
   return insertPost({ type: "progress", text: clean, payload, visibility: visibilityOf(visibility) });
@@ -198,12 +228,16 @@ export async function requestPostPhotoUpload(): Promise<ActionResult & { ticket?
  * outside this person's own post folder is refused, and the URL itself is
  * composed here rather than trusted.
  */
-async function resolvePostPhoto(uid: string, photo: { publicId: string; version: number } | null | undefined): Promise<string | null> {
-  if (!photo) return null;
-  if (!cloudinaryConfigured()) return null;
-  if (typeof photo.publicId !== "string" || !photo.publicId.startsWith(`${postPhotoFolder(uid)}/`)) return null;
-  if (!Number.isInteger(photo.version) || photo.version <= 0) return null;
-  return postPhotoUrl(photo.publicId, photo.version);
+async function resolvePostPhoto(uid: string, photo: PostPhotoInput | null | undefined, allowStats: boolean): Promise<PostPhotoFields> {
+  const none = normalizePostPhoto(null, allowStats);
+  if (!photo) return none;
+  if (!cloudinaryConfigured()) return none;
+  if (typeof photo.publicId !== "string" || !photo.publicId.startsWith(`${postPhotoFolder(uid)}/`)) return none;
+  if (!Number.isInteger(photo.version) || photo.version <= 0) return none;
+  return normalizePostPhoto(
+    { url: postPhotoUrl(photo.publicId, photo.version), width: photo.width, height: photo.height, overlay: photo.overlay },
+    allowStats,
+  );
 }
 
 /** Share a finished session: the aggregates only, snapshotted now, plus an optional photo the author picked. */
@@ -211,7 +245,7 @@ export async function shareWorkout(
   sessionId: string,
   visibility?: string,
   text?: string,
-  photo?: { publicId: string; version: number } | null,
+  photo?: PostPhotoInput | null,
 ): Promise<PostResult> {
   const { t } = await getI18n();
   const uid = await currentActorId();
@@ -219,11 +253,15 @@ export async function shareWorkout(
   const s = await getShareableSession(sessionId);
   if (!s) return { ok: false, message: t.common.social.notFound };
   const caption = text ? validatePostText(text) : null;
-  const photoUrl = await resolvePostPhoto(uid, photo);
+  const picture = await resolvePostPhoto(uid, photo, true);
   return insertPost({
     type: "workout",
     text: caption,
-    payload: workoutPostPayload({ name: s.name, date: s.date, duration_min: s.duration_min, exercises: s.exercises, sets: s.sets, volume_kg: s.volume_kg, load: s.load, prs: s.prs.length, photo_url: photoUrl }),
+    payload: workoutPostPayload({
+      name: s.name, date: s.date, duration_min: s.duration_min, exercises: s.exercises, sets: s.sets,
+      volume_kg: s.volume_kg, load: s.load, prs: s.prs.length,
+      photo: { url: picture.photo_url ?? null, width: picture.photo_w, height: picture.photo_h, overlay: picture.overlay },
+    }),
     visibility: visibilityOf(visibility),
     activity_id: sessionId,
   });
@@ -328,45 +366,36 @@ export async function editPost(postId: string, text: string): Promise<ActionResu
   return { ok: true };
 }
 
-// ---------- kudos ----------
+// ---------- reactions ----------
 
-export type KudosResult = ActionResult & { kudos?: boolean };
+export type ReactResult = ActionResult & { reaction?: ReactionType | null };
 
 /**
- * Give kudos, or take it back if already given. `kudos` in the result is the
- * state the row is in afterwards, so the card can settle on the truth when
- * two taps race. The giver is always the signed-in user; the post must be
- * visible to them and not their own (canKudos here, can_kudos_post in RLS).
+ * Press one of the two reactions. The database does the flip (social_react:
+ * same button again = take it back, the other one = replace it) as the
+ * caller, so reactions_insert (can_kudos_post: visible, not your own) is what
+ * decides. `reaction` in the result is the state the row is in afterwards, so
+ * the card can settle on the truth when two taps race.
  */
-export async function toggleKudos(postId: string): Promise<KudosResult> {
+export async function react(postId: string, pressed: ReactionType): Promise<ReactResult> {
   const { t } = await getI18n();
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
+  if (!isReactionType(pressed)) return { ok: false, message: t.common.social.kudosError };
   const supabase = await supabaseServer();
-  // posts_select is can_see_post(): a post the user may not see (or a deleted one) reads as absent.
-  const { data: post } = await supabase.from("social_posts").select("user_id").eq("id", postId).maybeSingle();
-  if (!post) return { ok: false, message: t.common.social.postNotFound };
-  if (post.user_id === uid) return { ok: false, message: t.common.social.cannotKudosSelf };
-
-  const { data: existing } = await supabase.from("social_reactions").select("id").eq("post_id", postId).eq("user_id", uid).eq("type", "kudos").maybeSingle();
-  if (existing) {
-    // A zero-row delete means another tap already removed it — the end state is the same.
-    const { error } = await supabase.from("social_reactions").delete().eq("id", existing.id).eq("user_id", uid);
-    if (error) return { ok: false, message: error.message };
-    touched([`/feed/${postId}`]);
-    return { ok: true, kudos: false };
+  const { data, error } = await supabase.rpc("social_react", { p_post: postId, p_type: pressed });
+  if (error) {
+    // 42501 = RLS refused it (a post you cannot see, or your own); anything else is a real failure.
+    return { ok: false, message: error.code === "42501" ? t.common.social.cannotKudosSelf : error.message };
   }
-  const { error } = await supabase.from("social_reactions").insert({ post_id: postId, user_id: uid, type: "kudos" });
-  if (error && error.code !== "23505") {
-    // 42501 = RLS refused it (visibility changed or self-kudos); anything else is a real failure.
-    return { ok: false, message: error.code === "42501" ? t.common.social.postNotFound : error.message };
-  }
-  // 23505 = the unique (post_id, user_id, type): a racing tap already gave it. Same end state.
-  touched([`/feed/${postId}`]);
-  return { ok: true, kudos: true };
+  // No revalidatePath here on purpose: the feed is dynamic (re-read on every
+  // navigation anyway), and a revalidation makes the action's own response
+  // carry a re-render of the whole page — a full second on top of a 300 ms
+  // write, for a count the card already moved on its own.
+  return { ok: true, reaction: isReactionType(data) ? data : null };
 }
 
-/** One page of who gave kudos, for the list behind the count. A read, but on demand from the card. */
+/** One page of who reacted, for the list behind the counts. A read, but on demand from the card. */
 export async function loadKudos(postId: string, before: string | null = null): Promise<KudosPage> {
   return getPostKudos(postId, before);
 }
@@ -410,7 +439,10 @@ export async function addComment(
 
   await writeMentions(supabase, "comment", created.id as string, clean);
 
-  touched([`/feed/${postId}`]);
+  // No revalidatePath: the feed and the post page are dynamic and re-read on
+  // every navigation, and the callers reload what they show themselves (the
+  // card refetches the thread, the post page refreshes). A revalidation here
+  // would make this response carry a re-render of the whole page.
   return { ok: true, id: created.id as string };
 }
 

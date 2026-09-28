@@ -11,7 +11,18 @@ export type PostType =
   | "workout" | "pr" | "challenge_completed" | "progress" | "text" | "streak" | "program"
   | "achievement" | "fitness_score";
 export type PostVisibility = "public" | "followers" | "private";
-export type ReactionType = "kudos";
+
+/**
+ * The two reactions: `kudos` is the flexed arm, `love` the peach. One row per
+ * (post, person) — pressing the other one replaces it, pressing the same one
+ * again takes it back (social_react() in SQL, applyReaction() here).
+ */
+export type ReactionType = "kudos" | "love";
+export const REACTION_TYPES: readonly ReactionType[] = ["kudos", "love"];
+
+export function isReactionType(x: unknown): x is ReactionType {
+  return typeof x === "string" && (REACTION_TYPES as readonly string[]).includes(x);
+}
 
 export const POST_TYPES: readonly PostType[] = [
   "workout", "pr", "challenge_completed", "progress", "text", "streak", "program", "achievement", "fitness_score",
@@ -45,7 +56,107 @@ export function isFeedScope(x: unknown): x is FeedScope {
 // the future "share externally" card both read from this snapshot, so the
 // backend never has to re-derive (or re-expose) the underlying sets.
 
-export type WorkoutPostPayload = {
+// ---------- photos on posts ----------
+// A picture the author chose to attach, and what sits on top of it.
+
+/** The stats a workout photo may carry on top of it, in the order the block lists them. */
+export const OVERLAY_STAT_KEYS = ["duration", "volume", "sets", "exercises", "load", "prs"] as const;
+export type OverlayStatKey = (typeof OVERLAY_STAT_KEYS)[number];
+
+/** Three sizes for anything on the photo; the middle one is the default. */
+export const OVERLAY_SIZES = ["s", "m", "l"] as const;
+export type OverlaySize = (typeof OVERLAY_SIZES)[number];
+export const OVERLAY_SCALE: Record<OverlaySize, number> = { s: 0.82, m: 1, l: 1.24 };
+
+/** Free text written on the photo — one line of Exo 2, not a caption. */
+export const OVERLAY_TEXT_MAX = 80;
+
+/**
+ * Everything on a photo is placed by its CENTRE, as a fraction of the photo's
+ * width and height (0..1). Fractions rather than pixels so the same overlay is
+ * exact on a 360px phone card, a 680px desktop card and the 1080px story
+ * export — the renderer scales every font with the photo's width.
+ */
+export type PhotoOverlay = {
+  /** The workout's figures, as a small grid. Only on a workout post. */
+  stats: { x: number; y: number; keys: OverlayStatKey[]; size: OverlaySize } | null;
+  /** A line the author typed onto the picture. */
+  text: { x: number; y: number; body: string; size: OverlaySize } | null;
+};
+
+/**
+ * The fields any photo-bearing payload shares. `photo_url` is a public
+ * Cloudinary URL (lib/cloudinary.ts), minted by the server from an upload it
+ * signed, never a URL the browser supplied. Width and height are those of the
+ * uploaded (already resized) image, so the card can reserve the exact box and
+ * place the overlay before the picture arrives. All absent on posts from
+ * before photos existed.
+ */
+export type PostPhotoFields = {
+  photo_url?: string | null;
+  photo_w?: number | null;
+  photo_h?: number | null;
+  overlay?: PhotoOverlay | null;
+};
+
+function fraction(x: unknown): number | null {
+  if (typeof x !== "number" || !Number.isFinite(x)) return null;
+  return Math.min(1, Math.max(0, Math.round(x * 1000) / 1000));
+}
+
+function overlaySize(x: unknown): OverlaySize {
+  return x === "s" || x === "l" ? x : "m";
+}
+
+/**
+ * The overlay as the database may store it: fractions clamped to 0..1, stat
+ * keys reduced to the known ones (deduplicated, in canonical order), the text
+ * cleaned like any other text and capped. Anything malformed becomes "no
+ * overlay" rather than an error — it is decoration, and the post is the point.
+ * `allowStats` is false for a post that is not a workout.
+ */
+export function normalizePhotoOverlay(input: unknown, allowStats: boolean): PhotoOverlay | null {
+  if (!input || typeof input !== "object") return null;
+  const raw = input as { stats?: unknown; text?: unknown };
+  let stats: PhotoOverlay["stats"] = null;
+  if (allowStats && raw.stats && typeof raw.stats === "object") {
+    const s = raw.stats as { x?: unknown; y?: unknown; keys?: unknown; size?: unknown };
+    const x = fraction(s.x);
+    const y = fraction(s.y);
+    const wanted = Array.isArray(s.keys) ? new Set(s.keys.filter((k): k is OverlayStatKey => (OVERLAY_STAT_KEYS as readonly string[]).includes(k as string))) : null;
+    const keys = wanted ? OVERLAY_STAT_KEYS.filter((k) => wanted.has(k)) : [];
+    if (x !== null && y !== null && keys.length > 0) stats = { x, y, keys, size: overlaySize(s.size) };
+  }
+  let text: PhotoOverlay["text"] = null;
+  if (raw.text && typeof raw.text === "object") {
+    const t = raw.text as { x?: unknown; y?: unknown; body?: unknown; size?: unknown };
+    const x = fraction(t.x);
+    const y = fraction(t.y);
+    const body = typeof t.body === "string" ? cleanText(t.body.replace(/\s*\n\s*/g, " "), OVERLAY_TEXT_MAX) : null;
+    if (x !== null && y !== null && body) text = { x, y, body, size: overlaySize(t.size) };
+  }
+  if (!stats && !text) return null;
+  return { stats, text };
+}
+
+/** The photo fields as they may be stored: https only, sane dimensions, a normalized overlay. */
+export function normalizePostPhoto(
+  input: { url: string | null; width?: number | null; height?: number | null; overlay?: unknown } | null | undefined,
+  allowStats: boolean,
+): PostPhotoFields {
+  const url = typeof input?.url === "string" && input.url.startsWith("https://") ? input.url : null;
+  if (!url) return { photo_url: null, photo_w: null, photo_h: null, overlay: null };
+  const w = typeof input?.width === "number" && Number.isInteger(input.width) && input.width > 0 && input.width <= 8000 ? input.width : null;
+  const h = typeof input?.height === "number" && Number.isInteger(input.height) && input.height > 0 && input.height <= 8000 ? input.height : null;
+  return {
+    photo_url: url,
+    photo_w: w !== null && h !== null ? w : null,
+    photo_h: w !== null && h !== null ? h : null,
+    overlay: normalizePhotoOverlay(input?.overlay, allowStats),
+  };
+}
+
+export type WorkoutPostPayload = PostPhotoFields & {
   kind: "workout";
   name: string;
   date: string;
@@ -55,14 +166,10 @@ export type WorkoutPostPayload = {
   volume_kg: number;
   load: number;
   prs: number;
-  /**
-   * A picture the author chose to attach — the gym selfie people actually
-   * want to post. Public Cloudinary URL (lib/cloudinary.ts), minted by the
-   * server from an upload it signed, never a URL the browser supplied. Absent
-   * on every post shared before this existed.
-   */
-  photo_url?: string | null;
 };
+
+/** A text post carries a payload only when it has a photo; otherwise it is null (social_posts_guard). */
+export type TextPostPayload = PostPhotoFields & { kind: "text" };
 
 export type PrPostPayload = {
   kind: "pr";
@@ -82,12 +189,12 @@ export type ChallengePostPayload = {
   value: number;
 };
 
-export type ProgressPostPayload = {
+export type ProgressPostPayload = PostPhotoFields & {
   kind: "progress";
   /** Only present when the author explicitly chose to include it. */
   weight_kg?: number;
-  /** storage path of a progress photo; null until photo sharing exists. */
-  photo_path: string | null;
+  /** Legacy: always null; the photo fields above replaced it. */
+  photo_path?: string | null;
 };
 
 /**
@@ -107,16 +214,26 @@ export type StreakPostPayload = {
 
 export type PostPayload =
   | WorkoutPostPayload | PrPostPayload | ChallengePostPayload | ProgressPostPayload | StreakPostPayload
-  | ProgramPostPayload | AchievementPostPayload | FitnessScorePostPayload | null;
+  | ProgramPostPayload | AchievementPostPayload | FitnessScorePostPayload | TextPostPayload | null;
 
 /**
  * A data post's payload names its own type (social_posts_guard enforces the
  * same in SQL): a 'pr' post cannot carry a workout tile, and a text post has
- * no payload at all.
+ * no payload unless it carries a photo.
  */
 export function payloadMatchesType(type: PostType, payload: PostPayload): boolean {
-  if (type === "text") return payload === null;
+  if (type === "text") return payload === null || (payload.kind === "text" && Boolean(payload.photo_url));
   return payload === null || payload.kind === type;
+}
+
+/** The photo a payload carries, if any — the one shape every card type renders the same way. */
+export function postPhotoOf(payload: PostPayload): { url: string; width: number | null; height: number | null; overlay: PhotoOverlay | null } | null {
+  if (!payload || (payload.kind !== "workout" && payload.kind !== "progress" && payload.kind !== "text")) return null;
+  const url = typeof payload.photo_url === "string" && payload.photo_url.startsWith("https://") ? payload.photo_url : null;
+  if (!url) return null;
+  const w = typeof payload.photo_w === "number" && payload.photo_w > 0 ? payload.photo_w : null;
+  const h = typeof payload.photo_h === "number" && payload.photo_h > 0 ? payload.photo_h : null;
+  return { url, width: w !== null && h !== null ? w : null, height: w !== null && h !== null ? h : null, overlay: payload.overlay ?? null };
 }
 
 /** Build a workout post from a scored session. Only aggregates cross into the feed. */
@@ -129,7 +246,7 @@ export function workoutPostPayload(session: {
   volume_kg: number;
   load: number;
   prs: number;
-  photo_url?: string | null;
+  photo?: { url: string | null; width?: number | null; height?: number | null; overlay?: unknown } | null;
 }): WorkoutPostPayload {
   return {
     kind: "workout",
@@ -143,9 +260,7 @@ export function workoutPostPayload(session: {
     prs: Math.max(0, Math.round(session.prs)),
     // Only ever https, and only ever a string: a payload key the feed renders
     // into an <img src> is the one place a stray value would be visible.
-    photo_url: typeof session.photo_url === "string" && session.photo_url.startsWith("https://")
-      ? session.photo_url
-      : null,
+    ...normalizePostPhoto(session.photo, true),
   };
 }
 
@@ -264,7 +379,20 @@ export function kudosSummary(
   return { count, others: Math.max(0, count - (shown === null ? 1 : 2)), first, second: shown };
 }
 
-/** The flip the card shows before the server answers. Applying it twice restores the input. */
-export function toggleKudosState(state: { my_kudos: boolean; kudos_count: number }): { my_kudos: boolean; kudos_count: number } {
-  return { my_kudos: !state.my_kudos, kudos_count: Math.max(0, state.kudos_count + (state.my_kudos ? -1 : 1)) };
+/** What a card knows about reactions: the counts per type and the viewer's own. */
+export type ReactionState = { my_reaction: ReactionType | null; kudos_count: number; love_count: number };
+
+/**
+ * The flip the card shows before the server answers, with the same rule as
+ * social_react(): pressing your current reaction takes it back, pressing the
+ * other one replaces it. Applying the same press twice restores the input,
+ * which is what makes the optimistic rollback exact.
+ */
+export function applyReaction(state: ReactionState, pressed: ReactionType): ReactionState {
+  const counts = { kudos_count: state.kudos_count, love_count: state.love_count };
+  const key = (t: ReactionType): "kudos_count" | "love_count" => (t === "kudos" ? "kudos_count" : "love_count");
+  if (state.my_reaction) counts[key(state.my_reaction)] = Math.max(0, counts[key(state.my_reaction)] - 1);
+  if (state.my_reaction === pressed) return { my_reaction: null, ...counts };
+  counts[key(pressed)] += 1;
+  return { my_reaction: pressed, ...counts };
 }

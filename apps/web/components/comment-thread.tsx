@@ -19,7 +19,21 @@ import type { CommentPage, CommentThread as Thread, PersonRow, PostComment } fro
  * (social_comment_depth_guard), and a thread that nests further is a thread
  * nobody can read on a 375px phone.
  */
-export function CommentThread({ postId, page }: { postId: string; page: CommentPage }) {
+export function CommentThread({ postId, page, embedded = false, autoFocus = false, loading = false, onPosted }: {
+  postId: string;
+  page: CommentPage;
+  /**
+   * Inside a feed card rather than on the post's page: no card of its own, no
+   * header, and a post does not refresh the page — `onPosted` reloads what it
+   * needs instead.
+   */
+  embedded?: boolean;
+  /** Put the caret in the box on mount — the card opened the thread to write. */
+  autoFocus?: boolean;
+  /** The page is still on its way; say so instead of "no comments yet". */
+  loading?: boolean;
+  onPosted?: () => void;
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const s = t.common.social;
@@ -38,15 +52,18 @@ export function CommentThread({ postId, page }: { postId: string; page: CommentP
   // reply_count is the real number under each comment, not just the ones on screen.
   const total = threads.reduce((sum, c) => sum + 1 + Math.max(c.reply_count, c.replies.length), 0);
 
+  const Wrapper = embedded ? "div" : Card;
   return (
-    <Card plain className="p-5">
-      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-        <NavIcon d="M4 5h16v11H9l-5 4z" className="h-[15px] w-[15px]" />
-        {total === 1 ? s.commentOne : fill(s.commentsCount, { count: total })}
-      </p>
+    <Wrapper {...(embedded ? { className: "px-2" } : { plain: true, className: "p-5" })}>
+      {embedded ? null : (
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          <NavIcon d="M4 5h16v11H9l-5 4z" className="h-[15px] w-[15px]" />
+          {total === 1 ? s.commentOne : fill(s.commentsCount, { count: total })}
+        </p>
+      )}
 
       {threads.length === 0 ? (
-        <p className="mt-3 text-[13px] text-ink-faint">{s.noComments}</p>
+        loading ? null : <p className="mt-3 text-[13px] text-ink-faint">{s.noComments}</p>
       ) : (
         <ul className="mt-3.5 space-y-4">
           {threads.map((c) => (
@@ -87,12 +104,15 @@ export function CommentThread({ postId, page }: { postId: string; page: CommentP
         postId={postId}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
+        compact={embedded}
+        autoFocus={autoFocus}
         onPosted={() => {
           setReplyTo(null);
-          router.refresh();
+          if (onPosted) onPosted();
+          else router.refresh();
         }}
       />
-    </Card>
+    </Wrapper>
   );
 }
 
@@ -299,13 +319,18 @@ function CommentBody({ comment }: { comment: PostComment }) {
  * post sort first — mentioning somebody who cannot open it is allowed, it is
  * only text, but it will never notify them.
  */
-function CommentComposer({
-  postId, replyTo, onCancelReply, onPosted,
+export function CommentComposer({
+  postId, replyTo, onCancelReply, onPosted, compact = false, autoFocus = false,
 }: {
   postId: string;
   replyTo: { id: string; username: string | null } | null;
   onCancelReply: () => void;
-  onPosted: () => void;
+  /** Called with the body that was posted, so an inline card can echo it. */
+  onPosted: (body: string) => void;
+  /** The one-row version under a feed card: a shorter, rounder field. */
+  compact?: boolean;
+  /** Focus the field on mount. */
+  autoFocus?: boolean;
 }) {
   const { t } = useI18n();
   const s = t.common.social;
@@ -315,6 +340,10 @@ function CommentComposer({
   const [suggestions, setSuggestions] = useState<PersonRow[]>([]);
   const [query, setQuery] = useState<{ query: string; start: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   // Replying pre-fills the handle, which is also what makes the notification
   // land: the reply notifies the parent's author either way, but the mention
@@ -357,7 +386,7 @@ function CommentComposer({
   }
 
   return (
-    <div className="mt-4">
+    <div className={compact ? "mt-3" : "mt-4"}>
       {replyTo ? (
         <p className="mb-2 flex items-center gap-2 text-[12px] text-ink-faint">
           {s.replyingTo}
@@ -394,6 +423,7 @@ function CommentComposer({
           e.preventDefault();
           setError(null);
           startTransition(async () => {
+            const posted = body;
             const result = await addComment(postId, body, replyTo?.id ?? null);
             if (!result.ok) {
               setError(result.message ?? s.commentInvalid);
@@ -402,7 +432,7 @@ function CommentComposer({
             setBody("");
             setSuggestions([]);
             setQuery(null);
-            onPosted();
+            onPosted(posted);
           });
         }}
       >
@@ -415,12 +445,14 @@ function CommentComposer({
           placeholder={replyTo ? s.writeReply : s.writeComment}
           maxLength={COMMENT_MAX}
           aria-label={replyTo ? s.writeReply : s.writeComment}
-          className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent"
+          className={`min-w-0 flex-1 rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent ${compact ? "h-10 rounded-full" : "h-11"}`}
         />
         <button
           type="submit"
           disabled={pending || body.trim().length === 0}
-          className="flex h-11 shrink-0 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
+          className={`flex shrink-0 items-center justify-center bg-accent font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40 ${
+            compact ? "h-10 rounded-full px-4" : "h-11 rounded-2xl px-5"
+          }`}
         >
           {s.send}
         </button>

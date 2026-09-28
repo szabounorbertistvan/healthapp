@@ -1,6 +1,6 @@
 import type {
   AdherenceResult, ChallengeCategory, ChallengeDifficulty, ChallengeStatus, ChallengeType, ChallengeUnit, LoadTrend, Macros, PostPayload, PostType,
-  PostVisibility, TrainingLoad,
+  PostVisibility, ReactionType, TrainingLoad,
 } from "@healthapp/shared";
 import type { ExerciseVideoSource, LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
@@ -379,10 +379,14 @@ export type FeedPost = {
   created_at: string;
   activity_id: string | null;
   challenge_id: string | null;
+  /** Flexed arms. */
   kudos_count: number;
+  /** Peaches. */
+  love_count: number;
   comment_count: number;
-  my_kudos: boolean;
-  /** The first one or two givers, for "Norbert, Maria and 12 others". */
+  /** What the viewer pressed on this post, if anything. */
+  my_reaction: ReactionType | null;
+  /** The first one or two people who reacted, whatever they pressed, for "Norbert, Maria and 12 others". */
   kudos_names: string[];
   /** People named in the caption, resolved at posting time. Rendering links only these. */
   mentions: { user_id: string; username: string }[];
@@ -393,11 +397,12 @@ export type FeedPost = {
 
 export type FeedPage = { items: FeedPost[]; next_cursor: string | null };
 
-/** One row of "who gave kudos" — served by social_post_kudos(). */
+/** One row of "who reacted" — served by social_post_kudos(). */
 export type KudosGiver = {
   user_id: string;
   name: string;
   avatar_url: string | null;
+  type: ReactionType;
   created_at: string;
 };
 

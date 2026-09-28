@@ -315,7 +315,8 @@ export async function deliverShareImage(
   title: string,
   deps: { nav?: Pick<Navigator, "share" | "canShare">; download?: (blob: Blob, name: string) => void } = {},
 ): Promise<"shared" | "saved" | "cancelled"> {
-  const file = new File([blob], fileName, { type: "image/png" });
+  // The MIME type follows the blob: the workout card is a PNG, the photo story a JPEG.
+  const file = new File([blob], fileName, { type: blob.type || "image/png" });
   const nav = deps.nav ?? (typeof navigator === "undefined" ? undefined : navigator);
   if (nav && canShareFile(file, nav)) {
     try {
