@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { loadWorkoutShareCard } from "@/app/share-card-actions";
 import { APP_NAME } from "@/lib/brand";
 import { usePlan } from "@/lib/plan-client";
@@ -190,7 +191,11 @@ export function ShareWorkoutDialog({ card, onClose }: { card: WorkoutShareCard; 
     setOptions((o) => ({ ...o, stats: { ...o.stats, [k]: !o.stats[k] } }));
   const setFormat = (format: ShareFormat) => setOptions((o) => ({ ...o, format }));
 
-  return (
+  // Portalled to <body>: the button lives inside a glass card, and a card's
+  // backdrop-filter makes it the containing block and stacking context of
+  // any fixed descendant — the dialog then sat inside the card, behind the
+  // cards after it, and its buttons scrolled away under the tab bar.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -329,6 +334,7 @@ export function ShareWorkoutDialog({ card, onClose }: { card: WorkoutShareCard; 
         </div>
         {status === "ready" ? <p className="mt-3 text-center text-sm font-semibold text-accent-ink" role="status">{s.ready}</p> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -311,17 +311,22 @@ function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => voi
   }, [q]);
 
   if (creating) {
+    // The picker sits in a fixed-height box whose only scroller is the list;
+    // the form takes that scroll, or its Save button ends up under the box's
+    // edge on a phone.
     return (
-      <NewFoodForm
-        initialName={q}
-        primaryLabel={t.clientWidgets.newFoodForm.saveAndLog}
-        onCreated={(food) => {
-          setCreating(false);
-          setFoods((current) => [food, ...current]);
-          onPick(food, 100);
-        }}
-        onCancel={() => setCreating(false)}
-      />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <NewFoodForm
+          initialName={q}
+          primaryLabel={t.clientWidgets.newFoodForm.saveAndLog}
+          onCreated={(food) => {
+            setCreating(false);
+            setFoods((current) => [food, ...current]);
+            onPick(food, 100);
+          }}
+          onCancel={() => setCreating(false)}
+        />
+      </div>
     );
   }
 

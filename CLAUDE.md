@@ -151,6 +151,16 @@ third-party text writes it.
 ## Gotchas
 
 - Windows dev box; the shell is PowerShell. Paths in this repo use `/`.
+- **Overlays go through `createPortal(…, document.body)` or a native
+  `<dialog>`, never a `fixed` element in place.** Every `.glass` card has a
+  `backdrop-filter`, which makes the card the containing block and stacking
+  context of any `fixed` descendant: a dialog rendered inside one sits in the
+  card, behind the cards after it, with its buttons scrolling away under the
+  phone tab bar (share-workout.tsx, 2026-09-28). The sticky sidebars are a
+  stacking context too, hence their `z-20`. A picker in a fixed-height box
+  (`h-[clamp(…)]` in the day editor and the nutrition builder) has one
+  scroller, the list; anything shown instead of the list must take that
+  scroll (`min-h-0 flex-1 overflow-y-auto`) or it is clipped on a phone.
 - Tailwind v4 — config is in CSS (`app/globals.css`), not `tailwind.config.js`.
   Semantic color names only, defined in an `@theme` block with a
   `prefers-color-scheme: dark` override: `bg`, `surface`, `ink`, `ink-soft`,
