@@ -21,7 +21,7 @@ export function isProfileVisibility(x: unknown): x is ProfileVisibility {
 
 // ---------- badges ----------
 //
-// Since 20261002100000_advanced_achievements.sql every badge row carries its
+// Since 20261002110000_advanced_achievements.sql every badge row carries its
 // own rule (metric + target) and award_badges_for() compares
 // achievement_facts() against it. ACHIEVEMENT_CATALOG is the mirror of those
 // rows; advanced_achievements.test.sql pins the SQL side to the same targets.
@@ -365,7 +365,7 @@ export type AchievementPostPayload = {
   name_ro?: string;
   icon?: string | null;
   awarded_at?: string;
-  /** Frozen at share time since 20261002100000; absent on older posts. */
+  /** Frozen at share time since 20261002110000; absent on older posts. */
   category?: string;
   rarity?: string;
   metric?: string;

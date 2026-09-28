@@ -12,13 +12,11 @@ import {
   isBadgeSlug,
   isProfileVisibility,
   isReactionType,
+  validateFollow,
   normalizePostPhoto,
   payloadMatchesType,
-<<<<<<< HEAD
   mentionChanges,
-=======
   postPhotoOf,
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
   resolveMentions,
   validateComment,
   validatePostEdit,
@@ -400,7 +398,6 @@ export async function editPost(postId: string, text: string): Promise<ActionResu
   return { ok: true };
 }
 
-<<<<<<< HEAD
 // ---------- save ----------
 
 /**
@@ -463,10 +460,7 @@ export async function sharePost(postId: string, text: string, visibility?: strin
   return { ok: true, postId: data.id as string };
 }
 
-// ---------- kudos ----------
-=======
 // ---------- reactions ----------
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 
 export type ReactResult = ActionResult & { reaction?: ReactionType | null };
 

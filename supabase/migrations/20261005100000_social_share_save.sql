@@ -39,7 +39,7 @@ alter table public.social_posts add constraint social_posts_type_check
   check (type in ('workout', 'pr', 'challenge_completed', 'progress', 'text', 'streak', 'program',
                   'achievement', 'fitness_score', 'shared_post'));
 
--- ---------- 2. the guard: 20261002100000's body plus the shared_post branch ----------
+-- ---------- 2. the guard: 20261002110000's body plus the shared_post branch ----------
 create or replace function public.social_posts_guard()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare

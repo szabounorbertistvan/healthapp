@@ -141,7 +141,9 @@ language sql stable security definer set search_path = public as $$
   limit greatest(1, least(coalesce(p_limit, 3), 20));
 $$;
 
-create or replace function public.social_feed(
+-- 20261002100000 changed the shape (love_count, my_reaction); drop first.
+drop function if exists public.social_feed(int, timestamptz, uuid, text, text);
+create function public.social_feed(
   p_limit int default 20,
   p_before timestamptz default null,
   p_author uuid default null,
@@ -198,7 +200,9 @@ returns table (
   limit greatest(1, least(p_limit, 50));
 $$;
 
-create or replace function public.social_post(p_post uuid)
+-- 20261002100000 changed the shape (love_count, my_reaction); drop first.
+drop function if exists public.social_post(uuid);
+create function public.social_post(p_post uuid)
 returns table (
   id uuid, user_id uuid, author_name text, author_username text, author_avatar text,
   type text, text text, payload jsonb, visibility text, created_at timestamptz,

@@ -103,10 +103,10 @@ project.
 | Reads | unchanged RPC names; `social_feed()` / `social_post()` now carry `kudos_count`, `love_count`, `my_reaction`; `social_post_kudos()` carries `type` |
 | Writes | `react(postId, pressed)` → `social_react()`; `createTextPost` / `createProgressPost` / `shareWorkout` take a `PostPhotoInput` (public_id, version, pixel size, overlay) in [app/social-actions.ts](../apps/web/app/social-actions.ts) |
 | Maths | [packages/shared/src/social.ts](../packages/shared/src/social.ts) — `applyReaction`, `normalizePhotoOverlay`, `normalizePostPhoto`, `postPhotoOf`; [lib/photo-overlay.ts](../apps/web/lib/photo-overlay.ts) — the overlay's geometry; [lib/image-prepare.ts](../apps/web/lib/image-prepare.ts) — `photoFrame` |
-| Migration | `20261002100000_reactions_and_post_photos.sql` (applied live 2026-09-28) |
+| Migration | `20261002100000_reactions_and_post_photos.sql` (applied live 2026-09-28); `20261014100000_social_reactions_reconcile.sql` carries it through the Social 2.0 chain, whose migrations were written beside it (feed reads, reaction list, notification and guard redefined on the chain's latest bodies; a text or workout photo must be an upload in the author's own `voinic/posts/<id>/` folder) |
 | Tables | `social_reactions.type in ('kudos','love')`, unique `(post_id, user_id)`; `social_posts_guard` keeps a text post's payload when it is a photo |
 | Components | `reaction-icons.tsx` + `public/reactions/` (the arm and the peach, PNGs), `photo-overlay.tsx` (`PhotoFrame`, `PhotoOverlayEditor`), `lib/photo-story.ts` (the 1080×1920 canvas), the reactions row / `useReactions` / `DoubleTap` / `InlineComments` in `social.tsx`; `CommentComposer` is exported from `comment-thread.tsx` |
-| Tests | `social.test.ts` (reactions, overlay, photo fields), `photo-overlay.test.ts`, `image-prepare.test.ts`, `supabase/tests/reactions.test.sql` (23 pgTAP) |
+| Tests | `social.test.ts` (reactions, overlay, photo fields), `photo-overlay.test.ts`, `image-prepare.test.ts`, `supabase/tests/reactions.test.sql` (24 pgTAP) |
 
 **One reaction per person.** The arm (`kudos`) and the peach (`love`) are two
 values of one row: pressing the other one replaces it, pressing the same one
@@ -224,7 +224,7 @@ fixed list at or under the score).
 | Client | `/achievements` (category filter via `?c=`, progress per badge), `/achievements/[slug]` (requirement, progress, earned date, how it's counted, share); profile `#achievements` gains rarity, per-category counts and a link for the owner; nav entry "Achievements" |
 | Reads | `getMyAchievements` in [lib/achievements-data.ts](../apps/web/lib/achievements-data.ts) — one call to `achievement_progress()` |
 | Maths | `ACHIEVEMENT_CATALOG`, `achievementProgress`, `isEligible`, `strengthFacts`, `summarizeAchievements`, `categoriesPresent` in `packages/shared/src/achievements.ts`; text in [lib/achievement-format.ts](../apps/web/lib/achievement-format.ts) |
-| Migration | `20261002100000_advanced_achievements.sql` |
+| Migration | `20261002110000_advanced_achievements.sql` |
 | Tests | `achievements.test.ts` (50), `achievement-format.test.ts` (8), `notification-href.test.ts` (16), `supabase/tests/advanced_achievements.test.sql` (60 pgTAP) |
 
 **The catalog carries the rule.** `badges` gained `category`, `rarity`, `kind`

@@ -2,11 +2,7 @@ import Link from "next/link";
 import { isFeedScope, type FeedScope } from "@healthapp/shared";
 import { getFeed } from "@/lib/social-data";
 import { displayName, getProfile } from "@/lib/data";
-<<<<<<< HEAD
-=======
 import { cloudinaryConfigured } from "@/lib/cloudinary";
-import { Card } from "@/components/ui";
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 import { Composer, PostCard } from "@/components/social";
 import { NavIcon } from "@/components/client-nav";
 import { StoriesBar } from "@/components/stories";
@@ -96,13 +92,8 @@ export default async function FeedPage({
       </nav>
 
       {composing ? (
-<<<<<<< HEAD
         <div className="mt-3">
-          <Composer me={me} />
-=======
-        <div className="mt-4">
           <Composer me={me} photoUploads={cloudinaryConfigured()} />
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
         </div>
       ) : null}
 

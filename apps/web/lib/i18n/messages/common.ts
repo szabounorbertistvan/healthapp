@@ -102,16 +102,13 @@ const en = {
     loadOlder: "Load older",
     noUnread: "No unread notifications.",
     loadFailed: "Could not load more. Try again.",
-<<<<<<< HEAD
     someone: "Someone",
     today: "Today",
     yesterday: "Yesterday",
     earlier: "Earlier",
-=======
     groupToday: "Today",
     groupWeek: "This week",
     groupEarlier: "Earlier",
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
   },
   exerciseVideo: {
     title: "Demo video",
@@ -178,24 +175,14 @@ const en = {
     noNotificationsHint: "Kudos, comments and new followers show up here.",
     unread: "Unread",
     notified: {
-<<<<<<< HEAD
       new_follower: "{name} started following you",
-      new_kudos: "{name} gave Kudos to your post",
+      new_kudos: "{name} reacted to your post",
+      new_love: "{name} reacted to your post",
       new_comment: "{name} commented on your post",
       comment_reply: "{name} replied to your comment",
       new_mention: "{name} mentioned you in a comment",
       new_mention_post: "{name} mentioned you in a post",
       badge_earned: "You unlocked {name}",
-=======
-      new_follower: "{name} started following you.",
-      new_kudos: "{name} reacted to your post.",
-      new_love: "{name} reacted to your post.",
-      new_comment: "{name} commented on your post.",
-      comment_reply: "{name} replied to your comment.",
-      new_mention: "{name} mentioned you in a comment.",
-      new_mention_post: "{name} mentioned you in a post.",
-      badge_earned: "Achievement unlocked: {name}",
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
       challenge_milestone: "{pct}% of {name} reached.",
       challenge_completed: "Challenge completed: {name}",
     },
@@ -1144,16 +1131,13 @@ const ro: typeof en = {
     loadOlder: "Mai vechi",
     noUnread: "Nicio notificare necitită.",
     loadFailed: "Nu s-au putut încărca. Încearcă din nou.",
-<<<<<<< HEAD
     someone: "Cineva",
     today: "Azi",
     yesterday: "Ieri",
     earlier: "Mai devreme",
-=======
     groupToday: "Azi",
     groupWeek: "Săptămâna aceasta",
     groupEarlier: "Mai vechi",
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
   },
   exerciseVideo: {
     title: "Video demonstrativ",
@@ -1220,24 +1204,14 @@ const ro: typeof en = {
     noNotificationsHint: "Kudos, comentarii și urmăritori noi apar aici.",
     unread: "Necitit",
     notified: {
-<<<<<<< HEAD
       new_follower: "{name} te urmărește acum",
-      new_kudos: "{name} a dat Kudos postării tale",
+      new_kudos: "{name} a reacționat la postarea ta",
+      new_love: "{name} a reacționat la postarea ta",
       new_comment: "{name} a comentat la postarea ta",
       comment_reply: "{name} a răspuns comentariului tău",
       new_mention: "{name} te-a menționat într-un comentariu",
       new_mention_post: "{name} te-a menționat într-o postare",
       badge_earned: "Ai deblocat {name}",
-=======
-      new_follower: "{name} a început să te urmărească.",
-      new_kudos: "{name} a reacționat la postarea ta.",
-      new_love: "{name} a reacționat la postarea ta.",
-      new_comment: "{name} a comentat la postarea ta.",
-      comment_reply: "{name} ți-a răspuns la comentariu.",
-      new_mention: "{name} te-a menționat într-un comentariu.",
-      new_mention_post: "{name} te-a menționat într-o postare.",
-      badge_earned: "Realizare deblocată: {name}",
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
       challenge_milestone: "Ai atins {pct}% din {name}.",
       challenge_completed: "Provocare finalizată: {name}",
     },

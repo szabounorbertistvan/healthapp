@@ -21,12 +21,11 @@ import type { CommentPage, CommentThread as Thread, PersonRow, PostComment } fro
  * (social_comment_depth_guard), and a thread that nests further is a thread
  * nobody can read on a 375px phone.
  */
-<<<<<<< HEAD
-export function CommentThread({ postId, page, commentCount }: { postId: string; page: CommentPage; commentCount?: number }) {
-=======
-export function CommentThread({ postId, page, embedded = false, autoFocus = false, loading = false, onPosted }: {
+export function CommentThread({ postId, page, commentCount, embedded = false, autoFocus = false, loading = false, onPosted }: {
   postId: string;
   page: CommentPage;
+  /** The post's own comment count, when the page knows it (threadTotal). */
+  commentCount?: number;
   /**
    * Inside a feed card rather than on the post's page: no card of its own, no
    * header, and a post does not refresh the page — `onPosted` reloads what it
@@ -39,7 +38,6 @@ export function CommentThread({ postId, page, embedded = false, autoFocus = fals
   loading?: boolean;
   onPosted?: () => void;
 }) {
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
   const { t } = useI18n();
   const router = useRouter();
   const s = t.common.social;

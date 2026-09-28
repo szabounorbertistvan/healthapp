@@ -234,8 +234,7 @@ export type SharedPostPayload = {
 
 export type PostPayload =
   | WorkoutPostPayload | PrPostPayload | ChallengePostPayload | ProgressPostPayload | StreakPostPayload
-<<<<<<< HEAD
-  | ProgramPostPayload | AchievementPostPayload | FitnessScorePostPayload | SharedPostPayload | null;
+  | ProgramPostPayload | AchievementPostPayload | FitnessScorePostPayload | TextPostPayload | SharedPostPayload | null;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -248,9 +247,6 @@ export function isPostId(v: unknown): v is string {
 export function sharedPostPayload(originalPostId: string): SharedPostPayload | null {
   return isPostId(originalPostId) ? { kind: "shared_post", original_post_id: originalPostId.toLowerCase() } : null;
 }
-=======
-  | ProgramPostPayload | AchievementPostPayload | FitnessScorePostPayload | TextPostPayload | null;
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 
 /**
  * A data post's payload names its own type (social_posts_guard enforces the
@@ -258,8 +254,7 @@ export function sharedPostPayload(originalPostId: string): SharedPostPayload | n
  * no payload unless it carries a photo.
  */
 export function payloadMatchesType(type: PostType, payload: PostPayload): boolean {
-<<<<<<< HEAD
-  if (type === "text") return payload === null;
+  if (type === "text") return payload === null || (payload.kind === "text" && Boolean(payload.photo_url));
   // A share is nothing but its reference: no payload, or extra keys, is not a share.
   if (type === "shared_post") {
     return payload !== null && payload.kind === "shared_post"
@@ -288,9 +283,6 @@ export function prPostPayload(
     date,
     set_id: pr.set_id,
   };
-=======
-  if (type === "text") return payload === null || (payload.kind === "text" && Boolean(payload.photo_url));
-  return payload === null || payload.kind === type;
 }
 
 /** The photo a payload carries, if any — the one shape every card type renders the same way. */
@@ -301,7 +293,6 @@ export function postPhotoOf(payload: PostPayload): { url: string; width: number 
   const w = typeof payload.photo_w === "number" && payload.photo_w > 0 ? payload.photo_w : null;
   const h = typeof payload.photo_h === "number" && payload.photo_h > 0 ? payload.photo_h : null;
   return { url, width: w !== null && h !== null ? w : null, height: w !== null && h !== null ? h : null, overlay: payload.overlay ?? null };
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 }
 
 /** Build a workout post from a scored session. Only aggregates cross into the feed. */

@@ -5,7 +5,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(24);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -83,11 +83,18 @@ select is((select payload ->> 'reaction' from public.notifications
 select lives_ok($$
   insert into public.social_posts (id, user_id, type, text, visibility, payload)
   values ('91000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-00000000000b', 'text', 'with a picture', 'public',
-          '{"kind":"text","photo_url":"https://res.cloudinary.com/x/a.jpg","photo_w":1200,"photo_h":1500,"overlay":{"text":{"x":0.5,"y":0.8,"body":"Leg day","size":"m"}},"kcal":900}')
+          '{"kind":"text","photo_url":"https://res.cloudinary.com/x/image/upload/v1/voinic/posts/b0000000-0000-0000-0000-00000000000b/a.jpg","photo_w":1200,"photo_h":1500,"overlay":{"text":{"x":0.5,"y":0.8,"body":"Leg day","size":"m"}},"kcal":900}')
 $$, 'a text post may carry a photo');
 select is((select payload from public.social_posts where id = '91000000-0000-0000-0000-000000000003'),
-  '{"kind":"text","photo_url":"https://res.cloudinary.com/x/a.jpg","photo_w":1200,"photo_h":1500,"overlay":{"text":{"x":0.5,"y":0.8,"body":"Leg day","size":"m"}}}'::jsonb,
+  '{"kind":"text","photo_url":"https://res.cloudinary.com/x/image/upload/v1/voinic/posts/b0000000-0000-0000-0000-00000000000b/a.jpg","photo_w":1200,"photo_h":1500,"overlay":{"text":{"x":0.5,"y":0.8,"body":"Leg day","size":"m"}}}'::jsonb,
   '…reduced to the photo fields; and a text post without a photo keeps no payload');
+-- The photo is the one thing taken from the client as given, so it has to be an
+-- upload in the author's own post folder (20261014100000) — like a workout photo.
+insert into public.social_posts (id, user_id, type, text, visibility, payload)
+values ('91000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-00000000000b', 'text', 'someone else''s picture', 'public',
+        '{"kind":"text","photo_url":"https://res.cloudinary.com/x/image/upload/v1/voinic/posts/c0000000-0000-0000-0000-00000000000c/a.jpg"}');
+select is((select payload from public.social_posts where id = '91000000-0000-0000-0000-000000000004'), null::jsonb,
+  'a photo from outside the author''s own folder is not kept');
 
 select * from finish();
 rollback;

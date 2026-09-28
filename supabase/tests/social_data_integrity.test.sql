@@ -97,7 +97,7 @@ select is((pg_temp.payload('b6000000-0000-0000-0000-000000000001') ->> 'load')::
   'the load is the server''s score, 0..100');
 select is(
   (select count(*)::int from jsonb_object_keys(pg_temp.payload('b6000000-0000-0000-0000-000000000001'))),
-  10, 'the shape is the existing workout snapshot, nothing added');
+  13, 'the shape is the existing workout snapshot (with the photo''s size and overlay, 20261014100000), nothing added');
 select throws_ok($$
   insert into public.social_posts (user_id, type, payload, visibility)
   values ('b1000000-0000-0000-0000-00000000000a', 'workout', '{"kind":"workout","sets":1}', 'public') $$,

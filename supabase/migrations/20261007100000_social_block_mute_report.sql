@@ -686,7 +686,9 @@ returns table (
   limit greatest(1, least(coalesce(p_limit, 20), 50));
 $$;
 
-create or replace function public.social_post_kudos(p_post uuid, p_limit int default 20, p_before timestamptz default null)
+-- 20261002100000 gave this a `type` column; the shape changes, so drop first.
+drop function if exists public.social_post_kudos(uuid, int, timestamptz);
+create function public.social_post_kudos(p_post uuid, p_limit int default 20, p_before timestamptz default null)
 returns table (user_id uuid, name text, username text, avatar_url text, created_at timestamptz)
 language sql stable security definer set search_path = public as $$
   select r.user_id, coalesce(u.username, u.full_name), u.username, u.avatar_url, r.created_at

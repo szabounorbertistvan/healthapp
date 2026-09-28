@@ -215,7 +215,7 @@ describe("validatePostEdit — the caption rule behind editPost()", () => {
   });
 });
 
-// ---------- advanced achievements (20261002100000) ----------
+// ---------- advanced achievements (20261002110000) ----------
 
 describe("ACHIEVEMENT_CATALOG — mirrors the badges rows", () => {
   it("has 34 unique slugs, every one with a known metric, category and rarity", () => {

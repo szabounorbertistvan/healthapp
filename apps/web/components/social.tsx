@@ -1,21 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-<<<<<<< HEAD
-import { useEffect, useOptimistic, useReducer, useRef, useState, useTransition } from "react";
-import type { PostVisibility } from "@healthapp/shared";
-import { displayToKg, followButtonState, isAchievementRarity, toggleKudosState, POST_TEXT_MAX } from "@healthapp/shared";
-import {
-  createProgressPost, createTextPost, deletePost, editPost, follow, loadKudos, requestPostPhotoUpload, setPostSaved, sharePost,
-  toggleKudos, unfollow,
-=======
-import { useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useOptimistic, useReducer, useRef, useState, useTransition } from "react";
 import type { PhotoOverlay, PostVisibility, ReactionType } from "@healthapp/shared";
-import { applyReaction, displayToKg, kudosSummary, postPhotoOf, POST_TEXT_MAX, type ReactionState } from "@healthapp/shared";
+import { applyReaction, displayToKg, followButtonState, isAchievementRarity, kudosSummary, postPhotoOf, POST_TEXT_MAX, type ReactionState } from "@healthapp/shared";
 import {
-  createProgressPost, createTextPost, deletePost, editPost, follow, loadComments, loadKudos, react, requestPostPhotoUpload, unfollow,
+  createProgressPost, createTextPost, deletePost, editPost, follow, loadComments, loadKudos, react, requestPostPhotoUpload, setPostSaved,
+  sharePost, unfollow,
   type PostPhotoInput,
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -34,14 +26,11 @@ import { SOCIAL } from "@/lib/social-ui";
 import { captionFolds, doubleTapGives, giveNeedsUndo, isDoubleTap, postAge } from "@/lib/post-card";
 import { canRepost, canWebShare, postShareUrl, saveReducer, shareTargets } from "@/lib/post-share";
 import { BadgeGlyph, MentionSuggestions, MentionText, useMentionSuggest } from "./social-v2";
-<<<<<<< HEAD
 import { CommentPreview } from "./comment-preview";
 import { ModerationMenuButton } from "./moderation";
-=======
 import { ReactionIcon } from "./reaction-icons";
 import { PhotoFrame, PhotoOverlayEditor } from "./photo-overlay";
 import { CommentThread } from "./comment-thread";
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 
 // ---------- small pieces ----------
 
@@ -156,82 +145,6 @@ function Stat({ value, unit, label }: { value: string; unit?: string; label: str
   );
 }
 
-<<<<<<< HEAD
-type FrameTone = "gold" | "tile" | "plain";
-const FRAME_TONE: Record<FrameTone, string> = {
-  gold: "bg-accent text-accent-fg",
-  tile: "bg-tile text-tile-ink",
-  plain: "bg-bg text-ink",
-};
-
-/**
- * The media slot every snapshot post shares: flush to the card's edges, one
- * 4:3 ratio for all of them, so a feed of mixed posts keeps one rhythm. The
- * ratio is a floor, not a clamp — `aspect-ratio` lets the box grow when its
- * content needs more room (a four-figure workout on a 320px phone), so
- * nothing is ever cut off. Eyebrow at the top, the headline at the bottom.
- */
-function MediaFrame({ tone, eyebrow, children }: { tone: FrameTone; eyebrow: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className={`flex aspect-[4/3] flex-col justify-between gap-4 px-5 py-5 sm:px-6 ${FRAME_TONE[tone]}`}>
-      {eyebrow}
-      <div className="min-w-0">{children}</div>
-    </div>
-  );
-}
-
-/**
- * Post photos at 4:5, cropped, never stretched. One photo is one frame; more
- * than one becomes a native scroll-snap carousel with a position counter —
- * today every post carries at most one, the shape is here for the ones that
- * will carry several. `overlay` sits on the first frame behind a scrim.
- */
-function PhotoMedia({ urls, alt, overlay }: { urls: string[]; alt: string; overlay?: React.ReactNode }) {
-  const { t } = useI18n();
-  const [at, setAt] = useState(0);
-  const many = urls.length > 1;
-  return (
-    <div className="relative bg-bg">
-      <div
-        className={many ? "snap-frames no-scrollbar" : undefined}
-        onScroll={many ? (e) => setAt(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth)) : undefined}
-      >
-        {urls.map((url, i) => (
-          <div key={url} className="relative aspect-[4/5]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={url}
-              alt={many ? `${alt} — ${fill(t.common.social.photoOf, { n: i + 1, total: urls.length })}` : alt}
-              loading="lazy"
-              decoding="async"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            {i === 0 && overlay ? overlay : null}
-          </div>
-        ))}
-      </div>
-      {many ? (
-        <span aria-hidden className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[11.5px] font-semibold tabular-nums text-white">
-          {at + 1}/{urls.length}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-/** Whether a post has a media slot at all. Text and progress posts do not. */
-function hasMedia(post: FeedPost) {
-  return post.payload !== null && post.payload.kind !== "progress";
-}
-
-/**
- * The post's media, where a photo would sit on Instagram. A workout photo is
- * the picture itself with the session written on it; without one, a workout
- * is the inverse tile with its figures large. The things somebody achieved —
- * a record, a finished challenge, a badge, a Fitness Score milestone, a
- * streak — are gold with the number as the hero. A shared routine is plain:
- * it is an invitation to train, not a result.
-=======
 /** A workout's figures, formatted for the reader, keyed the way the photo overlay wants them. */
 export function useOverlayStats(w: { duration_min: number | null; volume_kg: number; sets: number; exercises: number; load: number; prs: number } | null): OverlayStatValues {
   const { t } = useI18n();
@@ -270,8 +183,9 @@ function PostPhoto({ post, splash }: { post: FeedPost; splash: React.ReactNode }
  * inverse tile with its figures large, a record or a milestone a solid gold
  * tile with the number as the hero. Text and progress posts have a photo or
  * nothing.
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
  */
+export type PostPhoto = { publicId: string; version: number; width: number; height: number; previewUrl: string };
+
 function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }) {
   const { t, locale } = useI18n();
   const f = useSocialFormat();
@@ -281,70 +195,12 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
   if (!p) return null;
   if (p.kind === "progress" || p.kind === "text") return <PostPhoto post={post} splash={splash} />;
 
-  const hero = "font-display text-[48px] font-black leading-none tracking-tight tabular-nums sm:text-[56px]";
-  const title = "font-display text-[26px] font-extrabold leading-[1.1] tracking-tight sm:text-[28px]";
-  const onGold = "text-accent-fg/70";
-
   if (p.kind === "workout") {
     const dur = f.duration(p.duration_min);
-<<<<<<< HEAD
-    const photo = typeof p.photo_url === "string" && p.photo_url.startsWith("https://") ? p.photo_url : null;
-    const prChip = p.prs > 0 ? (
-      <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 text-[11.5px] font-bold text-accent-fg">
-        <NavIcon d={TROPHY} className="h-3.5 w-3.5 [stroke-width:2.2]" />
-        {p.prs === 1 ? s.prOne : fill(s.prMany, { count: p.prs })}
-      </span>
-    ) : null;
-
-    // With a photo, the picture is the post: the session is written on it
-    // behind a scrim that is opaque at the bottom and clear at the top, so
-    // white text reads on any photo and the picture is never dimmed where
-    // nothing sits on it.
-    if (photo) {
-      return (
-        <PhotoMedia
-          urls={[photo]}
-          alt={fill(s.photoAlt, { name: post.author_name })}
-          overlay={
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-5 pb-4 pt-16 text-white">
-              <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-white/70">
-                <NavIcon d={DUMBBELL} className="h-3.5 w-3.5" />
-                {s.workoutDone}
-              </span>
-              <p className="mt-1 truncate font-display text-[24px] font-extrabold leading-tight tracking-tight">{p.name}</p>
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] font-semibold tabular-nums text-white/85">
-                {dur ? <span>{dur}</span> : null}
-                <span>{fill(s.volume, { kg: f.n(p.volume_kg) })}</span>
-                <span>{fill(s.setsCount, { count: p.sets })}</span>
-                <span className="flex items-center gap-1">
-                  <NavIcon d={FLAME} className="h-3.5 w-3.5" />
-                  {fill(s.trainingLoad, { load: p.load })}
-                </span>
-                {prChip}
-              </p>
-            </div>
-          }
-        />
-      );
-    }
-
-    return (
-      <MediaFrame
-        tone="tile"
-        eyebrow={
-          <div className="min-w-0">
-            <BlockLabel icon={DUMBBELL} tone="text-tile-accent">{s.workoutDone}</BlockLabel>
-            <p className={`mt-1.5 truncate ${title}`}>{p.name}</p>
-          </div>
-        }
-      >
-        <div className={`grid gap-3 ${dur ? "grid-cols-2 min-[400px]:grid-cols-4" : "grid-cols-3"}`}>
-=======
     const photo = postPhotoOf(p);
     const stats = (
       <>
         <div className={`grid gap-3 ${dur ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
           {dur ? <Stat value={dur} label={s.statDuration} /> : null}
           <Stat value={f.n(p.volume_kg)} unit="kg" label={s.statVolume} />
           <Stat value={f.n(p.sets)} label={s.statSets} />
@@ -359,11 +215,13 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
           <span className="h-[5px] min-w-0 flex-1 overflow-hidden rounded-full bg-tile-line" aria-hidden>
             <span className="block h-full rounded-full bg-tile-accent" style={{ width: `${p.load}%` }} />
           </span>
-          {prChip}
+          {p.prs > 0 ? (
+            <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-tile-accent px-2.5 text-[11.5px] font-bold text-tile">
+              <NavIcon d={TROPHY} className="h-3.5 w-3.5 [stroke-width:2.2]" />
+              {p.prs === 1 ? s.prOne : fill(s.prMany, { count: p.prs })}
+            </span>
+          ) : null}
         </div>
-<<<<<<< HEAD
-      </MediaFrame>
-=======
       </>
     );
 
@@ -408,36 +266,42 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
           {stats}
         </div>
       </div>
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
     );
   }
 
+  // The gold tiles: a record, a finished challenge, a streak milestone.
+  const gold = "mx-3 rounded-2xl bg-accent px-5 pb-5 pt-4 text-accent-fg";
+  const label = "text-accent-fg/70";
+  const hero = "mt-2 font-display text-[44px] font-black leading-none tracking-tight tabular-nums sm:text-[48px]";
   if (p.kind === "pr") {
     return (
-      <MediaFrame tone="gold" eyebrow={<BlockLabel icon={TROPHY} tone={onGold}>{s.newPr}</BlockLabel>}>
+      <div className={gold}>
+        <BlockLabel icon={TROPHY} tone={label}>{s.newPr}</BlockLabel>
         <p className={hero}>
           {f.n(p.weight_kg)}
           <span className="ml-1 font-sans text-[17px] font-semibold opacity-70">kg</span>
-          <span className="ml-2.5 font-sans text-[22px] font-bold opacity-80">× {p.reps}</span>
+          <span className="ml-2.5 font-sans text-[21px] font-bold opacity-80">× {p.reps}</span>
         </p>
-        <p className="mt-3 text-[16px] font-semibold">{p.exercise}</p>
+        <p className="mt-2.5 text-[15px] font-semibold">{p.exercise}</p>
         <p className="mt-0.5 text-[12.5px] opacity-70">{s.personalBest}</p>
-      </MediaFrame>
+      </div>
     );
   }
   if (p.kind === "challenge_completed") {
     return (
-      <MediaFrame tone="gold" eyebrow={<BlockLabel icon={TROPHY} tone={onGold}>{s.challengeCompleted}</BlockLabel>}>
-        <p className={title}>{locale === "ro" ? p.title_ro : p.title_en}</p>
-        <p className="mt-2 text-[15px] font-semibold tabular-nums opacity-80">
+      <div className={gold}>
+        <BlockLabel icon={TROPHY} tone={label}>{s.challengeCompleted}</BlockLabel>
+        <p className="mt-2 font-display text-[26px] font-extrabold leading-tight tracking-tight">{locale === "ro" ? p.title_ro : p.title_en}</p>
+        <p className="mt-1.5 text-[15px] font-semibold tabular-nums opacity-80">
           {f.n(p.value)} / {f.n(p.target)} {t.common.challenges.unit[p.type as keyof typeof t.common.challenges.unit] ?? ""}
         </p>
-      </MediaFrame>
+      </div>
     );
   }
-  // Everything on a shared routine comes from the snapshot taken when it was
-  // posted, so editing the routine afterwards never rewrites the post — only
-  // the link leads to today's version.
+  // A shared routine. Not gold: the gold tiles are things somebody achieved,
+  // and a program is an invitation to train, not a result. Everything on it
+  // comes from the snapshot taken when it was posted, so editing the routine
+  // afterwards never rewrites the post — only the link leads to today's version.
   if (p.kind === "program") {
     const r = t.clientApp.routines;
     const facts = [
@@ -450,16 +314,15 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
     return (
       <Link
         href={`/routines/${p.program_id}`}
-        className="block transition-colors hover:bg-accent-soft/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        className="mx-3 block rounded-2xl bg-bg px-5 pb-5 pt-4 transition hover:bg-accent-soft/40"
       >
-        <MediaFrame tone="plain" eyebrow={<BlockLabel icon={DUMBBELL} tone="text-ink-faint">{r.sharedRoutine}</BlockLabel>}>
-          <p className={title}>{p.name}</p>
-          {p.description ? <p className="mt-1.5 line-clamp-2 text-[13.5px] text-ink-soft">{p.description}</p> : null}
-          <p className="mt-2.5 text-[12.5px] tabular-nums text-ink-faint">{facts.join(" · ")}</p>
-          {p.muscle_groups.length > 0 ? (
-            <p className="mt-1 text-[12px] text-ink-faint">{p.muscle_groups.join(" · ")}</p>
-          ) : null}
-        </MediaFrame>
+        <BlockLabel icon={DUMBBELL} tone="text-ink-faint">{r.sharedRoutine}</BlockLabel>
+        <p className="mt-2 font-display text-[22px] font-extrabold leading-tight tracking-tight">{p.name}</p>
+        {p.description ? <p className="mt-1.5 text-[13px] text-ink-soft">{p.description}</p> : null}
+        <p className="mt-2 text-[12.5px] tabular-nums text-ink-faint">{facts.join(" · ")}</p>
+        {p.muscle_groups.length > 0 ? (
+          <p className="mt-1 text-[12px] text-ink-faint">{p.muscle_groups.join(" · ")}</p>
+        ) : null}
       </Link>
     );
   }
@@ -467,150 +330,49 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
   // the catalog when it was posted, never from the browser.
   if (p.kind === "achievement") {
     return (
-      <MediaFrame tone="gold" eyebrow={<BlockLabel icon={TROPHY} tone={onGold}>{s.achievementPost}</BlockLabel>}>
-        <span className="grid h-16 w-16 place-items-center rounded-full bg-accent-fg/15">
-          <BadgeGlyph icon={p.icon} className="h-8 w-8 [stroke-width:2]" />
-        </span>
-        <p className={`mt-3.5 ${title}`}>{(locale === "ro" ? p.name_ro : p.name_en) ?? p.badge_slug}</p>
+      <div className={gold}>
+        <BlockLabel icon={TROPHY} tone={label}>{s.achievementPost}</BlockLabel>
+        <div className="mt-3 flex items-center gap-3.5">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-accent-fg/15">
+            <BadgeGlyph icon={p.icon} className="h-7 w-7 [stroke-width:2]" />
+          </span>
+          <p className="min-w-0 font-display text-[26px] font-extrabold leading-tight tracking-tight">
+            {(locale === "ro" ? p.name_ro : p.name_en) ?? p.badge_slug}
+          </p>
+        </div>
         {/* Rarity as the catalog had it when shared; older posts carry none. */}
         {isAchievementRarity(p.rarity) ? (
-          <p className="mt-2 text-[11px] font-bold uppercase tracking-wider opacity-75">
+          <p className="mt-2.5 text-[11px] font-bold uppercase tracking-wider opacity-75">
             {t.common.achievements.rarities[p.rarity]}
           </p>
         ) : null}
-      </MediaFrame>
+      </div>
     );
   }
   // A Fitness Score milestone: the score and the milestone it passed. Nothing
   // about the sessions behind it is in the snapshot, so nothing is shown.
   if (p.kind === "fitness_score") {
     return (
-      <MediaFrame tone="gold" eyebrow={<BlockLabel icon={TREND} tone={onGold}>{s.fitnessScorePost}</BlockLabel>}>
+      <div className={gold}>
+        <BlockLabel icon={TREND} tone={label}>{s.fitnessScorePost}</BlockLabel>
         <p className={hero}>
           {p.score}
           <span className="ml-1.5 font-sans text-[17px] font-semibold opacity-70">/ 100</span>
         </p>
-        <p className="mt-3 text-[16px] font-semibold">{fill(s.fitnessScoreReached, { milestone: p.milestone })}</p>
-      </MediaFrame>
+        <p className="mt-2.5 text-[15px] font-semibold">{fill(s.fitnessScoreReached, { milestone: p.milestone })}</p>
+      </div>
     );
   }
   if (p.kind !== "streak") return null;
   return (
-    <MediaFrame tone="gold" eyebrow={<BlockLabel icon={FLAME} tone={onGold}>{t.common.streaks.title}</BlockLabel>}>
+    <div className={gold}>
+      <BlockLabel icon={FLAME} tone={label}>{t.common.streaks.title}</BlockLabel>
       <p className={hero}>
         {p.milestone}
         <span className="ml-2 font-sans text-[17px] font-semibold opacity-70">{t.common.streaks.days}</span>
       </p>
-      <p className="mt-3 text-[16px] font-semibold">{fill(t.common.streaks.milestoneTitle, { count: p.milestone })}</p>
+      <p className="mt-2.5 text-[15px] font-semibold">{fill(t.common.streaks.milestoneTitle, { count: p.milestone })}</p>
       <p className="mt-0.5 text-[12.5px] opacity-70">{fill(t.common.streaks.postBody, { count: p.streak_days })}</p>
-    </MediaFrame>
-  );
-}
-
-// ---------- kudos state ----------
-
-/**
- * One post's Kudos, shared by the flame in the action row and the double tap
- * on the media, so both read and move the same state.
- *
- * The flip is optimistic: useOptimistic shows the new state at once and falls
- * back to the server's row when the transition ends, so a failed request rolls
- * back by itself — the only extra work is saying so, quietly. One request at a
- * time: while one is in flight, a second tap or double tap does nothing.
- * The count is always the server's (`kudos_count`, a count(*) in social_feed)
- * moved by one for the viewer's own flip; nothing is counted in the browser.
- */
-function useKudos(post: FeedPost) {
-  const { t } = useI18n();
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  // True only between a give and the end of its pop: an already-given flame
-  // arriving with the page stays still.
-  const [pop, setPop] = useState(false);
-  const s = t.common.social;
-  const [state, flip] = useOptimistic<{ my_kudos: boolean; kudos_count: number }, void>(
-    { my_kudos: post.my_kudos, kudos_count: post.kudos_count },
-    (cur) => toggleKudosState(cur),
-  );
-
-  function send(giving: boolean) {
-    setError(null);
-    setPop(giving);
-    startTransition(async () => {
-      flip();
-      const r = await toggleKudos(post.id);
-      if (!r.ok) {
-        setError(r.message ?? s.kudosError);
-        return; // no refresh: the optimistic state drops back to the row as it was
-      }
-      // The card thought "not given" but the server had it (another tab), so
-      // this toggle took it away. A give must never do that: put it back.
-      if (giving && giveNeedsUndo(r)) await toggleKudos(post.id);
-      router.refresh();
-    });
-  }
-
-  return {
-    given: state.my_kudos,
-    count: state.kudos_count,
-    pending,
-    error,
-    pop,
-    clearPop: () => setPop(false),
-    /** The flame: give or take back. */
-    toggle: () => {
-      if (pending || post.mine) return;
-      send(!state.my_kudos);
-    },
-    /** The double tap: only ever gives. */
-    give: () => {
-      if (!doubleTapGives({ mine: post.mine, given: state.my_kudos, pending })) return;
-      send(true);
-    },
-  };
-}
-
-type KudosApi = ReturnType<typeof useKudos>;
-
-/**
- * Double tap on the media gives Kudos, with a flame that swells and fades
- * over it. Timed by hand from pointer events rather than `dblclick`, which
- * phones do not fire reliably; `touch-action: manipulation` stops the browser
- * reading the same gesture as zoom. The flame button is the same action for
- * anyone who cannot or does not double tap.
- */
-function DoubleTapMedia({ onDoubleTap, children }: { onDoubleTap: () => void; children: React.ReactNode }) {
-  const last = useRef<{ t: number; x: number; y: number } | null>(null);
-  // Bumped per double tap so the burst restarts even mid-animation.
-  const [burst, setBurst] = useState(0);
-  return (
-    <div
-      className="relative select-none [touch-action:manipulation]"
-      onPointerUp={(e) => {
-        if (e.button !== 0) return;
-        const next = { t: e.timeStamp, x: e.clientX, y: e.clientY };
-        if (isDoubleTap(last.current, next)) {
-          last.current = null;
-          setBurst((b) => b + 1);
-          onDoubleTap();
-        } else {
-          last.current = next;
-        }
-      }}
-    >
-      {children}
-      {burst > 0 ? (
-        <span
-          key={burst}
-          aria-hidden
-          onAnimationEnd={() => setBurst(0)}
-          className="kudos-burst pointer-events-none absolute inset-0 grid place-items-center"
-        >
-          {/* Gold fill, dark rim: legible on a photo, the cream tile and the gold one alike. */}
-          <NavIcon d={FLAME} className="h-24 w-24 text-accent-fg [&>path]:fill-accent" />
-        </span>
-      ) : null}
     </div>
   );
 }
@@ -618,29 +380,6 @@ function DoubleTapMedia({ onDoubleTap, children }: { onDoubleTap: () => void; ch
 // ---------- the card ----------
 
 /**
-<<<<<<< HEAD
- * One post, in the order the big feeds taught everyone to read:
- *
- *   header   avatar · name · what it is · who can see it          •••
- *   media    photo or snapshot; double tap gives Kudos
- *   actions  flame · comment                     (share · save: later)
- *   count    "12 Kudos"
- *   caption  name, then the text; #tags set apart, @mentions linked
- *   comments "View all 4 comments"
- *   time     "2h ago"
- *
- * A post with no media — plain text, a progress update — puts its words where
- * the media would be, larger, since there they are the post.
- *
- * What is deliberately not here, because nothing behind it exists yet: a coach
- * badge (social_feed does not return the author's role), Share and Save
- * buttons, a comment preview (the feed carries only the count), and Report or
- * Mute in someone else's menu. Deleted posts never reach the card —
- * social_feed and social_post both filter them.
- *
- * `bleed` is for the feed column: on a phone the card loses its edges and
- * runs to the screen's, and gets them back from `sm`.
-=======
  * The reactions on one post. `press` is a button: the same one again takes
  * the reaction back, the other one replaces it (applyReaction mirrors
  * social_react). The state is local and moves at once; the server action
@@ -728,11 +467,11 @@ function DoubleTap({ onDouble, burst }: { onDouble: () => void; burst: { type: R
  * line under it. The comment icon opens the thread right there, box focused
  * — one tap to comment, not three. The detail page adds the delete control
  * for own posts and keeps the thread below the card instead.
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
  */
-export function PostCard({ post, detail = false, bleed = false, removeOnUnsave = false }: {
+export function PostCard({ post, detail = false, removeOnUnsave = false }: {
   post: FeedPost;
   detail?: boolean;
+  /** The feed column passes it; the card keeps one shape everywhere. */
   bleed?: boolean;
   /** On /saved: unsaving takes the card away at once, and brings it back if the request fails. */
   removeOnUnsave?: boolean;
@@ -741,112 +480,16 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
   const f = useSocialFormat();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const kudos = useKudos(post);
-  const save = useSave(post);
   const s = t.common.social;
   const p = post.payload;
-<<<<<<< HEAD
-  const media = hasMedia(post);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(post.text ?? "");
-  const [editError, setEditError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const [removed, setRemoved] = useState(false);
-
-  if (removed) return null;
-  if (removeOnUnsave && !save.saved) return null;
-
-  const profile = `/people/${post.user_id}`;
-  const nameLink = (
-    <Link href={profile} className={`${SOCIAL.text.name} break-words hover:text-accent-ink`}>
-      {post.author_name}
-    </Link>
-  );
-  // Plain text posts need no kind; everything else says what it is.
-  const kind = post.type === "text" ? null : s.postKind[post.type];
-  // Folding is decided from the text, so server and browser agree and the
-  // card never renders open and then snaps shut. The post's page shows all.
-  const folded = !detail && !expanded && !editing && captionFolds(post.text);
-
-  // Only the caption is editable: the media is the snapshot, and the database
-  // refuses any other column (column-level update grant).
-  const editForm = (
-    <form
-      className="px-4 pt-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        setEditError(null);
-        startTransition(async () => {
-          const r = await editPost(post.id, draft);
-          if (!r.ok) {
-            setEditError(r.message ?? s.textInvalid);
-            return;
-          }
-          setEditing(false);
-          router.refresh();
-        });
-      }}
-    >
-      <textarea
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value.slice(0, POST_TEXT_MAX))}
-        maxLength={POST_TEXT_MAX}
-        rows={3}
-        aria-label={s.editPost}
-        className="w-full resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
-      />
-      <div className="mt-2 flex items-center justify-end gap-2">
-        <span className="mr-auto text-[11px] tabular-nums text-ink-faint">{draft.length}/{POST_TEXT_MAX}</span>
-        <button
-          type="button"
-          onClick={() => { setEditing(false); setEditError(null); }}
-          className="h-10 rounded-xl px-3.5 text-[13px] font-semibold text-ink-faint hover:bg-bg hover:text-ink"
-        >
-          {s.cancelEdit}
-        </button>
-        <button
-          type="submit"
-          // A text post needs words; a workout or badge may lose its caption.
-          disabled={pending || (post.type === "text" && draft.trim().length === 0)}
-          className="h-10 rounded-xl bg-accent px-4 font-display text-[13px] font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
-        >
-          {s.saveEdit}
-        </button>
-      </div>
-    </form>
-  );
-
-  const words = (className: string, lead?: React.ReactNode) =>
-    post.text ? (
-      <>
-        {/* Handles are links only where a social_post_mentions row says so;
-            everything else is a text node, never markup. */}
-        <MentionText
-          text={post.text}
-          mentions={post.mentions ?? []}
-          lead={lead}
-          hashtags
-          className={`whitespace-pre-wrap break-words px-4 ${className} ${folded ? "line-clamp-2" : ""}`}
-        />
-        {captionFolds(post.text) && !detail && !editing ? (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={!folded}
-            className={`mx-4 mt-0.5 rounded ${SOCIAL.text.secondary} text-ink-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-accent`}
-          >
-            {folded ? s.showMore : s.showLess}
-          </button>
-        ) : null}
-      </>
-    ) : null;
-=======
   const caption = p !== null; // text under a tile, a photo or an eyebrow reads as a caption; alone it is the post
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(post.text ?? "");
   const [editError, setEditError] = useState<string | null>(null);
   const reactions = useReactions(post);
+  const save = useSave(post);
+  const [sharing, setSharing] = useState(false);
+  const [removed, setRemoved] = useState(false);
   const photo = postPhotoOf(p);
   const overlayStats = useOverlayStats(p?.kind === "workout" ? p : null);
   const [story, setStory] = useState<"idle" | "busy" | "ready" | "shared" | "failed">("idle");
@@ -872,38 +515,32 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
     }
   }
 
+  if (removed) return null;
+  if (removeOnUnsave && !save.saved) return null;
+
   const splash = post.mine ? null : (
     <DoubleTap onDouble={() => reactions.press("kudos", { onlyGive: true })} burst={reactions.burst} />
   );
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
 
   return (
-    <article
-      className={`bg-surface pb-3.5 ${
-        bleed ? "sm:rounded-2xl sm:border sm:border-line" : "rounded-2xl border border-line"
-      }`}
-    >
-      <header className="flex items-center gap-3 py-2.5 pl-4 pr-1.5">
-        {/* The name link below is the one keyboard stop for the profile; the
-            avatar is the same link for a thumb or a mouse. */}
-        <Link href={profile} className="shrink-0 rounded-full" tabIndex={-1} aria-hidden>
-          <Avatar name={post.author_name} url={post.author_avatar} size={SOCIAL.avatar.post} />
+    <article className="rounded-3xl bg-surface pb-2.5">
+      <div className="flex items-center gap-3 px-5 pb-3.5 pt-4">
+        <Link href={`/people/${post.user_id}`} className="shrink-0">
+          <Avatar name={post.author_name} url={post.author_avatar} size="h-11 w-11" />
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="truncate">{nameLink}</p>
-          <p className={`mt-0.5 flex min-w-0 items-center gap-1 ${SOCIAL.text.meta}`}>
-            {kind ? (
-              <>
-                <span className="truncate">{kind}</span>
-                <span aria-hidden>·</span>
-              </>
-            ) : null}
-            <NavIcon d={VIS_ICON[post.visibility]} className="h-3 w-3" />
-            <span className="shrink-0">{s.visibility[post.visibility]}</span>
+          <Link href={`/people/${post.user_id}`} className="block truncate text-[15px] font-semibold leading-tight hover:text-accent-ink">
+            {post.author_name}
+          </Link>
+          <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-faint">
+            <span>{f.when(post.created_at)}</span>
+            <span aria-hidden>·</span>
+            <NavIcon d={VIS_ICON[post.visibility]} className="h-[13px] w-[13px]" />
+            <span>{s.visibility[post.visibility]}</span>
             {post.edited_at ? (
               <>
                 <span aria-hidden>·</span>
-                <span className="shrink-0">{s.edited}</span>
+                <span>{s.edited}</span>
               </>
             ) : null}
           </p>
@@ -916,21 +553,6 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
               setEditError(null);
               setEditing(true);
             }}
-<<<<<<< HEAD
-            onDelete={() =>
-              startTransition(async () => {
-                setEditError(null);
-                const r = await deletePost(post.id);
-                if (!r.ok) {
-                  setEditError(r.message ?? s.notFound);
-                  return;
-                }
-                if (detail) router.push("/feed");
-                else setRemoved(true);
-                router.refresh();
-              })
-            }
-=======
             // Delete from the feed too, behind a confirmation: the menu is
             // one tap from the caption, and a post is not something to lose to
             // a slip. From the post's own page the deletion leads back to the feed.
@@ -944,7 +566,6 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
             }}
             onStory={photo && photo.width && photo.height ? downloadStory : undefined}
             storyBusy={story === "busy"}
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
           />
         ) : !post.mine ? (
           // Someone else's post: Mute / Block / Report. A blocked author's posts
@@ -959,48 +580,10 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
             // it leaves the feed but stays on the author's own profile.
             onChanged={(what) => { if (what === "blocked") setRemoved(true); }}
           />
-        ) : (
-          // Keeps the header one height whether or not the menu is there.
-          <span className="h-11 w-1 shrink-0" aria-hidden />
-        )}
-      </header>
+        ) : null}
+      </div>
 
-<<<<<<< HEAD
-      {media ? (
-        // A share shows its original (links inside, so no double tap); a
-        // shared routine is a link too: a double tap would be two taps on it.
-        post.type === "shared_post" ? (
-          <SharedEmbed post={post} />
-        ) : post.mine || p?.kind === "program" ? (
-          <PostMedia post={post} />
-        ) : (
-          <DoubleTapMedia onDoubleTap={kudos.give}>
-            <PostMedia post={post} />
-          </DoubleTapMedia>
-        )
-      ) : (
-        // No media: the words take its place.
-        <div className="pb-1">
-          {p?.kind === "progress" ? (
-            <div className="px-4 pb-1.5">
-              <BlockLabel icon={TREND}>{s.progressUpdate}</BlockLabel>
-            </div>
-          ) : null}
-          {editing ? editForm : words(SOCIAL.text.body)}
-          {p?.kind === "progress" && typeof p.weight_kg === "number" ? (
-            <p className="mt-1.5 px-4 text-[12.5px] tabular-nums text-ink-faint">{f.n(p.weight_kg)} kg</p>
-          ) : null}
-        </div>
-      )}
-
-      <ActionBar
-        post={post}
-        kudos={kudos}
-        save={save}
-        comment={
-          // Same place either way: the post's own page, where the thread is.
-=======
-      <PostMedia post={post} splash={splash} />
+      {post.type === "shared_post" ? <SharedEmbed post={post} /> : <PostMedia post={post} splash={splash} />}
       {story === "ready" || story === "shared" || story === "failed" ? (
         <p role="status" className={`mt-2 px-5 text-[12px] ${story === "failed" ? "text-risk" : "text-accent-ink"}`}>
           {story === "failed" ? s.storyFailed : story === "shared" ? s.storyShared : s.storyReady}
@@ -1076,34 +659,12 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
         post={post}
         reactions={reactions}
         comments={
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
           detail ? (
-            <a href="#comments" aria-label={s.commentAction} title={s.commentAction} className={`${SOCIAL.iconButton} text-ink hover:text-ink-soft`}>
-              <NavIcon d={COMMENT} className={SOCIAL.icon} />
-            </a>
+            <span className="inline-flex h-10 items-center gap-2 px-2.5 font-semibold text-ink-soft">
+              <NavIcon d={COMMENT} className="h-[22px] w-[22px]" />
+              <span className="text-[14px] tabular-nums">{post.comment_count}</span>
+            </span>
           ) : (
-<<<<<<< HEAD
-            <Link href={`/feed/${post.id}`} aria-label={s.commentAction} title={s.commentAction} className={`${SOCIAL.iconButton} text-ink hover:text-ink-soft`}>
-              <NavIcon d={COMMENT} className={SOCIAL.icon} />
-            </Link>
-          )
-        }
-      />
-
-      {media ? (editing ? editForm : <div className="mt-1">{words(SOCIAL.text.caption, <>{nameLink} </>)}</div>) : null}
-      {editError ? <p role="status" className="mt-1.5 px-4 text-xs text-risk">{editError}</p> : null}
-
-      {/* The post's own page shows the whole thread instead. */}
-      {!detail ? <CommentPreview postId={post.id} total={post.comment_count} items={post.comment_preview} /> : null}
-
-      <p className="mt-2 px-4">
-        {/* Computed once from the clock; the server's render and the
-            browser's can straddle a minute, which is not worth a mismatch. */}
-        <time dateTime={post.created_at} title={f.at(post.created_at)} suppressHydrationWarning className={SOCIAL.text.time}>
-          {f.when(post.created_at)}
-        </time>
-      </p>
-=======
             <button
               type="button"
               onClick={() => setCommentsOpen((v) => !v)}
@@ -1118,25 +679,45 @@ export function PostCard({ post, detail = false, bleed = false, removeOnUnsave =
             </button>
           )
         }
+        extra={
+          <>
+            <button
+              type="button"
+              onClick={() => setSharing(true)}
+              aria-label={s.share}
+              aria-haspopup="dialog"
+              title={s.share}
+              className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-bg hover:text-ink"
+            >
+              <NavIcon d={SEND} className="h-[22px] w-[22px] -translate-y-px" />
+            </button>
+            <button
+              type="button"
+              onClick={save.toggle}
+              aria-pressed={save.saved}
+              aria-busy={save.pending}
+              aria-label={save.saved ? s.unsave : s.save}
+              title={save.saved ? s.unsave : s.save}
+              className="ml-auto inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-bg hover:text-ink"
+            >
+              <NavIcon d={BOOKMARK} className={`h-[22px] w-[22px] ${save.saved ? "[&>path]:fill-current" : ""}`} />
+            </button>
+          </>
+        }
       />
+      {save.error ? <p role="status" className="mt-1 px-5 text-[11px] text-risk">{s.saveError}</p> : null}
+      {sharing ? <ShareSheet post={post} onClose={() => setSharing(false)} /> : null}
       {commentsOpen && !detail ? (
         <InlineComments postId={post.id} onPosted={() => setCommentCount((n) => n + 1)} />
+      ) : !detail ? (
+        // Closed: the newest comments, so a thread is visible before it is opened.
+        <CommentPreview postId={post.id} total={commentCount} items={post.comment_preview} />
       ) : null}
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
     </article>
   );
 }
 
 /**
-<<<<<<< HEAD
- * The "…" menu on your own post: edit the caption, or delete. Delete asks
- * twice — the second tap is the confirmation — because it cannot be undone
- * from here. Closes on an outside click or Escape; not a modal, so it traps
- * nothing. Nobody else's post has a menu: there is no Report, Mute or Block
- * behind one yet, and a menu of things that do nothing is worse than none.
- */
-function PostMenu({ pending, onEdit, onDelete }: { pending: boolean; onEdit: () => void; onDelete: () => void }) {
-=======
  * The thread under a feed card, opened by the comment icon: the first page
  * of comments (with replies), fetched when it opens, and the box already
  * focused — the icon was tapped to write. A post reloads the page of
@@ -1180,19 +761,14 @@ function PostMenu({ pending, onEdit, onDelete, onStory, storyBusy = false }: {
   onStory?: () => void;
   storyBusy?: boolean;
 }) {
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
   const { t } = useI18n();
   const s = t.common.social;
   const [open, setOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const canShare = useCanShareFiles();
 
   useEffect(() => {
-    if (!open) {
-      setConfirming(false);
-      return;
-    }
+    if (!open) return;
     const onDown = (e: MouseEvent) => {
       if (!box.current?.contains(e.target as Node)) setOpen(false);
     };
@@ -1207,7 +783,7 @@ function PostMenu({ pending, onEdit, onDelete, onStory, storyBusy = false }: {
     };
   }, [open]);
 
-  const item = "flex min-h-11 w-full items-center rounded-xl px-3 text-left text-[13px] font-semibold disabled:opacity-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
+  const item = "flex w-full items-center rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold disabled:opacity-50";
   return (
     <div ref={box} className="relative shrink-0">
       <button
@@ -1216,32 +792,17 @@ function PostMenu({ pending, onEdit, onDelete, onStory, storyBusy = false }: {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`${SOCIAL.iconButton} text-ink-faint hover:bg-bg hover:text-ink`}
+        className="grid h-10 w-10 place-items-center rounded-full text-ink-faint hover:bg-bg hover:text-ink"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
           <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
         </svg>
       </button>
       {open ? (
-        <div role="menu" className="absolute right-1 top-[calc(100%+4px)] z-20 w-52 rounded-2xl border border-line bg-surface p-1 shadow-lg">
+        <div role="menu" className="absolute right-0 top-[calc(100%+4px)] z-20 w-44 rounded-2xl border border-line bg-surface p-1 shadow-lg">
           <button type="button" role="menuitem" onClick={() => { setOpen(false); onEdit(); }} className={`${item} text-ink hover:bg-bg`}>
             {s.editPost}
           </button>
-<<<<<<< HEAD
-          <button
-            type="button"
-            role="menuitem"
-            disabled={pending}
-            onClick={() => {
-              if (!confirming) { setConfirming(true); return; }
-              setOpen(false);
-              onDelete();
-            }}
-            className={`${item} text-risk hover:bg-risk-soft ${confirming ? "bg-risk-soft" : ""}`}
-          >
-            {confirming ? s.deleteConfirm : s.deletePost}
-          </button>
-=======
           {onStory ? (
             <button type="button" role="menuitem" disabled={storyBusy} onClick={() => { setOpen(false); onStory(); }} className={`${item} text-ink hover:bg-bg`}>
               {storyBusy ? t.common.actions.loading : canShare ? s.shareStory : s.downloadStory}
@@ -1258,220 +819,8 @@ function PostMenu({ pending, onEdit, onDelete, onStory, storyBusy = false }: {
               {s.deletePost}
             </button>
           ) : null}
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
         </div>
       ) : null}
-    </div>
-  );
-}
-
-<<<<<<< HEAD
-// ---------- the action bar ----------
-
-/**
- * Kudos · Comment · Share on the left, Save on the right, and the count under
- * them. Icons only in the row, every button the same 44px square whatever its
- * state, and the count on its own line — always present ("No Kudos yet" when
- * there are none) — so nothing in the row or below it moves when a state
- * changes. No share or save counts: neither is a public number.
- */
-function ActionBar({ post, kudos, save, comment }: { post: FeedPost; kudos: KudosApi; save: SaveApi; comment: React.ReactNode }) {
-  const { t } = useI18n();
-  const f = useSocialFormat();
-  const [listOpen, setListOpen] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const s = t.common.social;
-
-  const flame = (on: boolean) => (
-    <span className={kudos.pop ? "kudos-pop" : undefined} onAnimationEnd={kudos.clearPop}>
-      <NavIcon d={FLAME} className={`${SOCIAL.icon} ${on ? "[&>path]:fill-current" : ""}`} />
-    </span>
-  );
-
-  return (
-    <div className="px-1.5 pt-1">
-      <div className="flex items-center">
-        {post.mine ? (
-          // Own post: the flame cannot be given, so it opens the list instead.
-          <button
-            type="button"
-            onClick={() => setListOpen(true)}
-            disabled={kudos.count === 0}
-            aria-label={fill(s.kudosCount, { count: kudos.count })}
-            title={s.seeKudos}
-            className={`${SOCIAL.iconButton} text-ink enabled:hover:text-ink-soft disabled:text-ink-faint`}
-          >
-            {flame(false)}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={kudos.toggle}
-            aria-pressed={kudos.given}
-            aria-busy={kudos.pending}
-            aria-label={kudos.given ? s.removeKudos : s.kudos}
-            title={kudos.given ? s.removeKudos : s.kudos}
-            className={`${SOCIAL.iconButton} transition-colors ${kudos.given ? "text-accent" : "text-ink hover:text-ink-soft"}`}
-          >
-            {flame(kudos.given)}
-          </button>
-        )}
-        {comment}
-        <button
-          type="button"
-          onClick={() => setSharing(true)}
-          aria-label={s.share}
-          aria-haspopup="dialog"
-          title={s.share}
-          className={`${SOCIAL.iconButton} text-ink hover:text-ink-soft`}
-        >
-          <NavIcon d={SEND} className={`${SOCIAL.icon} -translate-y-px`} />
-=======
-// ---------- reactions ----------
-
-/** The gold sparks that fly out of a button when a reaction is given. */
-function Sparks({ at }: { at: number }) {
-  return (
-    <span key={at} className="reaction-burst" aria-hidden>
-      {Array.from({ length: 8 }, (_, i) => (
-        <i key={i} style={{ "--angle": `${i * 45}deg` } as React.CSSProperties} />
-      ))}
-    </span>
-  );
-}
-
-/**
- * The action row: the arm and the peach, each with its count, then the
- * comments control the card passes in; under it the "Norbert, Maria and 3
- * others reacted" line, which opens the list of who pressed what. The state
- * is the card's (useReactions), so a double-tap on the photo and a press on
- * the row are the same flip.
- */
-function Reactions({ post, reactions, comments }: {
-  post: FeedPost;
-  reactions: ReturnType<typeof useReactions>;
-  comments: React.ReactNode;
-}) {
-  const { t } = useI18n();
-  const [listOpen, setListOpen] = useState(false);
-  // Which press has finished popping, so the class comes off and the next
-  // press restarts the animation without remounting the picture (a remount blinks).
-  const [popped, setPopped] = useState<string | null>(null);
-  const s = t.common.social;
-  const { state, press, error, burst } = reactions;
-  const total = state.kudos_count + state.love_count;
-
-  // The names travel with the row; when the viewer's own press is in flight
-  // the count moves but the names do not — kudosSummary keeps them consistent.
-  const summary = kudosSummary(total, post.kudos_names);
-  const line = (() => {
-    const { first, second, others } = summary;
-    if (first === null) return null;
-    if (second === null) {
-      if (others === 0) return fill(s.kudosByOne, { name: first });
-      if (others === 1) return fill(s.kudosByOneAndOne, { name: first });
-      return fill(s.kudosByOneAndOthers, { name: first, others });
-    }
-    if (others === 0) return fill(s.kudosByTwo, { name: first, second });
-    if (others === 1) return fill(s.kudosByThree, { name: first, second });
-    return fill(s.kudosBy, { name: first, second, others });
-  })();
-
-  const openList = () => { if (total > 0) setListOpen(true); };
-
-  const button = (type: ReactionType) => {
-    const count = type === "kudos" ? state.kudos_count : state.love_count;
-    const on = state.my_reaction === type;
-    const popKey = burst ? `${burst.at}:${burst.type}` : null;
-    const popping = burst?.type === type && popped !== popKey;
-    const countEl = <span className="text-[14px] tabular-nums">{count}</span>;
-    if (post.mine) {
-      // Own post: nothing to give, so the pill opens the list instead.
-      return (
-        <button
-          type="button"
-          onClick={openList}
-          disabled={total === 0}
-          aria-label={`${s.reactionLabel[type]}: ${count}`}
-          title={s.seeReactions}
-          className="inline-flex h-10 items-center gap-1.5 rounded-full px-2.5 font-semibold text-ink-soft enabled:cursor-pointer enabled:hover:bg-bg enabled:hover:text-ink"
-        >
-          <ReactionIcon type={type} className="h-[26px] w-[26px]" muted={count === 0} />
-          {countEl}
-        </button>
-      );
-    }
-    return (
-      <button
-        type="button"
-        onClick={() => press(type)}
-        aria-pressed={on}
-        aria-label={on ? s.removeReaction : s.giveReaction[type]}
-        title={s.giveReaction[type]}
-        className={`relative inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full px-2.5 font-semibold transition-colors ${
-          on ? "bg-accent-soft text-accent-ink" : "text-ink-soft hover:bg-bg hover:text-ink"
-        }`}
-      >
-        <span className="relative grid place-items-center">
-          <span
-            className={`grid place-items-center ${popping ? "reaction-pop" : ""}`}
-            onAnimationEnd={(e) => { if (e.animationName === "reaction-pop") setPopped(popKey); }}
-          >
-            <ReactionIcon type={type} className="h-[26px] w-[26px]" muted={!on} />
-          </span>
-          {popping ? <Sparks at={burst!.at} /> : null}
-        </span>
-        {countEl}
-      </button>
-    );
-  };
-
-  return (
-    <div className="mt-3 px-3">
-      <div className="flex items-center gap-0.5">
-        {button("kudos")}
-        {button("love")}
-        {comments}
-      </div>
-      {line ? (
-        <button
-          type="button"
-          onClick={openList}
-          className="mt-0.5 block max-w-full cursor-pointer truncate px-2.5 text-left text-[13px] text-ink-soft hover:text-ink"
-        >
-          {fill(summary.second === null && summary.others === 0 ? s.reactionsFromOne : s.reactionsFrom, { names: line })}
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
-        </button>
-        <button
-          type="button"
-          onClick={save.toggle}
-          aria-pressed={save.saved}
-          aria-busy={save.pending}
-          aria-label={save.saved ? s.unsave : s.save}
-          title={save.saved ? s.unsave : s.save}
-          className={`${SOCIAL.iconButton} ml-auto text-ink hover:text-ink-soft`}
-        >
-          <NavIcon d={BOOKMARK} className={`${SOCIAL.icon} ${save.saved ? "[&>path]:fill-current" : ""}`} />
-        </button>
-      </div>
-      <div className="px-2.5">
-        {kudos.count > 0 ? (
-          <button
-            type="button"
-            onClick={() => setListOpen(true)}
-            title={s.seeKudos}
-            className={`${SOCIAL.text.count} rounded hover:text-ink-soft focus-visible:outline-2 focus-visible:outline-accent`}
-          >
-            {fill(s.kudosCount, { count: f.n(kudos.count) })}
-          </button>
-        ) : (
-          <p className={`${SOCIAL.text.count} font-normal text-ink-faint`}>{s.noKudosYet}</p>
-        )}
-      </div>
-      {kudos.error ? <p role="status" className="mt-1 px-2.5 text-[11px] text-risk">{kudos.error}</p> : null}
-      {save.error ? <p role="status" className="mt-1 px-2.5 text-[11px] text-risk">{s.saveError}</p> : null}
-      {listOpen ? <KudosDialog postId={post.id} onClose={() => setListOpen(false)} /> : null}
-      {sharing ? <ShareSheet post={post} onClose={() => setSharing(false)} /> : null}
     </div>
   );
 }
@@ -1689,7 +1038,7 @@ function SharedEmbed({ post }: { post: FeedPost }) {
   }
   // The original, in the shape PostMedia reads; none of its counts are shown here.
   const inner: FeedPost = {
-    ...o, activity_id: null, challenge_id: null, kudos_count: 0, comment_count: 0, my_kudos: false,
+    ...o, activity_id: null, challenge_id: null, kudos_count: 0, love_count: 0, comment_count: 0, my_reaction: null,
     kudos_names: [], edited_at: null, mine: false, saved: false, shared: null, comment_preview: [], author_muted: false,
   };
   return (
@@ -1705,7 +1054,7 @@ function SharedEmbed({ post }: { post: FeedPost }) {
           {o.type !== "text" ? <span className={`ml-2 ${SOCIAL.text.meta}`}>{s.postKind[o.type]}</span> : null}
         </span>
       </Link>
-      {hasMedia(inner) ? <PostMedia post={inner} /> : null}
+      <PostMedia post={inner} splash={null} />
       {o.text ? (
         <MentionText
           text={o.text}
@@ -1714,6 +1063,130 @@ function SharedEmbed({ post }: { post: FeedPost }) {
           className="line-clamp-4 whitespace-pre-wrap break-words px-3.5 py-2.5 text-[14px] leading-[1.45]"
         />
       ) : null}
+    </div>
+  );
+}
+
+// ---------- reactions ----------
+
+/** The gold sparks that fly out of a button when a reaction is given. */
+function Sparks({ at }: { at: number }) {
+  return (
+    <span key={at} className="reaction-burst" aria-hidden>
+      {Array.from({ length: 8 }, (_, i) => (
+        <i key={i} style={{ "--angle": `${i * 45}deg` } as React.CSSProperties} />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * The action row: the arm and the peach, each with its count, then the
+ * comments control the card passes in; under it the "Norbert, Maria and 3
+ * others reacted" line, which opens the list of who pressed what. The state
+ * is the card's (useReactions), so a double-tap on the photo and a press on
+ * the row are the same flip.
+ */
+function Reactions({ post, reactions, comments, extra }: {
+  post: FeedPost;
+  reactions: ReturnType<typeof useReactions>;
+  comments: React.ReactNode;
+  /** Share and Save, after the comments control. */
+  extra?: React.ReactNode;
+}) {
+  const { t } = useI18n();
+  const [listOpen, setListOpen] = useState(false);
+  // Which press has finished popping, so the class comes off and the next
+  // press restarts the animation without remounting the picture (a remount blinks).
+  const [popped, setPopped] = useState<string | null>(null);
+  const s = t.common.social;
+  const { state, press, error, burst } = reactions;
+  const total = state.kudos_count + state.love_count;
+
+  // The names travel with the row; when the viewer's own press is in flight
+  // the count moves but the names do not — kudosSummary keeps them consistent.
+  const summary = kudosSummary(total, post.kudos_names);
+  const line = (() => {
+    const { first, second, others } = summary;
+    if (first === null) return null;
+    if (second === null) {
+      if (others === 0) return fill(s.kudosByOne, { name: first });
+      if (others === 1) return fill(s.kudosByOneAndOne, { name: first });
+      return fill(s.kudosByOneAndOthers, { name: first, others });
+    }
+    if (others === 0) return fill(s.kudosByTwo, { name: first, second });
+    if (others === 1) return fill(s.kudosByThree, { name: first, second });
+    return fill(s.kudosBy, { name: first, second, others });
+  })();
+
+  const openList = () => { if (total > 0) setListOpen(true); };
+
+  const button = (type: ReactionType) => {
+    const count = type === "kudos" ? state.kudos_count : state.love_count;
+    const on = state.my_reaction === type;
+    const popKey = burst ? `${burst.at}:${burst.type}` : null;
+    const popping = burst?.type === type && popped !== popKey;
+    const countEl = <span className="text-[14px] tabular-nums">{count}</span>;
+    if (post.mine) {
+      // Own post: nothing to give, so the pill opens the list instead.
+      return (
+        <button
+          type="button"
+          onClick={openList}
+          disabled={total === 0}
+          aria-label={`${s.reactionLabel[type]}: ${count}`}
+          title={s.seeReactions}
+          className="inline-flex h-10 items-center gap-1.5 rounded-full px-2.5 font-semibold text-ink-soft enabled:cursor-pointer enabled:hover:bg-bg enabled:hover:text-ink"
+        >
+          <ReactionIcon type={type} className="h-[26px] w-[26px]" muted={count === 0} />
+          {countEl}
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => press(type)}
+        aria-pressed={on}
+        aria-label={on ? s.removeReaction : s.giveReaction[type]}
+        title={s.giveReaction[type]}
+        className={`relative inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full px-2.5 font-semibold transition-colors ${
+          on ? "bg-accent-soft text-accent-ink" : "text-ink-soft hover:bg-bg hover:text-ink"
+        }`}
+      >
+        <span className="relative grid place-items-center">
+          <span
+            className={`grid place-items-center ${popping ? "reaction-pop" : ""}`}
+            onAnimationEnd={(e) => { if (e.animationName === "reaction-pop") setPopped(popKey); }}
+          >
+            <ReactionIcon type={type} className="h-[26px] w-[26px]" muted={!on} />
+          </span>
+          {popping ? <Sparks at={burst!.at} /> : null}
+        </span>
+        {countEl}
+      </button>
+    );
+  };
+
+  return (
+    <div className="mt-3 px-3">
+      <div className="flex items-center gap-0.5">
+        {button("kudos")}
+        {button("love")}
+        {comments}
+        {extra}
+      </div>
+      {line ? (
+        <button
+          type="button"
+          onClick={openList}
+          className="mt-0.5 block max-w-full cursor-pointer truncate px-2.5 text-left text-[13px] text-ink-soft hover:text-ink"
+        >
+          {fill(summary.second === null && summary.others === 0 ? s.reactionsFromOne : s.reactionsFrom, { names: line })}
+        </button>
+      ) : null}
+      {error ? <p role="status" className="mt-1 px-2.5 text-[11px] text-risk">{error}</p> : null}
+      {listOpen ? <KudosDialog postId={post.id} onClose={() => setListOpen(false)} /> : null}
     </div>
   );
 }
@@ -2062,8 +1535,6 @@ export function FollowButton({ userId, following, followsMe = false, compact = f
 // ---------- share panel (workout done) ----------
 
 /** An uploaded post photo as the browser holds it: Cloudinary's handle, the pixel size it sent, a preview. */
-export type PostPhoto = { publicId: string; version: number; width: number; height: number; previewUrl: string };
-
 function photoInput(photo: PostPhoto | null, overlay: PhotoOverlay | null): PostPhotoInput | null {
   return photo ? { publicId: photo.publicId, version: photo.version, width: photo.width, height: photo.height, overlay } : null;
 }
@@ -2384,3 +1855,4 @@ function PhotoPicker({ photo, onChange, disabled }: {
     </div>
   );
 }
+

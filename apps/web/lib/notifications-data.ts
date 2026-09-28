@@ -98,21 +98,46 @@ export async function getNotificationPage(
     actor_id: string | null; actor_name: string | null; actor_username: string | null; actor_avatar: string | null;
   };
   const rows = (data ?? []) as FeedRow[];
-  const items = rows.slice(0, limit).map((n) => toRow(n, {
+  const page = rows.slice(0, limit);
+  const posts = await notificationPosts(supabase, page);
+  const items = page.map((n) => toRow(n, {
     body: n.snippet,
     actor: n.actor_id && n.actor_name
       ? { id: n.actor_id, name: n.actor_name, username: n.actor_username, avatar_url: n.actor_avatar }
       : null,
+    posts,
   }));
   const last = items[items.length - 1];
   return { items, next_cursor: rows.length > limit && last ? `${last.created_at}|${last.id}` : null };
 }
 
+type Supabase = NonNullable<Awaited<ReturnType<typeof liveUser>>>["supabase"];
+
+/**
+ * The posts the rows point at, for the thumbnail. They are the reader's own
+ * (a reaction, a comment or a mention on your post) or ones you may see (a
+ * mention in a comment), so posts_select answers directly — one query for
+ * the page, never one per card.
+ */
+async function notificationPosts(
+  supabase: Supabase,
+  page: { payload: Record<string, unknown> | null }[],
+): Promise<Map<string, NotificationRow["post"]>> {
+  const posts = new Map<string, NotificationRow["post"]>();
+  const postIds = [...new Set(page.map((n) => notificationPostId(n.payload)).filter((id): id is string => Boolean(id)))];
+  if (postIds.length === 0) return posts;
+  type Post = { id: string; type: string; text: string | null; payload: PostPayload | null };
+  const { data } = await supabase.from("social_posts").select("id, type, text, payload").in("id", postIds).is("deleted_at", null);
+  for (const p of ((data ?? []) as Post[])) posts.set(p.id, { id: p.id, type: p.type, label: postLabel(p), photo_url: postPhotoOf(p.payload)?.url ?? null });
+  return posts;
+}
+
 /** One notification row as the card wants it. */
 function toRow(
   n: { id: string; category: string; title: string; payload: Record<string, unknown> | null; created_at: string; read_at: string | null },
-  extra: { body: string | null; actor: NotificationRow["actor"] },
+  extra: { body: string | null; actor: NotificationRow["actor"]; posts: Map<string, NotificationRow["post"]> },
 ): NotificationRow {
+  const postId = notificationPostId(n.payload);
   return {
     id: n.id,
     category: n.category,
@@ -127,6 +152,7 @@ function toRow(
       ? { en: n.payload.name_en, ro: typeof n.payload.name_ro === "string" ? n.payload.name_ro : n.payload.name_en }
       : null,
     challenge: n.category === "challenge_milestone" ? challengeNotice(n.payload) : null,
+    post: postId ? extra.posts.get(postId) ?? null : null,
   };
 }
 
@@ -171,48 +197,19 @@ async function legacyNotificationPage(
   const actorIds = [...new Set(page.map((n) => notificationActorId(n.payload)).filter((id): id is string => Boolean(id)))];
   type Actor = { id: string; name: string; username: string | null; avatar_url: string | null };
   const actors = new Map<string, Actor>();
-  // The posts the rows point at are the reader's own (a reaction, a comment
-  // or a mention on your post) or ones you may see (a mention in a comment),
-  // so posts_select answers directly. Same wave as the actors.
-  const postIds = [...new Set(page.map((n) => notificationPostId(n.payload)).filter((id): id is string => Boolean(id)))];
-  type Post = { id: string; type: string; text: string | null; payload: PostPayload | null };
-  const posts = new Map<string, NotificationRow["post"]>();
-  await Promise.all([
+  // The post thumbnails go in the same wave as the actors.
+  const [posts] = await Promise.all([
+    notificationPosts(supabase, page),
     (async () => {
       if (actorIds.length === 0) return;
       const { data: people } = await supabase.rpc("notification_actors", { p_ids: actorIds });
       for (const person of ((people ?? []) as Actor[])) actors.set(person.id, person);
     })(),
-    (async () => {
-      if (postIds.length === 0) return;
-      const { data: rows } = await supabase.from("social_posts").select("id, type, text, payload").in("id", postIds).is("deleted_at", null);
-      for (const p of ((rows ?? []) as Post[])) posts.set(p.id, { id: p.id, type: p.type, label: postLabel(p), photo_url: postPhotoOf(p.payload)?.url ?? null });
-    })(),
   ]);
 
   const items = page.map((n) => {
     const actorId = notificationActorId(n.payload);
-<<<<<<< HEAD
-    return toRow(n, { body: n.body, actor: actorId ? actors.get(actorId) ?? null : null });
-=======
-    const postId = notificationPostId(n.payload);
-    return {
-      id: n.id,
-      category: n.category,
-      sentence: notificationSentence(n.category, n.payload),
-      title: n.title,
-      body: n.body,
-      href: notificationHref(n.category, n.payload),
-      created_at: n.created_at,
-      read: n.read_at !== null,
-      actor: actorId ? actors.get(actorId) ?? null : null,
-      badge: typeof n.payload?.name_en === "string"
-        ? { en: n.payload.name_en, ro: typeof n.payload.name_ro === "string" ? n.payload.name_ro : n.payload.name_en }
-        : null,
-      challenge: n.category === "challenge_milestone" ? challengeNotice(n.payload) : null,
-      post: postId ? posts.get(postId) ?? null : null,
-    };
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
+    return toRow(n, { body: n.body, actor: actorId ? actors.get(actorId) ?? null : null, posts });
   });
   const last = items[items.length - 1];
   return { items, next_cursor: rows.length > limit && last ? `${last.created_at}|${last.id}` : null };

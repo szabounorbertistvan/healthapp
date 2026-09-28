@@ -505,7 +505,6 @@ body::before {
   }
 }
 
-<<<<<<< HEAD
 /* ==========================================================================
    Social — the feed's few shared pieces that utilities cannot say on their
    own. Everything else (sizes, type scale, gaps) is class strings in
@@ -626,7 +625,9 @@ body::before {
     .sheet-enter[open] {
       animation: none;
     }
-=======
+  }
+}
+
 /* ---------- reactions ----------
    The press: the icon jumps and settles, a ring of gold sparks flies out.
    The double-tap on a photo: the icon blooms in the middle and fades.
@@ -687,6 +688,5 @@ body::before {
   .reaction-splash {
     animation: none;
     opacity: 0;
->>>>>>> 715e1ffed24a8b9e8701057f295ef5652cb0bdde
   }
 }

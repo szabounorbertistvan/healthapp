@@ -17,8 +17,8 @@ const row = (over: Partial<HeadlineInput>): HeadlineInput => ({
 describe("notificationHeadline — EN and RO, from the category and the actor", () => {
   it("names the actor on social rows", () => {
     const kudos = row({ sentence: "new_kudos", actor: { name: "alex" } });
-    expect(notificationHeadline(kudos, strings("en"), "en")).toBe("alex gave Kudos to your post");
-    expect(notificationHeadline(kudos, strings("ro"), "ro")).toBe("alex a dat Kudos postării tale");
+    expect(notificationHeadline(kudos, strings("en"), "en")).toBe("alex reacted to your post");
+    expect(notificationHeadline(kudos, strings("ro"), "ro")).toBe("alex a reacționat la postarea ta");
     expect(notificationHeadline(row({ sentence: "new_follower", actor: { name: "alex" } }), strings("ro"), "ro"))
       .toBe("alex te urmărește acum");
     expect(notificationHeadline(row({ sentence: "comment_reply", actor: { name: "maria" } }), strings("en"), "en"))
