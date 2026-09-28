@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { PLAN_PRICES, TRIAL_DAYS } from "@healthapp/shared";
 import { getProfile } from "@/lib/data";
-import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { APP_NAME, APP_TAGLINE, CONTACT_EMAIL } from "@/lib/brand";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 import { LanguageSelector } from "@/components/language-selector";
@@ -199,6 +199,7 @@ export default async function LandingPage() {
         <p className="flex flex-wrap gap-x-4 gap-y-1">
           <Link href="/privacy" className="hover:text-ink">{t.common.legal.privacy}</Link>
           <Link href="/terms" className="hover:text-ink">{t.common.legal.terms}</Link>
+          <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-ink">{CONTACT_EMAIL}</a>
           <span>{t.common.legal.foodData}</span>
         </p>
       </footer>

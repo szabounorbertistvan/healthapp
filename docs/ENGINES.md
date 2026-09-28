@@ -132,14 +132,28 @@ scales the long edge to 1600 and uploads a JPEG; the post stores `photo_w` /
 unchanged.
 
 **The overlay is fractions, not pixels.** Everything placed on a photo — the
-workout's figures as a small grid, one line of free text — is stored as a
-centre in 0..1 of the photo's width and height plus a size (s/m/l), and every
-font on it is a fraction of the photo's width (`cqw` in the DOM, `× width` on
-the canvas). So the 360px phone card, the 680px desktop card and the story
-export show the same thing. `normalizePhotoOverlay` is the last word on the
-server: clamped, known keys only, text cleaned and capped at 80; anything
-malformed is "no overlay", never an error. A workout post from before overlays
-existed keeps its bottom gradient with the name and headline numbers.
+workout's figures, one line of free text — is stored as a centre in 0..1 of
+the photo's width and height, a `scale` multiplier (0.5–2; posts from before
+the handle stored "s"/"m"/"l" and read as 0.82/1/1.24) and a `style`, and
+every font on it is a fraction of the photo's width (`cqw` in the DOM,
+`× width` on the canvas). So the 360px phone card, the 680px desktop card and
+the story export show the same thing. `normalizePhotoOverlay` is the last
+word on the server: clamped, known keys and styles only, text cleaned and
+capped at 80; anything malformed is "no overlay", never an error. A workout
+post from before overlays existed keeps its bottom gradient with the name and
+headline numbers.
+
+**The overlay behaves like Instagram stickers.** In the editor
+(`PhotoOverlayEditor`, `useSticker`): drag moves an element; its gold corner
+handle resizes it continuously; a tap on the figures cycles their style
+(grid · row · column · hero) and a tap on the text opens it for editing in
+place (`InlineTextEditor`, bound to the same state as the panel's field).
+The text's style (plain · pill · gold) cycles from the ↻ button in the panel,
+which also carries the figures' ↻ and S/M/L presets. After any change to an
+element's box it is measured and pushed back inside the photo. The figures'
+cells come from one pure function, `layoutStats(n, style, scale)` in
+lib/photo-overlay.ts, which both `StatsBlock` (DOM) and `paintStats` (canvas)
+draw from, so no style can look different in the story than on the card.
 
 **A photo is a post.** A text or progress post needs words only when it has
 no picture (`validatePostEdit(type, text, hasPhoto)`); with one, the caption
@@ -156,7 +170,7 @@ unless the author already placed the figures on the photo, which then stay
 where they were put (and the name moves to the top if they reach the bottom
 area). Everything the author placed is mapped through the crop and kept inside
 the frame (`placeInFrame`); a text or progress post gets the picture, its text
-and the mark only. Mocks of the alternatives (card on a brand gradient, card on
+and the mark only; the mark carries the tagline right under it, set like the logo's. Mocks of the alternatives (card on a brand gradient, card on
 the photo's own colours) were rejected on 2026-09-28 in favour of this. The
 canvas needs the Cloudinary copy (CORS), so it works once the upload has
 finished — before or after the post goes out.

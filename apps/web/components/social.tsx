@@ -14,7 +14,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { parseDay } from "@/lib/week";
 import { durationLabel } from "@/lib/share-card";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { preparePhoto } from "@/lib/image-prepare";
 import type { OverlayStatValues } from "@/lib/photo-overlay";
 import { renderPhotoStory, storyFileName } from "@/lib/photo-story";
@@ -523,7 +523,7 @@ export function PostCard({ post, detail = false, removeOnUnsave = false }: {
     setStory("busy");
     try {
       const blob = await renderPhotoStory({
-        photoUrl: photo.url, width: photo.width, height: photo.height, overlay: photo.overlay, stats: overlayStats, brand: APP_NAME,
+        photoUrl: photo.url, width: photo.width, height: photo.height, overlay: photo.overlay, stats: overlayStats, brand: APP_NAME, tagline: APP_TAGLINE,
         workout: p?.kind === "workout" ? { kicker: s.workoutPost, name: p.name, date: f.day(p.date) } : null,
       });
       const date = p?.kind === "workout" ? p.date : post.created_at.slice(0, 10);
@@ -1671,7 +1671,7 @@ function StoryDownload({ photo, overlay, stats, title, date }: {
     setStatus("busy");
     try {
       const blob = await renderPhotoStory({
-        photoUrl: photo.previewUrl, width: photo.width, height: photo.height, overlay, stats, brand: APP_NAME,
+        photoUrl: photo.previewUrl, width: photo.width, height: photo.height, overlay, stats, brand: APP_NAME, tagline: APP_TAGLINE,
         workout: { kicker: s.workoutPost, name: title, date: f.day(date) },
       });
       const how = await deliverShareImage(blob, storyFileName(date), title);

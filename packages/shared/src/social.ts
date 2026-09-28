@@ -64,13 +64,46 @@ export function isFeedScope(x: unknown): x is FeedScope {
 export const OVERLAY_STAT_KEYS = ["duration", "volume", "sets", "exercises", "load", "prs"] as const;
 export type OverlayStatKey = (typeof OVERLAY_STAT_KEYS)[number];
 
-/** Three sizes for anything on the photo; the middle one is the default. */
+/**
+ * How large anything on the photo is: a multiplier on its base size, set by
+ * dragging its corner handle (continuous) or one of the three presets.
+ * Posts from before the handle stored a preset name ("s" / "m" / "l"); they
+ * read as the matching multiplier.
+ */
 export const OVERLAY_SIZES = ["s", "m", "l"] as const;
 export type OverlaySize = (typeof OVERLAY_SIZES)[number];
 export const OVERLAY_SCALE: Record<OverlaySize, number> = { s: 0.82, m: 1, l: 1.24 };
+export const OVERLAY_SCALE_MIN = 0.5;
+export const OVERLAY_SCALE_MAX = 2;
+
+/** A multiplier inside the allowed range, to two decimals. */
+export function clampOverlayScale(x: number): number {
+  return Math.round(Math.min(OVERLAY_SCALE_MAX, Math.max(OVERLAY_SCALE_MIN, x)) * 100) / 100;
+}
 
 /** Free text written on the photo — one line of Exo 2, not a caption. */
 export const OVERLAY_TEXT_MAX = 80;
+
+/**
+ * How the workout's figures are laid out on the photo. Tapping the block
+ * cycles through them, the way an Instagram sticker changes its look:
+ *   grid    two columns, label over figure (the default)
+ *   row     one line of figures, centred — the Strava strip
+ *   column  one figure per line, large, its label beside it
+ *   hero    the first figure big, the rest in a small row under it
+ */
+export const OVERLAY_STAT_STYLES = ["grid", "row", "column", "hero"] as const;
+export type OverlayStatStyle = (typeof OVERLAY_STAT_STYLES)[number];
+
+/** How the free text looks: white with a shadow, white on a dark pill, or gold. */
+export const OVERLAY_TEXT_STYLES = ["plain", "pill", "gold"] as const;
+export type OverlayTextStyle = (typeof OVERLAY_TEXT_STYLES)[number];
+
+/** The next style in the cycle, wrapping around — what a tap on the block does. */
+export function nextOverlayStyle<T extends string>(styles: readonly T[], current: T): T {
+  const i = styles.indexOf(current);
+  return styles[(i + 1) % styles.length]!;
+}
 
 /**
  * Everything on a photo is placed by its CENTRE, as a fraction of the photo's
@@ -79,10 +112,10 @@ export const OVERLAY_TEXT_MAX = 80;
  * export — the renderer scales every font with the photo's width.
  */
 export type PhotoOverlay = {
-  /** The workout's figures, as a small grid. Only on a workout post. */
-  stats: { x: number; y: number; keys: OverlayStatKey[]; size: OverlaySize } | null;
+  /** The workout's figures. Only on a workout post. */
+  stats: { x: number; y: number; keys: OverlayStatKey[]; scale: number; style: OverlayStatStyle } | null;
   /** A line the author typed onto the picture. */
-  text: { x: number; y: number; body: string; size: OverlaySize } | null;
+  text: { x: number; y: number; body: string; scale: number; style: OverlayTextStyle } | null;
 };
 
 /**
@@ -105,8 +138,15 @@ function fraction(x: unknown): number | null {
   return Math.min(1, Math.max(0, Math.round(x * 1000) / 1000));
 }
 
-function overlaySize(x: unknown): OverlaySize {
-  return x === "s" || x === "l" ? x : "m";
+/** The stored multiplier, or the legacy preset's, or 1. */
+function overlayScale(scale: unknown, size: unknown): number {
+  if (typeof scale === "number" && Number.isFinite(scale)) return clampOverlayScale(scale);
+  return size === "s" || size === "l" ? OVERLAY_SCALE[size] : 1;
+}
+
+/** A known style, or the first of the list (the default) — posts from before styles existed read as that. */
+function oneOf<T extends string>(styles: readonly T[], x: unknown): T {
+  return (styles as readonly unknown[]).includes(x) ? (x as T) : styles[0]!;
 }
 
 /**
@@ -121,20 +161,20 @@ export function normalizePhotoOverlay(input: unknown, allowStats: boolean): Phot
   const raw = input as { stats?: unknown; text?: unknown };
   let stats: PhotoOverlay["stats"] = null;
   if (allowStats && raw.stats && typeof raw.stats === "object") {
-    const s = raw.stats as { x?: unknown; y?: unknown; keys?: unknown; size?: unknown };
+    const s = raw.stats as { x?: unknown; y?: unknown; keys?: unknown; scale?: unknown; size?: unknown; style?: unknown };
     const x = fraction(s.x);
     const y = fraction(s.y);
     const wanted = Array.isArray(s.keys) ? new Set(s.keys.filter((k): k is OverlayStatKey => (OVERLAY_STAT_KEYS as readonly string[]).includes(k as string))) : null;
     const keys = wanted ? OVERLAY_STAT_KEYS.filter((k) => wanted.has(k)) : [];
-    if (x !== null && y !== null && keys.length > 0) stats = { x, y, keys, size: overlaySize(s.size) };
+    if (x !== null && y !== null && keys.length > 0) stats = { x, y, keys, scale: overlayScale(s.scale, s.size), style: oneOf(OVERLAY_STAT_STYLES, s.style) };
   }
   let text: PhotoOverlay["text"] = null;
   if (raw.text && typeof raw.text === "object") {
-    const t = raw.text as { x?: unknown; y?: unknown; body?: unknown; size?: unknown };
+    const t = raw.text as { x?: unknown; y?: unknown; body?: unknown; scale?: unknown; size?: unknown; style?: unknown };
     const x = fraction(t.x);
     const y = fraction(t.y);
     const body = typeof t.body === "string" ? cleanText(t.body.replace(/\s*\n\s*/g, " "), OVERLAY_TEXT_MAX) : null;
-    if (x !== null && y !== null && body) text = { x, y, body, size: overlaySize(t.size) };
+    if (x !== null && y !== null && body) text = { x, y, body, scale: overlayScale(t.scale, t.size), style: oneOf(OVERLAY_TEXT_STYLES, t.style) };
   }
   if (!stats && !text) return null;
   return { stats, text };

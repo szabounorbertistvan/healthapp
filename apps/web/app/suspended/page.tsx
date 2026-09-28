@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/data";
 import { getI18n } from "@/lib/i18n/server";
 import { Logo } from "@/components/logo";
+import { CONTACT_EMAIL } from "@/lib/brand";
 import { SignOutButton } from "@/components/sign-out-button";
 
 /**
@@ -20,6 +21,7 @@ export default async function SuspendedPage() {
         <div className="flex justify-center"><Logo size="sm" /></div>
         <h1 className="mt-6 font-display text-2xl font-extrabold tracking-tight">{t.admin.suspended.title}</h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-soft">{t.admin.suspended.body}</p>
+        <a href={`mailto:${CONTACT_EMAIL}`} className="mt-2 inline-block text-sm font-semibold text-accent-ink hover:underline">{CONTACT_EMAIL}</a>
         <div className="mt-6 flex justify-center"><SignOutButton /></div>
       </div>
     </main>

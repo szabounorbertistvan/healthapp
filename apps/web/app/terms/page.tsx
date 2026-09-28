@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, CONTACT_EMAIL } from "@/lib/brand";
 import { Logo } from "@/components/logo";
 import { getLocale } from "@/lib/i18n/server";
 import { LanguageSelector } from "@/components/language-selector";
@@ -126,6 +126,14 @@ function EnglishContent() {
             your country of residence.
           </p>
         </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">11. Contact</h2>
+          <p>
+            Questions about these terms or your account:{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-accent-ink hover:underline">{CONTACT_EMAIL}</a>.
+          </p>
+        </section>
       </div>
     </>
   );
@@ -239,6 +247,14 @@ function RomanianContent() {
             Acești termeni sunt guvernați de legile din <b className="text-ink">[jurisdicția —
             de completat înainte de lansare]</b>, fără a afecta protecțiile obligatorii ale
             consumatorilor din țara dumneavoastră de reședință.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">11. Contact</h2>
+          <p>
+            Întrebări despre acești termeni sau despre contul dumneavoastră:{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-accent-ink hover:underline">{CONTACT_EMAIL}</a>.
           </p>
         </section>
       </div>

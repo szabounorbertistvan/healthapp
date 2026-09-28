@@ -7,3 +7,7 @@ export const APP_NAME = "Voinic";
 // Brand line shown under the wordmark and in page titles. Kept in English in
 // both locales on purpose — it is part of the logo, not UI copy.
 export const APP_TAGLINE = "Coach. Plan. Progress.";
+
+// Public contact address, shown on the legal pages and the landing footer.
+// A Namecheap forward to voinicfit@gmail.com — there is no mailbox behind it.
+export const CONTACT_EMAIL = "contact@voinic.fit";

@@ -1,15 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { clampCentre, defaultStatsPlacement, overlayStatRows, overlayStatsBox, wrapLines } from "./photo-overlay";
+import { OVERLAY_STAT_STYLES } from "@healthapp/shared";
+import { clampCentre, defaultStatsPlacement, layoutStats, overlayStatRows, statCellHeight, wrapLines } from "./photo-overlay";
 
 describe("photo overlay geometry", () => {
-  it("one figure is one column; two to six are two", () => {
-    expect(overlayStatsBox(1, "m")).toMatchObject({ cols: 1, rows: 1 });
-    expect(overlayStatsBox(2, "m")).toMatchObject({ cols: 2, rows: 1 });
-    expect(overlayStatsBox(5, "m")).toMatchObject({ cols: 2, rows: 3 });
+  it("the grid is one column for one figure and two for more", () => {
+    expect(layoutStats(1, "grid", 1).cells.map((c) => c.x)).toEqual([0]);
+    const five = layoutStats(5, "grid", 1).cells;
+    expect(new Set(five.map((c) => c.x)).size).toBe(2);
+    expect(new Set(five.map((c) => c.y)).size).toBe(3);
   });
-  it("a larger size is a wider and taller box", () => {
-    expect(overlayStatsBox(4, "l").w).toBeGreaterThan(overlayStatsBox(4, "m").w);
-    expect(overlayStatsBox(4, "s").h).toBeLessThan(overlayStatsBox(4, "m").h);
+  it("row is one line, column is one per line, hero puts the first figure above the rest", () => {
+    expect(new Set(layoutStats(4, "row", 1).cells.map((c) => c.y)).size).toBe(1);
+    expect(new Set(layoutStats(4, "column", 1).cells.map((c) => c.x)).size).toBe(1);
+    const hero = layoutStats(4, "hero", 1).cells;
+    expect(hero[0]!.value).toBeGreaterThan(hero[1]!.value * 2);
+    expect(hero.slice(1).every((c) => c.y > hero[0]!.y + statCellHeight(hero[0]!))).toBe(true);
+  });
+  it("no style, size or count overflows the photo, and no two figures overlap", () => {
+    for (const style of OVERLAY_STAT_STYLES) {
+      for (const size of [0.5, 0.82, 1, 1.24, 2]) {
+        for (let n = 1; n <= 6; n++) {
+          const box = layoutStats(n, style, size);
+          expect(box.w).toBeLessThanOrEqual(0.92 + 1e-9);
+          const rects = box.cells.map((c) => ({ x0: c.x, x1: c.x + c.w, y0: c.y, y1: c.y + statCellHeight(c) }));
+          for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+            const a = rects[i]!, b = rects[j]!;
+            const overlap = a.x0 < b.x1 - 1e-9 && b.x0 < a.x1 - 1e-9 && a.y0 < b.y1 - 1e-9 && b.y0 < a.y1 - 1e-9;
+            expect(overlap, `${style} ${size} n=${n} cells ${i},${j}`).toBe(false);
+          }
+        }
+      }
+    }
+  });
+  it("a larger size is a larger block, until the width cap", () => {
+    expect(layoutStats(4, "grid", 1.24).w).toBeGreaterThan(layoutStats(4, "grid", 1).w);
+    expect(layoutStats(4, "column", 0.82).h).toBeLessThan(layoutStats(4, "column", 1).h);
   });
   it("the centre is clamped so the element stays inside the photo", () => {
     expect(clampCentre(0, 0, 0.2, 0.1)).toEqual({ x: 0.2, y: 0.1 });
@@ -27,7 +52,7 @@ describe("photo overlay geometry", () => {
   });
   it("the rows follow the chosen keys and skip a figure the post cannot supply", () => {
     const rows = overlayStatRows(
-      { x: 0.5, y: 0.5, keys: ["duration", "sets", "prs"], size: "m" },
+      { x: 0.5, y: 0.5, keys: ["duration", "sets", "prs"], scale: 1, style: "grid" },
       { sets: { value: "28", label: "sets" }, prs: { value: "2", label: "PRs" } },
     );
     expect(rows.map((r) => r.key)).toEqual(["sets", "prs"]);

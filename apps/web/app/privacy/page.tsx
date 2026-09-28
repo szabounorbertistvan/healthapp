@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, CONTACT_EMAIL } from "@/lib/brand";
 import { Logo } from "@/components/logo";
 import { getLocale } from "@/lib/i18n/server";
 import { LanguageSelector } from "@/components/language-selector";
@@ -35,7 +35,7 @@ function EnglishContent() {
           <p>
             {APP_NAME} is operated by <b className="text-ink">[operator name and address — fill in before launch]</b>.
             For any privacy question or request, contact{" "}
-            <b className="text-ink">[contact email]</b>.
+            <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-accent-ink hover:underline">{CONTACT_EMAIL}</a>.
           </p>
         </section>
 
@@ -128,7 +128,7 @@ function RomanianContent() {
           <p>
             {APP_NAME} este operat de <b className="text-ink">[numele și adresa operatorului — de completat înainte de lansare]</b>.
             Pentru orice întrebare sau solicitare privind confidențialitatea, contactați{" "}
-            <b className="text-ink">[contact email]</b>.
+            <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-accent-ink hover:underline">{CONTACT_EMAIL}</a>.
           </p>
         </section>
 

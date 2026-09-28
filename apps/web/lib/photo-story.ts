@@ -5,8 +5,8 @@
 // placed on the photo (the figures, a line of text) is painted where they put
 // it — the same fractions as components/photo-overlay.tsx, mapped through
 // the crop and kept inside the visible frame.
-import { OVERLAY_SCALE, type PhotoOverlay } from "@healthapp/shared";
-import { OVERLAY_METRICS as M, overlayColumns, overlayStatRows, overlayStatsBox, wrapLines, type OverlayStatValues } from "./photo-overlay";
+import { type PhotoOverlay } from "@healthapp/shared";
+import { OVERLAY_METRICS as M, PILL_BG, TEXT_GOLD, layoutStats, overlayStatRows, wrapLines, type OverlayStatValues } from "./photo-overlay";
 import { loadShareFonts, loadShareImage, type ShareFonts } from "./share-card-render";
 
 export const STORY_SIZE = { width: 1080, height: 1920 } as const;
@@ -31,6 +31,8 @@ export type PhotoStoryInput = {
   workout: { kicker: string; name: string; date: string } | null;
   /** Drawn as text when the brand PNGs cannot load. */
   brand: string;
+  /** The line under the mark: "Coach. Plan. Progress." */
+  tagline: string;
 };
 
 type Ctx = CanvasRenderingContext2D;
@@ -82,68 +84,122 @@ export function placeInFrame(photo: Rect, fx: number, fy: number, bw: number, bh
 function paintStats(ctx: Ctx, item: NonNullable<PhotoOverlay["stats"]>, stats: OverlayStatValues, photo: Rect, fonts: ShareFonts): Rect | null {
   const rows = overlayStatRows(item, stats);
   if (rows.length === 0) return null;
-  const k = OVERLAY_SCALE[item.size];
+  const box = layoutStats(rows.length, item.style, item.scale);
+  // Lengths are fractions of the photo's width, and the crop made the photo
+  // wider than the frame; a block that would no longer fit is drawn smaller.
   const pw = photo.w;
-  const box = overlayStatsBox(rows.length, item.size);
-  const cols = overlayColumns(rows.length);
-  const bw = box.w * pw;
-  const bh = box.h * pw;
+  const f = Math.min(1, (STORY_SIZE.width - EDGE * 2) / (box.w * pw));
+  const u = pw * f;
+  const bw = box.w * u;
+  const bh = box.h * u;
   const centre = placeInFrame(photo, item.x, item.y, bw, bh);
   const left = centre.x - bw / 2;
   const top = centre.y - bh / 2;
-  const colW = M.statColW * k * pw;
-  const gapX = M.statGapX * k * pw;
-  const gapY = M.statGapY * k * pw;
-  const cellH = box.cell * pw;
-  const labelPx = M.statLabel * k * pw;
-  const valuePx = M.statValue * k * pw;
-  const unitPx = M.statUnit * k * pw;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
   shadowOn(ctx, pw * 0.012);
   rows.forEach(({ stat }, i) => {
-    const c = i % cols;
-    const r = Math.floor(i / cols);
-    const x = left + c * (colW + gapX);
-    const y = top + r * (cellH + gapY);
-    ctx.font = `600 ${labelPx}px ${fonts.body}`;
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    spacing(ctx, labelPx * 0.08);
-    ctx.fillText(stat.label.toUpperCase(), x, y, colW);
-    spacing(ctx, 0);
-    const vy = y + labelPx * 1.2 + M.statLabelGap * k * pw;
-    ctx.font = `800 ${valuePx}px ${fonts.display}`;
-    ctx.fillStyle = "#fff";
-    ctx.fillText(stat.value, x, vy, colW);
-    if (stat.unit) {
-      const vw = ctx.measureText(stat.value).width;
-      ctx.font = `600 ${unitPx}px ${fonts.body}`;
+    const c = box.cells[i]!;
+    const x = left + c.x * u;
+    const y = top + c.y * u;
+    const w = c.w * u;
+    const labelPx = c.label * u;
+    const valuePx = c.value * u;
+    const unitPx = c.unit * u;
+    const label = stat.label.toUpperCase();
+    const setLabel = () => {
+      ctx.font = `600 ${labelPx}px ${fonts.body}`;
       ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.fillText(stat.unit, x + vw + 0.01 * k * pw, vy + (valuePx - unitPx) * 0.82);
+      spacing(ctx, labelPx * 0.08);
+    };
+    const valueWidth = () => {
+      ctx.font = `800 ${valuePx}px ${fonts.display}`;
+      const vw = ctx.measureText(stat.value).width;
+      if (!stat.unit) return vw;
+      ctx.font = `600 ${unitPx}px ${fonts.body}`;
+      return vw + unitPx * 0.35 + ctx.measureText(stat.unit).width;
+    };
+    // The figure and its unit, starting at vx, their tops at vy.
+    const drawValue = (vx: number, vy: number) => {
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.font = `800 ${valuePx}px ${fonts.display}`;
+      ctx.fillStyle = "#fff";
+      ctx.fillText(stat.value, vx, vy, w);
+      if (stat.unit) {
+        const vw = ctx.measureText(stat.value).width;
+        ctx.font = `600 ${unitPx}px ${fonts.body}`;
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.fillText(stat.unit, vx + vw + unitPx * 0.35, vy + (valuePx - unitPx) * 0.82);
+      }
+    };
+    if (c.arrangement === "stack") {
+      setLabel();
+      ctx.textBaseline = "top";
+      ctx.textAlign = c.align;
+      ctx.fillText(label, c.align === "center" ? x + w / 2 : x, y, w);
+      spacing(ctx, 0);
+      const vy = y + labelPx * 1.2 + c.gap * u;
+      const vw = Math.min(w, valueWidth());
+      drawValue(c.align === "center" ? x + (w - vw) / 2 : x, vy);
+    } else {
+      // Figure first, the label after it on the same baseline.
+      drawValue(x, y);
+      const vw = valueWidth();
+      setLabel();
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(label, x + vw + c.gap * u, y + valuePx * 0.86, Math.max(0, w - vw - c.gap * u));
+      spacing(ctx, 0);
     }
   });
   shadowOff(ctx);
   return { x: left, y: top, w: bw, h: bh };
 }
 
+function roundedRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/** The author's line: plain white, gold, or white on a dark pill per wrapped line — as the card draws it. */
 function paintText(ctx: Ctx, item: NonNullable<PhotoOverlay["text"]>, photo: Rect, fonts: ShareFonts) {
-  const k = OVERLAY_SCALE[item.size];
+  const k = item.scale;
   const pw = photo.w;
   const size = M.textSize * k * pw;
+  const pill = item.style === "pill";
   ctx.font = `800 ${size}px ${fonts.display}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillStyle = "#fff";
   // The line wraps to the FRAME's width, not the photo's: the crop took the
   // photo's sides away, and a line as wide as the photo would run off screen.
-  const maxW = Math.min(M.textMaxW * pw, STORY_SIZE.width - EDGE * 2);
+  const padX = pill ? size * M.pillPadX : 0;
+  const maxW = Math.min(M.textMaxW * pw, STORY_SIZE.width - EDGE * 2) - padX * 2;
   const lines = wrapLines(item.body, maxW, (s) => ctx.measureText(s).width);
-  const lineH = size * M.textLineHeight;
+  const lineH = size * (pill ? M.pillLineHeight : M.textLineHeight);
   const blockH = lines.length * lineH;
-  const blockW = Math.max(...lines.map((l) => ctx.measureText(l).width), 0);
+  const blockW = Math.max(...lines.map((l) => ctx.measureText(l).width), 0) + padX * 2;
   const centre = placeInFrame(photo, item.x, item.y, blockW, blockH);
-  let y = centre.y - blockH / 2 + (lineH - size) / 2;
-  shadowOn(ctx, pw * 0.012);
+  const top = centre.y - blockH / 2;
+  if (pill) {
+    // One pill per line, like box-decoration-break on the card: the content
+    // area of the line (1.2 em) plus the padding, centred on the line box.
+    const pillH = size * (1.2 + M.pillPadY * 2);
+    ctx.fillStyle = PILL_BG;
+    lines.forEach((line, i) => {
+      const w = ctx.measureText(line).width + padX * 2;
+      const cy = top + i * lineH + lineH / 2;
+      roundedRect(ctx, centre.x - w / 2, cy - pillH / 2, w, pillH, size * 0.28);
+      ctx.fill();
+    });
+  } else {
+    shadowOn(ctx, pw * 0.012);
+  }
+  ctx.fillStyle = item.style === "gold" ? TEXT_GOLD : "#fff";
+  let y = top + (lineH - size) / 2;
   for (const line of lines) {
     ctx.fillText(line, centre.x, y);
     y += lineH;
@@ -267,13 +323,15 @@ export function paintPhotoStory(
     paintWorkoutBlock(ctx, input, assets.fonts, placed === null, collides ? "top" : "bottom");
   }
 
-  // The mark, lower right.
+  // The mark, lower right, with the tagline under it.
   const markH = 64;
   const wordH = 26;
   const gap = 16;
+  const taglinePx = 22;
   const wordW = Math.round(wordH * (781 / 141));
   const right = W - EDGE - 16;
-  const base = H - EDGE - 10;
+  const taglineBase = H - EDGE - 10;
+  const base = taglineBase - taglinePx - 2;
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
   shadowOn(ctx);
@@ -287,6 +345,33 @@ export function paintPhotoStory(
     ctx.fillStyle = GOLD;
     ctx.fillText(input.brand.toUpperCase(), right, base);
   }
+  // The tagline as the logo sets it: gold small caps, tracked, a rule on each
+  // side. The row is exactly as wide as the mark and wordmark above it: the
+  // rules run from its edges to the text, and the text shrinks if it would
+  // not leave room for them.
+  const blockW = assets.mark && assets.wordmark ? markH + gap + wordW : assets.mark ? markH : wordW;
+  const left = right - blockW;
+  const centre = right - blockW / 2;
+  const ruleGap = 12;
+  const minRule = 14;
+  const label = input.tagline.toUpperCase();
+  ctx.fillStyle = GOLD;
+  ctx.textAlign = "center";
+  let size = taglinePx;
+  let textW = 0;
+  for (;;) {
+    ctx.font = `600 ${size}px ${assets.fonts.display}`;
+    spacing(ctx, size * 0.18);
+    textW = ctx.measureText(label).width;
+    if (textW + 2 * (ruleGap + minRule) <= blockW || size <= 12) break;
+    size -= 1;
+  }
+  ctx.fillText(label, centre, taglineBase);
+  spacing(ctx, 0);
+  const rule = Math.max(minRule, (blockW - textW) / 2 - ruleGap);
+  const ruleY = taglineBase - size * 0.38;
+  ctx.fillRect(left, ruleY, rule, 2);
+  ctx.fillRect(right - rule, ruleY, rule, 2);
   shadowOff(ctx);
 }
 
