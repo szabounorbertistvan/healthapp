@@ -4,7 +4,14 @@
 // here from rows the user owns — the feed never reads their logs later.
 import { revalidatePath } from "next/cache";
 import {
+  POST_MEDIA_MAX,
   POST_VISIBILITIES,
+  isPostMediaPublicId,
+  normalizeMediaItems,
+  normalizePhotoOverlay,
+  storedMediaProblem,
+  type PhotoOverlay,
+  type PostMediaInput,
   STREAK_SHARE_MIN,
   payloadIsSafe,
   extractMentionHandles,
@@ -37,7 +44,10 @@ import {
   type StreakPostPayload,
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
-import { CloudinaryNotConfiguredError, cloudinaryConfigured, postPhotoFolder, postPhotoUrl, signPostPhotoUpload, type PostPhotoUploadTicket } from "@/lib/cloudinary";
+import {
+  CloudinaryNotConfiguredError, cloudinaryConfigured, destroyPostMedia, lookupPostMedia, postPhotoFolder, postPhotoUrl,
+  signPostMediaUpload, signPostPhotoUpload, type PostMediaUploadTicket, type PostPhotoUploadTicket,
+} from "@/lib/cloudinary";
 import { currentActorId } from "@/lib/actor";
 import { supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
@@ -196,21 +206,15 @@ export type PostPhotoInput = {
   overlay?: unknown;
 };
 
-export async function createTextPost(text: string, visibility?: string, photo?: PostPhotoInput | null): Promise<PostResult> {
+export async function createTextPost(text: string, visibility?: string, media?: PostMediaInput[] | null): Promise<PostResult> {
   const { t } = await getI18n();
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
-  const picture = await resolvePostPhoto(uid, photo, false);
-  // A photo is a post on its own; words are optional next to it. Without a
-  // photo the words are the post, so 1–500 of them.
-  const clean = validatePostEdit("text", text, Boolean(picture.photo_url));
+  // A picture is a post on its own; words are optional next to it. Without
+  // one the words are the post, so 1–500 of them.
+  const clean = validatePostEdit("text", text, (media?.length ?? 0) > 0);
   if (!clean.ok) return { ok: false, message: t.common.social.textInvalid };
-  return insertPost({
-    type: "text",
-    text: clean.text,
-    payload: picture.photo_url ? { kind: "text", ...picture } : null,
-    visibility: visibilityOf(visibility),
-  });
+  return insertMediaPost(uid, { type: "text", text: clean.text, payload: null, visibility: visibilityOf(visibility) }, media);
 }
 
 /** A progress post: text, optionally the weight the author typed in, optionally a picture. Never read from measurements. */
@@ -218,18 +222,134 @@ export async function createProgressPost(
   text: string,
   visibility?: string,
   weightKg?: number | null,
-  photo?: PostPhotoInput | null,
+  media?: PostMediaInput[] | null,
 ): Promise<PostResult> {
   const { t } = await getI18n();
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
-  const payload: ProgressPostPayload = { kind: "progress", ...(await resolvePostPhoto(uid, photo, false)) };
-  // Same rule as a text post: the photo alone is enough, otherwise the words are required.
-  const clean = validatePostEdit("text", text, Boolean(payload.photo_url));
+  const payload: ProgressPostPayload = { kind: "progress", ...normalizePostPhoto(null, false) };
+  // Same rule as a text post: a picture alone is enough, otherwise the words are required.
+  const clean = validatePostEdit("text", text, (media?.length ?? 0) > 0);
   if (!clean.ok) return { ok: false, message: t.common.social.textInvalid };
   // Kept as entered, to the two decimals the measurements column holds — never rounded to a whole kilo.
   if (typeof weightKg === "number" && Number.isFinite(weightKg) && weightKg > 0) payload.weight_kg = Math.round(weightKg * 100) / 100;
-  return insertPost({ type: "progress", text: clean.text, payload, visibility: visibilityOf(visibility) });
+  return insertMediaPost(uid, { type: "progress", text: clean.text, payload, visibility: visibilityOf(visibility) }, media);
+}
+
+/**
+ * A text or progress post and its pictures, in one transaction
+ * (social_create_post, security invoker — every policy applies).
+ *
+ * Before it, what Cloudinary actually stored is checked for each picture —
+ * format, bytes and pixel size as Cloudinary decoded them, never as the
+ * browser claimed — and the stored size is what the post records. The
+ * database then checks the rest: each id was issued to this author, is
+ * unused, at most ten. The overlay is kept only on a single-picture post.
+ */
+async function insertMediaPost(
+  uid: string,
+  input: { type: "text" | "progress"; text: string | null; payload: PostPayload; visibility: PostVisibility },
+  media: PostMediaInput[] | null | undefined,
+): Promise<PostResult> {
+  const { t } = await getI18n();
+  const s = t.common.social;
+  if (!payloadIsSafe(input.payload)) return { ok: false, message: "Payload carries private data" };
+  const items = normalizeMediaItems(media ?? [], uid);
+  if (!items) return { ok: false, message: s.mediaPublishFailed };
+  let rows: { public_id: string; width: number; height: number; alt: string | null; overlay: PhotoOverlay | null }[] = [];
+  if (items.length > 0) {
+    if (!cloudinaryConfigured()) return { ok: false, message: s.mediaPublishFailed };
+    let stored: Awaited<ReturnType<typeof lookupPostMedia>>;
+    try {
+      stored = await lookupPostMedia(items.map((i) => i.public_id));
+    } catch (error) {
+      console.error("post media lookup failed:", error);
+      return { ok: false, message: s.mediaPublishFailed };
+    }
+    for (const item of items) {
+      if (storedMediaProblem(stored.get(item.public_id))) return { ok: false, message: s.mediaPublishFailed };
+    }
+    const overlay = items.length === 1 ? normalizePhotoOverlay(media?.[0]?.overlay ?? null, false) : null;
+    rows = items.map((item, i) => {
+      const asset = stored.get(item.public_id)!;
+      return { ...item, width: asset.width!, height: asset.height!, overlay: i === 0 ? overlay : null };
+    });
+  }
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("social_create_post", {
+    p_type: input.type,
+    p_text: input.text,
+    p_visibility: input.visibility,
+    p_payload: input.payload,
+    p_media: rows,
+  });
+  if (error || typeof data !== "string") {
+    if (error) console.error("create post failed:", error.code, error.message);
+    return { ok: false, message: rows.length > 0 ? s.mediaPublishFailed : s.textInvalid };
+  }
+  if (input.text) await writeMentions(supabase, "post", data, input.text);
+  touched();
+  return { ok: true, postId: data };
+}
+
+/**
+ * Permission to upload `count` pictures (1–10): the database issues the
+ * public_ids (social_media_upload_register — at most 60 an hour, active
+ * accounts only) and this signs one Cloudinary upload for each, private and
+ * restricted to jpg / png / webp by Cloudinary itself.
+ *
+ * Also the moment abandoned uploads are cleaned up: anything this person was
+ * issued more than a day ago and never used is deleted from Cloudinary first,
+ * then marked. Best effort — a failure here never blocks the new upload.
+ */
+export async function requestPostMediaUploads(count: number): Promise<ActionResult & { tickets?: PostMediaUploadTicket[] }> {
+  const { t } = await getI18n();
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  if (!Number.isInteger(count) || count < 1 || count > POST_MEDIA_MAX) return { ok: false, message: t.common.social.photoFailed };
+  if (!cloudinaryConfigured()) return { ok: false, message: t.common.social.photoFailed };
+  const supabase = await supabaseServer();
+  await discardUploads(supabase, null);
+  const { data, error } = await supabase.rpc("social_media_upload_register", { p_count: count });
+  if (error || !Array.isArray(data)) {
+    if (error) console.error("upload register failed:", error.code, error.message);
+    return { ok: false, message: error?.code === "54000" ? t.common.social.mediaTooMany : t.common.social.photoFailed };
+  }
+  try {
+    return { ok: true, tickets: (data as string[]).map((publicId) => signPostMediaUpload(uid, publicId)) };
+  } catch (error) {
+    if (error instanceof CloudinaryNotConfiguredError) console.error(error.message);
+    else console.error("upload signing failed:", error);
+    return { ok: false, message: t.common.social.photoFailed };
+  }
+}
+
+/**
+ * Throw away uploads the composer no longer needs (a removed picture, a
+ * closed composer). Only this person's own, never-used uploads: anything
+ * else named here is ignored.
+ */
+export async function discardPostMedia(publicIds: string[]): Promise<ActionResult> {
+  const uid = await currentActorId();
+  if (!uid) return notSignedIn;
+  const ids = Array.isArray(publicIds) ? publicIds.filter((id) => isPostMediaPublicId(id, uid)).slice(0, 100) : [];
+  if (ids.length === 0) return { ok: true };
+  await discardUploads(await supabaseServer(), ids);
+  return { ok: true };
+}
+
+/** Delete the assets first, then mark the rows — so a failed delete is retried by the next sweep. */
+async function discardUploads(supabase: Supabase, ids: string[] | null): Promise<void> {
+  if (!cloudinaryConfigured()) return;
+  try {
+    const { data } = await supabase.rpc("social_media_discardable", { p_ids: ids });
+    const doomed = Array.isArray(data) ? (data as string[]) : [];
+    if (doomed.length === 0) return;
+    await destroyPostMedia(doomed);
+    await supabase.rpc("social_media_mark_discarded", { p_ids: doomed });
+  } catch (error) {
+    console.error("discarding uploads failed:", error);
+  }
 }
 
 /**
@@ -385,7 +505,12 @@ export async function editPost(postId: string, text: string): Promise<ActionResu
     .maybeSingle();
   if (!post) return { ok: false, message: t.common.social.postNotFound };
 
-  const edit = validatePostEdit(post.type as PostType, text, postPhotoOf((post.payload ?? null) as PostPayload) !== null);
+  const { count: pictures } = await supabase
+    .from("social_post_media")
+    .select("id", { count: "exact", head: true })
+    .eq("post_id", postId);
+  const hasPhoto = postPhotoOf((post.payload ?? null) as PostPayload) !== null || (pictures ?? 0) > 0;
+  const edit = validatePostEdit(post.type as PostType, text, hasPhoto);
   if (!edit.ok) return { ok: false, message: t.common.social.textInvalid };
   const clean = edit.text;
 

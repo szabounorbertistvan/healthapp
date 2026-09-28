@@ -1,6 +1,7 @@
 import "server-only";
 import { postPhotoOf, type PostPayload } from "@healthapp/shared";
 import { liveUser } from "./supabase/server";
+import { cloudinaryConfigured, postMediaUrl } from "./cloudinary";
 import {
   challengeNotice, notificationActorId, notificationHref, notificationPostId, notificationSentence, parseNotificationCursor,
   type NotificationSentence,
@@ -126,9 +127,23 @@ async function notificationPosts(
   const posts = new Map<string, NotificationRow["post"]>();
   const postIds = [...new Set(page.map((n) => notificationPostId(n.payload)).filter((id): id is string => Boolean(id)))];
   if (postIds.length === 0) return posts;
-  type Post = { id: string; type: string; text: string | null; payload: PostPayload | null };
-  const { data } = await supabase.from("social_posts").select("id, type, text, payload").in("id", postIds).is("deleted_at", null);
-  for (const p of ((data ?? []) as Post[])) posts.set(p.id, { id: p.id, type: p.type, label: postLabel(p), photo_url: postPhotoOf(p.payload)?.url ?? null });
+  type Post = {
+    id: string; type: string; text: string | null; payload: PostPayload | null;
+    // The first picture, embedded in the same request (social_post_media's
+    // own policy: only a post the reader may see).
+    social_post_media?: { public_id: string; position: number }[] | null;
+  };
+  const { data } = await supabase
+    .from("social_posts")
+    .select("id, type, text, payload, social_post_media(public_id, position)")
+    .in("id", postIds)
+    .is("deleted_at", null)
+    .eq("social_post_media.position", 0);
+  for (const p of ((data ?? []) as Post[])) {
+    const first = p.social_post_media?.[0];
+    const photo = postPhotoOf(p.payload)?.url ?? (first && cloudinaryConfigured() ? postMediaUrl(first.public_id, "thumb") : null);
+    posts.set(p.id, { id: p.id, type: p.type, label: postLabel(p), photo_url: photo });
+  }
   return posts;
 }
 

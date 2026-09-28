@@ -18,6 +18,7 @@ import type {
   CommentPage, CommentThread, FeedPage, FeedPost, KudosGiver, KudosPage, MutualFollowers,
   CommentPreviewItem, PersonRow, PostComment, ProfileBadge, ShareableSession, SharedOriginal, SocialPrivacy, SocialProfile,
 } from "./types";
+import { toMediaItems } from "./post-media-data";
 import type { FeedScope } from "@healthapp/shared";
 
 // ---------- feed ----------
@@ -74,12 +75,14 @@ export async function getPost(id: string): Promise<{ post: FeedPost; comments: C
  * wants it. `saved` and `shared` default when absent, so the page keeps
  * working against a database that has not had 20261005100000 yet.
  */
-type FeedRow = Omit<FeedPost, "mine" | "payload" | "mentions" | "saved" | "shared" | "comment_preview" | "author_muted"> & {
+type FeedRow = Omit<FeedPost, "mine" | "payload" | "mentions" | "saved" | "shared" | "comment_preview" | "author_muted" | "media"> & {
   payload: PostPayload | null;
   author_username: string | null;
   mentions: RawMention[] | null;
   saved?: boolean | null;
-  shared?: (Omit<SharedOriginal, "mentions"> & { mentions: RawMention[] | null }) | null;
+  shared?: (Omit<SharedOriginal, "mentions" | "media"> & { mentions: RawMention[] | null; media?: unknown }) | null;
+  /** Absent on a database without 20261016100000: no pictures, never an error. */
+  media?: unknown;
   comment_preview?: (Omit<CommentPreviewItem, "mentions"> & { mentions: RawMention[] | null })[] | null;
   author_muted?: boolean | null;
 };
@@ -92,10 +95,13 @@ function toFeedPost(r: FeedRow, viewer: string): FeedPost {
     edited_at: r.edited_at ?? null,
     mine: r.user_id === viewer,
     saved: r.saved ?? false,
-    shared: r.shared ? { ...r.shared, payload: r.shared.payload ?? null, mentions: resolvedMentions(r.shared.mentions) } : null,
+    shared: r.shared
+      ? { ...r.shared, payload: r.shared.payload ?? null, mentions: resolvedMentions(r.shared.mentions), media: toMediaItems(r.shared.media) }
+      : null,
     // Absent (social_post, or a database without 20261006100000): no preview, never an error.
     comment_preview: (r.comment_preview ?? []).map((c) => ({ ...c, mentions: resolvedMentions(c.mentions) })),
     author_muted: r.author_muted ?? false,
+    media: toMediaItems(r.media),
   };
 }
 

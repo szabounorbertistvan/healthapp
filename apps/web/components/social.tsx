@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useOptimistic, useReducer, useRef, useState, useTransition } from "react";
 import type { PhotoOverlay, PostVisibility, ReactionType } from "@healthapp/shared";
-import { applyReaction, displayToKg, followButtonState, isAchievementRarity, kudosSummary, postPhotoOf, POST_TEXT_MAX, type ReactionState } from "@healthapp/shared";
+import { applyReaction, displayToKg, followButtonState, isAchievementRarity, kudosSummary, postPhotoOf, POST_MEDIA_MAX, POST_TEXT_MAX, type ReactionState } from "@healthapp/shared";
 import {
   createProgressPost, createTextPost, deletePost, editPost, follow, loadComments, loadKudos, react, requestPostPhotoUpload, setPostSaved,
   sharePost, unfollow,
@@ -30,6 +30,9 @@ import { CommentPreview } from "./comment-preview";
 import { ModerationMenuButton } from "./moderation";
 import { ReactionIcon } from "./reaction-icons";
 import { PhotoFrame, PhotoOverlayEditor } from "./photo-overlay";
+import { MediaGallery } from "./media-gallery";
+import { CAMERA, MEDIA_ACCEPT, MediaTray, useMediaDraft } from "./media-picker";
+import { draftBusy, publishPlan } from "@/lib/media-draft";
 import { CommentThread } from "./comment-thread";
 
 // ---------- small pieces ----------
@@ -163,6 +166,17 @@ export function useOverlayStats(w: { duration_min: number | null; volume_kg: num
 }
 
 /**
+ * The picture a post leads with — its legacy payload photo, or the first of
+ * its pictures — in the one shape the story export and the edit form read.
+ */
+function primaryPhoto(post: FeedPost): ReturnType<typeof postPhotoOf> {
+  const legacy = postPhotoOf(post.payload);
+  if (legacy) return legacy;
+  const first = post.media[0];
+  return first ? { url: first.url, width: first.width, height: first.height, overlay: first.overlay } : null;
+}
+
+/**
  * The photo on a text or progress post, with whatever sits on it. `splash`
  * is the double-tap layer the card mounts over every photo.
  */
@@ -192,6 +206,11 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
   const s = t.common.social;
   const p = post.payload;
   const overlayStats = useOverlayStats(p?.kind === "workout" ? p : null);
+  // Pictures on a text or progress post (20261016100000): the same gallery
+  // on every surface. Posts from before them keep their one legacy photo.
+  if (post.media.length > 0 && (post.type === "text" || post.type === "progress")) {
+    return <MediaGallery items={post.media} authorName={post.author_name} splash={splash} />;
+  }
   if (!p) return null;
   if (p.kind === "progress" || p.kind === "text") return <PostPhoto post={post} splash={splash} />;
 
@@ -490,7 +509,7 @@ export function PostCard({ post, detail = false, removeOnUnsave = false }: {
   const save = useSave(post);
   const [sharing, setSharing] = useState(false);
   const [removed, setRemoved] = useState(false);
-  const photo = postPhotoOf(p);
+  const photo = primaryPhoto(post);
   const overlayStats = useOverlayStats(p?.kind === "workout" ? p : null);
   const [story, setStory] = useState<"idle" | "busy" | "ready" | "shared" | "failed">("idle");
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -1038,7 +1057,7 @@ function SharedEmbed({ post }: { post: FeedPost }) {
   }
   // The original, in the shape PostMedia reads; none of its counts are shown here.
   const inner: FeedPost = {
-    ...o, activity_id: null, challenge_id: null, kudos_count: 0, love_count: 0, comment_count: 0, my_reaction: null,
+    ...o, activity_id: null, challenge_id: null, kudos_count: 0, love_count: 0, comment_count: 0, my_reaction: null, media: o.media ?? [],
     kudos_names: [], edited_at: null, mine: false, saved: false, shared: null, comment_preview: [], author_muted: false,
   };
   return (
@@ -1300,16 +1319,50 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
   const [includeWeight, setIncludeWeight] = useState(false);
   const [weight, setWeight] = useState("");
   const [visibility, setVisibility] = useState<PostVisibility>("followers");
-  const [photo, setPhoto] = useState<PostPhoto | null>(null);
   const [overlay, setOverlay] = useState<PhotoOverlay | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const media = useMediaDraft();
   const mention = useMentionSuggest(null);
   const box = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const s = t.common.social;
+  const items = media.draft.items;
+  // The author's overlay (relu19's editor) is for one picture on its own.
+  const single = items.length === 1 && items[0]!.status === "ready" ? items[0]! : null;
+  const busy = draftBusy(media.draft);
+
+  // One file input for both states: "Photo" on the collapsed row opens the
+  // composer and the picker in the same tap.
+  const picker = photoUploads ? (
+    <input
+      ref={fileRef}
+      type="file"
+      accept={MEDIA_ACCEPT}
+      multiple
+      className="hidden"
+      onChange={(e) => {
+        const files = Array.from(e.target.files ?? []);
+        e.target.value = "";
+        if (files.length === 0) return;
+        setOpen(true);
+        setError(null);
+        if (files.length > 0 && items.length === 0) setOverlay(null);
+        void media.pick(files);
+      }}
+    />
+  ) : null;
+
+  function close() {
+    media.discardAll();
+    setOverlay(null);
+    setError(null);
+    setOpen(false);
+  }
 
   if (!open) {
     return (
       <div className="rounded-2xl border border-line bg-surface p-2.5 pl-3">
+        {picker}
         <div className="flex items-center gap-3">
           {me ? <Avatar name={me.name} url={me.avatar_url} size={SOCIAL.avatar.composer} /> : null}
           <button
@@ -1317,8 +1370,19 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
             onClick={() => setOpen(true)}
             className="h-11 min-w-0 flex-1 truncate rounded-full bg-bg px-4 text-left text-[14.5px] text-ink-faint transition-colors hover:text-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            {s.composerPlaceholder}
+            {s.composerPrompt}
           </button>
+          {photoUploads ? (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              aria-label={s.mediaAddMore}
+              className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-[13px] font-semibold text-ink-soft transition-colors hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <NavIcon d={CAMERA} className="h-[20px] w-[20px] text-accent-ink" />
+              <span className="hidden sm:inline">{s.mediaPhoto}</span>
+            </button>
+          ) : null}
         </div>
       </div>
     );
@@ -1326,10 +1390,17 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-4">
+      {picker}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
+          const plan = publishPlan(media.draft, text);
+          if (!plan.ok) {
+            setError(plan.reason === "busy" ? s.mediaWaitUploads : plan.reason === "failed" ? s.mediaFixFailed : s.textInvalid);
+            return;
+          }
+          const withOverlay = plan.media.length === 1 && overlay ? [{ ...plan.media[0]!, overlay }] : plan.media;
           startTransition(async () => {
             const r = progress
               // The box is in the reader's unit; social_posts stores kilograms
@@ -1338,13 +1409,16 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
                   text,
                   visibility,
                   includeWeight ? displayToKg(Number(weight.replace(",", ".")), u.weightUnit) : null,
-                  photoInput(photo, overlay),
+                  withOverlay,
                 )
-              : await createTextPost(text, visibility, photoInput(photo, overlay));
-            if (!r.ok) setError(r.message ?? "Error");
-            else {
-              setText(""); setWeight(""); setIncludeWeight(false); setProgress(false); setPhoto(null); setOverlay(null); setOpen(false); mention.clear();
+              : await createTextPost(text, visibility, withOverlay);
+            if (!r.ok) {
+              // The draft stays as it is — pictures included — so a retry is one tap.
+              setError(r.message ?? s.mediaPublishFailed);
+              return;
             }
+            media.markPublished();
+            setText(""); setWeight(""); setIncludeWeight(false); setProgress(false); setOverlay(null); setOpen(false); mention.clear();
             router.refresh();
           });
         }}
@@ -1375,22 +1449,23 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
             }}
             onKeyUp={(e) => mention.track(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)}
             onClick={(e) => mention.track(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)}
-            placeholder={s.composerPlaceholder}
+            placeholder={s.composerPrompt}
+            aria-label={s.composerPlaceholder}
             maxLength={POST_TEXT_MAX}
             rows={3}
             className="min-w-0 flex-1 resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
           />
         </div>
-        {photoUploads ? (
+        {photoUploads && items.length > 0 ? (
           <div className="mt-3 space-y-3">
-            <PhotoPicker photo={photo} onChange={(next) => { setPhoto(next); setOverlay(null); }} disabled={pending} />
-            {photo ? (
+            <MediaTray api={media} disabled={pending} onAddMore={() => fileRef.current?.click()} />
+            {single?.previewUrl && single.width && single.height ? (
               // Only text goes on a photo here; the workout's figures belong to
               // a workout post (the share panel after a session).
               <PhotoOverlayEditor
-                src={photo.previewUrl}
-                width={photo.width}
-                height={photo.height}
+                src={single.previewUrl}
+                width={single.width}
+                height={single.height}
                 stats={null}
                 value={overlay}
                 onChange={setOverlay}
@@ -1400,7 +1475,21 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
           </div>
         ) : null}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <VisibilityPicker value={visibility} onChange={setVisibility} />
+          <div className="flex items-center gap-1.5">
+            {photoUploads ? (
+              <button
+                type="button"
+                disabled={pending || items.length >= POST_MEDIA_MAX}
+                onClick={() => fileRef.current?.click()}
+                aria-label={s.mediaAddMore}
+                className="inline-flex h-11 items-center gap-2 rounded-2xl bg-bg px-3.5 text-[13px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <NavIcon d={CAMERA} className="h-[18px] w-[18px] text-accent-ink" />
+                {s.mediaPhoto}
+              </button>
+            ) : null}
+            <VisibilityPicker value={visibility} onChange={setVisibility} />
+          </div>
           <span className="text-[11px] tabular-nums text-ink-faint">{text.length}/{POST_TEXT_MAX}</span>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[12.5px]">
@@ -1427,22 +1516,23 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
           <div className="ml-auto flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={close}
               className="h-11 rounded-2xl px-4 font-semibold text-ink-faint hover:bg-bg hover:text-ink"
             >
               {s.cancel}
             </button>
             <button
               type="submit"
-              // Words or a picture: either one is a post.
-              disabled={pending || (text.trim().length === 0 && !photo)}
+              // Words or a picture: either one is a post — once every picture is up.
+              disabled={pending || busy || (text.trim().length === 0 && items.length === 0)}
+              aria-busy={pending || busy}
               className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"
             >
-              {s.post}
+              {pending ? t.common.actions.loading : s.post}
             </button>
           </div>
         </div>
-        {error ? <p className="mt-2 text-xs text-risk">{error}</p> : null}
+        {error ? <p role="alert" className="mt-2 text-xs text-risk">{error}</p> : null}
       </form>
     </div>
   );

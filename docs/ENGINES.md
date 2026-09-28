@@ -217,7 +217,79 @@ refuses an achievement the author has not earned and rebuilds its payload
 from the catalog, and bounds a Fitness Score post (0..100, a milestone from the
 fixed list at or under the score).
 
-### Advanced achievements (added 2026-09-27, not yet applied to the live DB)
+### Media posts: up to ten pictures, private at rest (added 2026-09-28, not yet applied to the live DB)
+
+| | |
+|---|---|
+| Client | the composer on `/feed` (Photo button, tray: preview, reorder, remove, retry, optional alt text, `n/10`); `components/media-gallery.tsx` draws the pictures on every surface (feed, profile, `/saved`, a share's original, the post page) |
+| Delivery | `app/api/media/[token]/route.ts` — the only way a picture reaches a browser |
+| Writes | `requestPostMediaUploads`, `discardPostMedia`, `createTextPost` / `createProgressPost` (media list) in `app/social-actions.ts` → `social_create_post()` |
+| Maths | `packages/shared/src/post-media.ts` (limits, file checks, list normalisation, frame ratio, carousel steps); `lib/media-draft.ts` (the composer's reducer); `lib/media-token.ts` |
+| Migration | `20261016100000_social_post_media.sql` — `social_post_media`, `social_media_uploads` |
+| Tests | `post-media.test.ts` (15), `media-draft.test.ts` (15), `media-token.test.ts` (8), `supabase/tests/social_post_media.test.sql` (59 pgTAP) |
+
+**The browser never gets a Cloudinary URL for these.** New post pictures are
+`authenticated` assets, and a signed Cloudinary URL never expires, so handing
+one out would be a permanent key. Instead each page render mints
+`/api/media/<token>` (HMAC, one picture, one of two sizes, 5–10 minutes) for
+the rows the reader's RPC returned — `can_see_post` decides, so a blocked,
+suspended, deleted or anonymous case gets no row and no link. The route
+checks the token (and the middleware a session), fetches the picture
+server-side and streams it with `Cache-Control: private`.
+
+**Uploads are issued by the database.** `social_media_upload_register` mints
+the public_ids (≤60/hour, active accounts), the server signs a Cloudinary
+upload for exactly those (`type: authenticated`, `allowed_formats` jpg/png/webp
+— Cloudinary checks content, not names), and `social_post_media_guard` only
+attaches an id issued to the author, unused, to a fresh post of their own,
+≤10. Before publishing, the server action asks Cloudinary what it stored
+(format, bytes ≤8 MB, pixel size) and records Cloudinary's size.
+
+**Abandoned uploads**: removing a picture or closing the composer discards
+its uploads at once; anything left (a closed tab) is deleted from Cloudinary
+the next time that person uploads (older than a day). Posts made before this
+keep their single public payload photo; the workout share panel still uses
+that legacy path.
+
+### Social privacy cleanup (added 2026-09-28, not yet applied to the live DB)
+
+| | |
+|---|---|
+| Migrations | `20261015100000_social_privacy_cleanup.sql`, `20261015110000_social_mentions_cleanup.sql` |
+| Tests | `supabase/tests/social_privacy_cleanup.test.sql` (82 pgTAP; 42 of them fail on the schema before it) |
+
+**Suspension is enforced in the database, not only by the layout redirect.**
+Every social write policy (post, comment, reaction, follow, save, story,
+challenge, joining one) also asks `social_actor_active()` — not suspended, no
+pending deletion — and `social_report()` does too. Deletes and block / unblock
+stay open. `social_notify_ok()` refuses an inactive actor.
+
+**The table endpoints follow the RPCs.** `comments_select`,
+`reactions_select`, `post_mentions_select`, `comment_mentions_select` and the
+owner branch of `story_views_select` apply the same "listed for the reader"
+rule as the reads, so a direct PostgREST count agrees with `comment_count` /
+`reply_count`. The author of a post or comment still reads every mention row
+on it (the edit path diffs against them).
+
+**A deleted post stays deleted.** `social_posts_delete_guard`: from a client,
+`deleted_at` only goes from null to the server's `now()`.
+
+**Challenges follow blocks and suspensions.** `can_see_challenge` hides a
+challenge whose creator is behind a block (either way) and, while the creator
+is suspended or being deleted, from anyone not already in it. Challenge boards
+and coach progress name only listed people; ranks and the participant count
+stay computed over everyone who joined. The global and following boards leave
+suspended / deleting accounts out of the ranking.
+
+**Reports**: one per reporter and target, whatever the reason (checked in
+`social_report()` under an advisory lock; existing rows untouched). Hidden
+comments and suspended / deleting users answer "not found", like missing ones.
+
+**Mentions**: `social_mentions_cleanup()` (owner-only) deletes rows whose
+handle is not in the current text; rows for suspended / blocked / deleting
+people are kept and filtered on read. Idempotent.
+
+### Advanced achievements (added 2026-09-27, applied to the live DB 2026-09-28)
 
 | | |
 |---|---|

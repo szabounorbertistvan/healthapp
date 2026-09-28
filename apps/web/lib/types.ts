@@ -1,6 +1,6 @@
 import type {
   AdherenceResult, ChallengeCategory, ChallengeDifficulty, ChallengeStatus, ChallengeType, ChallengeUnit, LoadTrend, Macros, PostPayload, PostType,
-  PostVisibility, ReactionType, TrainingLoad,
+  PhotoOverlay, PostVisibility, ReactionType, TrainingLoad,
 } from "@healthapp/shared";
 import type { ExerciseVideoSource, LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
@@ -409,6 +409,31 @@ export type FeedPost = {
   comment_preview: CommentPreviewItem[];
   /** The viewer has muted the author (only reachable on their profile, /saved or a post page). */
   author_muted: boolean;
+  /**
+   * The post's pictures, in order (20261016100000). Empty for a post without
+   * any, and for every post made before them — those keep their one legacy
+   * photo in the payload (postPhotoOf).
+   */
+  media: PostMediaItem[];
+};
+
+/**
+ * One picture on a post, as a page gets it: short-lived links to this app's
+ * /api/media route (never a Cloudinary address), minted for this reader only
+ * because their read returned the row. Width and height are known before any
+ * byte loads, so the card reserves the space.
+ */
+export type PostMediaItem = {
+  id: string;
+  kind: "image" | "video";
+  /** Card / post page size (≤1080 wide). */
+  url: string;
+  /** Thumbnail size (≤320 wide), for notifications and small tiles. */
+  thumb_url: string;
+  width: number;
+  height: number;
+  alt: string | null;
+  overlay: PhotoOverlay | null;
 };
 
 /** One comment in a card's preview: only what the preview shows. */
@@ -435,6 +460,7 @@ export type SharedOriginal = {
   visibility: PostVisibility;
   created_at: string;
   mentions: { user_id: string; username: string }[];
+  media: PostMediaItem[];
 };
 
 export type FeedPage = { items: FeedPost[]; next_cursor: string | null };

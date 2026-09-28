@@ -9,7 +9,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(43);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -192,10 +192,15 @@ select throws_ok(
 insert into public.social_comments (id, post_id, user_id, body)
   values ('0c000000-0000-0000-0000-000000000005', '0f000000-0000-0000-0000-000000000005', '0e000000-0000-0000-0000-000000000007', 'bogdan on kira');
 select pg_temp.authenticate_as('0e000000-0000-0000-0000-000000000001');
--- A cannot see B's comment, but a hand-made reply to it gets through the insert policy
-insert into public.social_comments (post_id, user_id, body, parent_id)
-  values ('0f000000-0000-0000-0000-000000000005', '0e000000-0000-0000-0000-000000000001', 'reply across a block',
-          '0c000000-0000-0000-0000-000000000005');
+-- A cannot see B's comment; a hand-made reply to it is refused like a reply
+-- to a missing comment (20261015100000) — before that it got through.
+select throws_ok(
+  $$ insert into public.social_comments (post_id, user_id, body, parent_id)
+     values ('0f000000-0000-0000-0000-000000000005', '0e000000-0000-0000-0000-000000000001', 'reply across a block',
+             '0c000000-0000-0000-0000-000000000005') $$,
+  'P0002', null, 'a reply under a comment you cannot see is refused');
+insert into public.social_comments (post_id, user_id, body)
+  values ('0f000000-0000-0000-0000-000000000005', '0e000000-0000-0000-0000-000000000001', 'a comment of her own');
 select is(pg_temp.notes('0e000000-0000-0000-0000-000000000007', 'comment_reply'), 0,
   'a reply is not a way to reach someone across a block');
 select is(pg_temp.notes_on('0e000000-0000-0000-0000-000000000004', 'new_comment', 'actor_id', '0e000000-0000-0000-0000-000000000001'), 1,

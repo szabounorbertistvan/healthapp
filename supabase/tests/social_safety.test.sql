@@ -12,7 +12,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(53);
+select plan(54);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -156,7 +156,8 @@ select lives_ok($$ select public.social_report('comment', '9c000000-0000-0000-00
 select lives_ok($$ select public.social_report('comment', '9c000000-0000-0000-0000-00000000000b', 'harassment') $$, 'the same report again…');
 select is(pg_temp.reports(), 1, '…stays one report');
 select lives_ok($$ select public.social_report('comment', '9c000000-0000-0000-0000-00000000000b', 'hate', 'slur in the second line') $$,
-  'a different reason for the same comment is its own report');
+  'a different reason for the same comment is accepted…');
+select is(pg_temp.reports(), 1, '…but is not a second report: one per reporter and target (20261015100000)');
 select lives_ok($$ select public.social_report('post', '9b000000-0000-0000-0000-00000000000b', 'scam') $$, 'C reports a post as a scam');
 select lives_ok($$ select public.social_report('user', '9a000000-0000-0000-0000-00000000000b', 'impersonation') $$, 'C reports B for impersonation');
 select throws_ok($$ select public.social_report('comment', '9c000000-0000-0000-0000-00000000000c', 'spam') $$, '22023', null,
@@ -180,8 +181,8 @@ select set_config('request.jwt.claims', '', true);
 select is(
   (select array_agg(row(reason, status, details)::text order by reason)::text
    from public.social_reports where reported_comment_id = '9c000000-0000-0000-0000-00000000000b'),
-  '{"(harassment,open,)","(hate,open,\"slur in the second line\")"}',
-  'the comment''s two reports: open, details kept only where given');
+  '{"(harassment,open,)"}',
+  'the comment''s one report: the first reason, open, no details where none were given');
 select is(pg_temp.notes('9a000000-0000-0000-0000-00000000000b'), 0, 'being reported tells nobody anything');
 select is((select count(*)::int from public.social_reports where reporter_id <> '9a000000-0000-0000-0000-00000000000c'), 0,
   'every report carries the session''s reporter');

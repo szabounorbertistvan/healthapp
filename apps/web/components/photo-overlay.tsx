@@ -21,7 +21,7 @@ import { useI18n } from "@/lib/i18n/client";
  * and the overlay is already in place.
  */
 export function PhotoFrame({
-  src, width, height, overlay, stats, className = "", children, priority = false,
+  src, width, height, overlay, stats, className = "", children, priority = false, alt,
 }: {
   src: string;
   width: number | null;
@@ -31,6 +31,8 @@ export function PhotoFrame({
   className?: string;
   children?: React.ReactNode;
   priority?: boolean;
+  /** A description of the picture. Without one it is decorative (the card says what it is). */
+  alt?: string;
 }) {
   const sized = width !== null && height !== null;
   return (
@@ -41,8 +43,8 @@ export function PhotoFrame({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt=""
-        aria-hidden
+        alt={alt ?? ""}
+        aria-hidden={alt ? undefined : true}
         loading={priority ? "eager" : "lazy"}
         decoding="async"
         draggable={false}

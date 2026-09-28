@@ -1,5 +1,6 @@
 import "server-only";
 import { v2 as cloudinary } from "cloudinary";
+import { MEDIA_VARIANTS, mediaTokenKey, signMediaToken, verifyMediaToken, type MediaClaim, type MediaVariant } from "./media-token";
 
 /**
  * Cloudinary, for progress photos.
@@ -121,8 +122,10 @@ export async function destroyUserPhotos(userId: string): Promise<void> {
   await client.api.delete_resources_by_prefix(avatarFolder(userId));
   await client.api.delete_folder(avatarFolder(userId)).catch(() => {});
   // Workout-post photos are public too, and a deleted account's face has no
-  // business staying in a feed.
+  // business staying in a feed. The same folder holds the private post
+  // pictures (20261016100000), which need their own type to be found.
   await client.api.delete_resources_by_prefix(postPhotoFolder(userId));
+  await client.api.delete_resources_by_prefix(postPhotoFolder(userId), { type: "authenticated" });
   await client.api.delete_folder(postPhotoFolder(userId)).catch(() => {});
 }
 
@@ -262,4 +265,115 @@ export function postPhotoUrl(publicId: string, version: number): string {
     version,
     transformation: [{ width: 1080, crop: "limit", quality: "auto", fetch_format: "auto" }],
   });
+}
+
+// ---------- post pictures (private) ----------
+//
+// Since 20261016100000 the pictures of a post live here as `authenticated`
+// assets, one public_id per picture, minted by the database
+// (social_media_upload_register) — the server signs an upload for exactly
+// that id, so the browser can neither choose where a picture lands nor
+// overwrite another. Unlike the legacy single photo above, nothing public:
+// a picture is only ever delivered through /api/media/<token>, minted per
+// render for a row the reader's RPC returned (lib/media-token.ts).
+
+export type PostMediaUploadTicket = {
+  cloudName: string;
+  apiKey: string;
+  /** Every field the browser must post, exactly as signed. */
+  fields: Record<string, string>;
+  publicId: string;
+};
+
+/**
+ * A one-shot upload of one picture to one issued public_id. The signature
+ * covers the folder, the id, the private type and the formats Cloudinary will
+ * accept — decided from the file's content, not its name — so a renamed
+ * executable, an SVG or a video is refused by Cloudinary itself.
+ */
+export function signPostMediaUpload(userId: string, publicId: string): PostMediaUploadTicket {
+  const client = configured();
+  const folder = postPhotoFolder(userId);
+  if (!publicId.startsWith(`${folder}/`) || publicId.slice(folder.length + 1).includes("/")) {
+    throw new Error("public_id outside the author's post folder");
+  }
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = {
+    folder,
+    public_id: publicId.slice(folder.length + 1),
+    timestamp,
+    type: "authenticated",
+    allowed_formats: "jpg,png,webp",
+  };
+  const signature = client.utils.api_sign_request(params, API_SECRET!);
+  return {
+    cloudName: CLOUD_NAME!,
+    apiKey: API_KEY!,
+    publicId,
+    fields: {
+      folder: params.folder,
+      public_id: params.public_id,
+      timestamp: String(timestamp),
+      type: params.type,
+      allowed_formats: params.allowed_formats,
+      signature,
+    },
+  };
+}
+
+function postMediaKey(): Buffer {
+  if (!API_SECRET) throw new CloudinaryNotConfiguredError();
+  return mediaTokenKey(API_SECRET);
+}
+
+/** The link a browser gets for one picture: this app, never Cloudinary. */
+export function postMediaUrl(publicId: string, variant: MediaVariant): string {
+  return `/api/media/${signMediaToken(publicId, variant, Math.floor(Date.now() / 1000), postMediaKey())}`;
+}
+
+export function verifyPostMediaToken(token: string): MediaClaim | null {
+  if (!cloudinaryConfigured()) return null;
+  return verifyMediaToken(token, Math.floor(Date.now() / 1000), postMediaKey());
+}
+
+/**
+ * The signed Cloudinary address the media route fetches from — server-side
+ * only. Width-capped to the variant, re-encoded to the best format the
+ * browser asked for, never the original upload.
+ */
+export function postMediaSourceUrl(publicId: string, variant: MediaVariant): string {
+  const client = configured();
+  return client.url(publicId, {
+    type: "authenticated",
+    sign_url: true,
+    secure: true,
+    transformation: [{ width: MEDIA_VARIANTS[variant], crop: "limit", quality: "auto", fetch_format: "auto" }],
+  });
+}
+
+export type StoredMediaAsset = {
+  public_id: string; format?: string; bytes?: number; width?: number; height?: number; resource_type?: string;
+};
+
+/**
+ * What Cloudinary actually stored for these ids — format, bytes and pixel
+ * size as it decoded them, not as the browser claimed. One Admin API call for
+ * the whole post.
+ */
+export async function lookupPostMedia(publicIds: string[]): Promise<Map<string, StoredMediaAsset>> {
+  const client = configured();
+  const found = new Map<string, StoredMediaAsset>();
+  if (publicIds.length === 0) return found;
+  const result = (await client.api.resources_by_ids(publicIds, { type: "authenticated", resource_type: "image" })) as {
+    resources?: StoredMediaAsset[];
+  };
+  for (const r of result.resources ?? []) found.set(r.public_id, r);
+  return found;
+}
+
+/** Remove pictures that were uploaded but never became part of a post. */
+export async function destroyPostMedia(publicIds: string[]): Promise<void> {
+  if (publicIds.length === 0) return;
+  const client = configured();
+  await client.api.delete_resources(publicIds, { type: "authenticated", resource_type: "image", invalidate: true });
 }
