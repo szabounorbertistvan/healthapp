@@ -53,8 +53,12 @@ export default async function ClientLayout({ children }: { children: React.React
           so without this the bottom block (feedback, sign-out) sat at the end
           of a long feed, a full scroll away. Only the nav list scrolls; the
           aside itself must not clip, or the bell's popover (wider than the
-          sidebar) would be cut off. */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col self-start px-3.5 pb-5 pt-6 sm:flex">
+          sidebar) would be cut off. z-20 because sticky makes the aside its
+          own stacking context: without a z-index it sits at level 0 in DOM
+          order, and anything positioned or filtered in <main> (a reaction
+          icon, a photo) paints over the popover where it reaches past the
+          sidebar. */}
+      <aside className="sticky top-0 z-20 hidden h-screen w-60 shrink-0 flex-col self-start px-3.5 pb-5 pt-6 sm:flex">
         <Link href="/" className="flex items-center gap-2 px-2.5">
           <Logo size="sm" />
         </Link>
