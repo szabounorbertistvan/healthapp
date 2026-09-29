@@ -54,3 +54,8 @@ env.download
 
 # a git worktree from another Claude session lives here; never commit it
 .claude/worktrees/
+
+# playwright
+e2e/.auth/
+e2e/.results/
+e2e/.report/

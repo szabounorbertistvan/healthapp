@@ -21,10 +21,13 @@
     "exercises:images": "node scripts/mirror-exercise-images.mjs",
     "exercises:translate": "node scripts/translate-exercises.mjs",
     "seed:exercises:sql": "node scripts/build-exercise-seed-sql.mjs",
-    "seed:foods:sql": "vite-node scripts/build-food-seed-sql.ts"
+    "seed:foods:sql": "vite-node scripts/build-food-seed-sql.ts",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
+    "@playwright/test": "^1.63.0",
     "supabase": "^2.22.6",
     "turbo": "^2.3.3",
     "typescript": "^5.8.0",

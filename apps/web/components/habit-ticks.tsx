@@ -69,6 +69,7 @@ export function HabitTicks({ habits, removable = false }: { habits: ClientHabitR
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
+                      aria-pressed={habit.done_today}
                       onClick={() =>
                         startTransition(async () => {
                           toggleOptimistic(habit.id);

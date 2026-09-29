@@ -22,9 +22,12 @@ Still not exercised end-to-end: `createNutritionPlan`, `updatePlanFoodGrams`,
 `addMealDayVariant` / `removeMealDayVariant`. The header comment in
 `nutrition-actions.ts` is correspondingly narrower now.
 
-**Tests cover only domain math.** Vitest is scoped to
-`packages/**/src/**/*.test.ts`. Nothing tests a component, a server action, or a
-route. The one integration-level safety net is the pgTAP RLS suite
+**Tests cover domain math plus an end-to-end smoke layer.** Vitest is scoped to
+`packages/**/src/**/*.test.ts`. Since 2026-09-29 Playwright (`npm run e2e`)
+checks that every main coach and client screen renders, the auth redirects, roster
+isolation between two coaches, and one write round trip (habit tick → reload →
+untick). It runs locally only — CI has no dev server or live-project access —
+and still does not cover the builders or `nutrition-actions.ts`. The one integration-level safety net is the pgTAP RLS suite
 (`supabase/tests/rls_client_isolation.test.sql`, `signup_role.test.sql`,
 `role_not_self_service.test.sql`) run in CI.
 

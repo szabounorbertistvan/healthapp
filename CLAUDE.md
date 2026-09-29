@@ -27,7 +27,8 @@ npm run web
 |---|---|
 | `npm run web` | Next.js dev server on :3000 (`.claude/launch.json` runs this — use the preview tools, not Bash) |
 | `npm run typecheck` | `tsc --noEmit` across the workspace |
-| `npm test` | Vitest — only `packages/**/src/**/*.test.ts` (domain math). No React tests exist. |
+| `npm test` | Vitest — only `packages/**/src/**/*.test.ts` (domain math). No React unit tests exist. |
+| `npm run e2e` | Playwright (`e2e/`, `playwright.config.ts`) against the dev server on :3000 and the **live** project, signed in as the seeded test accounts. Specs are read-only or undo their own write. One worker on purpose (see the config). Not in CI yet. One-time `npx playwright install chromium`. |
 | `npm run build` | Turbo build |
 | `npm run db:start` / `db:reset` | Local Supabase stack |
 | `npm run db:test` | pgTAP RLS tests in `supabase/tests/` (needs Docker) |
