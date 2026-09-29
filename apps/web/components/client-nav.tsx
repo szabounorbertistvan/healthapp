@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { NavSpinner } from "./spinner";
 import { FeedbackButton } from "./feedback";
+import { LanguageSelector } from "./language-selector";
+import { ThemeToggle } from "./theme-toggle";
+import { SignOutButton } from "./sign-out-button";
 import type { Dictionary } from "@/lib/i18n";
 
 type NavKey = keyof Dictionary["common"]["nav"];
@@ -66,6 +69,33 @@ function BackToCoaching({ sheet = false }: { sheet?: boolean }) {
   );
 }
 
+/**
+ * The last row of either phone "More" sheet: language, theme and sign-out.
+ * They used to sit in a sticky phone header, which gave the phone two menus
+ * (one on top, one at the bottom) for controls touched once in a while; the
+ * sheet is where the rest of the rarely-used things already live.
+ */
+export function SheetPrefs() {
+  return (
+    <div className="mt-1 flex items-center gap-2 border-t border-line px-1 pt-3">
+      <LanguageSelector />
+      <ThemeToggle />
+      <SignOutButton className="ml-auto inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-ink-soft hover:text-ink disabled:opacity-50" />
+    </div>
+  );
+}
+
+/** A red dot or count for unread items; nothing at zero. */
+function UnreadBadge({ count, dot = false }: { count: number; dot?: boolean }) {
+  if (count <= 0) return null;
+  if (dot) return <span aria-hidden className="absolute right-[calc(50%-16px)] top-1.5 h-2 w-2 rounded-full bg-risk" />;
+  return (
+    <span className="min-w-5 rounded-full bg-risk px-1.5 text-center text-[11px] font-bold leading-5 text-bg">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 /** A stroke icon from the nav set, or any 24-box path. */
 export function NavIcon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
   return (
@@ -124,7 +154,7 @@ const TAB_HREFS = ["/today", "/workout", "/food", "/habits"];
  * coach, billing) — without it, Coach and Billing could not be reached from a
  * phone at all.
  */
-export function ClientTabBar({ coach = false }: { coach?: boolean }) {
+export function ClientTabBar({ coach = false, unread = 0 }: { coach?: boolean; unread?: number }) {
   const pathname = usePathname();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -190,6 +220,7 @@ export function ClientTabBar({ coach = false }: { coach?: boolean }) {
                   >
                     <NavIcon d={item.icon} />
                     <span className="flex-1">{t.common.nav[item.key]}</span>
+                    {item.href === "/notifications" ? <UnreadBadge count={unread} /> : null}
                     <NavSpinner />
                   </Link>
                 );
@@ -198,6 +229,7 @@ export function ClientTabBar({ coach = false }: { coach?: boolean }) {
               <div className="mt-1 border-t border-line pt-1">
                 <FeedbackButton sheet />
               </div>
+              <SheetPrefs />
             </nav>
           </div>
         </div>
@@ -230,6 +262,7 @@ export function ClientTabBar({ coach = false }: { coach?: boolean }) {
         >
           <NavIcon d="M5 12h.01M12 12h.01M19 12h.01" className="h-[22px] w-[22px] [stroke-width:2.6]" />
           {t.common.nav.more}
+          <UnreadBadge count={open ? 0 : unread} dot />
           <span aria-hidden className={`mt-px h-0.5 w-4 rounded-full ${open || restActive ? "bg-accent" : "bg-transparent"}`} />
         </button>
       </nav>

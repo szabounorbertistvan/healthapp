@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
-import { NavIcon } from "./client-nav";
+import { NavIcon, SheetPrefs } from "./client-nav";
 import { NavSpinner } from "./spinner";
 import { FeedbackButton } from "./feedback";
 import type { Dictionary } from "@/lib/i18n";
@@ -85,9 +85,8 @@ export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
  *  fits five, so the fifth is a sheet holding the rest.
  *
  *  Which four earn a tab: the daily loop is dashboard → clients → programs →
- *  check-ins. Messages rides in the header instead, mirroring how the client
- *  header carries the feed — both are "someone is waiting on you" surfaces and
- *  both want to be one tap from anywhere.
+ *  check-ins. Everything else, messages included, is in the sheet — the phone
+ *  has no header, so the bottom bar is its only menu.
  */
 const TAB_ITEMS = ["/dashboard", "/clients", "/programs", "/check-ins"];
 
@@ -98,8 +97,8 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
 
   const all = isAdmin ? [...items, adminItem] : items;
   const tabs = TAB_ITEMS.map((href) => all.find((i) => i.href === href)!);
-  // everything the tab bar cannot show, minus messages (it lives in the header)
-  const rest = all.filter((i) => !TAB_ITEMS.includes(i.href) && i.href !== "/messages");
+  // everything the tab bar cannot show
+  const rest = all.filter((i) => !TAB_ITEMS.includes(i.href));
   const restActive = rest.some((i) => pathname.startsWith(i.href));
 
   // A route change should not leave the sheet hanging over the new page.
@@ -176,6 +175,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
                 </Link>
                 <FeedbackButton sheet />
               </div>
+              <SheetPrefs />
             </nav>
           </div>
         </div>

@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { displayName, getProfile } from "@/lib/data";
-import { ClientNav, ClientTabBar, NavIcon } from "@/components/client-nav";
+import { ClientNav, ClientTabBar } from "@/components/client-nav";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Logo, LogoMark } from "@/components/logo";
-import { getI18n } from "@/lib/i18n/server";
+import { Logo } from "@/components/logo";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Avatar } from "@/components/social";
 import { NotificationBell } from "@/components/notification-bell";
@@ -32,9 +31,8 @@ export default async function ClientLayout({ children }: { children: React.React
   // finishes its profile before it sees anything else.
   if (!profile.username) redirect("/complete-profile");
   const name = displayName(profile);
-  // One wave: the shell's two reads go out together with the dictionary.
-  const [{ t }, notifications, unread, plan] = await Promise.all([
-    getI18n(),
+  // One wave: the shell's reads go out together.
+  const [notifications, unread, plan] = await Promise.all([
     getMyNotifications(),
     getUnreadNotificationCount(),
     getPlan(),
@@ -81,38 +79,15 @@ export default async function ClientLayout({ children }: { children: React.React
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* The sidebar (with its language selector and sign-out) is desktop-only
-            and the tab bar has no room to spare, so the phone gets its own slim
-            header carrying both. Without it a client on the surface they
-            actually use could never switch language or sign out. */}
-        {/* Sticky and glass: a floating strip the page scrolls under. */}
-        <header className="glass glass--strong sticky top-2 z-10 mx-3 flex h-14 items-center justify-between gap-3 rounded-2xl px-2 pl-3.5 sm:hidden">
-          <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold tracking-tight">
-            <LogoMark className="h-6 w-6" px={24} />
-            <span className="truncate">{name}</span>
-          </span>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {/* The tab bar is full, so the feed gets the header — one tap from any client screen. */}
-            <Link
-              href="/feed"
-              aria-label={t.common.social.feed}
-              title={t.common.social.feed}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink"
-            >
-              <NavIcon d="M4 5h16v11H9l-5 4z" className="h-[18px] w-[18px]" />
-            </Link>
-            <NotificationBell notifications={notifications} unread={unread} />
-            <LanguageSelector />
-            <ThemeToggle />
-            <SignOutButton icon className="inline-flex h-11 w-11 items-center justify-center text-lg disabled:opacity-50 rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink" />
-          </div>
-        </header>
-        <main className="flex min-w-0 flex-1 flex-col px-4 pb-28 pt-3 sm:px-10 sm:pb-12 sm:pt-7">
+        {/* No phone header: the bottom tab bar is the only menu on a phone, and
+            its "More" sheet carries the feed, notifications, language, theme
+            and sign-out that a header used to duplicate. */}
+        <main className="flex min-w-0 flex-1 flex-col px-4 pb-28 pt-[max(1rem,env(safe-area-inset-top))] sm:px-10 sm:pb-12 sm:pt-7">
           <div className="flex-1">{children}</div>
           <RestTimerBar />
         </main>
       </div>
-      <ClientTabBar coach={coach} />
+      <ClientTabBar coach={coach} unread={unread} />
     </div>
     </RestTimerProvider>
     </UnitsProvider>

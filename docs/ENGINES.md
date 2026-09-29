@@ -231,7 +231,7 @@ refuses an achievement the author has not earned and rebuilds its payload
 from the catalog, and bounds a Fitness Score post (0..100, a milestone from the
 fixed list at or under the score).
 
-### Media posts: up to ten pictures, private at rest (added 2026-09-28, not yet applied to the live DB)
+### Media posts: up to ten pictures, private at rest (added 2026-09-28, applied live 2026-09-29)
 
 | | |
 |---|---|
@@ -270,7 +270,7 @@ older than its 5–10 minutes, typically a carousel swiped late) makes
 The story download asks for a fresh link before painting the canvas.
 
 **Workout posts use it too** (`20261017100000_workout_media.sql`, 2026-09-29,
-not yet applied live; `supabase/tests/social_workout_media.test.sql`, 14
+applied live 2026-09-29; `supabase/tests/social_workout_media.test.sql`, 14
 pgTAP). The share panel after a workout uploads through the same tray;
 `social_create_post` takes `p_activity_id` for a workout post and the guard
 lets media onto one. A single picture on a workout post keeps the overlay
@@ -279,7 +279,7 @@ the story. The old public path (`signPostPhotoUpload`, payload `photo_url`) is
 gone for writes; posts made with it still show their payload photo, read by
 `postPhotoOf`.
 
-### Social privacy cleanup (added 2026-09-28, not yet applied to the live DB)
+### Social privacy cleanup (added 2026-09-28, applied live 2026-09-29)
 
 | | |
 |---|---|
