@@ -12,8 +12,12 @@
 //
 // Only the pictures seen so far and the next one get an <img> — a ten-photo
 // post costs two downloads until someone swipes. Every src is a short-lived
-// /api/media link minted for this reader (lib/post-media-data.ts).
-import { useRef, useState } from "react";
+// /api/media link minted for this reader (lib/post-media-data.ts); one that
+// has expired by the time it loads (a picture scrolled to after ten minutes)
+// asks refreshPostMedia for fresh links once and swaps them in.
+import { useEffect, useRef, useState } from "react";
+import { refreshPostMedia } from "@/app/social-actions";
+import type { OverlayStatValues } from "@/lib/photo-overlay";
 import { carouselLoaded, carouselStep, mediaFrameRatio } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -24,38 +28,69 @@ import { PhotoFrame } from "./photo-overlay";
 const CHEVRON_LEFT = "M15 5l-7 7 7 7";
 const CHEVRON_RIGHT = "M9 5l7 7-7 7";
 
-export function MediaGallery({ items, authorName, splash, priority = false }: {
+/** Links older than this are not refreshed again on the next error: the picture is really gone. */
+const REFRESH_COOLDOWN_MS = 30_000;
+
+/**
+ * The pictures as given, until one fails to load; then, once, the post's
+ * pictures read again with fresh links. A refresh that brings nothing new
+ * (the post is gone, or the reader lost access) leaves the pictures as they
+ * were — broken, which is then the truth.
+ */
+function useFreshMedia(items: PostMediaItem[], postId: string | undefined) {
+  const [live, setLive] = useState(items);
+  const last = useRef(0);
+  useEffect(() => setLive(items), [items]);
+  function onError() {
+    if (!postId || Date.now() - last.current < REFRESH_COOLDOWN_MS) return;
+    last.current = Date.now();
+    void refreshPostMedia(postId).then((fresh) => { if (fresh.length > 0) setLive(fresh); });
+  }
+  return { live, onError };
+}
+
+export function MediaGallery({ items, authorName, splash, priority = false, postId, stats, framed = true }: {
   items: PostMediaItem[];
   authorName: string;
   /** The double-tap layer the card mounts over every picture. */
   splash?: React.ReactNode;
   priority?: boolean;
+  /** The post, so an expired link can be refreshed. */
+  postId?: string;
+  /** A workout's figures, formatted, for the overlay on its picture. */
+  stats?: OverlayStatValues;
+  /** Its own rounded box (the default), or edge to edge inside a card that has one (the workout tile). */
+  framed?: boolean;
 }) {
   const { t } = useI18n();
   const s = t.common.social;
-  if (items.length === 0) return null;
+  const { live, onError } = useFreshMedia(items, postId);
+  if (live.length === 0) return null;
+  items = live;
   const altOf = (item: PostMediaItem, i: number) =>
     item.alt ?? fill(s.mediaFallbackAlt, { n: i + 1, total: items.length, name: authorName });
 
   if (items.length === 1) {
     const one = items[0]!;
     return (
-      <div className="mx-3 overflow-hidden rounded-2xl">
-        <PhotoFrame src={one.url} width={one.width} height={one.height} overlay={one.overlay} stats={{}} alt={altOf(one, 0)} priority={priority}>
+      <div className={framed ? "mx-3 overflow-hidden rounded-2xl" : ""}>
+        <PhotoFrame src={one.url} width={one.width} height={one.height} overlay={one.overlay} stats={stats ?? {}} alt={altOf(one, 0)} priority={priority} onError={onError}>
           {splash}
         </PhotoFrame>
       </div>
     );
   }
-  return <Carousel items={items} authorName={authorName} altOf={altOf} splash={splash} priority={priority} />;
+  return <Carousel items={items} authorName={authorName} altOf={altOf} splash={splash} priority={priority} onError={onError} framed={framed} />;
 }
 
-function Carousel({ items, authorName, altOf, splash, priority }: {
+function Carousel({ items, authorName, altOf, splash, priority, onError, framed }: {
   items: PostMediaItem[];
   authorName: string;
   altOf: (item: PostMediaItem, i: number) => string;
   splash?: React.ReactNode;
   priority: boolean;
+  onError: () => void;
+  framed: boolean;
 }) {
   const { t } = useI18n();
   const s = t.common.social;
@@ -75,7 +110,7 @@ function Carousel({ items, authorName, altOf, splash, priority }: {
   const arrow = "absolute top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-black/55 text-white transition-opacity hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-0 sm:grid";
 
   return (
-    <div className="mx-3">
+    <div className={framed ? "mx-3" : ""}>
       <div
         role="region"
         aria-roledescription="carousel"
@@ -85,7 +120,7 @@ function Carousel({ items, authorName, altOf, splash, priority }: {
           if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
           else if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
         }}
-        className="relative overflow-hidden rounded-2xl bg-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className={`relative overflow-hidden bg-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${framed ? "rounded-2xl" : ""}`}
         style={{ aspectRatio: mediaFrameRatio(items[0]) }}
       >
         <div
@@ -117,6 +152,7 @@ function Carousel({ items, authorName, altOf, splash, priority }: {
                   loading={i === 0 && priority ? "eager" : "lazy"}
                   decoding="async"
                   draggable={false}
+                  onError={onError}
                   className="h-full w-full select-none object-contain"
                 />
               ) : null}
@@ -137,7 +173,7 @@ function Carousel({ items, authorName, altOf, splash, priority }: {
         </span>
         <span aria-live="polite" className="sr-only">{fill(s.mediaSlide, { n: index + 1, total })}</span>
       </div>
-      <div aria-hidden className="mt-2 flex justify-center gap-1.5">
+      <div aria-hidden className={`flex justify-center gap-1.5 ${framed ? "mt-2" : "bg-tile py-2"}`}>
         {items.map((item, i) => (
           <span key={item.id} className={`h-1.5 w-1.5 rounded-full transition-colors ${i === index ? "bg-accent" : "bg-line"}`} />
         ))}

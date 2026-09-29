@@ -145,18 +145,26 @@ export function useMediaDraft() {
     dispatch({ type: "reset" });
   }
 
-  /** Posted: the pictures now belong to the post — keep them, drop the local copies. */
-  function markPublished() {
+  /**
+   * Posted: the pictures now belong to the post — keep them, drop the local
+   * copies. `keepPreviews` leaves the draft and its previews as they are, for
+   * a screen that still paints from them after posting (the workout share
+   * panel's story); they are released when the page goes away.
+   */
+  function markPublished(opts: { keepPreviews?: boolean } = {}) {
     published.current = true;
+    if (opts.keepPreviews) return;
     for (const key of [...previews.current.keys()]) forget(key);
     dispatch({ type: "reset" });
   }
 
-  // Leaving the page with a draft open (navigation, not a tab close) discards it.
+  // Leaving the page with a draft open (navigation, not a tab close) discards
+  // it; a posted draft keeps its uploads but still lets go of the previews.
   useEffect(() => () => {
-    if (published.current) return;
-    const ids = draftUploadedIds(latest.current);
-    if (ids.length > 0) void discardPostMedia(ids);
+    if (!published.current) {
+      const ids = draftUploadedIds(latest.current);
+      if (ids.length > 0) void discardPostMedia(ids);
+    }
     for (const url of previews.current.values()) URL.revokeObjectURL(url);
   }, []);
 

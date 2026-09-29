@@ -22,7 +22,7 @@ import { useI18n } from "@/lib/i18n/client";
  * and the overlay is already in place.
  */
 export function PhotoFrame({
-  src, width, height, overlay, stats, className = "", children, priority = false, alt,
+  src, width, height, overlay, stats, className = "", children, priority = false, alt, onError,
 }: {
   src: string;
   width: number | null;
@@ -34,6 +34,8 @@ export function PhotoFrame({
   priority?: boolean;
   /** A description of the picture. Without one it is decorative (the card says what it is). */
   alt?: string;
+  /** The picture failed to load — an expired /api/media link, most likely. */
+  onError?: () => void;
 }) {
   const sized = width !== null && height !== null;
   return (
@@ -49,6 +51,7 @@ export function PhotoFrame({
         loading={priority ? "eager" : "lazy"}
         decoding="async"
         draggable={false}
+        onError={onError}
         className={`block w-full select-none object-cover ${sized ? "h-full" : "max-h-[28rem]"}`}
       />
       {overlay?.stats ? <StatsBlock item={overlay.stats} stats={stats} /> : null}

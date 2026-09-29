@@ -13,8 +13,10 @@ type RawMedia = {
  * reader may see the post; this mints the short-lived links for exactly those
  * rows (the public_id never leaves the server) and drops anything malformed.
  * Without Cloudinary configured there is nothing to deliver, so no pictures.
+ * `allowStats` is true for a workout post: its overlay may carry the
+ * workout's figures, which no other post type has.
  */
-export function toMediaItems(raw: unknown): PostMediaItem[] {
+export function toMediaItems(raw: unknown, allowStats = false): PostMediaItem[] {
   if (!Array.isArray(raw) || raw.length === 0 || !cloudinaryConfigured()) return [];
   const out: PostMediaItem[] = [];
   for (const r of raw as RawMedia[]) {
@@ -29,7 +31,7 @@ export function toMediaItems(raw: unknown): PostMediaItem[] {
       width: r.width,
       height: r.height,
       alt: typeof r.alt === "string" && r.alt.length > 0 ? r.alt : null,
-      overlay: normalizePhotoOverlay(r.overlay ?? null, false),
+      overlay: normalizePhotoOverlay(r.overlay ?? null, allowStats),
     });
   }
   return out;

@@ -45,8 +45,8 @@ import {
 } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
 import {
-  CloudinaryNotConfiguredError, cloudinaryConfigured, destroyPostMedia, lookupPostMedia, postPhotoFolder, postPhotoUrl,
-  signPostMediaUpload, signPostPhotoUpload, type PostMediaUploadTicket, type PostPhotoUploadTicket,
+  CloudinaryNotConfiguredError, cloudinaryConfigured, destroyPostMedia, lookupPostMedia,
+  signPostMediaUpload, type PostMediaUploadTicket,
 } from "@/lib/cloudinary";
 import { currentActorId } from "@/lib/actor";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -55,7 +55,8 @@ import { getComments, getMentionCandidates, getPostKudos, getReplies, getShareab
 import { getMyFitnessScore } from "@/lib/fitness-score-data";
 import { getChallenge } from "@/lib/challenges-data";
 import { getMyStreak } from "@/lib/streak-data";
-import type { CommentPage, KudosPage, PersonRow, PostComment } from "@/lib/types";
+import type { CommentPage, KudosPage, PersonRow, PostComment, PostMediaItem } from "@/lib/types";
+import { toMediaItems } from "@/lib/post-media-data";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -193,19 +194,6 @@ async function writeMentions(
   if (error) console.error(`${table} not written:`, error.message);
 }
 
-/**
- * What the browser hands back after uploading a picture: the public_id and
- * version Cloudinary answered with, the pixel size it uploaded (it resized the
- * file itself before sending), and what it placed on top of the picture.
- */
-export type PostPhotoInput = {
-  publicId: string;
-  version: number;
-  width?: number | null;
-  height?: number | null;
-  overlay?: unknown;
-};
-
 export async function createTextPost(text: string, visibility?: string, media?: PostMediaInput[] | null): Promise<PostResult> {
   const { t } = await getI18n();
   const uid = await currentActorId();
@@ -248,7 +236,7 @@ export async function createProgressPost(
  */
 async function insertMediaPost(
   uid: string,
-  input: { type: "text" | "progress"; text: string | null; payload: PostPayload; visibility: PostVisibility },
+  input: { type: "text" | "progress" | "workout"; text: string | null; payload: PostPayload; visibility: PostVisibility; activity_id?: string | null },
   media: PostMediaInput[] | null | undefined,
 ): Promise<PostResult> {
   const { t } = await getI18n();
@@ -269,7 +257,8 @@ async function insertMediaPost(
     for (const item of items) {
       if (storedMediaProblem(stored.get(item.public_id))) return { ok: false, message: s.mediaPublishFailed };
     }
-    const overlay = items.length === 1 ? normalizePhotoOverlay(media?.[0]?.overlay ?? null, false) : null;
+    // Only a workout's overlay may carry its figures.
+    const overlay = items.length === 1 ? normalizePhotoOverlay(media?.[0]?.overlay ?? null, input.type === "workout") : null;
     rows = items.map((item, i) => {
       const asset = stored.get(item.public_id)!;
       return { ...item, width: asset.width!, height: asset.height!, overlay: i === 0 ? overlay : null };
@@ -282,7 +271,10 @@ async function insertMediaPost(
     p_visibility: input.visibility,
     p_payload: input.payload,
     p_media: rows,
+    p_activity_id: input.activity_id ?? null,
   });
+  // 23505: the one-post-per-session index — this workout is already shared.
+  if (error?.code === "23505" && input.type === "workout") return { ok: true };
   if (error || typeof data !== "string") {
     if (error) console.error("create post failed:", error.code, error.message);
     return { ok: false, message: rows.length > 0 ? s.mediaPublishFailed : s.textInvalid };
@@ -353,49 +345,16 @@ async function discardUploads(supabase: Supabase, ids: string[] | null): Promise
 }
 
 /**
- * A one-shot permission to upload one photo for a post. Same shape as the
- * avatar ticket: the signature covers the exact folder and public_id, so the
- * browser posts the file straight to Cloudinary without it ever passing
- * through a server action's body limit, and cannot widen where it lands.
+ * Share a finished session: the aggregates only, and the pictures the author
+ * picked — private media rows, like every post's (20261017100000). The payload
+ * sent here is a courtesy: social_posts_guard rebuilds it from the session.
+ * A single picture keeps its overlay, the workout's figures included.
  */
-export async function requestPostPhotoUpload(): Promise<ActionResult & { ticket?: PostPhotoUploadTicket }> {
-  const uid = await currentActorId();
-  if (!uid) return notSignedIn;
-  try {
-    return { ok: true, ticket: signPostPhotoUpload(uid) };
-  } catch (error) {
-    if (error instanceof CloudinaryNotConfiguredError) {
-      console.error(error.message);
-      return { ok: false, message: error.message };
-    }
-    throw error;
-  }
-}
-
-/**
- * Rebuild the delivery URL from an upload this server signed. The browser
- * hands back the public_id and version Cloudinary answered with; anything
- * outside this person's own post folder is refused, and the URL itself is
- * composed here rather than trusted.
- */
-async function resolvePostPhoto(uid: string, photo: PostPhotoInput | null | undefined, allowStats: boolean): Promise<PostPhotoFields> {
-  const none = normalizePostPhoto(null, allowStats);
-  if (!photo) return none;
-  if (!cloudinaryConfigured()) return none;
-  if (typeof photo.publicId !== "string" || !photo.publicId.startsWith(`${postPhotoFolder(uid)}/`)) return none;
-  if (!Number.isInteger(photo.version) || photo.version <= 0) return none;
-  return normalizePostPhoto(
-    { url: postPhotoUrl(photo.publicId, photo.version), width: photo.width, height: photo.height, overlay: photo.overlay },
-    allowStats,
-  );
-}
-
-/** Share a finished session: the aggregates only, snapshotted now, plus an optional photo the author picked. */
 export async function shareWorkout(
   sessionId: string,
   visibility?: string,
   text?: string,
-  photo?: PostPhotoInput | null,
+  media?: PostMediaInput[] | null,
 ): Promise<PostResult> {
   const { t } = await getI18n();
   const uid = await currentActorId();
@@ -403,18 +362,33 @@ export async function shareWorkout(
   const s = await getShareableSession(sessionId);
   if (!s) return { ok: false, message: t.common.social.notFound };
   const caption = text ? validatePostText(text) : null;
-  const picture = await resolvePostPhoto(uid, photo, true);
-  return insertPost({
+  return insertMediaPost(uid, {
     type: "workout",
     text: caption,
     payload: workoutPostPayload({
       name: s.name, date: s.date, duration_min: s.duration_min, exercises: s.exercises, sets: s.sets,
       volume_kg: s.volume_kg, load: s.load, prs: s.prs.length,
-      photo: { url: picture.photo_url ?? null, width: picture.photo_w, height: picture.photo_h, overlay: picture.overlay },
     }),
     visibility: visibilityOf(visibility),
     activity_id: sessionId,
-  });
+  }, media);
+}
+
+/**
+ * Fresh links for a post's pictures. A page mints /api/media links that live
+ * 5–10 minutes; a picture scrolled to later, or a story exported from a page
+ * left open, asks for new ones here. The same read as the page (social_post:
+ * can_see_post and every rule behind it), so this hands out nothing the
+ * reader could not already see.
+ */
+export async function refreshPostMedia(postId: string): Promise<PostMediaItem[]> {
+  const uid = await currentActorId();
+  if (!uid || typeof postId !== "string") return [];
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("social_post", { p_post: postId });
+  if (error) return [];
+  const row = ((data ?? []) as { type?: string; media?: unknown }[])[0];
+  return row ? toMediaItems(row.media, row.type === "workout") : [];
 }
 
 /** Share one PR the PR engine flagged in a session. */

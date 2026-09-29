@@ -332,7 +332,12 @@ export function postPhotoOf(payload: PostPayload): { url: string; width: number 
   if (!url) return null;
   const w = typeof payload.photo_w === "number" && payload.photo_w > 0 ? payload.photo_w : null;
   const h = typeof payload.photo_h === "number" && payload.photo_h > 0 ? payload.photo_h : null;
-  return { url, width: w !== null && h !== null ? w : null, height: w !== null && h !== null ? h : null, overlay: payload.overlay ?? null };
+  // Read through the same normalizer the server writes with: a post stored
+  // before a field existed ("size" before "scale", no "style") comes back
+  // in today's shape instead of as undefined — which the renderers turned into
+  // NaN positions and every figure piled on one spot.
+  const overlay = normalizePhotoOverlay(payload.overlay ?? null, payload.kind === "workout");
+  return { url, width: w !== null && h !== null ? w : null, height: w !== null && h !== null ? h : null, overlay };
 }
 
 /** Build a workout post from a scored session. Only aggregates cross into the feed. */

@@ -2,12 +2,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useOptimistic, useReducer, useRef, useState, useTransition } from "react";
-import type { PhotoOverlay, PostVisibility, ReactionType } from "@healthapp/shared";
+import type { PhotoOverlay, PostMediaInput, PostVisibility, ReactionType } from "@healthapp/shared";
 import { applyReaction, displayToKg, followButtonState, isAchievementRarity, kudosSummary, postPhotoOf, POST_MEDIA_MAX, POST_TEXT_MAX, type ReactionState } from "@healthapp/shared";
 import {
-  createProgressPost, createTextPost, deletePost, editPost, follow, loadComments, loadKudos, react, requestPostPhotoUpload, setPostSaved,
+  createProgressPost, createTextPost, deletePost, editPost, follow, loadComments, loadKudos, react, refreshPostMedia, setPostSaved,
   sharePost, unfollow,
-  type PostPhotoInput,
 } from "@/app/social-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -15,7 +14,6 @@ import { useUnits } from "@/lib/units/client";
 import { parseDay } from "@/lib/week";
 import { durationLabel } from "@/lib/share-card";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
-import { preparePhoto } from "@/lib/image-prepare";
 import type { OverlayStatValues } from "@/lib/photo-overlay";
 import { renderPhotoStory, storyFileName } from "@/lib/photo-story";
 import { canShareFile, deliverShareImage } from "@/lib/share-card-render";
@@ -198,8 +196,6 @@ function PostPhoto({ post, splash }: { post: FeedPost; splash: React.ReactNode }
  * tile with the number as the hero. Text and progress posts have a photo or
  * nothing.
  */
-export type PostPhoto = { publicId: string; version: number; width: number; height: number; previewUrl: string };
-
 function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }) {
   const { t, locale } = useI18n();
   const f = useSocialFormat();
@@ -209,14 +205,18 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
   // Pictures on a text or progress post (20261016100000): the same gallery
   // on every surface. Posts from before them keep their one legacy photo.
   if (post.media.length > 0 && (post.type === "text" || post.type === "progress")) {
-    return <MediaGallery items={post.media} authorName={post.author_name} splash={splash} />;
+    return <MediaGallery items={post.media} authorName={post.author_name} splash={splash} postId={post.id} />;
   }
   if (!p) return null;
   if (p.kind === "progress" || p.kind === "text") return <PostPhoto post={post} splash={splash} />;
 
   if (p.kind === "workout") {
     const dur = f.duration(p.duration_min);
-    const photo = postPhotoOf(p);
+    // Its pictures: media rows (20261017100000 on), or the one payload photo
+    // of a post from before.
+    const pictures = post.media.length > 0 ? post.media : null;
+    const photo = pictures ? null : postPhotoOf(p);
+    const leadOverlay = pictures ? pictures[0]!.overlay : photo?.overlay ?? null;
     const stats = (
       <>
         <div className={`grid gap-3 ${dur ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
@@ -250,28 +250,38 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
     // workout's name and headline numbers behind a gradient at the bottom.
     // The rest of the figures sit underneath on the tile. Without a photo it
     // is the tile alone, exactly as before.
-    const scrim = photo !== null && !photo.overlay?.stats;
+    const scrim = (pictures !== null || photo !== null) && !leadOverlay?.stats;
+    // The scrim exists so white text is legible on any photo; it is opaque
+    // at the bottom and clear at the top, so the picture is never dimmed
+    // where nothing sits on it.
+    const scrimLayer = scrim ? (
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-5 pb-4 pt-14 text-white">
+        <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-white/70">
+          <NavIcon d={DUMBBELL} className="h-3.5 w-3.5" />
+          {s.workoutPost}
+        </span>
+        <p className="mt-1 truncate font-display text-[24px] font-extrabold leading-tight tracking-tight">{p.name}</p>
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 text-[12.5px] font-semibold tabular-nums text-white/85">
+          {dur ? <span>{dur}</span> : null}
+          <span>{fill(s.volume, { kg: f.n(p.volume_kg) })}</span>
+          <span>{fill(s.setsCount, { count: p.sets })}</span>
+        </p>
+      </div>
+    ) : null;
     return (
       <div className="mx-3 overflow-hidden rounded-2xl bg-tile text-tile-ink">
-        {photo ? (
+        {pictures ? (
+          <MediaGallery
+            items={pictures}
+            authorName={post.author_name}
+            postId={post.id}
+            stats={overlayStats}
+            framed={false}
+            splash={<>{scrimLayer}{splash}</>}
+          />
+        ) : photo ? (
           <PhotoFrame src={photo.url} width={photo.width} height={photo.height} overlay={photo.overlay} stats={overlayStats}>
-            {scrim ? (
-              // The scrim exists so white text is legible on any photo; it is
-              // opaque at the bottom and clear at the top, so the picture is
-              // never dimmed where nothing sits on it.
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-5 pb-4 pt-14 text-white">
-                <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-white/70">
-                  <NavIcon d={DUMBBELL} className="h-3.5 w-3.5" />
-                  {s.workoutPost}
-                </span>
-                <p className="mt-1 truncate font-display text-[24px] font-extrabold leading-tight tracking-tight">{p.name}</p>
-                <p className="mt-1 flex flex-wrap items-center gap-x-3 text-[12.5px] font-semibold tabular-nums text-white/85">
-                  {dur ? <span>{dur}</span> : null}
-                  <span>{fill(s.volume, { kg: f.n(p.volume_kg) })}</span>
-                  <span>{fill(s.setsCount, { count: p.sets })}</span>
-                </p>
-              </div>
-            ) : null}
+            {scrimLayer}
             {splash}
           </PhotoFrame>
         ) : null}
@@ -522,8 +532,10 @@ export function PostCard({ post, detail = false, removeOnUnsave = false }: {
     if (!photo || !photo.width || !photo.height) return;
     setStory("busy");
     try {
+      // A media picture's link lives minutes; the page may be older than that.
+      const fresh = post.media.length > 0 ? (await refreshPostMedia(post.id))[0] : null;
       const blob = await renderPhotoStory({
-        photoUrl: photo.url, width: photo.width, height: photo.height, overlay: photo.overlay, stats: overlayStats, brand: APP_NAME, tagline: APP_TAGLINE,
+        photoUrl: fresh?.url ?? photo.url, width: photo.width, height: photo.height, overlay: photo.overlay, stats: overlayStats, brand: APP_NAME, tagline: APP_TAGLINE,
         workout: p?.kind === "workout" ? { kicker: s.workoutPost, name: p.name, date: f.day(p.date) } : null,
       });
       const date = p?.kind === "workout" ? p.date : post.created_at.slice(0, 10);
@@ -1624,11 +1636,6 @@ export function FollowButton({ userId, following, followsMe = false, compact = f
 
 // ---------- share panel (workout done) ----------
 
-/** An uploaded post photo as the browser holds it: Cloudinary's handle, the pixel size it sent, a preview. */
-function photoInput(photo: PostPhoto | null, overlay: PhotoOverlay | null): PostPhotoInput | null {
-  return photo ? { publicId: photo.publicId, version: photo.version, width: photo.width, height: photo.height, overlay } : null;
-}
-
 /**
  * Whether this browser can hand a JPEG to the native share sheet — phones
  * can, and that sheet is where Instagram (Story, Feed) and Facebook live;
@@ -1652,11 +1659,11 @@ function useCanShareFiles(): boolean {
  * "Share to Instagram, Facebook…" on a phone, "Download for Story" on a
  * desktop: the photo with its overlay at 1080×1920 and the mark in the
  * corner, through the native share sheet where there is one, saved as a file
- * otherwise. Works before and after the post goes out — the picture is
- * already on Cloudinary either way.
+ * otherwise. Works before and after the post goes out: it paints from the
+ * picture on the device, not from the upload.
  */
 function StoryDownload({ photo, overlay, stats, title, date }: {
-  photo: PostPhoto;
+  photo: { url: string; width: number; height: number };
   overlay: PhotoOverlay | null;
   stats: OverlayStatValues;
   title: string;
@@ -1671,7 +1678,7 @@ function StoryDownload({ photo, overlay, stats, title, date }: {
     setStatus("busy");
     try {
       const blob = await renderPhotoStory({
-        photoUrl: photo.previewUrl, width: photo.width, height: photo.height, overlay, stats, brand: APP_NAME, tagline: APP_TAGLINE,
+        photoUrl: photo.url, width: photo.width, height: photo.height, overlay, stats, brand: APP_NAME, tagline: APP_TAGLINE,
         workout: { kicker: s.workoutPost, name: title, date: f.day(date) },
       });
       const how = await deliverShareImage(blob, storyFileName(date), title);
@@ -1702,7 +1709,7 @@ function StoryDownload({ photo, overlay, stats, title, date }: {
 
 export function SharePanel({ session, onShare, onSharePr, photoUploads = false }: {
   session: ShareableSession;
-  onShare: (visibility: PostVisibility, text: string, photo: PostPhotoInput | null) => Promise<{ ok: boolean; message?: string }>;
+  onShare: (visibility: PostVisibility, text: string, media: PostMediaInput[] | null) => Promise<{ ok: boolean; message?: string }>;
   onSharePr: (setId: string, visibility: PostVisibility) => Promise<{ ok: boolean; message?: string }>;
   /** Whether Cloudinary is configured; without it the photo button is not offered. */
   photoUploads?: boolean;
@@ -1714,8 +1721,16 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
   const [visibility, setVisibility] = useState<PostVisibility>("followers");
   const [text, setText] = useState("");
   const [shared, setShared] = useState(session.already_shared);
-  const [photo, setPhoto] = useState<PostPhoto | null>(null);
   const [overlay, setOverlay] = useState<PhotoOverlay | null>(null);
+  // The pictures: the same draft, tray and upload rules as the feed composer
+  // (private media, up to ten, resized on the device).
+  const media = useMediaDraft();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const items = media.draft.items;
+  const ready = items.filter((i) => i.status === "ready" && i.previewUrl && i.width && i.height);
+  // The overlay editor is for one picture on its own; the story paints the first.
+  const single = items.length === 1 && ready.length === 1 ? ready[0]! : null;
+  const lead = ready[0] ? { url: ready[0].previewUrl!, width: ready[0].width!, height: ready[0].height! } : null;
   const [sharedPrs, setSharedPrs] = useState<Set<string>>(new Set(session.prs.filter((p) => p.shared).map((p) => p.set_id)));
   const [error, setError] = useState<string | null>(null);
   const s = t.common.social;
@@ -1746,12 +1761,43 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
               placeholder={s.composerPlaceholder}
               className="h-11 w-full rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent"
             />
-            {photoUploads ? <PhotoPicker photo={photo} onChange={(next) => { setPhoto(next); setOverlay(null); }} disabled={pending} /> : null}
-            {photo ? (
+            {photoUploads ? (
+              <>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept={MEDIA_ACCEPT}
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    e.target.value = "";
+                    if (files.length === 0) return;
+                    setError(null);
+                    if (items.length === 0) setOverlay(null);
+                    void media.pick(files);
+                  }}
+                />
+                {items.length === 0 ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => fileRef.current?.click()}
+                    className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-2xl bg-bg px-4 text-[13px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
+                  >
+                    <NavIcon d={CAMERA} className="h-[18px] w-[18px]" />
+                    {s.photoAdd}
+                  </button>
+                ) : (
+                  <MediaTray api={media} disabled={pending} onAddMore={() => fileRef.current?.click()} />
+                )}
+              </>
+            ) : null}
+            {single ? (
               <PhotoOverlayEditor
-                src={photo.previewUrl}
-                width={photo.width}
-                height={photo.height}
+                src={single.previewUrl!}
+                width={single.width!}
+                height={single.height!}
                 stats={overlayStats}
                 value={overlay}
                 onChange={setOverlay}
@@ -1766,9 +1812,21 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
                 onClick={() =>
                   startTransition(async () => {
                     setError(null);
-                    const r = await onShare(visibility, text, photoInput(photo, overlay));
-                    if (!r.ok) setError(r.message ?? "Error");
-                    else setShared(true);
+                    // Text is optional on a workout: the session is the post.
+                    const plan = publishPlan(media.draft, text || " ");
+                    if (!plan.ok) {
+                      setError(plan.reason === "busy" ? s.mediaWaitUploads : s.mediaFixFailed);
+                      return;
+                    }
+                    const list = plan.media.length === 1 && overlay ? [{ ...plan.media[0]!, overlay }] : plan.media;
+                    const r = await onShare(visibility, text, list.length > 0 ? list : null);
+                    if (!r.ok) {
+                      setError(r.message ?? s.mediaPublishFailed);
+                      return;
+                    }
+                    // Kept on the device, so the story can still be made from it.
+                    media.markPublished({ keepPreviews: true });
+                    setShared(true);
                     router.refresh();
                   })
                 }
@@ -1776,7 +1834,7 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
               >
                 {s.shareToFeed}
               </button>
-              {photo ? <StoryDownload photo={photo} overlay={overlay} stats={overlayStats} title={session.name} date={session.date} /> : null}
+              {lead ? <StoryDownload photo={lead} overlay={single ? overlay : null} stats={overlayStats} title={session.name} date={session.date} /> : null}
             </div>
           </div>
         ) : (
@@ -1785,7 +1843,7 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
               <NavIcon d={CHECK} className="h-4 w-4 [stroke-width:2.4]" />
               {s.shared}
             </p>
-            {photo ? <StoryDownload photo={photo} overlay={overlay} stats={overlayStats} title={session.name} date={session.date} /> : null}
+            {lead ? <StoryDownload photo={lead} overlay={single ? overlay : null} stats={overlayStats} title={session.name} date={session.date} /> : null}
           </div>
         )}
         {error ? <p className="mt-2 text-xs text-risk">{error}</p> : null}
@@ -1831,118 +1889,3 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
     </div>
   );
 }
-
-
-/**
- * How big a file the picker accepts. Generous, because the browser shrinks
- * it (lib/image-prepare.ts) before anything is sent: what leaves the phone
- * is a JPEG no wider than 1600px, typically 200–400 KB.
- */
-const POST_PHOTO_MAX_BYTES = 25 * 1024 * 1024;
-
-/**
- * "Add a photo" for a post — the gym selfie.
- *
- * `capture="environment"` is deliberately *not* set: on a phone the picker
- * offers both the camera and the library, and someone who wants a selfie wants
- * the front camera, which only the unhinted picker lets them choose. The file
- * is resized and cropped on the device (preparePhoto), then goes straight to
- * Cloudinary under a signature this server minted (requestPostPhotoUpload),
- * so it never passes through a server action body; the post only carries the
- * public_id, version and pixel size — the URL itself is rebuilt server-side
- * when the post is written.
- */
-function PhotoPicker({ photo, onChange, disabled }: {
-  photo: PostPhoto | null;
-  onChange: (photo: PostPhoto | null) => void;
-  disabled: boolean;
-}) {
-  const { t } = useI18n();
-  const s = t.common.social;
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState<"idle" | "preparing" | "uploading">("idle");
-  const [error, setError] = useState<string | null>(null);
-
-  async function upload(file: File) {
-    setError(null);
-    if (!file.type.startsWith("image/")) { setError(s.photoNotImage); return; }
-    if (file.size > POST_PHOTO_MAX_BYTES) { setError(s.photoTooLarge); return; }
-    setBusy("preparing");
-    let preview: string | null = null;
-    try {
-      const prepared = await preparePhoto(file);
-      preview = prepared.previewUrl;
-      setBusy("uploading");
-      const permission = await requestPostPhotoUpload();
-      if (!permission.ok || !permission.ticket) { setError(permission.message ?? s.photoFailed); return; }
-      const ticket = permission.ticket;
-      const body = new FormData();
-      body.append("file", prepared.blob, "photo.jpg");
-      body.append("api_key", ticket.apiKey);
-      for (const [key, value] of Object.entries(ticket.fields)) body.append(key, value);
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${ticket.cloudName}/image/upload`, { method: "POST", body });
-      if (!response.ok) { setError(s.photoFailed); return; }
-      const uploaded = (await response.json()) as { public_id?: string; version?: number; secure_url?: string };
-      if (!uploaded.public_id || !uploaded.version) { setError(s.photoFailed); return; }
-      // The preview stays the local object URL (instant, no second download);
-      // the story export loads Cloudinary's copy when there is one, since a
-      // canvas can only draw a same-origin or CORS-served image.
-      onChange({
-        publicId: uploaded.public_id,
-        version: uploaded.version,
-        width: prepared.width,
-        height: prepared.height,
-        previewUrl: uploaded.secure_url ?? prepared.previewUrl,
-      });
-      if (uploaded.secure_url) URL.revokeObjectURL(prepared.previewUrl);
-      preview = null;
-    } catch {
-      setError(s.photoFailed);
-    } finally {
-      if (preview) URL.revokeObjectURL(preview);
-      setBusy("idle");
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  }
-
-  return (
-    <div>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }}
-      />
-      {photo ? (
-        <div className="flex items-center gap-3">
-          <span className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-bg">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.previewUrl} alt="" aria-hidden className="h-full w-full object-cover" />
-          </span>
-          <button
-            type="button"
-            disabled={disabled || busy !== "idle"}
-            onClick={() => onChange(null)}
-            className="inline-flex h-10 items-center rounded-2xl px-3.5 text-[13px] font-semibold text-ink-faint hover:bg-bg hover:text-risk disabled:opacity-50"
-          >
-            {s.photoRemove}
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          disabled={disabled || busy !== "idle"}
-          onClick={() => fileRef.current?.click()}
-          className="inline-flex h-11 items-center gap-2 rounded-2xl bg-bg px-4 text-[13px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
-        >
-          <NavIcon d="M4 8h3l1.5-2h7L17 8h3v11H4zM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7" className="h-[18px] w-[18px]" />
-          {busy === "preparing" ? s.photoPreparing : busy === "uploading" ? t.common.actions.loading : s.photoAdd}
-        </button>
-      )}
-      <p className="mt-1.5 text-[12px] leading-relaxed text-ink-faint">{s.photoHint}</p>
-      {error ? <p className="mt-1 text-[12.5px] text-risk">{error}</p> : null}
-    </div>
-  );
-}
-

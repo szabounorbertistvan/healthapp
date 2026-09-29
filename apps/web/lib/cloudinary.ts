@@ -203,68 +203,16 @@ export async function destroyPhoto(publicId: string): Promise<void> {
   await client.uploader.destroy(publicId, { type: "authenticated", invalidate: true });
 }
 
-// ---------- workout post photos ----------
+// ---------- workout post photos (legacy, read-only) ----------
 //
-// Public like an avatar (`type: "upload"`): a selfie attached to a workout post
-// is shown to whoever can see the post, so a plain URL their browser can fetch
-// is the point. Unlike an avatar there is one asset per post rather than one
-// per person, so the public_id carries a random suffix the server mints — the
-// browser cannot name the asset, and a second upload cannot overwrite the first
-// post's picture.
-//
-// Not the same thing as a progress photo. Those are `type: "authenticated"`,
-// signed, expiring, and never leave the person's own screens (see the top of
-// this file). Nothing here is allowed to reach into that folder.
+// Before 20261017100000 a workout post carried one public picture
+// (`type: "upload"`) whose URL sat in the post payload. Nothing uploads there
+// any more — every new picture goes through the private post media below — but
+// those old posts still show their picture, and the account purge still clears
+// the folder, which both kinds share.
 
 export function postPhotoFolder(userId: string): string {
   return `voinic/posts/${userId}`;
-}
-
-export type PostPhotoUploadTicket = {
-  cloudName: string;
-  apiKey: string;
-  /** Every field the browser must post, exactly as signed. */
-  fields: Record<string, string>;
-  /** The full public_id the signature covers, for the callback to verify against. */
-  publicId: string;
-};
-
-export function signPostPhotoUpload(userId: string): PostPhotoUploadTicket {
-  const client = configured();
-  const timestamp = Math.floor(Date.now() / 1000);
-  const publicId = `${postPhotoFolder(userId)}/${crypto.randomUUID()}`;
-  const params = {
-    folder: postPhotoFolder(userId),
-    public_id: publicId.split("/").pop()!,
-    timestamp,
-  };
-  const signature = client.utils.api_sign_request(params, API_SECRET!);
-  return {
-    cloudName: CLOUD_NAME!,
-    apiKey: API_KEY!,
-    publicId,
-    fields: {
-      folder: params.folder,
-      public_id: params.public_id,
-      timestamp: String(timestamp),
-      signature,
-    },
-  };
-}
-
-/**
- * The URL stored on the post payload: capped at a size a feed card can use,
- * versioned so the exact asset is pinned, and never wider than 1080 — a phone
- * camera original in a scrolling list is megabytes nobody asked for.
- */
-export function postPhotoUrl(publicId: string, version: number): string {
-  const client = configured();
-  return client.url(publicId, {
-    type: "upload",
-    secure: true,
-    version,
-    transformation: [{ width: 1080, crop: "limit", quality: "auto", fetch_format: "auto" }],
-  });
 }
 
 // ---------- post pictures (private) ----------

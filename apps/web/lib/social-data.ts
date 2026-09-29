@@ -96,12 +96,12 @@ function toFeedPost(r: FeedRow, viewer: string): FeedPost {
     mine: r.user_id === viewer,
     saved: r.saved ?? false,
     shared: r.shared
-      ? { ...r.shared, payload: r.shared.payload ?? null, mentions: resolvedMentions(r.shared.mentions), media: toMediaItems(r.shared.media) }
+      ? { ...r.shared, payload: r.shared.payload ?? null, mentions: resolvedMentions(r.shared.mentions), media: toMediaItems(r.shared.media, r.shared.type === "workout") }
       : null,
     // Absent (social_post, or a database without 20261006100000): no preview, never an error.
     comment_preview: (r.comment_preview ?? []).map((c) => ({ ...c, mentions: resolvedMentions(c.mentions) })),
     author_muted: r.author_muted ?? false,
-    media: toMediaItems(r.media),
+    media: toMediaItems(r.media, r.type === "workout"),
   };
 }
 

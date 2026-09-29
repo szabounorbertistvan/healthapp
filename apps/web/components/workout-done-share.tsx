@@ -9,7 +9,7 @@ export function WorkoutDoneShare({ session, photoUploads = false }: { session: S
     <SharePanel
       session={session}
       photoUploads={photoUploads}
-      onShare={(visibility, text, photo) => shareWorkout(session.session_id, visibility, text, photo)}
+      onShare={(visibility, text, media) => shareWorkout(session.session_id, visibility, text, media)}
       onSharePr={(setId, visibility) => sharePr(session.session_id, setId, visibility)}
     />
   );

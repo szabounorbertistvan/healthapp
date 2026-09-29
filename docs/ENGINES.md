@@ -237,7 +237,7 @@ fixed list at or under the score).
 |---|---|
 | Client | the composer on `/feed` (Photo button, tray: preview, reorder, remove, retry, optional alt text, `n/10`); `components/media-gallery.tsx` draws the pictures on every surface (feed, profile, `/saved`, a share's original, the post page) |
 | Delivery | `app/api/media/[token]/route.ts` — the only way a picture reaches a browser |
-| Writes | `requestPostMediaUploads`, `discardPostMedia`, `createTextPost` / `createProgressPost` (media list) in `app/social-actions.ts` → `social_create_post()` |
+| Writes | `requestPostMediaUploads`, `discardPostMedia`, `createTextPost` / `createProgressPost` / `shareWorkout` (media list), `refreshPostMedia` in `app/social-actions.ts` → `social_create_post()` |
 | Maths | `packages/shared/src/post-media.ts` (limits, file checks, list normalisation, frame ratio, carousel steps); `lib/media-draft.ts` (the composer's reducer); `lib/media-token.ts` |
 | Migration | `20261016100000_social_post_media.sql` — `social_post_media`, `social_media_uploads` |
 | Tests | `post-media.test.ts` (15), `media-draft.test.ts` (15), `media-token.test.ts` (8), `supabase/tests/social_post_media.test.sql` (59 pgTAP) |
@@ -261,9 +261,23 @@ attaches an id issued to the author, unused, to a fresh post of their own,
 
 **Abandoned uploads**: removing a picture or closing the composer discards
 its uploads at once; anything left (a closed tab) is deleted from Cloudinary
-the next time that person uploads (older than a day). Posts made before this
-keep their single public payload photo; the workout share panel still uses
-that legacy path.
+the next time that person uploads (older than a day).
+
+**Expired links refresh themselves.** A picture that fails to load (a link
+older than its 5–10 minutes, typically a carousel swiped late) makes
+`MediaGallery` call `refreshPostMedia(postId)` once per 30 s — the same
+`social_post` RPC, so the same visibility rules — and swap the fresh links in.
+The story download asks for a fresh link before painting the canvas.
+
+**Workout posts use it too** (`20261017100000_workout_media.sql`, 2026-09-29,
+not yet applied live; `supabase/tests/social_workout_media.test.sql`, 14
+pgTAP). The share panel after a workout uploads through the same tray;
+`social_create_post` takes `p_activity_id` for a workout post and the guard
+lets media onto one. A single picture on a workout post keeps the overlay
+with the workout's figures (`toMediaItems(…, allowStats)`), in the feed and in
+the story. The old public path (`signPostPhotoUpload`, payload `photo_url`) is
+gone for writes; posts made with it still show their payload photo, read by
+`postPhotoOf`.
 
 ### Social privacy cleanup (added 2026-09-28, not yet applied to the live DB)
 
