@@ -9,9 +9,10 @@ import type { MealSlot } from "@/lib/types";
 import { isoDay, mondayOf } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import {
-  estimated1RM, gramsFromSplit, isPersonalRecord, MACRO_KEYS, portionMacros, recomputePrFlags, validateSetEdit,
-  type Macros, type MacroSplit, type SetEdit,
+  estimated1RM, gramsFromSplit, isPersonalRecord, isValidPortionGrams, MACRO_KEYS, MAX_PORTION_GRAMS, MAX_SET_REPS, MAX_SET_WEIGHT_KG, portionMacros,
+  recomputePrFlags, validateSetEdit, type Macros, type MacroSplit, type SetEdit, type SetEditError,
 } from "@healthapp/shared";
+import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { liveUser, type LiveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
@@ -47,21 +48,13 @@ export async function logSet(input: {
   /** Free-text comment about the set. */
   notes?: string | null;
 }): Promise<LogSetResult> {
-  if (!Number.isFinite(input.weightKg) || input.weightKg < 0) {
-    return { ok: false, message: "Weight must be a positive number" };
-  }
-  if (!Number.isInteger(input.reps) || input.reps <= 0) {
-    return { ok: false, message: "Reps must be a whole number above zero" };
-  }
-  if (input.rpe !== null && (!Number.isFinite(input.rpe) || input.rpe < 1 || input.rpe > 10)) {
-    return { ok: false, message: "Intensity must be between 1 and 10" };
-  }
   const rir = input.rir ?? null;
-  if (rir !== null && (!Number.isFinite(rir) || rir < 0 || rir > 10)) {
-    return { ok: false, message: "RIR must be between 0 and 10" };
-  }
   const notes = input.notes?.trim().slice(0, 500) || null;
-
+  // The same rules — and the same plausibility caps — an edit is held to, in
+  // words the person can act on rather than the constraint name Postgres
+  // would otherwise hand back.
+  const invalid = validateSetEdit({ weight_kg: input.weightKg, reps: input.reps, rpe: input.rpe, rir, notes });
+  if (invalid) return { ok: false, message: await setErrorMessage(invalid) };
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -71,28 +64,24 @@ export async function logSet(input: {
     // logged_sets.exercise_id is NOT NULL and there is no name lookup here on
     // purpose: guessing an exercise by name would silently log against the
     // wrong row. The program screens carry the id through instead.
-    return { ok: false, message: "This exercise is missing its library link" };
+    return { ok: false, message: (await getI18n()).t.clientWidgets.setLogger.errMissingExercise };
   }
 
   // client_generated_id is a uuid column, and it is what makes a retry safe.
   // Deriving it from the day and date keeps one session per day per program
   // day however many times this runs.
   const sessionKey = sessionKeyFor(userId, input.dayId, isoDay());
-  const sessionId = await openSession(supabase, userId, input.dayId, sessionKey);
-  if (typeof sessionId !== "string") return sessionId;
+  const session = await openSession(supabase, userId, input.dayId, sessionKey);
+  if ("ok" in session) return session;
+  const sessionId = session.id;
 
-  // The same PR check the mobile app runs, against the best
-  // estimated 1RM already on record for this lift. Bounded by the
-  // (user_id, exercise_id, received_at) index rather than reading a lifetime.
-  const { data: history } = await supabase
-    .from("logged_sets")
-    .select("weight_kg, reps")
-    .eq("user_id", userId)
-    .eq("exercise_id", input.exerciseId)
-    .order("received_at", { ascending: false })
-    .limit(200);
-  const best = (history ?? []).reduce(
-    (max, s) => Math.max(max, estimated1RM(s.weight_kg ?? 0, s.reps ?? 0)),
+  // The same PR check the mobile app runs, against the best estimated 1RM
+  // already on record for this lift — over the whole history, exactly what
+  // updateLoggedSet's recomputePrFlags() walks. A 200-set window here once
+  // announced records the edit path then took back.
+  const history = await setsOfExercise(supabase, userId, input.exerciseId);
+  const best = history.reduce(
+    (max, s) => Math.max(max, estimated1RM(Number(s.weight_kg ?? 0), s.reps ?? 0)),
     0,
   );
   const isPr = isPersonalRecord(
@@ -120,7 +109,12 @@ export async function logSet(input: {
     ),
     client_ts: new Date().toISOString(),
   });
-  if (error) return { ok: false, message: error.message };
+  if (error) {
+    // A first set the database refused must not leave an empty session behind.
+    if (session.created) await supabase.from("logged_sessions").delete().eq("id", sessionId).eq("user_id", userId);
+    console.error("logSet", error);
+    return { ok: false, message: (await getI18n()).t.clientWidgets.setLogger.couldNotLogSet };
+  }
 
   revalidatePath("/today");
   revalidatePath(`/workout/${input.dayId}`);
@@ -132,14 +126,15 @@ export async function logSet(input: {
  * Today's session for this program day, creating it only if it does not exist.
  * An upsert would restamp `started_at` on every set, which is what the session
  * list and every "how long did that take" reading are ordered by. Returns the
- * id, or an ActionResult to hand straight back to the caller.
+ * id (and whether this call created it), or an ActionResult to hand straight
+ * back to the caller.
  */
 async function openSession(
   supabase: LiveUser["supabase"],
   userId: string,
   dayId: string,
   sessionKey: string,
-): Promise<string | ActionResult> {
+): Promise<{ id: string; created: boolean } | ActionResult> {
   const { data: existing } = await supabase
     .from("logged_sessions")
     .select("id, completed_at")
@@ -155,7 +150,7 @@ async function openSession(
         .update({ completed_at: null })
         .eq("id", existing.id);
     }
-    return existing.id as string;
+    return { id: existing.id as string, created: false };
   }
 
   const { data: created, error } = await supabase
@@ -168,7 +163,7 @@ async function openSession(
     })
     .select("id")
     .single();
-  if (!error) return created.id as string;
+  if (!error) return { id: created.id as string, created: true };
 
   // A concurrent first set won the insert — adopt the row it created.
   const { data: raced } = await supabase
@@ -176,7 +171,41 @@ async function openSession(
     .select("id")
     .eq("client_generated_id", sessionKey)
     .maybeSingle();
-  return raced ? (raced.id as string) : { ok: false, message: error.message };
+  return raced ? { id: raced.id as string, created: false } : { ok: false, message: error.message };
+}
+
+type HistorySet = { id: string; weight_kg: number | null; reps: number | null; is_pr: boolean; received_at: string };
+
+/**
+ * Every set of one lift, oldest first, paged past PostgREST's 1000-row cap so
+ * the PR judge never decides on a truncated history.
+ */
+async function setsOfExercise(
+  supabase: LiveUser["supabase"],
+  userId: string,
+  exerciseId: string,
+): Promise<HistorySet[]> {
+  const PAGE = 1000;
+  const rows: HistorySet[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data } = await supabase
+      .from("logged_sets")
+      .select("id, weight_kg, reps, is_pr, received_at")
+      .eq("user_id", userId)
+      .eq("exercise_id", exerciseId)
+      .order("received_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    rows.push(...((data ?? []) as HistorySet[]));
+    if (!data || data.length < PAGE) return rows;
+  }
+}
+
+async function setErrorMessage(invalid: SetEditError): Promise<string> {
+  const m = (await getI18n()).t.clientWidgets.setLogger;
+  if (invalid === "weight") return fill(m.errWeight, { max: MAX_SET_WEIGHT_KG, unit: "kg" });
+  if (invalid === "reps") return fill(m.errReps, { max: MAX_SET_REPS });
+  return invalid === "rpe" ? m.errRpe : m.errRir;
 }
 
 /**
@@ -193,10 +222,7 @@ export async function updateLoggedSet(
   dayId?: string | null,
 ): Promise<ActionResult & { is_pr?: boolean }> {
   const invalid = validateSetEdit(edit);
-  if (invalid === "weight") return { ok: false, message: "Weight must be a positive number" };
-  if (invalid === "reps") return { ok: false, message: "Reps must be a whole number above zero" };
-  if (invalid === "rpe") return { ok: false, message: "Intensity must be between 1 and 10" };
-  if (invalid === "rir") return { ok: false, message: "RIR must be between 0 and 10" };
+  if (invalid) return { ok: false, message: await setErrorMessage(invalid) };
 
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -223,23 +249,15 @@ export async function updateLoggedSet(
   if (failed) return failed;
 
   // The PR flags of this lift, re-derived in the order the sets arrived.
-  const { data: history } = await supabase
-    .from("logged_sets")
-    .select("id, weight_kg, reps, is_pr, received_at")
-    .eq("user_id", userId)
-    .eq("exercise_id", row.exercise_id)
-    .order("received_at", { ascending: true })
-    .limit(1000);
+  const history = await setsOfExercise(supabase, userId, row.exercise_id as string);
   const changes = recomputePrFlags(
-    ((history ?? []) as { id: string; weight_kg: number | null; reps: number | null; is_pr: boolean; received_at: string }[]).map((s) => ({
-      ...s, weight_kg: Number(s.weight_kg ?? 0), reps: s.reps ?? 0,
-    })),
+    history.map((s) => ({ ...s, weight_kg: Number(s.weight_kg ?? 0), reps: s.reps ?? 0 })),
     estimated1RM,
   );
   for (const c of changes) {
     await supabase.from("logged_sets").update({ is_pr: c.is_pr }).eq("id", c.id).eq("user_id", userId);
   }
-  const isPr = changes.find((c) => c.id === setId)?.is_pr ?? (history ?? []).find((s) => s.id === setId)?.is_pr ?? false;
+  const isPr = changes.find((c) => c.id === setId)?.is_pr ?? history.find((s) => s.id === setId)?.is_pr ?? false;
 
   revalidatePath("/today");
   revalidatePath("/workout", "layout");
@@ -251,22 +269,40 @@ export async function updateLoggedSet(
   return { ok: true, is_pr: isPr };
 }
 
-/** Completes today's session and hands back its id, so the done screen can offer to share it. */
+/**
+ * Completes today's session for this program day and hands back its id, so the
+ * done screen can offer to share it. Only today's — the one logSet() opened
+ * under the same key — never every unfinished session of that day: one
+ * abandoned last week would otherwise be "finished" now, days long. A second
+ * press (or Continue with nothing new logged) finds it already complete and
+ * answers with the same id instead of a silent bounce to Today.
+ */
 export async function finishWorkout(dayId: string): Promise<ActionResult & { sessionId?: string }> {
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
-  const { data, error } = await supabase
+  const m = (await getI18n()).t.clientWidgets.setLogger;
+  const { data: session, error: readError } = await supabase
     .from("logged_sessions")
-    .update({ completed_at: new Date().toISOString() })
+    .select("id, completed_at")
     .eq("user_id", userId)
-    .eq("program_day_id", dayId)
-    .is("completed_at", null)
-    .select("id");
-  if (error) return { ok: false, message: error.message };
+    .eq("client_generated_id", sessionKeyFor(userId, dayId, isoDay()))
+    .maybeSingle();
+  if (readError) return { ok: false, message: m.couldNotFinish };
+  if (!session) return { ok: false, message: m.nothingToFinish };
+  if (session.completed_at === null) {
+    const failed = await mutated(
+      await supabase
+        .from("logged_sessions")
+        .update({ completed_at: new Date().toISOString() }, { count: "exact" })
+        .eq("id", session.id)
+        .eq("user_id", userId),
+    );
+    if (failed) return failed;
+  }
   revalidatePath("/today");
-  revalidatePath("/workout");
-  return { ok: true, sessionId: data?.[0]?.id };
+  revalidatePath("/workout", "layout");
+  return { ok: true, sessionId: session.id as string };
 }
 
 export async function logFood(input: {
@@ -279,8 +315,8 @@ export async function logFood(input: {
   day?: string;
 }): Promise<ActionResult> {
   if (!input.foodName.trim()) return { ok: false, message: "Pick a food" };
-  if (!Number.isFinite(input.grams) || input.grams <= 0) {
-    return { ok: false, message: "Grams must be above zero" };
+  if (!isValidPortionGrams(input.grams)) {
+    return { ok: false, message: fill((await getI18n()).t.clientWidgets.foodLogger.gramsRange, { max: MAX_PORTION_GRAMS }) };
   }
   const day = input.day ?? isoDay();
   // Snapshot the macros now: the food row may change, this log must not.
@@ -362,8 +398,8 @@ export async function logPlannedMeal(slot: MealSlot, day?: string): Promise<Acti
  * 0.1 g) and a small portion divides that error back up by 100/grams.
  */
 export async function updateFoodLog(id: string, grams: number): Promise<ActionResult> {
-  if (!Number.isFinite(grams) || grams <= 0) {
-    return { ok: false, message: "Grams must be above zero" };
+  if (!isValidPortionGrams(grams)) {
+    return { ok: false, message: fill((await getI18n()).t.clientWidgets.foodLogger.gramsRange, { max: MAX_PORTION_GRAMS }) };
   }
 
 

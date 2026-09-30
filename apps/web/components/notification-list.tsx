@@ -161,6 +161,10 @@ export function NotificationRowView({ notification, unread, compact = false }: {
         {body ? (
           <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed text-ink-soft">{body}</p>
         ) : null}
+        {notification.post_unavailable ? (
+          // The row stays as history but no longer leads anywhere (href is null).
+          <p className="mt-0.5 text-[12px] italic text-ink-faint">{t.common.social.postGone}</p>
+        ) : null}
         <p className="mt-0.5 text-[11.5px] text-ink-faint">{f.when(notification.created_at)}</p>
       </div>
       {notification.post ? <Thumb post={notification.post} /> : null}

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/safe-next";
 
 /**
  * Where every emailed auth link lands: confirmation after sign-up, password
@@ -67,10 +68,4 @@ export async function GET(request: NextRequest) {
   // credential — worth separating, because it looks identical to the user
   console.error("auth callback had neither token_hash nor code");
   return NextResponse.redirect(new URL(failure, origin));
-}
-
-// only same-site paths; never an absolute URL from the query string
-function safeNext(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
-  return raw;
 }

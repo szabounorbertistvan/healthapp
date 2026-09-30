@@ -10,6 +10,17 @@ export type Macros = {
 };
 
 /**
+ * The largest single portion a log accepts. The column only insists on > 0, so
+ * 50 000 g of eggs (62 300 kcal) would otherwise land and wreck the day's
+ * totals and adherence. 5 kg covers a whole pot or tray logged at once.
+ */
+export const MAX_PORTION_GRAMS = 5000;
+
+export function isValidPortionGrams(grams: number): boolean {
+  return Number.isFinite(grams) && grams > 0 && grams <= MAX_PORTION_GRAMS;
+}
+
+/**
  * Scale per-100g values to a portion. The result is what gets denormalized into
  * food_logs: external food data can change, logged history must not.
  */

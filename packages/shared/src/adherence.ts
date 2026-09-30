@@ -85,6 +85,24 @@ export function signalFor(
   return "on_track";
 }
 
+/** Days without a set, meal or habit tick after which a week counts as stalled (the `needs_attention` inactivity threshold). */
+export const STALLED_DAYS = 3;
+
+/**
+ * Why a week is `at_risk`, so the copy can say the true thing: `stalled` when
+ * nothing has been logged for STALLED_DAYS or more ("one set is enough to
+ * restart"), `score` when the person is active but the week's percentage is
+ * under 0.5 (a finished workout with food, habits and the check-in still open).
+ * Null for any other signal.
+ */
+export function atRiskCause(
+  signal: AdherenceSignal,
+  inactiveDays: number,
+): "stalled" | "score" | null {
+  if (signal !== "at_risk") return null;
+  return inactiveDays >= STALLED_DAYS ? "stalled" : "score";
+}
+
 /** Average per-day closeness to the kcal target, floored at 0 per day. */
 export function macroScore(days: readonly { kcal: number }[], kcalTarget: number): number {
   if (days.length === 0 || kcalTarget <= 0) return 0;

@@ -14,6 +14,16 @@ const en = {
     // Same nudge without the coach, for someone training on their own.
     atRiskBodySolo:
       "Last activity {time}. One logged set or one meal is enough to restart the week.",
+    // At risk while active (atRiskCause "score"): the week's % is under 50
+    // because parts other than the workout are still open — not inactivity.
+    atRiskScoreBody:
+      "You are active — the week is at {score} because {open} still count toward it. Your coach sees the same score.",
+    atRiskScoreBodySolo:
+      "You are active — the week is at {score} because {open} still count toward it.",
+    openWorkouts: "the remaining workouts",
+    openFood: "food logging",
+    openHabits: "habits",
+    openCheckIn: "the weekly check-in",
     nextWorkout: "Next workout",
     startWorkout: "Start workout",
     noProgram: "No published program yet — your coach assigns one from their workspace.",
@@ -83,6 +93,7 @@ const en = {
     editDay: "Edit day",
     start: "Start workout",
     continueWorkout: "Continue workout",
+    addSets: "Add more sets",
     logToday: "Log today's sets",
     exercises: "Exercises",
     history: "History for this day",
@@ -92,6 +103,7 @@ const en = {
     sets: "sets",
     volume: "volume",
     prs: "PRs",
+    prOne: "PR",
     intensity: "intensity",
     rir: "RIR",
     note: "note",
@@ -687,6 +699,14 @@ const ro: typeof en = {
       "Ultima activitate {time}. Un set înregistrat sau o masă e de ajuns pentru a reporni săptămâna — antrenorul tău vede același semnal ca tine.",
     atRiskBodySolo:
       "Ultima activitate {time}. Un set înregistrat sau o masă e de ajuns pentru a reporni săptămâna.",
+    atRiskScoreBody:
+      "Ești activ — săptămâna e la {score} pentru că {open} contează încă în scor. Antrenorul tău vede același scor.",
+    atRiskScoreBodySolo:
+      "Ești activ — săptămâna e la {score} pentru că {open} contează încă în scor.",
+    openWorkouts: "antrenamentele rămase",
+    openFood: "înregistrarea meselor",
+    openHabits: "obiceiurile",
+    openCheckIn: "check-in-ul săptămânal",
     nextWorkout: "Următorul antrenament",
     startWorkout: "Începe antrenamentul",
     noProgram: "Încă nu există un program publicat — antrenorul tău îți atribuie unul din spațiul lui de lucru.",
@@ -752,6 +772,7 @@ const ro: typeof en = {
     editDay: "Editează ziua",
     start: "Începe antrenamentul",
     continueWorkout: "Continuă antrenamentul",
+    addSets: "Adaugă seturi",
     logToday: "Înregistrează seturile de azi",
     exercises: "Exerciții",
     history: "Istoricul acestei zile",
@@ -761,6 +782,7 @@ const ro: typeof en = {
     sets: "seturi",
     volume: "volum",
     prs: "recorduri",
+    prOne: "record",
     intensity: "intensitate",
     rir: "RIR",
     note: "notă",

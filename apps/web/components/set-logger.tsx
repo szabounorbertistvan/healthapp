@@ -2,8 +2,9 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  circuitSegments, displayToKg, kgToDisplay, parseDecimal, prefillFor, previousFor, previousSetFor,
-  progressionVs, resolveRestSeconds, restAfterLoggedSet, type ExerciseVideoSource, type PreviousWorkout,
+  circuitSegments, displayToKg, kgToDisplay, MAX_SET_REPS, MAX_SET_WEIGHT_KG, parseDecimal, parseWholeNumber, prefillFor,
+  previousFor, previousSetFor, progressionVs, resolveRestSeconds, restAfterLoggedSet, validateSetEdit,
+  type ExerciseVideoSource, type PreviousWorkout,
 } from "@healthapp/shared";
 import { finishWorkout, logSet } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
@@ -45,7 +46,9 @@ export function SetLogger({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [logged, setLogged] = useState(day.logged);
-  const [error, setError] = useState<string | null>(null);
+  // Shown where it happened — under the block whose Log set was pressed, or
+  // above Finish — not in a banner at the top that is off-screen by exercise 4.
+  const [error, setErrorAt] = useState<{ at: string; text: string } | null>(null);
   const [pr, setPr] = useState<string | null>(null);
   const rest = useRestTimer();
   // Back into the Map the domain lookup takes, once per render rather than
@@ -97,11 +100,6 @@ export function SetLogger({
           </p>
         </div>
       ) : null}
-      {error ? (
-        <Card plain className="bg-risk-soft">
-          <p className="text-sm font-semibold text-risk">{error}</p>
-        </Card>
-      ) : null}
 
       {/* As many columns as fit, never a block under 420px — one on a phone,
           several across a wide window. A circuit stays one cell. */}
@@ -129,6 +127,7 @@ export function SetLogger({
           <ExerciseBlock
             key={exercise.id}
             name={exercise.exercise}
+            inCircuit={seg.circuit !== null}
             targetSets={exercise.sets}
             targetReps={exercise.reps}
             targetWeight={exercise.weight_kg}
@@ -144,11 +143,31 @@ export function SetLogger({
             sets={blockSets}
             pending={pending}
             dayId={day.day_id}
+            error={error?.at === exercise.id ? error.text : null}
             onEdited={(updated) => setLogged((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
             onLog={(entry) =>
               startTransition(async () => {
-                setError(null);
+                setErrorAt(null);
                 setPr(null);
+                const setError = (text: string) => setErrorAt({ at: exercise.id, text });
+                // Checked here first, in the person's own unit, so a typo is
+                // named on the spot rather than after a round trip.
+                const invalid = validateSetEdit({
+                  weight_kg: displayToKg(entry.weight, u.weightUnit),
+                  reps: entry.reps,
+                  rpe: entry.intensity,
+                  rir: entry.rir,
+                  notes: entry.notes,
+                });
+                if (invalid) {
+                  const m = t.clientWidgets.setLogger;
+                  setError(
+                    invalid === "weight" ? fill(m.errWeight, { max: kgToDisplay(MAX_SET_WEIGHT_KG, u.weightUnit), unit: u.weightUnit })
+                    : invalid === "reps" ? fill(m.errReps, { max: MAX_SET_REPS })
+                    : invalid === "rpe" ? m.errRpe : m.errRir,
+                  );
+                  return;
+                }
                 const result = await logSet({
                   dayId: day.day_id,
                   dayName: day.day_name,
@@ -214,14 +233,18 @@ export function SetLogger({
       ))}
       </div>
 
+      {error?.at === "finish" ? (
+        <p role="alert" className="rounded-2xl bg-risk-soft px-4 py-3 text-sm font-semibold text-risk">{error.text}</p>
+      ) : null}
       <button
         type="button"
         disabled={pending || logged.length === 0}
         onClick={() =>
           startTransition(async () => {
+            setErrorAt(null);
             const result = await finishWorkout(day.day_id);
             if (!result.ok) {
-              setError(result.message ?? t.clientWidgets.setLogger.couldNotFinish);
+              setErrorAt({ at: "finish", text: result.message ?? t.clientWidgets.setLogger.couldNotFinish });
               return;
             }
             // The workout is over: whatever rest was counting down is moot.
@@ -251,10 +274,12 @@ type SetEntry = {
 };
 
 function ExerciseBlock({
-  name, targetSets, targetReps, targetWeight, previous, targetRpe, rest, restSeconds, exerciseId, videoUrl, videoSource, intensityMode,
-  done, sets, pending, dayId, onLog, onEdited,
+  name, inCircuit, targetSets, targetReps, targetWeight, previous, targetRpe, rest, restSeconds, exerciseId, videoUrl, videoSource, intensityMode,
+  done, sets, pending, dayId, error, onLog, onEdited,
 }: {
   name: string;
+  /** Stacked in a circuit wrapper: sized by its content, not stretched to the grid row. */
+  inCircuit: boolean;
   targetSets: number;
   targetReps: string;
   targetWeight: number | null;
@@ -274,6 +299,8 @@ function ExerciseBlock({
   sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">[];
   pending: boolean;
   dayId: string;
+  /** Why the last Log set of this block was refused, if it was. */
+  error: string | null;
   onLog: (entry: SetEntry) => void;
   onEdited: (set: Pick<LoggedSetRow, "id" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">) => void;
 }) {
@@ -356,21 +383,27 @@ function ExerciseBlock({
     : null;
 
   function submit() {
-    const rirValue = asRir && rir.trim() !== "" ? clamp(parseFloat(rir), 0, 10) : null;
-    const restTyped = restInput.trim() === "" ? null : parseInt(restInput, 10);
+    // Strict: "8abc", "10.7" reps or an RIR of 15 are refused by name, never
+    // truncated or clamped into a number the person did not type. A comma
+    // decimal ("1,5") reads the same as a dot everywhere.
+    const rirValue = asRir && rir.trim() !== "" ? (parseDecimal(rir) ?? NaN) : null;
+    const restTyped = parseWholeNumber(restInput);
     onLog({
       weight: parseDecimal(weight) ?? NaN,
-      reps: parseInt(reps, 10),
+      reps: parseWholeNumber(reps) ?? NaN,
       intensity,
-      rir: rirValue !== null && Number.isFinite(rirValue) ? rirValue : null,
+      rir: rirValue,
       notes: notes.trim() || null,
-      restSeconds: restTyped !== null && Number.isFinite(restTyped) ? restTyped : null,
+      restSeconds: restTyped,
     });
     setNotes("");
   }
 
   return (
-    <Card plain className="h-full">
+    // In a grid row a lone block stretches to match its neighbours; inside a
+    // circuit wrapper h-full would make every card the wrapper's full height
+    // and spill over the Finish button below.
+    <Card plain className={inCircuit ? "" : "h-full"}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate font-display text-lg font-bold tracking-tight">{name}</p>
@@ -471,6 +504,7 @@ function ExerciseBlock({
           {m.logSet}
         </button>
       </div>
+      {error ? <p role="alert" className="mt-2 text-[13px] font-semibold text-risk">{error}</p> : null}
       {restPicker && exerciseId ? (
         <RestDurationPicker
           exerciseId={exerciseId}
@@ -536,6 +570,7 @@ function Field({
       <input
         inputMode="decimal"
         value={value}
+        aria-label={label}
         onChange={(e) => onChange(e.target.value)}
         className="h-11 w-[4.25rem] rounded-xl border border-line bg-surface px-2.5 text-sm tabular-nums outline-none focus:border-accent"
       />

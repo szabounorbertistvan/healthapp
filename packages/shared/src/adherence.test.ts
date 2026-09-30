@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { FORMULA_VERSION, computeAdherence, macroScore } from "./adherence";
+import { FORMULA_VERSION, atRiskCause, computeAdherence, macroScore } from "./adherence";
 
 // These cases mirror supabase/migrations/20260823000900_functions.sql
 // (compute_adherence_snapshots) and PRODUCT_SPEC §7. If SQL and TypeScript
@@ -108,6 +108,25 @@ describe("macroScore", () => {
 
   test("scores zero when no day was logged", () => {
     expect(macroScore([], 2000)).toBe(0);
+  });
+});
+
+describe("atRiskCause", () => {
+  test("a finished workout today with the rest of the week open is a score problem, not a stall", () => {
+    // BUG-10: 1/1 workouts, nothing else logged, active today.
+    const r = computeAdherence(inputs({ plannedSessions: 1, completedSessions: 1, daysLogged: 0, macroScore: 0, habitTicks: 0, checkinSubmitted: false, inactiveDays: 0 }));
+    expect(r.signal).toBe("at_risk");
+    expect(atRiskCause(r.signal, 0)).toBe("score");
+  });
+
+  test("three quiet days or more is a stall", () => {
+    expect(atRiskCause("at_risk", 3)).toBe("stalled");
+    expect(atRiskCause("at_risk", 99)).toBe("stalled");
+  });
+
+  test("only at_risk has a cause", () => {
+    expect(atRiskCause("needs_attention", 10)).toBeNull();
+    expect(atRiskCause("on_track", 0)).toBeNull();
   });
 });
 

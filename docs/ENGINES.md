@@ -594,6 +594,16 @@ from PRODUCT_SPEC §7 (`0.40·workout + 0.30·nutrition + 0.15·habits +
 0.15·checkin`) that produces the on-track / needs-attention / at-risk signal on
 the coach dashboard. **This formula must never be duplicated in a component.**
 
+The inputs are assembled in one place, `apps/web/lib/live-adherence.ts`
+(`foldActivity` + `adherenceOf`): the client's Today and the coach's dashboard,
+roster badge and client page all show **this week, computed live** from the
+rows (the coach side batched per 10 clients, one wave). `adherence_snapshots`
+(written weekly by `compute_adherence_snapshots()` for the *previous* week) is
+only the fallback when those live reads fail — reading it as "now" is what made
+the dashboard say "no logs for 13 days" about a client who trained that morning
+(BUG-17). On Today, `atRiskCause()` separates a stalled week from an active one
+with a low % so the nudge says the true reason (BUG-10).
+
 ---
 
 ## Coaching

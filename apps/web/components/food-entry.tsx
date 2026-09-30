@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { portionMacros } from "@healthapp/shared";
+import { isValidPortionGrams, parseDecimal, portionMacros } from "@healthapp/shared";
 import { deleteFoodLog, updateFoodLog } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -20,8 +20,8 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const gramsNum = parseFloat(grams);
-  const valid = Number.isFinite(gramsNum) && gramsNum > 0;
+  const gramsNum = parseDecimal(grams) ?? NaN;
+  const valid = isValidPortionGrams(gramsNum);
   // Recover the per-100g basis so the preview matches what the server will store.
   const per100g = {
     kcal: (entry.macros.kcal * 100) / entry.grams,

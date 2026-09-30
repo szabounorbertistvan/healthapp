@@ -97,7 +97,7 @@ export default async function WorkoutPage() {
                         <>
                           {" · "}
                           <span className="font-semibold text-accent-ink">
-                            {s.prs} {t.clientApp.workoutDay.prs}
+                            {s.prs} {s.prs === 1 ? t.clientApp.workoutDay.prOne : t.clientApp.workoutDay.prs}
                           </span>
                         </>
                       ) : null}

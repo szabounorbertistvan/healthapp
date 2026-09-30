@@ -10,6 +10,7 @@ import { usernameAvailable } from "@/app/profile-actions";
 import { reportLoginFailure } from "@/app/admin-actions";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
+import { safeNext } from "@/lib/safe-next";
 
 export type LoginMode = "signin" | "signup" | "forgot";
 type Role = "coach" | "client";
@@ -41,6 +42,12 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done>(null);
+  // Where the person was headed when the middleware sent them here (a deep
+  // link opened while signed out). Read once: the error handling below wipes
+  // the query string. Only ever used in handlers, so SSR never renders it.
+  const [next] = useState(() =>
+    typeof window === "undefined" ? "/dashboard" : safeNext(new URLSearchParams(window.location.search).get("next")),
+  );
   // shown only once the Supabase project has the provider switched on
   const [googleEnabled, setGoogleEnabled] = useState(false);
 
@@ -102,7 +109,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
         // The admin auth page counts these; GoTrue itself keeps no trace of a
         // refused password. Fire and forget — never the password.
         void reportLoginFailure(email);
-      } else router.push("/dashboard");
+      } else router.push(next);
       return;
     }
 
@@ -127,7 +134,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
             sex,
             birth_year: String(birthYearFromAge(parseInt(age, 10))),
           },
-          emailRedirectTo: `${origin}/auth/callback?next=/dashboard`,
+          emailRedirectTo: `${origin}/auth/callback?${new URLSearchParams({ next })}`,
         },
       });
       setBusy(false);
@@ -142,7 +149,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
         return;
       }
       // a session means confirmations are off — straight in
-      if (data.session) router.push("/dashboard");
+      if (data.session) router.push(next);
       else setDone({ kind: "confirm", email });
       return;
     }
@@ -162,7 +169,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   async function google() {
     setBusy(true);
     setError(null);
-    const params = new URLSearchParams({ next: "/dashboard", flow: "oauth" });
+    const params = new URLSearchParams({ next, flow: "oauth" });
     if (mode === "signup") params.set("role", role);
     const { error } = await supabaseBrowser().auth.signInWithOAuth({
       provider: "google",

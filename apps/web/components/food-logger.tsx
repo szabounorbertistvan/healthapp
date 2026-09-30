@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { portionMacros } from "@healthapp/shared";
+import { isValidPortionGrams, MAX_PORTION_GRAMS, parseDecimal, portionMacros } from "@healthapp/shared";
 import { lookupBarcode, searchFoods } from "@/app/nutrition-actions";
 import { logFood, toggleFavoriteFood } from "@/app/client-actions-app";
 import { fill } from "@/lib/i18n";
@@ -89,7 +89,10 @@ export function FoodLogger({
     return () => clearTimeout(timer);
   }, [q]);
 
-  const gramsNum = parseFloat(grams);
+  // parseDecimal, not parseFloat: "60,5" is how a Romanian keyboard types 60.5,
+  // and parseFloat stopped at the comma and logged 60.
+  const gramsNum = parseDecimal(grams) ?? NaN;
+  const tooMuch = Number.isFinite(gramsNum) && gramsNum > MAX_PORTION_GRAMS;
   const portions = picked ? portionsFor(picked) : [];
 
   // A food sold by the piece opens on its middle size rather than 100 g, which
@@ -127,7 +130,7 @@ export function FoodLogger({
   }
 
   const preview =
-    picked && Number.isFinite(gramsNum) && gramsNum > 0
+    picked && isValidPortionGrams(gramsNum)
       ? portionMacros(picked.per_100g, gramsNum)
       : null;
   const showQuick = q.trim() === "" && (favs.length > 0 || recent.length > 0);
@@ -220,6 +223,9 @@ export function FoodLogger({
                 className="w-24 rounded-xl border border-line bg-surface px-2.5 py-2 text-sm tabular-nums outline-none focus:border-accent"
               />
             </label>
+            {tooMuch ? (
+              <p className="pb-2 text-xs font-semibold text-risk">{fill(fl.gramsTooMuch, { max: MAX_PORTION_GRAMS })}</p>
+            ) : null}
             {preview ? (
               <p className="pb-2 text-xs tabular-nums text-ink-faint">
                 <b className="text-ink">{preview.kcal}</b> kcal · P{preview.protein} · C{preview.carbs} ·

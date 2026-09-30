@@ -519,6 +519,8 @@ export function PostCard({ post, detail = false, removeOnUnsave = false }: {
   const save = useSave(post);
   const [sharing, setSharing] = useState(false);
   const [removed, setRemoved] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const photo = primaryPhoto(post);
   const overlayStats = useOverlayStats(p?.kind === "workout" ? p : null);
   const [story, setStory] = useState<"idle" | "busy" | "ready" | "shared" | "failed">("idle");
@@ -584,16 +586,10 @@ export function PostCard({ post, detail = false, removeOnUnsave = false }: {
               setEditError(null);
               setEditing(true);
             }}
-            // Delete from the feed too, behind a confirmation: the menu is
-            // one tap from the caption, and a post is not something to lose to
-            // a slip. From the post's own page the deletion leads back to the feed.
+            // Opens DeletePostDialog below; nothing is sent from the menu itself.
             onDelete={() => {
-              if (!window.confirm(s.deletePostConfirm)) return;
-              startTransition(async () => {
-                await deletePost(post.id);
-                if (detail) router.push("/feed");
-                router.refresh();
-              });
+              setDeleteError(null);
+              setConfirmingDelete(true);
             }}
             onStory={photo && photo.width && photo.height ? downloadStory : undefined}
             storyBusy={story === "busy"}
@@ -613,6 +609,29 @@ export function PostCard({ post, detail = false, removeOnUnsave = false }: {
           />
         ) : null}
       </div>
+      {confirmingDelete ? (
+        // Delete from the feed too, behind a confirmation: the menu is one tap
+        // from the caption, and a post is not something to lose to a slip.
+        // From the post's own page the deletion leads back to the feed.
+        <DeletePostDialog
+          pending={pending}
+          error={deleteError}
+          onClose={() => setConfirmingDelete(false)}
+          onConfirm={() =>
+            startTransition(async () => {
+              setDeleteError(null);
+              const r = await deletePost(post.id);
+              if (!r.ok) {
+                setDeleteError(r.message ?? s.saveError);
+                return;
+              }
+              setConfirmingDelete(false);
+              if (detail) router.push("/feed");
+              router.refresh();
+            })
+          }
+        />
+      ) : null}
 
       {post.type === "shared_post" ? <SharedEmbed post={post} /> : <PostMedia post={post} splash={splash} />}
       {story === "ready" || story === "shared" || story === "failed" ? (
@@ -1222,6 +1241,63 @@ function Reactions({ post, reactions, comments, extra }: {
   );
 }
 
+
+/**
+ * "Delete this post?" — a native modal <dialog> (top layer, so no .glass or
+ * sticky ancestor can trap it), styled like the Block / Mute confirmations in
+ * moderation.tsx. Escape, the backdrop and Cancel all close it.
+ */
+function DeletePostDialog({ pending, error, onConfirm, onClose }: {
+  pending: boolean;
+  error: string | null;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const s = t.common.social;
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (!ref.current?.open) ref.current?.showModal();
+  }, []);
+
+  const close = () => { if (!pending) ref.current?.close(); };
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onClose}
+      onCancel={(e) => { if (pending) e.preventDefault(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) close(); }}
+      aria-label={s.deletePost}
+      className="app-dialog m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl bg-surface p-0 text-ink"
+    >
+      <div className="p-5" aria-busy={pending}>
+        <p className="font-display text-lg font-bold tracking-tight">{s.deletePost}</p>
+        <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{s.deletePostConfirm}</p>
+        {error ? <p role="alert" className="mt-2 text-[12.5px] text-risk">{error}</p> : null}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={close}
+            className="h-11 rounded-2xl px-4 text-[13px] font-semibold text-ink-soft hover:bg-bg hover:text-ink disabled:opacity-50"
+          >
+            {s.cancel}
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onConfirm}
+            className="h-11 rounded-2xl bg-risk px-5 font-display text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {s.deletePost}
+          </button>
+        </div>
+      </div>
+    </dialog>
+  );
+}
 
 /** Who reacted, and how — a native <dialog>, first page on open, "Load more" for the rest. */
 function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void }) {

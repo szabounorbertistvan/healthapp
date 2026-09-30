@@ -119,15 +119,33 @@ export function parseDecimal(input: string | number | null | undefined): number 
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * A whole number as typed: "8", " 12 ". Null for "8abc", "10.7" or blank —
+ * never parseInt's silent truncation, which logged "8abc" as 8.
+ */
+export function parseWholeNumber(input: string | number | null | undefined): number | null {
+  const n = parseDecimal(input);
+  return n !== null && Number.isInteger(n) ? n : null;
+}
+
 // ---------- editing a logged set ----------
+
+/**
+ * Plausibility bounds for one set. Reps mirror the column check (0..200); the
+ * weight column is numeric(6,2), so the database would take 9999.99 kg — and
+ * one mistyped set poisons PRs, volume and the leaderboard for good. 1000 kg
+ * clears every lift and sled a person can actually move.
+ */
+export const MAX_SET_REPS = 200;
+export const MAX_SET_WEIGHT_KG = 1000;
 
 export type SetEdit = { weight_kg: number; reps: number; rpe: number | null; rir: number | null; notes: string | null };
 export type SetEditError = "weight" | "reps" | "rpe" | "rir";
 
 /** The same rules logSet() applies when a set is first logged. */
 export function validateSetEdit(e: SetEdit): SetEditError | null {
-  if (!Number.isFinite(e.weight_kg) || e.weight_kg < 0) return "weight";
-  if (!Number.isInteger(e.reps) || e.reps <= 0 || e.reps > 200) return "reps";
+  if (!Number.isFinite(e.weight_kg) || e.weight_kg < 0 || e.weight_kg > MAX_SET_WEIGHT_KG) return "weight";
+  if (!Number.isInteger(e.reps) || e.reps <= 0 || e.reps > MAX_SET_REPS) return "reps";
   if (e.rpe !== null && (!Number.isFinite(e.rpe) || e.rpe < 1 || e.rpe > 10)) return "rpe";
   if (e.rir !== null && (!Number.isFinite(e.rir) || e.rir < 0 || e.rir > 10)) return "rir";
   return null;

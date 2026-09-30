@@ -66,7 +66,7 @@ export function WorkoutHistory({ sessions, share }: {
                   {session.prs > 0 ? (
                     <>
                       {" · "}
-                      <span className="font-semibold text-accent-ink">{session.prs} {d.prs}</span>
+                      <span className="font-semibold text-accent-ink">{session.prs} {session.prs === 1 ? d.prOne : d.prs}</span>
                     </>
                   ) : null}
                 </p>

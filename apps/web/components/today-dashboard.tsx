@@ -119,7 +119,7 @@ function SessionMeta({ session, lead }: { session: SessionSummaryRow; lead: stri
   return (
     <p className="mt-0.5 text-[12.5px] leading-snug tabular-nums text-ink-faint first-letter:uppercase">
       {lead} · {session.sets} {t.clientApp.workoutDay.sets} · {nf.format(Math.round(session.volume_kg))} kg
-      {session.prs > 0 ? <> · <span className="font-semibold text-accent-ink">{session.prs} {t.clientApp.workoutDay.prs}</span></> : null}
+      {session.prs > 0 ? <> · <span className="font-semibold text-accent-ink">{session.prs} {session.prs === 1 ? t.clientApp.workoutDay.prOne : t.clientApp.workoutDay.prs}</span></> : null}
     </p>
   );
 }
@@ -175,7 +175,10 @@ export function TrainingCard({ doneToday, recent, next, coached, streak }: {
 
   return (
     <Card plain className="overflow-hidden p-0">
-      <CardLabel right={next ? <span className="truncate">{next.program_name} · {programNote}</span> : undefined}>
+      {/* The program label belongs to the workout shown under it. When today's
+          finished session is shown instead, it may come from another program
+          the person holds, so the label of `next` would name the wrong one. */}
+      <CardLabel right={next && !doneToday ? <span className="truncate">{next.program_name} · {programNote}</span> : undefined}>
         {t.common.nav.training}
       </CardLabel>
 
@@ -512,7 +515,9 @@ export function WeekCard({ adherence, today, workoutDays, done, planned, streak,
   const r = 39;
   const c = 2 * Math.PI * r;
   const delta = load.trend.delta_pct;
-  const deltaText = delta === null ? undefined : `${delta > 0 ? "+" : ""}${delta.toLocaleString(locale, { maximumFractionDigits: 0 })}%`;
+  // Nothing trained yet this week reads as "0", not "0 −100%": a red delta on
+  // a Monday morning is noise, not news.
+  const deltaText = delta === null || load.this_week === 0 ? undefined : `${delta > 0 ? "+" : ""}${delta.toLocaleString(locale, { maximumFractionDigits: 0 })}%`;
   const deltaTone = load.trend.direction === "increased" ? "text-accent-ink" : load.trend.direction === "decreased" ? "text-warn" : "text-ink-faint";
 
   return (

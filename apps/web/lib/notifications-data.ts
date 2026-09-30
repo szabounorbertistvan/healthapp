@@ -52,6 +52,13 @@ export type NotificationRow = {
    * or a post since deleted.
    */
   post: { id: string; type: string; label: string | null; photo_url: string | null } | null;
+  /**
+   * The row names a post the reader can no longer open — deleted, made
+   * "only me", followers-only after an unfollow, or behind a block. The card
+   * then says so and is not a link (its href is null), rather than a tap
+   * into a dead page.
+   */
+  post_unavailable: boolean;
 };
 
 export const NOTIFICATION_PAGE_SIZE = 20;
@@ -123,7 +130,7 @@ type Supabase = NonNullable<Awaited<ReturnType<typeof liveUser>>>["supabase"];
 async function notificationPosts(
   supabase: Supabase,
   page: { payload: Record<string, unknown> | null }[],
-): Promise<Map<string, NotificationRow["post"]>> {
+): Promise<Map<string, NotificationRow["post"]> | null> {
   const posts = new Map<string, NotificationRow["post"]>();
   const postIds = [...new Set(page.map((n) => notificationPostId(n.payload)).filter((id): id is string => Boolean(id)))];
   if (postIds.length === 0) return posts;
@@ -133,12 +140,18 @@ async function notificationPosts(
     // own policy: only a post the reader may see).
     social_post_media?: { public_id: string; position: number }[] | null;
   };
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("social_posts")
     .select("id, type, text, payload, social_post_media(public_id, position)")
     .in("id", postIds)
     .is("deleted_at", null)
     .eq("social_post_media.position", 0);
+  // A failed read says nothing about which posts are gone: null, so no row
+  // is marked unavailable on the strength of an error.
+  if (error) {
+    console.error("notification posts read failed:", error.message);
+    return null;
+  }
   for (const p of ((data ?? []) as Post[])) {
     const first = p.social_post_media?.[0];
     const photo = postPhotoOf(p.payload)?.url ?? (first && cloudinaryConfigured() ? postMediaUrl(first.public_id, "thumb") : null);
@@ -150,16 +163,22 @@ async function notificationPosts(
 /** One notification row as the card wants it. */
 function toRow(
   n: { id: string; category: string; title: string; payload: Record<string, unknown> | null; created_at: string; read_at: string | null },
-  extra: { body: string | null; actor: NotificationRow["actor"]; posts: Map<string, NotificationRow["post"]> },
+  extra: { body: string | null; actor: NotificationRow["actor"]; posts: Map<string, NotificationRow["post"]> | null },
 ): NotificationRow {
   const postId = notificationPostId(n.payload);
+  // posts_select answered and this post was not among the rows: the reader
+  // may not open it now (lib/social-data getPost goes through the same rule).
+  const unavailable = Boolean(postId && extra.posts && !extra.posts.has(postId));
+  const href = notificationHref(n.category, n.payload);
   return {
     id: n.id,
     category: n.category,
     sentence: notificationSentence(n.category, n.payload),
     title: n.title,
     body: extra.body,
-    href: notificationHref(n.category, n.payload),
+    // Only a link into the post goes dead with it; a follow or a badge row
+    // never names a post.
+    href: unavailable && href?.startsWith("/feed/") ? null : href,
     created_at: n.created_at,
     read: n.read_at !== null,
     actor: extra.actor,
@@ -167,7 +186,8 @@ function toRow(
       ? { en: n.payload.name_en, ro: typeof n.payload.name_ro === "string" ? n.payload.name_ro : n.payload.name_en }
       : null,
     challenge: n.category === "challenge_milestone" ? challengeNotice(n.payload) : null,
-    post: postId ? extra.posts.get(postId) ?? null : null,
+    post: postId ? extra.posts?.get(postId) ?? null : null,
+    post_unavailable: unavailable,
   };
 }
 

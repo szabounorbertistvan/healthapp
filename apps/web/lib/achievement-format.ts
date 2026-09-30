@@ -40,7 +40,9 @@ export function progressText(a: Strings, metric: string, current: number, target
   const unit = unitLabel(a, metric);
   return {
     ...p,
-    line: fill(a.progress, { current: nf.format(p.current), target: nf.format(p.target), unit }).trim(),
+    // An earned badge reads "1 / 1", not "6 / 1": past the target, the count
+    // beyond it is not progress towards anything. p.current keeps the truth.
+    line: fill(a.progress, { current: nf.format(p.complete ? Math.min(p.current, p.target) : p.current), target: nf.format(p.target), unit }).trim(),
     remainingLine: p.complete ? null : fill(a.remaining, { remaining: nf.format(p.remaining), unit }).trim(),
   };
 }

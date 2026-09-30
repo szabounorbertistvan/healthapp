@@ -94,7 +94,7 @@ export async function completeProfile(input: {
  * fire on the user's *local* hour, so a wrong zone means the reminder lands at
  * the wrong time of day.
  */
-export async function updateAccount(input: {
+export type AccountFields = {
   fullName: string;
   username: string;
   city: string;
@@ -105,7 +105,16 @@ export async function updateAccount(input: {
   leaderboardVisibility: "public" | "followers" | "private";
   weightUnit: WeightUnit;
   lengthUnit: LengthUnit;
-}): Promise<ActionResult> {
+};
+
+/**
+ * `baseline` is what the form was showing before the person typed — the
+ * values it was rendered with. Only fields that differ from it are written,
+ * so saving a stale tab (Bio changed here, City changed in another tab since)
+ * no longer blanks the other tab's City: last write wins per field, not per
+ * form. Without a baseline every field is written, as before.
+ */
+export async function updateAccount(input: AccountFields, baseline?: AccountFields): Promise<ActionResult> {
   const fullName = input.fullName.trim();
   const username = input.username.trim();
   const timezone = input.timezone.trim();
@@ -140,24 +149,36 @@ export async function updateAccount(input: {
     return { ok: false, errorCode: "USERNAME_TAKEN" };
   }
 
-  const failed = await mutated(
-    await supabase
-      .from("users")
-      .update(
-        {
-          full_name: fullName,
-          username,
-          city: city || null,
-          bio: bio || null,
-          timezone,
-          check_in_weekday: input.checkInWeekday,
-          leaderboard_visibility: input.leaderboardVisibility,
-          weight_unit: input.weightUnit,
-          length_unit: input.lengthUnit,
-        },
-        { count: "exact" },
+  const all = {
+    full_name: fullName,
+    username,
+    city: city || null,
+    bio: bio || null,
+    timezone,
+    check_in_weekday: input.checkInWeekday,
+    leaderboard_visibility: input.leaderboardVisibility,
+    weight_unit: input.weightUnit,
+    length_unit: input.lengthUnit,
+  };
+  const column: Record<keyof AccountFields, keyof typeof all> = {
+    fullName: "full_name", username: "username", city: "city", bio: "bio", timezone: "timezone",
+    checkInWeekday: "check_in_weekday", leaderboardVisibility: "leaderboard_visibility",
+    weightUnit: "weight_unit", lengthUnit: "length_unit",
+  };
+  const patch = baseline
+    ? Object.fromEntries(
+        (Object.keys(column) as (keyof AccountFields)[])
+          .filter((k) => {
+            const a = input[k], b = baseline[k];
+            return typeof a === "string" && typeof b === "string" ? a.trim() !== b.trim() : a !== b;
+          })
+          .map((k) => [column[k], all[column[k]]]),
       )
-      .eq("id", userId),
+    : all;
+  if (Object.keys(patch).length === 0) return { ok: true };
+
+  const failed = await mutated(
+    await supabase.from("users").update(patch, { count: "exact" }).eq("id", userId),
   );
   if (failed) {
     if (failed.message?.includes("users_username_lower_idx")) {

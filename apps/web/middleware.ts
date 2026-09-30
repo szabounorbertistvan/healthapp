@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeNext } from "@/lib/safe-next";
 import { userIdFromClient } from "@/lib/supabase/claims";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
@@ -71,14 +72,17 @@ export async function middleware(request: NextRequest) {
   const isLanding = path === "/";
   const isLogin = path.startsWith("/login");
 
-  // logged-out users see only the landing page (and login)
+  // logged-out users see only the landing page (and login). A deep link — a
+  // shared workout, a notification opened from an email — goes to the login
+  // with the way back attached, instead of dropping the person on the landing.
   if (!signedIn && !isLanding && !isLogin) {
-    return redirect("/");
+    const back = `${path}${request.nextUrl.search}`;
+    return redirect(`/login?${new URLSearchParams({ next: back })}`);
   }
   // logged-in users skip the login page. The landing page stays reachable
   // (the logo links to it); it shows an "open the app" button instead of sign-in.
   if (signedIn && isLogin) {
-    return redirect("/dashboard");
+    return redirect(safeNext(request.nextUrl.searchParams.get("next")));
   }
   return response;
 }

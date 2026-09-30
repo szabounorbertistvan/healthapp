@@ -4,6 +4,7 @@ import { cache } from "react";
 import { liveUser, supabaseServer } from "./supabase/server";
 import { effectiveTier, isLengthUnit, isWeightUnit, normalizeRestPrefs, portionMacros, sumMacros } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
+import { liveAdherenceFor } from "./live-adherence";
 import type {
   CheckInRow, ClientRow, ConversationRow, DashboardRow,
   MessageRow, NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
@@ -77,12 +78,38 @@ export function ageFrom(birthYear: number | null): number | null {
   return new Date().getFullYear() - birthYear;
 }
 
-export async function getDashboard(): Promise<DashboardRow[]> {
+/**
+ * The coach's queue. coach_dashboard() supplies the roster, last activity,
+ * pending check-in and unread count; the signal, reason and % are this week's,
+ * computed live by lib/live-adherence — the same assembly the client's Today
+ * runs. The RPC's own figures come from adherence_snapshots, which the weekly
+ * cron writes for the *previous* week, so on their own they told a coach that a
+ * client who trained this morning had "no logs for 13 days" (BUG-17). They are
+ * kept only as the fallback for a client whose live reads failed.
+ *
+ * Two waves: the RPC (it yields the client ids), then one batched wave for all
+ * clients. Request-cached, since /clients and the client page both come here.
+ */
+export const getDashboard = cache(async (): Promise<DashboardRow[]> => {
   const supabase = await supabaseServer();
   const { data, error } = await supabase.rpc("coach_dashboard");
   if (error) throw error;
-  return data ?? [];
-}
+  const rows = (data ?? []) as DashboardRow[];
+  if (rows.length === 0) return rows;
+  const live = await liveAdherenceFor(
+    supabase,
+    rows.map((r) => r.client_id),
+    new Map(rows.map((r) => [r.client_id, r.last_activity])),
+  );
+  const rank = { at_risk: 0, needs_attention: 1, on_track: 2 } as const;
+  return rows
+    .map((r) => {
+      const a = live.get(r.client_id);
+      return a ? { ...r, signal: a.signal, reason: a.reason, overall_pct: a.overall } : r;
+    })
+    // The RPC's order was by the snapshot's signal; re-rank by the live one.
+    .sort((a, b) => rank[a.signal] - rank[b.signal] || Number(b.pending_checkin) - Number(a.pending_checkin));
+});
 
 /**
  * The coach's active clients, id and name only — for pickers (copy a program

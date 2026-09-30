@@ -5,6 +5,7 @@ import type { LengthUnit, WeightUnit } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { Role } from "@/lib/entitlements";
+import { isValidUsername } from "@/lib/profile";
 import { Card } from "./ui";
 import { Avatar } from "./social";
 import {
@@ -67,6 +68,11 @@ export function ProfileForm({
     weightUnit,
     lengthUnit,
   });
+  // What the form opened on (then: what it last saved). updateAccount writes
+  // only the fields that differ from it, so a stale second tab cannot blank a
+  // field it never touched.
+  const baseline = useRef(form);
+  const usernameOk = isValidUsername(form.username.trim());
   const [state, setState] = useState<"idle" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -79,8 +85,9 @@ export function ProfileForm({
     setError(null);
     setState("idle");
     start(async () => {
-      const result = await updateAccount(form);
+      const result = await updateAccount(form, baseline.current);
       if (result.ok) {
+        baseline.current = form;
         setState("saved");
         router.refresh();
         return;
@@ -117,8 +124,10 @@ export function ProfileForm({
           <input
             className={FIELD}
             value={form.username}
+            aria-invalid={!usernameOk}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
           />
+          {!usernameOk ? <span className="mt-1 block text-[12.5px] font-normal text-risk">{a.errUsernameFormat}</span> : null}
         </label>
       </div>
       <label className="mt-3.5 block text-[13px] font-semibold text-ink-soft">
@@ -231,7 +240,7 @@ export function ProfileForm({
       ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button onClick={save} disabled={pending} className={BUTTON}>
+        <button onClick={save} disabled={pending || !usernameOk} className={BUTTON}>
           {pending ? a.saving : a.save}
         </button>
         {state === "saved" && !pending ? <span className="text-[13px] text-accent-ink">{a.saved}</span> : null}

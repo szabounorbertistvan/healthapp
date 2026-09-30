@@ -1,7 +1,7 @@
 // Today aggregate and the coach thread.
-import { daysAgoIso, daysSince, mondayOf } from "./dates";
+import { daysAgoIso, mondayOf } from "./dates";
 import "server-only";
-import { computeAdherence, macroScore } from "@healthapp/shared";
+import { adherenceOf, foldActivity, type WeekActivity } from "./live-adherence";
 import { currentActorId } from "./actor";
 import { liveUser } from "./supabase/server";
 import { displayName, getProfile } from "./data";
@@ -63,18 +63,13 @@ export async function getToday(): Promise<ClientToday | null> {
 
   const plannedSessions = days.length;
 
-  const habitTicks = habits.reduce((sum, h) => sum + h.done_this_week, 0);
-  const habitScheduled = habits.reduce((sum, h) => sum + h.target_per_week, 0);
-
-  const adherence = computeAdherence({
+  // lib/live-adherence: the same assembly the coach's dashboard uses for this
+  // client, so the two screens show one number.
+  const adherence = adherenceOf(activity, {
     plannedSessions,
-    completedSessions: activity.completedSessions,
-    daysLogged: activity.daysLogged,
-    macroScore: macroScore(activity.weekKcal, nutrition.target.kcal),
-    habitTicks,
-    habitScheduled,
+    kcalTarget: nutrition.target.kcal,
+    habits,
     checkinSubmitted: checkIn.submitted,
-    inactiveDays: daysSince(activity.lastActivity),
   });
 
   // Next workout = the first day with nothing logged this week.
@@ -122,18 +117,8 @@ async function unreadCoachMessages(clientId: string): Promise<number> {
   return count ?? 0;
 }
 
-/** Everything the adherence engine and the Today header need about the week. */
-type Activity = {
-  completedSessions: number;
-  daysLogged: number;
-  weekKcal: { kcal: number }[];
-  lastActivity: string | null;
-  /** Program days already trained this week, by id. */
-  doneDays: Set<string>;
-};
-
-async function liveActivity(weekStart: string): Promise<Activity> {
-  const empty: Activity = {
+async function liveActivity(weekStart: string): Promise<WeekActivity> {
+  const empty: WeekActivity = {
     completedSessions: 0,
     daysLogged: 0,
     weekKcal: [],
@@ -176,36 +161,15 @@ async function liveActivity(weekStart: string): Promise<Activity> {
   type FoodRow = { date: string; kcal: number; received_at: string };
   type HabitRow = { date: string; received_at: string };
 
-  const sessionRows = (sessions.data ?? []) as unknown as SessionRow[];
-  const foodRows = (foods.data ?? []) as unknown as FoodRow[];
-  const habitRows = (habitLogs.data ?? []) as unknown as HabitRow[];
-
-  const done = sessionRows.filter(
-    (s) => s.completed_at !== null && s.completed_at >= weekStart,
+  return foldActivity(
+    {
+      sessions: (sessions.data ?? []) as unknown as SessionRow[],
+      foods: (foods.data ?? []) as unknown as FoodRow[],
+      habitLogs: (habitLogs.data ?? []) as unknown as HabitRow[],
+      setStamps: ((lastSet.data ?? []) as { received_at: string }[]).map((s) => s.received_at),
+    },
+    weekStart,
   );
-
-  // kcal per day over the last 7, days with nothing logged left out — the
-  // shape macroScore() expects.
-  const weekFrom = daysAgoIso(6);
-  const kcalByDay = new Map<string, number>();
-  for (const f of foodRows) {
-    if (f.date < weekFrom) continue;
-    kcalByDay.set(f.date, (kcalByDay.get(f.date) ?? 0) + Number(f.kcal ?? 0));
-  }
-
-  const stamps = [
-    ...foodRows.map((f) => f.received_at),
-    ...habitRows.map((h) => h.received_at),
-    ...((lastSet.data ?? []) as { received_at: string }[]).map((s) => s.received_at),
-  ].filter(Boolean);
-
-  return {
-    completedSessions: done.length,
-    daysLogged: [...kcalByDay.keys()].length,
-    weekKcal: [...kcalByDay.values()].filter((kcal) => kcal > 0).map((kcal) => ({ kcal })),
-    lastActivity: stamps.length > 0 ? (stamps.sort().at(-1) ?? null) : null,
-    doneDays: new Set(done.map((s) => s.program_day_id).filter((id): id is string => id !== null)),
-  };
 }
 
 /**

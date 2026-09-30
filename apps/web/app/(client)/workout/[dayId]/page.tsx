@@ -46,7 +46,10 @@ export default async function WorkoutDayPage({
   // A solo client edits their own days in the builder; a coached one edits nothing (can_edit_program).
   const editHref = day.is_own && !coached ? `/workout/build?program=${day.program_id}` : null;
   const d = t.clientApp.workoutDay;
-  const inProgress = day.logged.length > 0;
+  // Finished today is its own state: sets logged is not "in progress" once
+  // the session carries completed_at (logging more reopens it, see logSet).
+  const doneToday = day.completed && day.logged.length > 0;
+  const inProgress = day.logged.length > 0 && !day.completed;
   // Sessions older than the plan's history window wait behind the hint.
   const history = allHistory.filter((s) => inHistory(plan, s.at));
   // History is newest first, so [0] is the last time this day was trained.
@@ -96,10 +99,10 @@ export default async function WorkoutDayPage({
               <p className="mt-2 text-[13px] text-ink-soft">
                 {fill(t.clientApp.workout.exercisesCount, { count: day.exercises.length })}
               </p>
-              {inProgress ? (
+              {inProgress || doneToday ? (
                 <div className="mt-auto pt-4">
-                  <span className="rounded-full bg-warn-soft px-2.5 py-0.5 text-[11px] font-bold text-warn">
-                    {t.clientApp.workout.inProgress}
+                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${doneToday ? "bg-accent-soft text-accent-ink" : "bg-warn-soft text-warn"}`}>
+                    {doneToday ? t.clientApp.today.doneToday : t.clientApp.workout.inProgress}
                   </span>
                 </div>
               ) : null}
@@ -125,7 +128,7 @@ export default async function WorkoutDayPage({
             <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M7 4v16l13-8z" />
             </svg>
-            {inProgress ? d.continueWorkout : d.start}
+            {doneToday ? d.addSets : inProgress ? d.continueWorkout : d.start}
           </Link>
 
           <section>
