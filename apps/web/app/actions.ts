@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { notSignedIn, type PlanErrorCode } from "@/lib/action-result";
 import type { RpcErrorCode } from "@healthapp/api";
+import type { CoachProfileErrorCode } from "@/lib/coach-profile";
 
 // `errorCode`, not `code`: createInvite below returns the *invite* code in a
 // field of its own, and one name for two meanings is how a screen ends up
@@ -20,7 +21,8 @@ export type ActionResult = {
  * arguments are not the shape this action takes". A union rather than `string` so
  * a screen comparing against a misspelt code fails to compile.
  */
-export type ActionErrorCode = RpcErrorCode | ProfileErrorCode | PlanErrorCode | "NO_ROWS" | "INVALID_INPUT";
+export type ActionErrorCode =
+  | RpcErrorCode | ProfileErrorCode | PlanErrorCode | CoachProfileErrorCode | "NO_ROWS" | "INVALID_INPUT";
 export type ProfileErrorCode =
   | "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN" | "ROLE" | "CITY" | "BIO";
 

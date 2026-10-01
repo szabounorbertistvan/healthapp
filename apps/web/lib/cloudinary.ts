@@ -127,6 +127,9 @@ export async function destroyUserPhotos(userId: string): Promise<void> {
   await client.api.delete_resources_by_prefix(postPhotoFolder(userId));
   await client.api.delete_resources_by_prefix(postPhotoFolder(userId), { type: "authenticated" });
   await client.api.delete_folder(postPhotoFolder(userId)).catch(() => {});
+  // A coach page's cover, public like the avatar.
+  await client.api.delete_resources_by_prefix(coverFolder(userId));
+  await client.api.delete_folder(coverFolder(userId)).catch(() => {});
 }
 
 // ---------- profile pictures ----------
@@ -195,6 +198,61 @@ export async function destroyAvatar(userId: string): Promise<void> {
   const client = configured();
   await client.uploader.destroy(`${avatarFolder(userId)}/${AVATAR_PUBLIC_ID}`, { invalidate: true });
   await client.api.delete_folder(avatarFolder(userId)).catch(() => {});
+}
+
+// ---------- coach cover image ----------
+// Public like the avatar (a coach page is meant to be seen, by crawlers too),
+// and signed the same way: a folder only this server names, one fixed
+// public_id per coach, so a new cover replaces the old one.
+
+export function coverFolder(userId: string): string {
+  return `voinic/covers/${userId}`;
+}
+export const COVER_PUBLIC_ID = "cover";
+
+export function signCoverUpload(userId: string): AvatarUploadTicket {
+  const client = configured();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = {
+    folder: coverFolder(userId),
+    public_id: COVER_PUBLIC_ID,
+    timestamp,
+    overwrite: "true",
+    invalidate: "true",
+  };
+  const signature = client.utils.api_sign_request(params, API_SECRET!);
+  return {
+    cloudName: CLOUD_NAME!,
+    apiKey: API_KEY!,
+    fields: {
+      folder: params.folder,
+      public_id: params.public_id,
+      timestamp: String(timestamp),
+      overwrite: params.overwrite,
+      invalidate: params.invalidate,
+      signature,
+    },
+  };
+}
+
+/**
+ * The URL stored in coach_profiles.cover_url: a wide crop, versioned like the
+ * avatar. The column's check constraint only accepts res.cloudinary.com.
+ */
+export function coverUrl(publicId: string, version: number): string {
+  const client = configured();
+  return client.url(publicId, {
+    type: "upload",
+    secure: true,
+    version,
+    transformation: [{ width: 1600, height: 600, crop: "fill", gravity: "auto", quality: "auto", fetch_format: "auto" }],
+  });
+}
+
+export async function destroyCover(userId: string): Promise<void> {
+  const client = configured();
+  await client.uploader.destroy(`${coverFolder(userId)}/${COVER_PUBLIC_ID}`, { invalidate: true });
+  await client.api.delete_folder(coverFolder(userId)).catch(() => {});
 }
 
 /** Remove one asset. Called when the row it belongs to is deleted. */

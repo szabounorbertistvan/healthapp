@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { userIdFromClient } from "./claims";
@@ -85,6 +86,20 @@ export const supabaseServer = cache(async () => {
       },
     },
   );
+});
+
+/**
+ * A client with no session at all: what an anonymous visitor or a crawler
+ * gets. For the public coach pages only — it reads no cookie, so a page that
+ * uses nothing else can be cached and revalidated instead of rendered per
+ * request. It can call only what is granted to `anon` (coach_public_profile).
+ */
+export const supabasePublic = cache(() => {
+  const config = requireConfig();
+  return createClient(config.url, config.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: tracedFetch ? { fetch: tracedFetch } : undefined,
+  });
 });
 
 /** The signed-in user's id, or null. Resolved once per request. */
