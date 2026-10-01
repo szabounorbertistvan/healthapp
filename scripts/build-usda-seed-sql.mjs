@@ -36,8 +36,19 @@ const EXCLUDED_CATEGORIES = new Set([
   "American Indian/Alaska Native Foods",
 ]);
 
-// FoodData Central nutrient ids.
-const NUTRIENT = { 1008: "kcal", 1003: "protein", 1005: "carbs", 1004: "fat" };
+// FoodData Central nutrient ids. The last three feed the label-style columns
+// (saturated_fat_100g, sugar_100g, salt_100g); sodium arrives in mg and is
+// converted to grams of salt (NaCl) below, the EU-label convention.
+const NUTRIENT = {
+  1008: "kcal",
+  1003: "protein",
+  1005: "carbs",
+  1004: "fat",
+  1258: "satfat", // Fatty acids, total saturated (g)
+  2000: "sugar", // Sugars, total (g)
+  1093: "sodium", // Sodium, Na (mg)
+};
+const SALT_PER_MG_SODIUM = 2.5 / 1000;
 
 const ROWS_PER_STATEMENT = 200;
 
@@ -92,6 +103,10 @@ function lit(value) {
 function num(value) {
   return Number.isFinite(value) ? String(Math.round(value * 100) / 100) : "0";
 }
+/** Like num(), but a missing measurement stays null — "not measured" is not "0 g". */
+function opt(value) {
+  return Number.isFinite(value) ? String(Math.round(value * 100) / 100) : "null";
+}
 
 const rows = [];
 let skipped = 0;
@@ -102,19 +117,23 @@ for (const f of foods) {
     skipped++;
     continue;
   }
+  const salt = Number.isFinite(m.sodium) ? m.sodium * SALT_PER_MG_SODIUM : NaN;
   rows.push(
-    `(${lit("usda")}, ${lit(f.fdc_id)}, ${lit(f.description.trim())}, ${num(m.kcal)}, ${num(m.protein ?? 0)}, ${num(m.carbs ?? 0)}, ${num(m.fat ?? 0)}, true)`,
+    `(${lit("usda")}, ${lit(f.fdc_id)}, ${lit(f.description.trim())}, ${num(m.kcal)}, ${num(m.protein ?? 0)}, ${num(m.carbs ?? 0)}, ${num(m.fat ?? 0)}, ` +
+      `${opt(m.satfat)}, ${opt(m.sugar)}, ${opt(salt)}, true)`,
   );
 }
 
 const statements = [];
 for (let i = 0; i < rows.length; i += ROWS_PER_STATEMENT) {
   statements.push(
-    `insert into public.foods (source, external_id, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g, verified) values\n` +
+    `insert into public.foods (source, external_id, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g, saturated_fat_100g, sugar_100g, salt_100g, verified) values\n` +
       rows.slice(i, i + ROWS_PER_STATEMENT).map((r) => `  ${r}`).join(",\n") +
       `\non conflict (source, external_id) do update set\n` +
       `  name_en = excluded.name_en,\n  kcal_100g = excluded.kcal_100g,\n  protein_100g = excluded.protein_100g,\n` +
-      `  carbs_100g = excluded.carbs_100g,\n  fat_100g = excluded.fat_100g,\n  verified = excluded.verified;`,
+      `  carbs_100g = excluded.carbs_100g,\n  fat_100g = excluded.fat_100g,\n` +
+      `  saturated_fat_100g = excluded.saturated_fat_100g,\n  sugar_100g = excluded.sugar_100g,\n  salt_100g = excluded.salt_100g,\n` +
+      `  verified = excluded.verified;`,
   );
 }
 
@@ -128,6 +147,8 @@ const header = `-- HealthApp · USDA SR Legacy generic foods (${rows.length} row
 --
 -- name_ro is intentionally absent: translations are added by admins in the app
 -- and the upsert never touches that column, so re-running keeps them.
+-- saturated_fat_100g / sugar_100g / salt_100g need migration 20261019100000;
+-- salt is sodium (mg) × 2.5 / 1000, the EU-label convention; null = not measured.
 -- Paste into the Supabase dashboard → SQL Editor → Run. Safe to re-run.
 
 `;

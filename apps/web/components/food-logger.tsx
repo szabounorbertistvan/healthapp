@@ -82,7 +82,13 @@ export function FoodLogger({
   const favKeys = new Set(favs.map((f) => keyOf(f.food_id, f.name)));
   const recent = quick.recent.filter((r) => !favKeys.has(keyOf(r.food_id, r.name)));
 
+  // The untranslated USDA tail stays folded until asked for; a new query folds it again.
+  const [showEnglish, setShowEnglish] = useState(false);
+  const mainResults = results.filter((food) => !food.english_only);
+  const englishTail = results.filter((food) => food.english_only);
+
   useEffect(() => {
+    setShowEnglish(false);
     const timer = setTimeout(() => {
       startTransition(async () => setResults(await searchFoods(q)));
     }, 200);
@@ -392,7 +398,23 @@ export function FoodLogger({
             </div>
           ) : (
             <ul className="mt-2 max-h-[min(78vh,48rem)] divide-y divide-line/60 overflow-y-auto">
-              {results.map((food) => row(food, null, "result"))}
+              {/* Romanian-named rows (and scanned products) read as the list; the
+                  untranslated USDA tail folds under one line so a search for
+                  "lapte" is three rows, not three rows and forty English ones.
+                  With nothing else to show, the tail is simply the list. */}
+              {mainResults.map((food) => row(food, null, "result"))}
+              {englishTail.length > 0 && mainResults.length > 0 && !showEnglish ? (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setShowEnglish(true)}
+                    className="w-full py-2.5 text-left text-[12.5px] font-semibold text-accent-ink hover:opacity-90"
+                  >
+                    {fill(fl.moreEnglish, { count: englishTail.length })}
+                  </button>
+                </li>
+              ) : null}
+              {showEnglish || mainResults.length === 0 ? englishTail.map((food) => row(food, null, "result")) : null}
               {results.length === 0 ? (
                 <li className="py-3 text-sm text-ink-faint">{fl.noMatches}</li>
               ) : null}

@@ -1,8 +1,48 @@
 # DishFinder — sibling project, and the deep-link idea
 
-**Status: researched, nothing built.** This is a feasibility note so a future
-session doesn't have to re-read the other repo. No code in HealthApp references
-DishFinder today.
+**Status (2026-10-01): built, as a data source plus outbound links.** What exists:
+
+- `scripts/build-dishfinder-names-sql.mjs` → `supabase/seed/dishfinder-names.sql`:
+  Romanian names and DishFinder ingredient ids for the USDA foods both products
+  share, joined on the USDA fdc id (`foods.external_id` ↔ DishFinder
+  `ingredient_nutrition.source_ref`). Column `foods.dishfinder_ingredient_id`
+  (migration `20261019110000`). `name_ro` is filled only where null — an admin's
+  translation wins.
+- Search ordering puts Romanian-named rows first (`searchFoods`, `food-search`);
+  the client logger and the coach builder fold the untranslated USDA tail under
+  "N more results in English". `english_only` now means *USDA row without
+  `name_ro`*, not "any row without name_ro" — a scanned product's pack name is
+  not English.
+- `apps/web/lib/dishfinder.ts` + `components/meal-card.tsx`: a planned meal shows
+  "Recipes with these ingredients" (behind `NEXT_PUBLIC_DISHFINDER_RECIPES=1`),
+  opening DishFinder's `/cooking?ingredients=[{id,name}]`. **All or nothing:**
+  the link appears only when every food in the meal has a
+  `dishfinder_ingredient_id`; a link built from part of a meal would search for
+  a different meal. **No restaurant link** — relu's call on 2026-10-01: next to
+  "160 g · 264 kcal" it reads as "the same meal", and a dish out is not (the
+  grams are the chef's). If restaurants ever come back it is as their own entry
+  ("eating out today?"), not under the planned meal. DishFinder resolves the
+  labels to its own names on load (`/api/translations/ingredients/resolve`,
+  added the same day), so the URL `name` is only a fallback.
+  The link also carries `match=best` (DishFinder ranks by most ingredients
+  matched instead of requiring all — a plan meal is not a recipe, and "all of
+  them" was zero for every demo meal) and `ref=voinic`, which DishFinder logs
+  with the search so its admin Insights tab lists plan-driven ingredient sets
+  that had no, thin or only partial recipes — the "recipes to write" list. Nothing is rendered without
+  `NEXT_PUBLIC_DISHFINDER_URL`; the URL carries ingredients only.
+- The generated `seed/dishfinder-names.sql` is **gitignored**: the name list is
+  applied to the live project directly and never committed (relu, 2026-10-01).
+  And the table is no longer listable (migration `20261019120000`): `foods_select`
+  only shows a user their own customs and the rows their plans, logs and
+  favourites reference; finding foods goes through `search_foods()` (≥ 2 chars,
+  ≤ 60 rows, 400 searches/user/day, other people's customs hidden) and
+  `food_by_id()` / `food_by_barcode()`. pgTAP: `supabase/tests/food_search.test.sql`.
+  What this cannot stop: copying what the screen shows, one search at a time.
+- The reverse direction (DishFinder's nutrition table filled from our USDA seed)
+  is DishFinder's business and was done the same day — see the 2026-10-01 note
+  under obstacle 1 below.
+
+Everything below is the original feasibility note, kept for the reasoning.
 
 ## What DishFinder is
 
@@ -54,8 +94,22 @@ The `nutrients` presets are the interesting ones for a fitness app — they map 
 ## The two real obstacles
 
 **1. There is no shared ingredient identifier — and USDA FDC is not one yet.**
+
+> **Update 2026-10-01 — this obstacle is largely gone.** Both sides now carry the
+> FDC id: HealthApp's `foods.external_id` holds it for the 6781 USDA SR Legacy rows
+> (`supabase/seed/usda-foods.sql`, since extended with `saturated_fat_100g`,
+> `sugar_100g`, `salt_100g` — migration `20261019100000`), and DishFinder's
+> `ingredient_nutrition.source_ref` holds `fdc:<id>` on 565 live rows. 471 of them
+> are in both tables and match USDA exactly. On that key, a prepared patch to
+> DishFinder's `server/data/ingredientNutrition.seed.json` (not yet applied with
+> `--apply`) fills 81 ingredients straight from USDA, 12 as zero-energy and 170 as
+> marked approximations (`approxFdcId`), and fixes three existing rows (duck,
+> baking powder, lemon zest). The audit and the fill list live in the 2026-10-01
+> session scratchpad (`raport-nutritie-dishfinder-2026-10-01.md`).
+> The text below is the 2026-08-26 state, kept for the reasoning.
+
 The intent is for both products to key ingredients to USDA FoodData Central.
-Neither does today (checked 2026-08-26):
+Neither did on 2026-08-26:
 
 - **HealthApp** has `'usda'` in the `food_source` enum
   (`20260823000100_types.sql:9`) and the spec says "local foods → USDA/OFF", but

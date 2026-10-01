@@ -10,6 +10,7 @@ import { NavIcon } from "./client-nav";
 import { FoodEntry } from "./food-entry";
 import { FoodLogger } from "./food-logger";
 import { logPlannedMeal } from "@/app/client-actions-app";
+import { dishfinderRecipesUrl } from "@/lib/dishfinder";
 
 /** A 24-box icon per slot: a cup, the midday sun, a moon, a piece of fruit. */
 const SLOT_ICON: Record<MealSlot, string> = {
@@ -36,7 +37,7 @@ export function MealCard({
   label: string;
   day: string;
   entries: ClientFoodEntry[];
-  planned: { name: string; grams: number; macros: Macros }[] | null;
+  planned: { name: string; grams: number; macros: Macros; dishfinder_id?: number | null }[] | null;
   /** Starred and recently logged foods, shared by every meal on the page. */
   quick: QuickFoods;
 }) {
@@ -46,6 +47,10 @@ export function MealCard({
   const [adding, setAdding] = useState(false);
   const [logging, startLogging] = useTransition();
   const kcal = Math.round(entries.reduce((sum, e) => sum + e.macros.kcal, 0));
+  // "Recipes with these ingredients" opens DishFinder with the planned
+  // ingredients already in its filters. Null when no deployment is configured,
+  // recipes are not public there yet, or any food of the meal has no counterpart.
+  const recipesUrl = planned ? dishfinderRecipesUrl(planned) : null;
 
   return (
     <Card plain>
@@ -97,6 +102,37 @@ export function MealCard({
               </li>
             ))}
           </ul>
+          {recipesUrl ? (
+            // Discovery, not substitution: the client finds how to cook what the
+            // coach prescribed, then logs what they ate here. Explicit tap, new
+            // tab, ingredients only in the URL (lib/dishfinder.ts). No restaurant
+            // link on purpose — a dish out changes the grams this list promises.
+            <p className="mt-2 text-[12px] font-semibold" title={f.dishfinderHint}>
+              <a
+                href={recipesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-accent-ink hover:underline"
+              >
+                {/* DishFinder's chef-hat mark (client/public/dishfinder-icon.svg there),
+                    inlined in currentColor so it follows the theme. */}
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-[14px] w-[14px] shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.457.316-.844.727-1.041a4 4 0 0 0-2.134-7.589 5 5 0 0 0-9.186 0 4 4 0 0 0-2.134 7.588c.411.198.727.585.727 1.041V20a1 1 0 0 0 1 1Z" />
+                  <path d="M6 17h12" />
+                </svg>
+                {f.cookThis} ↗
+              </a>
+            </p>
+          ) : null}
           {/* One tap for the whole meal. It is offered only while the slot is
               still empty: once something is logged here the coach's list is a
               reference, and a second tap would be a second dinner. */}

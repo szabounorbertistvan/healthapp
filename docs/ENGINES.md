@@ -564,7 +564,18 @@ there is no per-weekday plan, no recipes, and no one-tap "ate as planned".
 **Where food data comes from.** `foods` is a local cache. Custom foods are
 owner-scoped; Open Food Facts rows are written by the edge functions on first use,
 so the cache grows organically and the second person to scan a product pays
-nothing. Two rules the schema enforces and that are easy to break by accident:
+nothing. The generic list is the USDA SR Legacy import (`seed/usda-foods.sql`,
+6781 rows, now with saturated fat / sugar / salt — migration `20261019100000`),
+English by birth; `seed/dishfinder-names.sql` gives ~420 of them the Romanian
+name DishFinder already had and a `dishfinder_ingredient_id`
+([DISHFINDER.md](DISHFINDER.md)). Search ranks Romanian-named rows first and the
+pickers fold the rest of the USDA tail under "more results in English".
+**`foods` is not listable** (migration `20261019120000`): a user reads only the
+rows their plans, logs, favourites and customs reference; everything else goes
+through `search_foods()` (2+ chars, ≤ 60 rows, 400/user/day), `food_by_id()` and
+`food_by_barcode()` — `searchFoods` / `lookupBarcode` in `nutrition-actions.ts`
+call them, never the table. Two rules the schema enforces and that are easy to
+break by accident:
 
 - `food_logs` **snapshots** name and macros at log time. External nutrition data
   changes; a client's history must not.

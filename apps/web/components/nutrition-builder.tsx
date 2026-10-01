@@ -302,8 +302,15 @@ function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => voi
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [creating, setCreating] = useState(false);
   const [, startTransition] = useTransition();
+  // Same fold as the client's logger: Romanian-named rows are the list, the
+  // untranslated USDA tail opens on request (or is the list when it is all there is).
+  const [showEnglish, setShowEnglish] = useState(false);
+  const mainFoods = foods.filter((food) => !food.english_only);
+  const englishTail = foods.filter((food) => food.english_only);
+  const visibleFoods = showEnglish || mainFoods.length === 0 ? [...mainFoods, ...englishTail] : mainFoods;
 
   useEffect(() => {
+    setShowEnglish(false);
     const timer = setTimeout(() => {
       startTransition(async () => setFoods(await searchFoods(q)));
     }, 200);
@@ -345,7 +352,7 @@ function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => voi
       </label>
       <NotFoundNote question={m.notFound} action={m.createFood} onClick={() => setCreating(true)} className="" />
       <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
-        {foods.map((food) => (
+        {visibleFoods.map((food) => (
           <li key={food.id} className="rounded-2xl bg-surface p-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -375,6 +382,17 @@ function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => voi
             </div>
           </li>
         ))}
+        {englishTail.length > 0 && mainFoods.length > 0 && !showEnglish ? (
+          <li>
+            <button
+              type="button"
+              onClick={() => setShowEnglish(true)}
+              className="w-full rounded-2xl bg-surface px-4 py-3 text-left text-[12.5px] font-semibold text-accent-ink hover:opacity-90"
+            >
+              {fill(m.moreEnglish, { count: englishTail.length })}
+            </button>
+          </li>
+        ) : null}
         {foods.length === 0 ? (
           <li className="rounded-2xl bg-surface px-4 py-6 text-center text-[13px] text-ink-soft">
             {m.noMatch}

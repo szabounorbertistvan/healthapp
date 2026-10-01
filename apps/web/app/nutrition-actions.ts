@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
-import { isPlanLimitError, normalizeForSearch } from "@healthapp/shared";
+import { isPlanLimitError } from "@healthapp/shared";
 import type { ActionResult } from "./actions";
 import { notSignedIn, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
@@ -51,31 +51,33 @@ export async function searchFoods(q: string): Promise<FoodItem[]> {
   const term = q.trim();
 
   // The table is the primary source: it holds the USDA generic list, the
-  // curated staples and every product ever scanned, and `search_text` makes
-  // the match accent-insensitive. The food-search function (Open Food Facts)
-  // only tops the list up when the table is thin for this term, so a barcode
-  // product nobody has scanned yet can still be found by name.
-  let query = supabase
-    .from("foods")
-    .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
-    .order("verified", { ascending: false })
-    .order("name_en")
-    // The picker panel grew to fill the viewport (2026-09-21), so a page of 30
-    // left half of it empty on a desk screen.
-    .limit(FOOD_SEARCH_LIMIT);
-  if (term) {
-    // `search_text` is the lower-cased, unaccented name+brand kept by the
-    // database (migration 20260908120000), and the term gets the same
-    // treatment here, so "varza" finds "Varză" and "Paine" finds "Pâine".
-    const safe = normalizeForSearch(term.replace(/[,()%\\]/g, " "));
-    if (safe) query = query.ilike("search_text", `%${safe}%`);
+  // curated staples and every product ever scanned. It is read through
+  // search_foods() (migration 20261019120000), never listed: the function
+  // normalises the term the way `search_text` is stored (so "varza" finds
+  // "Varză"), needs two characters, returns at most 60 rows with Romanian-named
+  // ones first, hides other people's customs, and caps a user at 400 searches a
+  // day — the shared library, and the Romanian names in it, cannot be pulled in
+  // one call. The food-search function (Open Food Facts) only tops the list up
+  // when the table is thin for this term.
+  type SearchRow = {
+    id: string; source: string; name_en: string; name_ro: string | null; brand: string | null;
+    kcal_100g: number; protein_100g: number; carbs_100g: number; fat_100g: number;
+    portions: FoodItem["portions"] | null;
+  };
+  const { data, error } = await supabase.rpc("search_foods", { p_q: term, p_limit: FOOD_SEARCH_LIMIT });
+  if (error) {
+    // Over the daily cap, or the function not deployed yet. An empty list is
+    // the honest answer either way; the cause goes to the server log.
+    console.warn(`[searchFoods] ${error.message}`);
+    return [];
   }
-  const { data } = await query;
-  const local: FoodItem[] = (data ?? []).map((row) => ({
+  const local: FoodItem[] = ((data ?? []) as SearchRow[]).map((row) => ({
     id: row.id,
     name_en: row.name_en,
     name_ro: row.name_ro ?? row.name_en,
-    english_only: row.name_ro == null,
+    // Only the USDA generic list is literally English. A scanned product with
+    // no name_ro carries the name printed on its pack, whatever language.
+    english_only: row.source === "usda" && row.name_ro == null,
     group: "",
     brand: row.brand,
     per_100g: {
@@ -98,8 +100,10 @@ export async function searchFoods(q: string): Promise<FoodItem[]> {
 
 type RemoteFood = {
   food_id: string | null;
+  /** Where the row came from; USDA rows without a Romanian name are the English-only ones. */
+  external?: { source: string; id: string } | null;
   name: string;
-  /** Present once the deployed function sends it; null means English only. */
+  /** Present once the deployed function sends it; null means no Romanian name. */
   name_ro?: string | null;
   brand: string | null;
   per_100g: FoodItem["per_100g"];
@@ -131,7 +135,7 @@ async function searchFoodsRemote(
         id: r.food_id,
         name_en: r.name,
         name_ro: r.name_ro ?? r.name,
-        english_only: r.name_ro == null,
+        english_only: r.external?.source === "usda" && r.name_ro == null,
         group: "",
         brand: r.brand ?? null,
         per_100g: r.per_100g,
@@ -343,16 +347,14 @@ export async function lookupBarcode(code: string): Promise<BarcodeResult> {
   // the cache read (claim_barcode_scan, migration 20260923120000). With the
   // paywall off it only counts. A failure other than the limit — the function
   // missing, the network — must not cost anyone a scan, so only the limit stops here.
-  const [claim, { data: cached }] = await Promise.all([
+  // food_by_barcode() instead of a table read: the library is no longer
+  // listable (migration 20261019120000), only answerable one row at a time.
+  const [claim, { data: cachedRows }] = await Promise.all([
     supabase.rpc("claim_barcode_scan"),
-    supabase
-      .from("foods")
-      .select("id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, portions")
-      .eq("barcode", clean)
-      .limit(1)
-      .maybeSingle(),
+    supabase.rpc("food_by_barcode", { p_code: clean }),
   ]);
   if (isPlanLimitError(claim.error?.message)) return { ok: false, reason: "limit" };
+  const cached = Array.isArray(cachedRows) ? cachedRows[0] : null;
   if (cached) return { ok: true, food: toFoodItem(cached) };
 
   try {

@@ -44,6 +44,9 @@ Deno.serve(async (req) => {
     .from("foods")
     .select("id, source, external_id, name_en, name_ro, brand, kcal_100g, protein_100g, carbs_100g, fat_100g, verified")
     .ilike("search_text", `%${safe}%`)
+    // Romanian-named rows first (same rule as searchFoods in nutrition-actions.ts),
+    // so the untranslated USDA tail cannot crowd them out of the 15.
+    .order("name_ro", { ascending: true, nullsFirst: false })
     .order("verified", { ascending: false })
     .limit(15);
 

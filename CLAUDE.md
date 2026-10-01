@@ -126,7 +126,10 @@ direct translation of the PRODUCT_SPEC §4 permission matrix. A client sees only
 their own rows; a coach reaches a client only through `is_active_coach_of()`, so
 ending a relationship revokes access to new data automatically. Engine tables
 (adherence snapshots, streaks, badge awards, notifications) have **no insert
-policy** — service role writes them only. Don't work around a policy in app code;
+policy** — service role writes them only. **`foods` is not listable** (since
+2026-10-01): reads go through `search_foods()` / `food_by_id()` /
+`food_by_barcode()`, and the select policy only shows rows the user already
+references — a new read of `foods` must use those, not `.from("foods")`. Don't work around a policy in app code;
 change the policy and add a pgTAP test.
 
 **5. Domain math lives in `packages/shared` and is mirrored in SQL.** Macros,
@@ -237,5 +240,9 @@ third-party text writes it.
 
 - [docs/ENGINES.md](docs/ENGINES.md) — per-feature map: what each engine does, which files, what state it's in.
 - [docs/GAPS.md](docs/GAPS.md) — what the spec promises that the code does not do yet.
-- [docs/DISHFINDER.md](docs/DISHFINDER.md) — the sibling project at `D:\react\dishfinder` and the
-  ingredient deep-link idea. **Researched, not built** — no code here references it.
+- [docs/DISHFINDER.md](docs/DISHFINDER.md) — the sibling project at `D:\react\dishfinder`. Since
+  2026-10-01 it is a **data source, not a dependency**: its Romanian ingredient names and ids
+  land on our USDA `foods` rows via `supabase/seed/dishfinder-names.sql` (join key = the USDA
+  fdc id in `external_id`), the pickers fold the still-English USDA tail under "more results
+  in English", and a planned meal links out to DishFinder's finders (`lib/dishfinder.ts`,
+  gated by `NEXT_PUBLIC_DISHFINDER_URL`). No runtime call to DishFinder anywhere.

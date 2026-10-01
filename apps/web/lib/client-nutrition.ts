@@ -101,7 +101,15 @@ export async function getMyPlanMeals(day?: string): Promise<
     name: string;
     /** `per100g` and `food_id` are what logPlannedMeal needs to write a food_log
         that can still be re-costed exactly when the portion is edited later. */
-    foods: { food_id: string | null; name: string; grams: number; per100g: Macros; macros: Macros }[];
+    foods: {
+      food_id: string | null;
+      name: string;
+      grams: number;
+      per100g: Macros;
+      macros: Macros;
+      /** DishFinder ingredient id when the food has one — feeds the "cook this / eat out" links. */
+      dishfinder_id: number | null;
+    }[];
   }[]
 > {
   const live = await liveUser();
@@ -111,7 +119,7 @@ export async function getMyPlanMeals(day?: string): Promise<
     supabase
       .from("nutrition_plans")
       .select(`id, coach_id, updated_at, planned_meals(id, slot, name, position, day_index,
-        planned_meal_foods(id, grams, food:foods(id, name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g)))`)
+        planned_meal_foods(id, grams, food:foods(id, name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g, dishfinder_ingredient_id)))`)
       .eq("client_id", userId)
       .eq("status", "published"),
     activeCoachId(userId),
@@ -123,7 +131,11 @@ export async function getMyPlanMeals(day?: string): Promise<
   if (!data) return [];
   type FoodJoin = {
     grams: number;
-    food: { id: string; name_ro: string | null; name_en: string; kcal_100g: number; protein_100g: number; carbs_100g: number; fat_100g: number } | null;
+    food: {
+      id: string; name_ro: string | null; name_en: string;
+      kcal_100g: number; protein_100g: number; carbs_100g: number; fat_100g: number;
+      dishfinder_ingredient_id: number | null;
+    } | null;
   };
   type MealJoin = {
     id: string; slot: MealSlot; name: string; position: number; day_index: number;
@@ -153,6 +165,7 @@ export async function getMyPlanMeals(day?: string): Promise<
           grams: f.grams,
           per100g,
           macros: portionMacros(per100g, f.grams),
+          dishfinder_id: f.food?.dishfinder_ingredient_id ?? null,
         };
       }),
     }));
