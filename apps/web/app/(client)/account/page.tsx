@@ -6,6 +6,8 @@ import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/acc
 import { RestTimerCard } from "@/components/rest-settings";
 import { SocialPrivacyCard } from "@/components/social-v2";
 import { getMySocialPrivacy } from "@/lib/social-data";
+import { getMyCoachProfileStatus } from "@/lib/coach-profile-data";
+import { BecomeCoachCard, CoachProfileSettingsCard } from "@/components/coach-profile/status";
 
 /**
  * The client's account screen. It carries only controls that change something:
@@ -14,7 +16,9 @@ import { getMySocialPrivacy } from "@/lib/social-data";
  * the header, so they are not repeated.
  */
 export default async function AccountPage() {
-  const [{ t }, profile, privacy] = await Promise.all([getI18n(), getProfile(), getMySocialPrivacy()]);
+  const [{ t }, profile, privacy, coachStatus] = await Promise.all([
+    getI18n(), getProfile(), getMySocialPrivacy(), getMyCoachProfileStatus(),
+  ]);
   if (!profile) return null;
   const a = t.clientApp.account;
 
@@ -42,6 +46,10 @@ export default async function AccountPage() {
 
         {/* Who sees the numbers on the social profile (/people/[id]). */}
         {privacy ? <SocialPrivacyCard privacy={privacy} /> : null}
+
+        {/* Coach Discovery: a client can turn into a coach from here (become_coach()
+            makes them `both`); anyone who already coaches gets their profile's status. */}
+        {profile.role === "client" ? <BecomeCoachCard /> : <CoachProfileSettingsCard status={coachStatus} />}
 
         <DataExportCard />
 

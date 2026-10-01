@@ -17,7 +17,12 @@ import { NavIcon } from "./client-nav";
  * and exercises and collects the muscle groups, so a grid of twenty of these
  * costs one query, not eighty.
  */
-export function RoutineCardView({ card, href }: { card: RoutineCard; href?: string }) {
+export function RoutineCardView({ card, href, showSave = true }: {
+  card: RoutineCard;
+  href?: string;
+  /** False for a reader who is not signed in (the public coach page): saving needs an account. */
+  showSave?: boolean;
+}) {
   const { t } = useI18n();
   const r = t.clientApp.routines;
 
@@ -68,7 +73,7 @@ export function RoutineCardView({ card, href }: { card: RoutineCard; href?: stri
 
       <div className="mt-auto flex items-center justify-between gap-2 pt-4">
         <div className="flex items-center gap-1.5">
-          <SaveButton card={card} />
+          {showSave ? <SaveButton card={card} /> : null}
           {card.copy_count > 0 ? (
             <span className="text-[11.5px] tabular-nums text-ink-faint">
               {fill(r.copiesCount, { count: card.copy_count })}

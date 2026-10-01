@@ -18,8 +18,8 @@ import {
 } from "@healthapp/shared";
 import { liveUser } from "./supabase/server";
 
-/** Rows come back from PostgREST as the RPC declared them. */
-function toCards(data: unknown): RoutineCard[] {
+/** Rows come back from PostgREST as the RPC declared them. Also used for coach_public_programs(). */
+export function toCards(data: unknown): RoutineCard[] {
   return ((data ?? []) as RoutineCard[]).map((row) => ({
     ...row,
     muscle_groups: row.muscle_groups ?? [],

@@ -10,12 +10,9 @@ import { useI18n } from "@/lib/i18n/client";
 import {
   currentNotificationState, subscribeToPush, unsubscribeFromPush, vapidPublicKey, type NotificationState,
 } from "@/lib/rest-timer/push";
-import { Card } from "./ui";
+import { BUTTON, FIELD } from "@/lib/form-classes";
+import { Card, Switch } from "./ui";
 
-const FIELD =
-  "mt-1.5 h-11 w-full rounded-2xl bg-bg px-3.5 text-[14px] text-ink outline-none ring-accent/50 focus:ring-2";
-const BUTTON =
-  "inline-flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50";
 
 const isPreset = (n: number) => (REST_PRESETS as readonly number[]).includes(n);
 
@@ -169,45 +166,26 @@ export function RestTimerCard({ prefs }: { prefs: RestPrefs }) {
       ) : null}
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-faint">{m.defaultRestHint}</p>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[13px] font-semibold text-ink-soft">{m.notifications}</p>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-faint">{m.notificationsHint}</p>
-        </div>
+      <div className="mt-4">
         {permission === "granted" ? (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={notify}
-            disabled={pending}
-            onClick={() => toggleNotify(!notify)}
-            className={`inline-flex h-9 shrink-0 items-center justify-center rounded-xl px-3.5 text-[13px] font-semibold ${
-              notify ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint"
-            }`}
-          >
-            {notify ? m.enabled : m.off}
-          </button>
-        ) : null}
+          <Switch
+            checked={notify} onChange={toggleNotify} disabled={pending}
+            label={m.notifications} hint={m.notificationsHint} onLabel={m.enabled} offLabel={m.off}
+          />
+        ) : (
+          <div>
+            <p className="text-[13px] font-semibold text-ink-soft">{m.notifications}</p>
+            <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-faint">{m.notificationsHint}</p>
+          </div>
+        )}
       </div>
 
       {permission === "granted" && notify ? (
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold text-ink-soft">{m.lockScreen}</p>
-            <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-faint">{m.lockScreenHint}</p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={alert}
-            disabled={pending}
-            onClick={() => toggleAlert(!alert)}
-            className={`inline-flex h-9 shrink-0 items-center justify-center rounded-xl px-3.5 text-[13px] font-semibold ${
-              alert ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint"
-            }`}
-          >
-            {alert ? m.enabled : m.off}
-          </button>
+        <div className="mt-4">
+          <Switch
+            checked={alert} onChange={toggleAlert} disabled={pending}
+            label={m.lockScreen} hint={m.lockScreenHint} onLabel={m.enabled} offLabel={m.off}
+          />
         </div>
       ) : null}
 

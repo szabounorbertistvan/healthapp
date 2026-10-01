@@ -177,6 +177,15 @@ export type City = {
   latitude: number | null; longitude: number | null;
 };
 
+export type Country = { code: string; slug: string; name_en: string; name_ro: string };
+
+export type CoachCatalog = {
+  specializations: Specialization[];
+  languages: Language[];
+  cities: City[];
+  countries: Country[];
+};
+
 /** Everything the profile editor needs, one object. */
 export type MyCoachProfile = {
   profile: CoachProfileRow;
@@ -209,6 +218,13 @@ export type CoachPublicProfile = {
   in_person: boolean;
   published_at: string | null;
   followers: number;
+  /**
+   * Social proof the coach's own privacy settings allow (20261021100000):
+   * workouts / badges only when stats_visibility is public, the Fitness Score
+   * only when fitness_score_visibility is public; null otherwise. Absent in a
+   * preview built from the draft.
+   */
+  stats?: { posts: number; workouts: number | null; badges: number | null; fitness_score: number | null };
   badges: VerificationBadge[];
   specializations: { slug: string; name_en: string; name_ro: string; is_primary: boolean }[];
   languages: { code: string; name_en: string; name_ro: string; native_name: string }[];
@@ -216,7 +232,7 @@ export type CoachPublicProfile = {
     city_slug: string; city: string; city_en: string;
     country_code: string; country_en: string; country_ro: string; gym_name: string | null;
   }[];
-  certifications: { name: string; issuer: string | null; verified: boolean }[];
+  certifications: { name: string; issuer: string | null; year?: number | null; verified: boolean }[];
   services: {
     id: string; name: string; description: string | null; kind: ServiceKind; price_unit: PriceUnit;
     price_public: boolean;
@@ -224,4 +240,25 @@ export type CoachPublicProfile = {
     price_cents: number | null;
     currency: string | null;
   }[];
+};
+
+/** One row of coach_public_posts(): a public post, text and counts, no pictures. */
+export type CoachPublicPost = {
+  id: string;
+  type: string;
+  text: string | null;
+  created_at: string;
+  reactions: number;
+  comments: number;
+  photos: number;
+};
+
+/** coach_viewer_state(): what the page's buttons need to know about a signed-in reader. */
+export type CoachViewerState = {
+  is_self: boolean;
+  is_following: boolean;
+  follows_me: boolean;
+  is_client: boolean;
+  has_other_coach: boolean;
+  pending_request: { id: string; service_id: string | null; created_at: string } | null;
 };

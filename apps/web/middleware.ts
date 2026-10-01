@@ -69,7 +69,11 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/privacy") || path.startsWith("/terms") ||
     path.startsWith("/auth/") || path.startsWith("/reset-password") ||
     // precached by the service worker, and shown to whoever is offline
-    path === "/offline"
+    path === "/offline" ||
+    // Coach Discovery: a published coach page is public by design (search
+    // engines too). The data behind it comes only from anon-granted RPCs that
+    // refuse anything unpublished — the page needs no session.
+    path === "/coaches" || path.startsWith("/coaches/")
   ) return response;
   const isLanding = path === "/";
   const isLogin = path.startsWith("/login");

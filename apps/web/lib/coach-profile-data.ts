@@ -1,8 +1,15 @@
 import "server-only";
-import { liveUser, supabasePublic } from "@/lib/supabase/server";
+import { cache } from "react";
+import type { RoutineCard } from "@healthapp/shared";
+import { currentUserId, liveUser, supabasePublic, supabaseServer } from "@/lib/supabase/server";
+import { toCards } from "@/lib/routine-data";
+import {
+  searchArgs, type CoachSearchResult, type DiscoveryFacets, type DiscoveryQuery,
+} from "@/lib/coach-discovery";
 import type {
   City, CoachCertificationRow, CoachProfileMissing, CoachProfileRow, CoachPublicProfile,
-  CoachServiceRow, CoachVerificationRow, Language, MyCoachProfile, Specialization,
+  CoachCatalog, CoachPublicPost, CoachServiceRow, CoachVerificationRow, CoachViewerState, Country, Language,
+  MyCoachProfile, Specialization,
 } from "@/lib/coach-profile";
 
 // Coach Discovery reads. Writes live in app/coach-profile-actions.ts.
@@ -65,35 +72,100 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile | null> {
   };
 }
 
-/** The pick lists for the editor: active specializations, languages and cities. */
-export async function getCoachCatalog(): Promise<{
-  specializations: Specialization[]; languages: Language[]; cities: City[];
-}> {
+/** The pick lists for the editor: active specializations, languages, cities and countries. */
+export async function getCoachCatalog(): Promise<CoachCatalog> {
   const live = await liveUser();
-  if (!live) return { specializations: [], languages: [], cities: [] };
+  if (!live) return { specializations: [], languages: [], cities: [], countries: [] };
   const { supabase } = live;
-  const [specs, langs, cities] = await Promise.all([
+  const [specs, langs, cities, countries] = await Promise.all([
     supabase.from("specializations").select("id, slug, name_en, name_ro, sort_order").eq("active", true).order("sort_order"),
     supabase.from("languages").select("code, name_en, name_ro, native_name, sort_order").eq("active", true).order("sort_order"),
     supabase.from("cities").select("id, slug, name, name_en, country_code, latitude, longitude").eq("active", true).order("name"),
+    supabase.from("countries").select("code, slug, name_en, name_ro").eq("active", true).order("name_en"),
   ]);
-  for (const r of [specs, langs, cities]) {
+  for (const r of [specs, langs, cities, countries]) {
     if (r.error) throw new Error(`coach catalog: ${r.error.message}`);
   }
   return {
     specializations: (specs.data ?? []) as Specialization[],
     languages: (langs.data ?? []) as Language[],
     cities: (cities.data ?? []) as City[],
+    countries: (countries.data ?? []) as Country[],
   };
 }
 
 /**
- * A published coach page as an anonymous visitor sees it — the same thing a
- * crawler gets. Null for anything not published. No cookie is read, so the
- * caller can cache it.
+ * A published coach page. Anonymous: through a client with no session (what a
+ * crawler gets, cacheable). Signed in: through the reader's own session, so
+ * the block rule applies to them and user_id comes back for the buttons.
+ * Null for anything not published. Cached per request: the page and its
+ * generateMetadata share one call.
  */
-export async function getPublicCoachProfile(slug: string): Promise<CoachPublicProfile | null> {
-  const { data, error } = await supabasePublic().rpc("coach_public_profile", { p_slug: slug });
+export const getPublicCoachProfile = cache(async (slug: string): Promise<CoachPublicProfile | null> => {
+  const signedIn = Boolean(await currentUserId());
+  const client = signedIn ? await supabaseServer() : supabasePublic();
+  const { data, error } = await client.rpc("coach_public_profile", { p_slug: slug });
   if (error) throw new Error(`public coach profile: ${error.message}`);
   return (data as CoachPublicProfile | null) ?? null;
+});
+
+/** The coach's `public` posts, text and counts (for a reader who is not signed in). */
+export async function getPublicCoachPosts(slug: string, limit = 3): Promise<CoachPublicPost[]> {
+  const { data, error } = await supabasePublic().rpc("coach_public_posts", { p_slug: slug, p_limit: limit });
+  if (error) throw new Error(`public coach posts: ${error.message}`);
+  return (data ?? []) as CoachPublicPost[];
+}
+
+/** The coach's `public` routines as Discover cards (for a reader who is not signed in). */
+export async function getPublicCoachPrograms(slug: string, limit = 6): Promise<RoutineCard[]> {
+  const { data, error } = await supabasePublic().rpc("coach_public_programs", { p_slug: slug, p_limit: limit });
+  if (error) throw new Error(`public coach programs: ${error.message}`);
+  return toCards(data);
+}
+
+/** What the page's buttons need about the signed-in reader; null when nobody is signed in. */
+export async function getCoachViewerState(profileId: string): Promise<CoachViewerState | null> {
+  const live = await liveUser();
+  if (!live) return null;
+  const { data, error } = await live.supabase.rpc("coach_viewer_state", { p_profile: profileId });
+  if (error) throw new Error(`coach viewer state: ${error.message}`);
+  return (data as CoachViewerState | null) ?? null;
+}
+
+/** Just the status of the signed-in user's coach profile (null = none), for the settings cards. */
+export async function getMyCoachProfileStatus(): Promise<CoachProfileRow["status"] | null> {
+  const live = await liveUser();
+  if (!live) return null;
+  const { data, error } = await live.supabase
+    .from("coach_profiles").select("status").eq("user_id", live.userId).maybeSingle<{ status: CoachProfileRow["status"] }>();
+  if (error) {
+    // Before the migration reaches a project the table does not exist; the card just offers "become a coach".
+    console.error(`coach profile status: ${error.message}`);
+    return null;
+  }
+  return data?.status ?? null;
+}
+
+// ---------- discovery (/coaches) ----------
+
+/** A signed-in reader goes through their own session (blocks apply); anyone else through the public client. */
+async function discoveryClient() {
+  return (await currentUserId()) ? await supabaseServer() : supabasePublic();
+}
+
+/** One page of coach cards — every filter, the order and the total in one RPC (search_coaches). */
+export async function searchCoaches(query: DiscoveryQuery): Promise<CoachSearchResult> {
+  const client = await discoveryClient();
+  const { data, error } = await client.rpc("search_coaches", searchArgs(query));
+  if (error) throw new Error(`coach search: ${error.message}`);
+  const result = data as CoachSearchResult | null;
+  return { total: result?.total ?? 0, items: result?.items ?? [] };
+}
+
+/** What the filters offer: specializations, and the countries / cities that have a published coach. */
+export async function getDiscoveryFacets(): Promise<DiscoveryFacets> {
+  const { data, error } = await supabasePublic().rpc("coach_discovery_facets");
+  if (error) throw new Error(`coach facets: ${error.message}`);
+  const f = data as Partial<DiscoveryFacets> | null;
+  return { specializations: f?.specializations ?? [], countries: f?.countries ?? [], cities: f?.cities ?? [] };
 }

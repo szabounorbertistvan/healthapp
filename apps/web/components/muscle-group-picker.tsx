@@ -1,4 +1,5 @@
 "use client";
+import { Chip } from "./ui";
 
 // The 17 groups the imported library actually uses, most-populated first, so a
 // day's stored muscle_groups always match exercises.primary_muscles and the
@@ -26,17 +27,9 @@ export function MuscleGroupPicker({
       {MUSCLE_GROUPS.map((group) => {
         const on = selected.includes(group);
         return (
-          <button
-            key={group}
-            type="button"
-            aria-pressed={on}
-            onClick={() => toggle(group)}
-            className={`inline-flex h-9 items-center rounded-full px-3.5 text-[12.5px] font-semibold capitalize ${
-              on ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
-            }`}
-          >
+          <Chip key={group} on={on} onToggle={() => toggle(group)} className="capitalize">
             {group}
-          </button>
+          </Chip>
         );
       })}
     </div>
