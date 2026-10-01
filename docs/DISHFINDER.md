@@ -14,11 +14,15 @@
   `name_ro`*, not "any row without name_ro" — a scanned product's pack name is
   not English.
 - `apps/web/lib/dishfinder.ts` + `components/meal-card.tsx`: a planned meal shows
-  "Recipes with these ingredients" (behind `NEXT_PUBLIC_DISHFINDER_RECIPES=1`),
-  opening DishFinder's `/cooking?ingredients=[{id,name}]`. **All or nothing:**
-  the link appears only when every food in the meal has a
-  `dishfinder_ingredient_id`; a link built from part of a meal would search for
-  a different meal. **No restaurant link** — relu's call on 2026-10-01: next to
+  **two** links (behind `NEXT_PUBLIC_DISHFINDER_RECIPES=1`). "Recipes with these
+  ingredients" opens `/cooking?ingredients=[{id,name}]&match=best&ref=voinic`,
+  **all or nothing:** only when every food in the meal has a
+  `dishfinder_ingredient_id`, since a link built from part of a meal would search
+  for a different meal. "Recipes with the same macros" opens `/cooking` with no
+  ingredients and the meal's band in DishFinder's sliders (calories ±15 %,
+  protein ≥ 85 %, carbs/fat free; `ref=voinic-macros`) — the "I'm bored of this
+  meal" case, kept honest because the client cooks, weighs and logs the real
+  numbers here. **No restaurant link** — relu's call on 2026-10-01: next to
   "160 g · 264 kcal" it reads as "the same meal", and a dish out is not (the
   grams are the chef's). If restaurants ever come back it is as their own entry
   ("eating out today?"), not under the planned meal. DishFinder resolves the
@@ -49,7 +53,7 @@ Everything below is the original feasibility note, kept for the reasoning.
 A separate full-stack product owned by the same person, at `D:\react\dishfinder`
 (not a workspace of this repo, not a package — a wholly separate deployment).
 
-- Next.js 15 client on Vercel, Express 5 server on Fly.io, Postgres on Neon,
+- Next.js 15 client on Vercel, Express 5 server on Fly.io, Postgres on Supabase (moved off Neon on 2026-09-05; its own project, not ours),
   Cloudinary images, Socket.io realtime. Its own JWT auth, its own users.
 - Restaurant discovery: menus searchable **by ingredient**, plus dietary/allergen
   filters. Per-dish macros exist (`ingredient_nutrition` per-100g + a
