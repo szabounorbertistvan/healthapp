@@ -10,7 +10,7 @@ import { NavIcon } from "./client-nav";
 import { FoodEntry } from "./food-entry";
 import { FoodLogger } from "./food-logger";
 import { logPlannedMeal } from "@/app/client-actions-app";
-import { dishfinderRecipesUrl } from "@/lib/dishfinder";
+import { dishfinderIngredientsUrl, dishfinderMacrosUrl } from "@/lib/dishfinder";
 
 /** A 24-box icon per slot: a cup, the midday sun, a moon, a piece of fruit. */
 const SLOT_ICON: Record<MealSlot, string> = {
@@ -47,10 +47,17 @@ export function MealCard({
   const [adding, setAdding] = useState(false);
   const [logging, startLogging] = useTransition();
   const kcal = Math.round(entries.reduce((sum, e) => sum + e.macros.kcal, 0));
-  // "Recipes with these ingredients" opens DishFinder with the planned
-  // ingredients already in its filters. Null when no deployment is configured,
-  // recipes are not public there yet, or any food of the meal has no counterpart.
-  const recipesUrl = planned ? dishfinderRecipesUrl(planned) : null;
+  // Two DishFinder links (lib/dishfinder.ts): "recipes with these ingredients",
+  // only when every planned food maps there, and "recipes with the same macros",
+  // from the meal's totals alone. Both null without a configured deployment.
+  const mealTotals = planned
+    ? {
+        kcal: planned.reduce((sum, p) => sum + p.macros.kcal, 0),
+        protein: planned.reduce((sum, p) => sum + p.macros.protein, 0),
+      }
+    : null;
+  const ingredientsUrl = planned ? dishfinderIngredientsUrl(planned) : null;
+  const macrosUrl = mealTotals ? dishfinderMacrosUrl(mealTotals) : null;
 
   return (
     <Card plain>
@@ -102,35 +109,26 @@ export function MealCard({
               </li>
             ))}
           </ul>
-          {recipesUrl ? (
+          {ingredientsUrl || macrosUrl ? (
             // Discovery, not substitution: the client finds how to cook what the
-            // coach prescribed, then logs what they ate here. Explicit tap, new
-            // tab, ingredients only in the URL (lib/dishfinder.ts). No restaurant
-            // link on purpose — a dish out changes the grams this list promises.
-            <p className="mt-2 text-[12px] font-semibold" title={f.dishfinderHint}>
-              <a
-                href={recipesUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-accent-ink hover:underline"
-              >
-                {/* DishFinder's chef-hat mark (client/public/dishfinder-icon.svg there),
-                    inlined in currentColor so it follows the theme. */}
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-[14px] w-[14px] shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.457.316-.844.727-1.041a4 4 0 0 0-2.134-7.589 5 5 0 0 0-9.186 0 4 4 0 0 0-2.134 7.588c.411.198.727.585.727 1.041V20a1 1 0 0 0 1 1Z" />
-                  <path d="M6 17h12" />
-                </svg>
-                {f.cookThis} ↗
-              </a>
+            // coach prescribed, or something else that lands on the same numbers,
+            // then weighs and logs what they ate here. Explicit taps, new tab,
+            // ingredients or a calorie/protein band in the URL — nothing about who.
+            // No restaurant link on purpose: a dish out changes the grams this
+            // list promises and cannot be weighed.
+            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] font-semibold" title={f.dishfinderHint}>
+              {ingredientsUrl ? (
+                <a href={ingredientsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-accent-ink hover:underline">
+                  <DishFinderMark />
+                  {f.cookThis} ↗
+                </a>
+              ) : null}
+              {macrosUrl ? (
+                <a href={macrosUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-accent-ink hover:underline">
+                  <DishFinderMark />
+                  {f.sameMacros} ↗
+                </a>
+              ) : null}
             </p>
           ) : null}
           {/* One tap for the whole meal. It is offered only while the slot is
@@ -156,5 +154,24 @@ export function MealCard({
 
       {adding ? <FoodLogger slot={slot} day={day} quick={quick} onClose={() => setAdding(false)} /> : null}
     </Card>
+  );
+}
+
+/** DishFinder's chef-hat mark (client/public/dishfinder-icon.svg there), inlined in currentColor so it follows the theme. */
+function DishFinderMark() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-[14px] w-[14px] shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.457.316-.844.727-1.041a4 4 0 0 0-2.134-7.589 5 5 0 0 0-9.186 0 4 4 0 0 0-2.134 7.588c.411.198.727.585.727 1.041V20a1 1 0 0 0 1 1Z" />
+      <path d="M6 17h12" />
+    </svg>
   );
 }
