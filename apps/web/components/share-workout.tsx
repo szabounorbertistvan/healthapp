@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "@base-ui/react/dialog";
 import { loadWorkoutShareCard } from "@/app/share-card-actions";
 import { APP_NAME } from "@/lib/brand";
 import { usePlan } from "@/lib/plan-client";
@@ -49,6 +49,8 @@ export function ShareWorkoutButton({
   const [open, setOpen] = useState<WorkoutShareCard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // The dialog unmounts as it closes, too soon for Base UI to hand focus back.
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   function tap() {
     setError(null);
@@ -66,11 +68,19 @@ export function ShareWorkoutButton({
 
   return (
     <>
-      <button type="button" onClick={tap} disabled={pending} aria-busy={pending} className={className}>
+      <button ref={buttonRef} type="button" onClick={tap} disabled={pending} aria-busy={pending} className={className}>
         {pending ? t.common.actions.loading : s.shareWorkout}
       </button>
       {error ? <p className="text-xs text-risk">{error}</p> : null}
-      {open ? <ShareWorkoutDialog card={open} onClose={() => setOpen(null)} /> : null}
+      {open ? (
+        <ShareWorkoutDialog
+          card={open}
+          onClose={() => {
+            setOpen(null);
+            buttonRef.current?.focus();
+          }}
+        />
+      ) : null}
     </>
   );
 }
@@ -155,18 +165,6 @@ export function ShareWorkoutDialog({ card, onClose }: { card: WorkoutShareCard; 
   // Each preview URL is released when the next one replaces it, or on close.
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
-  useEffect(() => {
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose]);
-
   const fileName = shareFileName(card.workout.date, options.format);
   const shareable = useMemo(
     () => (blob ? canShareFile(new File([blob], fileName, { type: "image/png" })) : false),
@@ -191,33 +189,31 @@ export function ShareWorkoutDialog({ card, onClose }: { card: WorkoutShareCard; 
     setOptions((o) => ({ ...o, stats: { ...o.stats, [k]: !o.stats[k] } }));
   const setFormat = (format: ShareFormat) => setOptions((o) => ({ ...o, format }));
 
-  // Portalled to <body>: the button lives inside a glass card, and a card's
-  // backdrop-filter makes it the containing block and stacking context of
-  // any fixed descendant — the dialog then sat inside the card, behind the
-  // cards after it, and its buttons scrolled away under the tab bar.
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={s.dialogTitle}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-bg/80 backdrop-blur-sm p-0 sm:items-center sm:p-6"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[100dvh] w-full max-w-lg flex-col overflow-y-auto rounded-t-2xl border border-line bg-surface p-4 sm:max-h-[92vh] sm:rounded-2xl sm:p-5"
-        onClick={(e) => e.stopPropagation()}
+  // A Base UI modal, portalled to <body>: the button lives inside a glass
+  // card, and a card's backdrop-filter makes it the containing block and
+  // stacking context of any fixed descendant — rendered in place, the dialog
+  // sat inside the card, behind the cards after it, and its buttons scrolled
+  // away under the tab bar. Base UI adds what the hand-rolled one lacked:
+  // focus stays inside while it is open and goes back to Share on close.
+  // Escape and a tap outside the panel close it; the page does not scroll.
+  return (
+    <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Portal>
+    <Dialog.Backdrop className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
+    <Dialog.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6">
+      <Dialog.Popup
+        initialFocus={closeRef}
+        className="flex max-h-[100dvh] w-full max-w-lg flex-col overflow-y-auto rounded-t-2xl border border-line bg-surface p-4 outline-none sm:max-h-[92vh] sm:rounded-2xl sm:p-5"
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-bold">{s.dialogTitle}</h2>
-          <button
+          <Dialog.Title className="text-base font-bold">{s.dialogTitle}</Dialog.Title>
+          <Dialog.Close
             ref={closeRef}
-            type="button"
-            onClick={onClose}
             aria-label={s.close}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line text-ink-soft hover:border-accent hover:text-ink"
           >
             ✕
-          </button>
+          </Dialog.Close>
         </div>
 
         <div className="mt-4 flex items-center justify-center">
@@ -333,8 +329,9 @@ export function ShareWorkoutDialog({ card, onClose }: { card: WorkoutShareCard; 
           </button>
         </div>
         {status === "ready" ? <p className="mt-3 text-center text-sm font-semibold text-accent-ink" role="status">{s.ready}</p> : null}
-      </div>
-    </div>,
-    document.body,
+      </Dialog.Popup>
+    </Dialog.Viewport>
+    </Dialog.Portal>
+    </Dialog.Root>
   );
 }

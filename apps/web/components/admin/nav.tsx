@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "@base-ui/react/dialog";
 import { NavIcon } from "@/components/client-nav";
 import { NavSpinner } from "@/components/spinner";
 
@@ -41,48 +41,37 @@ export function AdminNav({ items }: { items: AdminNavItem[] }) {
 
 /**
  * Phone / tablet: a menu button in the header and a full-height sheet with
- * the same list. Same shape as the client "More" sheet — a sibling of the
- * glass header, never nested in it (its backdrop-filter would swallow ours).
+ * the same list, as a Base UI modal: Escape, a tap outside and a route change
+ * close it, focus stays in the sheet while it is open and returns to the
+ * menu button after, and the page behind does not scroll. Portalled to the
+ * body — the button sits inside the glass header, whose backdrop-filter would
+ * otherwise be this sheet's containing block (56px tall) and would swallow
+ * its own frost.
  */
 export function AdminMobileNav({ items, labels }: { items: AdminNavItem[]; labels: { menu: string; close: string } }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [pathname]);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("keydown", onKey);
-    const { overflow } = document.body.style;
-    document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = overflow; };
-  }, [open]);
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger
         aria-label={labels.menu}
-        aria-expanded={open}
         className="inline-flex h-11 w-11 items-center justify-center rounded-lg glass glass--subtle glass--interactive text-ink-soft hover:text-ink lg:hidden"
       >
         <NavIcon d="M4 7h16M4 12h16M4 17h16" className="h-[18px] w-[18px]" />
-      </button>
-      {open
-        ? createPortal(
-            // Portalled to the body: the button sits inside the glass header,
-            // whose backdrop-filter would otherwise be this sheet's containing
-            // block (56px tall) and would swallow its own frost.
-            <div className="fixed inset-0 z-40 lg:hidden">
-              <button type="button" aria-label={labels.close} onClick={() => setOpen(false)} className="absolute inset-0 bg-bg/80" />
-              <div role="dialog" aria-modal="true" aria-label={labels.menu} className="glass glass--strong absolute inset-y-3 left-3 w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto rounded-3xl p-3">
-                <p className="mb-2 px-3 pt-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{labels.menu}</p>
-                <AdminNav items={items} />
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
-    </>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-40 bg-bg/80 lg:hidden" />
+        <Dialog.Popup
+          aria-label={labels.menu}
+          className="glass glass--strong fixed inset-y-3 left-3 z-40 w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto rounded-3xl p-3 outline-none lg:hidden"
+        >
+          <Dialog.Title className="mb-2 px-3 pt-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{labels.menu}</Dialog.Title>
+          <AdminNav items={items} />
+          <Dialog.Close className="sr-only">{labels.close}</Dialog.Close>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

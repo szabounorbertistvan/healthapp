@@ -3,9 +3,9 @@ import { ACCOUNTS, prepare, signIn } from "./accounts";
 
 test.beforeEach(async ({ context }) => prepare(context));
 
-test("a signed-out visitor is sent to the landing page", async ({ page }) => {
+test("a signed-out visitor is sent to sign in, and back afterwards", async ({ page }) => {
   await page.goto("/today");
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/login\?next=%2Ftoday$/);
 });
 
 test("a wrong password is refused with a message", async ({ page }) => {

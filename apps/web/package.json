@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@base-ui/react": "^1.8.0",
     "@healthapp/api": "*",
     "@healthapp/shared": "*",
     "@supabase/ssr": "^0.6.1",
@@ -20,13 +21,17 @@
     "next": "^15.3.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "stripe": "^17.7.0"
+    "stripe": "^17.7.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@serwist/turbopack": "^9.5.12",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild-wasm": "^0.28.2",
+    "serwist": "^9.5.12",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.8.0"
   }

@@ -10,7 +10,7 @@
 // same rest can never be announced twice however many ticks overlap.
 //
 // The payload carries a title, a body, a path and the person's own `alert`
-// setting; the service worker (apps/web/public/sw.js) shows it with
+// setting; the service worker (apps/web/app/sw.ts) shows it with
 // `silent: !alert` and never a vibration pattern. Whether an alert lights the
 // lock screen is the OS's business — nothing here asks for sound.
 //

@@ -10,9 +10,11 @@
 // Both use the same tag, but iOS stacks same-tag notifications instead of
 // replacing them, so each path also looks for the other's copy first.
 //
-// Nothing here — and nothing in public/sw.js — sets a vibration pattern or
+// Nothing here — and nothing in app/sw.ts — sets a vibration pattern or
 // plays a sound. Whether the notification is an alert or a silent one is the
 // person's setting (RestPrefs.alert); the device decides the rest.
+
+import { registerServiceWorker } from "../service-worker";
 
 export type NotificationState = "unsupported" | "default" | "granted" | "denied";
 
@@ -78,17 +80,8 @@ export function urlBase64ToUint8Array(base64Url: string): Uint8Array<ArrayBuffer
   return out;
 }
 
-/** Registers the worker once; later calls return the existing registration. */
-export async function registerRestServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
-  try {
-    const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-    await navigator.serviceWorker.ready;
-    return registration;
-  } catch {
-    return null;
-  }
-}
+/** The app's one worker (lib/service-worker.ts); the push handlers live in app/sw.ts. */
+const registerRestServiceWorker = registerServiceWorker;
 
 export type PushKeys = { endpoint: string; p256dh: string; auth: string };
 

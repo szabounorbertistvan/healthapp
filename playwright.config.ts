@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * End-to-end tests. They drive the real app against the live Supabase project
- * with the seeded test accounts (supabase/seed/accounts.sql, demo-data.sql) —
+ * with the seeded test accounts (supabase/seed/accounts.sql, demo-data.sql) â€”
  * there is no other backend. Specs must therefore leave no trace: read-only,
  * or undo their own write in the same test.
  *
@@ -18,9 +18,11 @@ export default defineConfig({
   // compile of a route several seconds, so the defaults are too tight.
   timeout: 60_000,
   expect: { timeout: 15_000 },
-  // One worker: under concurrent requests the Turbopack dev server sometimes
-  // renders a (client) page without the root I18nProvider ("useI18n must be
-  // used inside <I18nProvider>", a 500) � serially it never does.
+  // One worker against the dev server: under concurrent requests Turbopack
+  // sometimes renders a (client) page without the root I18nProvider ("useI18n
+  // must be used inside <I18nProvider>", a 500). A production build
+  // (`next start`, E2E_BASE_URL=http://localhost:3100) passes with
+  // --workers=3, so it is a dev-server artifact, not an app bug.
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : [["list"], ["html", { outputFolder: "e2e/.report", open: "never" }]],

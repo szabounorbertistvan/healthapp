@@ -494,7 +494,7 @@ and exercise names in a day's history.
 | Math | [packages/shared/src/rest-timer.ts](../packages/shared/src/rest-timer.ts) — `startRest` / `pauseRest` / `resumeRest` / `extendRest` / `skipRest` / `settleRest`, `remainingMs`, `markRestNotified`, `plannedSets` / `nextPlannedSet` / `restBetween`, `resolveRestSeconds`, `restAfterLoggedSet` |
 | State | `lib/rest-timer/client.tsx` (`RestTimerProvider`, mounted in `(client)/layout.tsx`), persisted in `localStorage` under `voinic-rest-timer-v1` (`lib/rest-timer/storage.ts`) |
 | Tables | `users.rest_prefs` (jsonb: default, per-lift overrides, notify), `push_subscriptions`, `rest_pushes` — migration `20260919100000_rest_timer.sql`, pgTAP `rest_timer.test.sql` |
-| Push | `public/sw.js` (push + notificationclick), `app/manifest.ts`, edge function `rest-push` (Web Push via `jsr:@negrel/webpush`), pg_cron `rest-push-tick` every 10 s → `tick_rest_pushes()` → `net.http_post` |
+| Push | `apps/web/app/sw.ts` (push + notificationclick; served as `/serwist/sw.js`, see the Offline row of GAPS), `app/manifest.ts`, edge function `rest-push` (Web Push via `jsr:@negrel/webpush`), pg_cron `rest-push-tick` every 10 s → `tick_rest_pushes()` → `net.http_post` |
 
 After `logSet()` succeeds — and only then — `restAfterLoggedSet()` decides
 whether a rest starts: not after the workout's final set, not on a completed

@@ -13,6 +13,8 @@ import { RestTimerProvider } from "@/lib/rest-timer/client";
 import { PlanProvider } from "@/lib/plan-client";
 import { getPlan } from "@/lib/plan";
 import { RestTimerBar } from "@/components/rest-timer-bar";
+import { OfflineSetsProvider } from "@/lib/offline/sync";
+import { OfflineSetsNotice } from "@/components/offline-sets-notice";
 import { FeedbackButton } from "@/components/feedback";
 import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
 
@@ -44,6 +46,9 @@ export default async function ClientLayout({ children }: { children: React.React
     {/* The rest timer lives here, above every (client) route, so a countdown
         started in the set logger follows the person to Today and back. */}
     <RestTimerProvider prefs={profile.rest_prefs}>
+    {/* Sets logged without a connection wait on the device and replay from
+        here, whichever (client) screen is open when the signal returns. */}
+    <OfflineSetsProvider userId={profile.id}>
     <div className="flex min-h-screen">
       {/* The sidebar sits on the page ground, no border: the cards are the
           only surfaces, so the eye has one kind of edge to read. */}
@@ -83,12 +88,14 @@ export default async function ClientLayout({ children }: { children: React.React
             its "More" sheet carries the feed, notifications, language, theme
             and sign-out that a header used to duplicate. */}
         <main className="flex min-w-0 flex-1 flex-col px-4 pb-28 pt-[max(1rem,env(safe-area-inset-top))] sm:px-10 sm:pb-12 sm:pt-7">
+          <OfflineSetsNotice />
           <div className="flex-1">{children}</div>
           <RestTimerBar />
         </main>
       </div>
       <ClientTabBar coach={coach} unread={unread} />
     </div>
+    </OfflineSetsProvider>
     </RestTimerProvider>
     </UnitsProvider>
     </PlanProvider>

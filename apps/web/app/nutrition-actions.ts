@@ -8,6 +8,8 @@ import { isPlanLimitError, normalizeForSearch } from "@healthapp/shared";
 import type { ActionResult } from "./actions";
 import { notSignedIn, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
+import { z } from "zod";
+import { id, num, parseInput, text } from "@/lib/validate";
 
 // Nutrition plan builder writes (W6, Sprint 6).
 //
@@ -17,11 +19,34 @@ import { getPlan } from "@/lib/plan";
 // day-variant and create paths are still unverified. Every update/delete goes
 // through `mutated()` so an RLS-filtered write cannot report success. See
 // docs/superpowers/specs/2026-09-08-s1-*.
+//
+// Every export checks its arguments' shape first (lib/validate.ts) — these are
+// public endpoints. The ranges with their own sentence stay in the actions.
+
+const CreatePlanInput = z.object({
+  name: text(),
+  clientId: id,
+  clientName: text(),
+  kcal: num,
+  protein: num,
+  carbs: num,
+  fat: num,
+});
+
+const NewFoodShape = z.object({
+  name: text(),
+  kcal: num,
+  protein: num,
+  carbs: num,
+  fat: num,
+  brand: text().nullish(),
+});
 
 /** How many foods one search returns — what the picker's scroll list holds. */
 const FOOD_SEARCH_LIMIT = 60;
 
 export async function searchFoods(q: string): Promise<FoodItem[]> {
+  if (!text().safeParse(q).success) return [];
   const supabase = await supabaseServer();
   const term = q.trim();
 
@@ -128,6 +153,8 @@ export async function createNutritionPlan(input: {
   carbs: number;
   fat: number;
 }): Promise<ActionResult & { id?: string }> {
+  const parsed = await parseInput(CreatePlanInput, input);
+  if (!parsed.ok) return parsed.result;
   const name = input.name.trim();
   if (!name) return { ok: false, message: "Give the plan a name" };
   if (input.kcal < 500 || input.kcal > 10000) {
@@ -173,6 +200,8 @@ export async function addPlanFood(input: {
   foodId: string;
   grams: number;
 }): Promise<ActionResult> {
+  const parsed = await parseInput(z.object({ planId: id, mealId: id, foodId: id, grams: num }), input);
+  if (!parsed.ok) return parsed.result;
   if (input.grams <= 0) return { ok: false, message: "Grams must be above zero" };
   // Meals with real foods are Coach Pro; a Starter plan is its four targets.
   if (!(await getPlan()).e.ingredientPlans) return upgradeRequired;
@@ -193,6 +222,8 @@ export async function updatePlanFoodGrams(
   rowId: string,
   grams: number,
 ): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, num]), [planId, rowId, grams]);
+  if (!parsed.ok) return parsed.result;
   if (grams <= 0) return { ok: false, message: "Grams must be above zero" };
 
 
@@ -206,7 +237,8 @@ export async function updatePlanFoodGrams(
 }
 
 export async function removePlanFood(planId: string, rowId: string): Promise<ActionResult> {
-
+  const parsed = await parseInput(z.tuple([id, id]), [planId, rowId]);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const failed = await mutated(
     await supabase.from("planned_meal_foods").delete({ count: "exact" }).eq("id", rowId),
@@ -217,7 +249,8 @@ export async function removePlanFood(planId: string, rowId: string): Promise<Act
 }
 
 export async function publishNutritionPlan(planId: string): Promise<ActionResult> {
-
+  const parsed = await parseInput(id, planId);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const failed = await mutated(
     await supabase
@@ -256,6 +289,8 @@ export type CreateFoodResult = { ok: true; food: FoodItem } | { ok: false; messa
  * the caller can log or add it in the same motion.
  */
 export async function createCustomFood(input: NewFoodInput): Promise<CreateFoodResult> {
+  const parsed = await parseInput(NewFoodShape, input);
+  if (!parsed.ok) return { ok: false, message: parsed.result.message ?? "" };
   const name = input.name.trim();
   if (name.length < 2) return { ok: false, message: "Give the food a name" };
   const num = (v: number) => (Number.isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : NaN);
@@ -298,6 +333,7 @@ export async function createCustomFood(input: NewFoodInput): Promise<CreateFoodR
  * (PRODUCT_SPEC C3).
  */
 export async function lookupBarcode(code: string): Promise<BarcodeResult> {
+  if (typeof code !== "string") return { ok: false, reason: "invalid" };
   const clean = code.trim();
   if (!/^\d{6,14}$/.test(clean)) return { ok: false, reason: "invalid" };
 
@@ -405,6 +441,8 @@ export async function addMealDayVariant(
   mealId: string,
   dayIndex: number,
 ): Promise<ActionResult & { id?: string }> {
+  const parsed = await parseInput(z.tuple([id, id, num]), [planId, mealId, dayIndex]);
+  if (!parsed.ok) return parsed.result;
   if (!Number.isInteger(dayIndex) || dayIndex < 1 || dayIndex > 7) {
     return { ok: false, message: "Pick a weekday" };
   }
@@ -447,6 +485,8 @@ export async function addMealDayVariant(
 
 /** Drop a weekday variant. The everyday meal (day_index 0) is not deletable here. */
 export async function removeMealDayVariant(planId: string, mealId: string): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id]), [planId, mealId]);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const failed = await mutated(
     await supabase

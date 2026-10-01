@@ -28,7 +28,7 @@ npm run web
 | `npm run web` | Next.js dev server on :3000 (`.claude/launch.json` runs this — use the preview tools, not Bash) |
 | `npm run typecheck` | `tsc --noEmit` across the workspace |
 | `npm test` | Vitest — only `packages/**/src/**/*.test.ts` (domain math). No React unit tests exist. |
-| `npm run e2e` | Playwright (`e2e/`, `playwright.config.ts`) against the dev server on :3000 and the **live** project, signed in as the seeded test accounts. Specs are read-only or undo their own write. One worker on purpose (see the config). Not in CI yet. One-time `npx playwright install chromium`. |
+| `npm run e2e` | Playwright (`e2e/`, `playwright.config.ts`) against the dev server on :3000 and the **live** project, signed in as the seeded test accounts. Specs are read-only or undo their own write. One worker against the dev server: Turbopack 500s under concurrent loads (a production build does not — `--workers=3` passes there). `E2E_BASE_URL=http://localhost:3100` runs it against `next start` (launch entry `web-prod`), which `e2e/offline.spec.ts` needs. Not in CI yet. One-time `npx playwright install chromium`. |
 | `npm run build` | Turbo build |
 | `npm run db:start` / `db:reset` | Local Supabase stack |
 | `npm run db:test` | pgTAP RLS tests in `supabase/tests/` (needs Docker) |
@@ -152,8 +152,13 @@ third-party text writes it.
 ## Gotchas
 
 - Windows dev box; the shell is PowerShell. Paths in this repo use `/`.
-- **Overlays go through `createPortal(…, document.body)` or a native
-  `<dialog>`, never a `fixed` element in place.** Every `.glass` card has a
+- **Overlays go through Base UI's `Dialog` (`@base-ui/react/dialog`, portalled,
+  focus-trapped, scroll-locked — `share-workout.tsx`, `admin/nav.tsx`), a
+  native `<dialog>`, or `createPortal(…, document.body)`; never a `fixed`
+  element in place.** A dialog that unmounts as it closes must hand focus
+  back itself (Base UI cannot); see `ShareWorkoutButton`. The client "More"
+  sheet stays hand-rolled on purpose: the tab bar must stay tappable over it,
+  which a modal would make inert. Every `.glass` card has a
   `backdrop-filter`, which makes the card the containing block and stacking
   context of any `fixed` descendant: a dialog rendered inside one sits in the
   card, behind the cards after it, with its buttons scrolling away under the
@@ -201,10 +206,25 @@ third-party text writes it.
 - Date helpers (`isoDay`, `daysAgoIso`, `mondayOf`, `daysSince`) live in
   `lib/dates.ts`; serving sizes and the `FoodItem` / `FoodPortion` shapes live in
   `lib/food-portions.ts`. Both were carved out of the deleted demo modules.
+- **The service worker is `app/sw.ts`, served at `/serwist/sw.js`** by the
+  route `app/serwist/[path]/route.ts` (`@serwist/turbopack`, scope `/`). It
+  caches only what carries nobody's data — the build's JS/CSS/fonts
+  (precache, ~2.8 MB), the public exercise/brand images (runtime), and
+  `/offline`, the fallback for a page that cannot load. **Never pages, RSC
+  payloads or API responses**: they are one person's health data. In
+  development it caches nothing and is registered only by the rest timer;
+  in production `components/service-worker.tsx` registers it on load. To
+  test caching, build and run `web-prod` — never while the dev server runs.
+- **A set logged offline waits in an IndexedDB outbox** (`lib/offline/`) and is
+  replayed through `logSet()` itself, which is why `logSet` must stay
+  idempotent: the session and set `client_generated_id`s are derived, never
+  random, and a 23505 on a set with the same weight × reps is answered ok.
+  A router refresh while offline turns into a full page load (and the offline
+  page), so the logger skips it for a queued set; the sync refreshes later.
 - The rest timer between sets is timestamp-based (`startedAt` / `endsAt` in
   `packages/shared/src/rest-timer.ts`, persisted in `localStorage`), mounted
   once in `(client)/layout.tsx`. Its "rest finished" push is a separate,
-  best-effort path (`public/sw.js`, `rest_pushes`, edge function `rest-push`)
+  best-effort path (`app/sw.ts`, `rest_pushes`, edge function `rest-push`)
   that needs one-time VAPID setup — see docs/ENGINES.md. Never a sound and
   never a `vibrate` pattern — but as of 2026-09-22 not forced silent either:
   `silent: true` filed it in a channel a locked Android phone never showed, so

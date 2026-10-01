@@ -30,7 +30,7 @@ export type LogSetResult = ActionResult & { is_pr?: boolean; estimated_1rm?: num
  * the same isPersonalRecord() the mobile app calls the instant a set is
  * confirmed, so the two verdicts cannot disagree.
  */
-export async function logSet(input: {
+export type LogSetInput = {
   dayId: string;
   dayName: string;
   exerciseName: string;
@@ -47,7 +47,23 @@ export async function logSet(input: {
   rir?: number | null;
   /** Free-text comment about the set. */
   notes?: string | null;
-}): Promise<LogSetResult> {
+  /**
+   * When the set was done, ISO. Only the offline outbox (lib/offline) sends
+   * it: a set queued at 23:50 and synced after midnight still belongs to that
+   * evening's session. Absent, implausible or too old, it is "now".
+   */
+  loggedAt?: string;
+};
+
+/** A replayed set's own time, within reason; otherwise now. */
+function loggedAtOrNow(loggedAt: string | undefined): Date {
+  const now = Date.now();
+  const at = loggedAt ? Date.parse(loggedAt) : NaN;
+  const WEEK = 7 * 24 * 60 * 60 * 1000;
+  return Number.isFinite(at) && at <= now + 5 * 60 * 1000 && at >= now - WEEK ? new Date(at) : new Date(now);
+}
+
+export async function logSet(input: LogSetInput): Promise<LogSetResult> {
   const rir = input.rir ?? null;
   const notes = input.notes?.trim().slice(0, 500) || null;
   // The same rules — and the same plausibility caps — an edit is held to, in
@@ -70,8 +86,9 @@ export async function logSet(input: {
   // client_generated_id is a uuid column, and it is what makes a retry safe.
   // Deriving it from the day and date keeps one session per day per program
   // day however many times this runs.
-  const sessionKey = sessionKeyFor(userId, input.dayId, isoDay());
-  const session = await openSession(supabase, userId, input.dayId, sessionKey);
+  const at = loggedAtOrNow(input.loggedAt);
+  const sessionKey = sessionKeyFor(userId, input.dayId, isoDay(at));
+  const session = await openSession(supabase, userId, input.dayId, sessionKey, at.toISOString());
   if ("ok" in session) return session;
   const sessionId = session.id;
 
@@ -89,6 +106,10 @@ export async function logSet(input: {
     best > 0 ? best : null,
   );
 
+  // Keyed on the prescribed row, not the library exercise: a day may program
+  // the same lift twice (heavy, then a back-off block) and each keeps its own
+  // set numbering.
+  const setKey = uuidFrom(`${sessionId}:${input.programExerciseId ?? input.exerciseId}:${input.setIndex}`);
   const { error } = await supabase.from("logged_sets").insert({
     session_id: sessionId,
     user_id: userId,
@@ -101,14 +122,24 @@ export async function logSet(input: {
     rir,
     notes,
     is_pr: isPr,
-    // Keyed on the prescribed row, not the library exercise: a day may program
-    // the same lift twice (heavy, then a back-off block) and each keeps its own
-    // set numbering.
-    client_generated_id: uuidFrom(
-      `${sessionId}:${input.programExerciseId ?? input.exerciseId}:${input.setIndex}`,
-    ),
-    client_ts: new Date().toISOString(),
+    client_generated_id: setKey,
+    client_ts: at.toISOString(),
   });
+  if (error?.code === "23505") {
+    // This set is already on record. Usually a replay: the outbox sent it, the
+    // answer was lost with the signal, and it is sending it again — which is
+    // success, not an error, or the set would retry for ever. A different set
+    // under the same number (one deleted in between, say) is still refused.
+    const { data: existing } = await supabase
+      .from("logged_sets")
+      .select("weight_kg, reps, is_pr")
+      .eq("client_generated_id", setKey)
+      .maybeSingle();
+    // weight_kg is numeric(6,2): a pound-converted weight comes back rounded.
+    if (existing && Math.abs(Number(existing.weight_kg) - input.weightKg) < 0.006 && existing.reps === input.reps) {
+      return { ok: true, is_pr: Boolean(existing.is_pr), estimated_1rm: estimated1RM(input.weightKg, input.reps) };
+    }
+  }
   if (error) {
     // A first set the database refused must not leave an empty session behind.
     if (session.created) await supabase.from("logged_sessions").delete().eq("id", sessionId).eq("user_id", userId);
@@ -134,6 +165,7 @@ async function openSession(
   userId: string,
   dayId: string,
   sessionKey: string,
+  startedAt: string,
 ): Promise<{ id: string; created: boolean } | ActionResult> {
   const { data: existing } = await supabase
     .from("logged_sessions")
@@ -159,7 +191,7 @@ async function openSession(
       user_id: userId,
       program_day_id: dayId,
       client_generated_id: sessionKey,
-      started_at: new Date().toISOString(),
+      started_at: startedAt,
     })
     .select("id")
     .single();

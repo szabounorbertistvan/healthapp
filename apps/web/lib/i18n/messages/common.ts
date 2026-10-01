@@ -139,6 +139,7 @@ const en = {
     saving: "Saving…",
     loading: "Loading…",
     nothingChanged: "Nothing was saved. This item is no longer available to you; refresh and try again.",
+    invalidInput: "Something in this request was not valid, so nothing was saved. Refresh and try again.",
   },
   errorBoundary: {
     title: "Something went wrong on this screen",
@@ -146,6 +147,11 @@ const en = {
     retry: "Try again",
     home: "Back to start",
     reference: "Reference",
+  },
+  offline: {
+    title: "You're offline",
+    body: "This screen needs a connection to load. A rest that is counting down keeps counting; reconnect and try again.",
+    retry: "Try again",
   },
   macros: {
     calories: "Calories",
@@ -1197,6 +1203,7 @@ const ro: typeof en = {
     saving: "Se salvează…",
     loading: "Se încarcă…",
     nothingChanged: "Nu s-a salvat nimic. Elementul nu îți mai este disponibil; reîncarcă pagina și încearcă din nou.",
+    invalidInput: "Ceva din această cerere nu era valid, așa că nu s-a salvat nimic. Reîncarcă pagina și încearcă din nou.",
   },
   errorBoundary: {
     title: "Ceva n-a mers bine pe acest ecran",
@@ -1204,6 +1211,11 @@ const ro: typeof en = {
     retry: "Încearcă din nou",
     home: "Înapoi la început",
     reference: "Referință",
+  },
+  offline: {
+    title: "Ești offline",
+    body: "Ecranul acesta are nevoie de conexiune ca să se încarce. O pauză care rulează continuă să numere; reconectează-te și încearcă din nou.",
+    retry: "Încearcă din nou",
   },
   macros: {
     calories: "Calorii",

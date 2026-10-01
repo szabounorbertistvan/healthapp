@@ -6,6 +6,8 @@ import { mutated } from "@/lib/supabase/mutate";
 import type { ActionResult } from "./actions";
 import { notSignedIn, planLimitReached, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
+import { z } from "zod";
+import { num, id, intensityMode, parseInput, step, text } from "@/lib/validate";
 
 // Program builder writes (W4, Sprint 3).
 //
@@ -17,6 +19,37 @@ import { getPlan } from "@/lib/plan";
 // day_index is the 0-based ordinal of a day *within its week*, which is what
 // the unique key (program_id, week_index, day_index) assumes. Only the sort
 // reads it, so a hole left by a deleted day is harmless — see nextDayIndex().
+//
+// Every export parses its arguments first (lib/validate.ts): these are public
+// endpoints, and the TypeScript signature only binds our own screens.
+
+/** The prescription's shape; its ranges are validateTargets(), checked after the parse. */
+const targetsShape = z.object({
+  target_sets: num,
+  target_reps: text(15),
+  target_weight_kg: num.nullable(),
+  target_rpe: num.nullable(),
+  rest_seconds: num.nullable(),
+});
+
+// An empty clientId / exerciseId is let through on purpose: the action answers
+// it with "Pick a client" / "Pick an exercise".
+const CreateProgramInput = z.object({
+  name: text(),
+  clientId: id.or(z.literal("")),
+  clientName: text(),
+  weeks: z.number().int().min(1).max(52),
+  intensityMode,
+});
+
+const AddExerciseInput = z.object({
+  programId: id,
+  dayId: id,
+  exerciseId: id,
+  exerciseName: text(),
+  targets: targetsShape.partial().optional(),
+  circuit: num.nullable().optional(),
+});
 
 /**
  * The next free ordinal inside a week.
@@ -50,6 +83,8 @@ export async function createProgram(input: {
   weeks: number;
   intensityMode: "rpe" | "rir" | "simple";
 }): Promise<ActionResult & { id?: string }> {
+  const parsed = await parseInput(CreateProgramInput, input);
+  if (!parsed.ok) return parsed.result;
   const name = input.name.trim();
   if (!name) return { ok: false, message: "Give the program a name" };
   if (!input.clientId) return { ok: false, message: "Pick a client" };
@@ -76,6 +111,8 @@ export async function createProgram(input: {
 }
 
 export async function addProgramDay(programId: string, name: string): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, text()]), [programId, name]);
+  if (!parsed.ok) return parsed.result;
   const dayName = name.trim() || "New day";
 
 
@@ -125,6 +162,8 @@ export async function addProgramExercise(input: {
   targets?: Partial<ExerciseTargets>;
   circuit?: number | null;
 }): Promise<ActionResult> {
+  const parsed = await parseInput(AddExerciseInput, input);
+  if (!parsed.ok) return parsed.result;
   const targets: ExerciseTargets = { ...DEFAULT_TARGETS, ...input.targets };
   const invalid = validateTargets(targets);
   if (invalid) return { ok: false, message: targetsMessage(invalid) };
@@ -151,6 +190,8 @@ export async function addProgramExercise(input: {
 
 /** Rename a training day. The name is what the client sees on Training and in history. */
 export async function renameProgramDay(programId: string, dayId: string, name: string): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, text()]), [programId, dayId, name]);
+  if (!parsed.ok) return parsed.result;
   const clean = name.trim();
   if (!clean) return { ok: false, message: "Give the day a name" };
   const supabase = await supabaseServer();
@@ -168,6 +209,8 @@ export async function renameProgramDay(programId: string, dayId: string, name: s
  * transaction. Sessions reference the day's id, so history is untouched.
  */
 export async function moveProgramDay(programId: string, dayId: string, direction: -1 | 1): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, step]), [programId, dayId, direction]);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const { error } = await supabase.rpc("move_program_day", { p_day: dayId, p_direction: direction });
   if (error) return { ok: false, message: error.code === "42501" ? "You cannot edit this program" : error.message };
@@ -177,6 +220,8 @@ export async function moveProgramDay(programId: string, dayId: string, direction
 
 /** Move an exercise one step up or down inside its day (swap with its neighbour). */
 export async function moveProgramExercise(programId: string, dayId: string, rowId: string, direction: -1 | 1): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, id, step]), [programId, dayId, rowId, direction]);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const { data: rows, error } = await supabase.from("program_exercises").select("id, position").eq("program_day_id", dayId);
   if (error) return { ok: false, message: error.message };
@@ -193,6 +238,8 @@ export async function moveProgramExercise(programId: string, dayId: string, rowI
 
 /** Link an exercise into a circuit (1 = A, 2 = B …) or take it out (null). */
 export async function setExerciseCircuit(programId: string, rowId: string, circuit: number | null): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, num.nullable()]), [programId, rowId, circuit]);
+  if (!parsed.ok) return parsed.result;
   if (circuit !== null && (!Number.isInteger(circuit) || circuit < 1 || circuit > 26)) return { ok: false, message: "Unknown circuit" };
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -205,6 +252,8 @@ export async function setExerciseCircuit(programId: string, rowId: string, circu
 
 /** Swap the exercise a prescribed row points at, keeping its sets/reps/RIR. Past sets keep their own exercise_id. */
 export async function replaceProgramExercise(programId: string, rowId: string, exerciseId: string): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, id.or(z.literal(""))]), [programId, rowId, exerciseId]);
+  if (!parsed.ok) return parsed.result;
   if (!exerciseId) return { ok: false, message: "Pick an exercise" };
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -224,6 +273,8 @@ export async function updateProgramExercise(input: {
   target_rpe: number | null;
   rest_seconds: number | null;
 }): Promise<ActionResult> {
+  const parsed = await parseInput(targetsShape.extend({ programId: id, exerciseRowId: id }), input);
+  if (!parsed.ok) return parsed.result;
   const invalid = validateTargets(input);
   if (invalid) return { ok: false, message: targetsMessage(invalid) };
 
@@ -252,7 +303,8 @@ export async function removeProgramExercise(
   programId: string,
   exerciseRowId: string,
 ): Promise<ActionResult> {
-
+  const parsed = await parseInput(z.tuple([id, id]), [programId, exerciseRowId]);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const failed = await mutated(
     await supabase.from("program_exercises").delete({ count: "exact" }).eq("id", exerciseRowId),
@@ -268,6 +320,8 @@ export async function setProgramExerciseSetType(
   exerciseRowId: string,
   setType: string,
 ): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, text(20)]), [programId, exerciseRowId, setType]);
+  if (!parsed.ok) return parsed.result;
   if (!isSetType(setType)) return { ok: false, message: "Unknown set type" };
   const supabase = await supabaseServer();
   const failed = await mutated(
@@ -285,6 +339,8 @@ export async function setProgramExerciseSetType(
  * who may not edit the program (a coached client, a stranger).
  */
 export async function duplicateProgramExercise(programId: string, exerciseRowId: string): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id]), [programId, exerciseRowId]);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const { error } = await supabase.rpc("duplicate_program_exercise", { p_row: exerciseRowId });
   if (error) return { ok: false, message: error.message };
@@ -294,6 +350,8 @@ export async function duplicateProgramExercise(programId: string, exerciseRowId:
 
 /** Duplicate a day with all its targets — the build-once move from W4. Coach Pro. */
 export async function duplicateProgramDay(programId: string, dayId: string): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id]), [programId, dayId]);
+  if (!parsed.ok) return parsed.result;
   if (!(await getPlan()).e.programCopy) return upgradeRequired;
 
   const supabase = await supabaseServer();
@@ -347,6 +405,8 @@ export async function copyProgramToClient(
   programId: string,
   clientId: string,
 ): Promise<ActionResult & { id?: string }> {
+  const parsed = await parseInput(z.tuple([id, id]), [programId, clientId]);
+  if (!parsed.ok) return parsed.result;
   if (!(await getPlan()).e.programCopy) return upgradeRequired;
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -362,7 +422,8 @@ export async function copyProgramToClient(
 
 /** Publish makes the program visible to the client and fires Plan updated. */
 export async function publishProgram(programId: string): Promise<ActionResult> {
-
+  const parsed = await parseInput(id, programId);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const failed = await mutated(
     await supabase
@@ -392,6 +453,8 @@ export async function createSoloProgram(input: {
   name: string;
   intensityMode: "rpe" | "rir" | "simple";
 }): Promise<ActionResult & { id?: string }> {
+  const parsed = await parseInput(z.object({ name: text(), intensityMode }), input);
+  if (!parsed.ok) return parsed.result;
   const name = input.name.trim();
   if (!name) return { ok: false, message: "Give the program a name" };
 
@@ -424,6 +487,8 @@ export async function addSoloProgramDay(
   name: string,
   muscleGroups: string[],
 ): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, text(), z.array(text(40)).max(30)]), [programId, name, muscleGroups]);
+  if (!parsed.ok) return parsed.result;
   const dayName = name.trim() || "New day";
 
 
@@ -499,7 +564,8 @@ export async function getMySoloProgramId(): Promise<string | null> {
  * is why the next day takes max(day_index) + 1 rather than a count.
  */
 export async function removeProgramDay(programId: string, dayId: string): Promise<ActionResult> {
-
+  const parsed = await parseInput(z.tuple([id, id]), [programId, dayId]);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const failed = await mutated(
     await supabase
@@ -531,6 +597,8 @@ export async function removeProgramDay(programId: string, dayId: string): Promis
  * zero-row delete into a visible error instead of a false success.
  */
 export async function deleteProgram(programId: string): Promise<ActionResult> {
+  const parsed = await parseInput(id, programId);
+  if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const failed = await mutated(
     await supabase.from("programs").delete({ count: "exact" }).eq("id", programId),

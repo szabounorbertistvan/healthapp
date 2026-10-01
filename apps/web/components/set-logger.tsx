@@ -6,7 +6,9 @@ import {
   previousFor, previousSetFor, progressionVs, resolveRestSeconds, restAfterLoggedSet, validateSetEdit,
   type ExerciseVideoSource, type PreviousWorkout,
 } from "@healthapp/shared";
-import { finishWorkout, logSet } from "@/app/client-actions-app";
+import { finishWorkout, logSet, type LogSetResult } from "@/app/client-actions-app";
+import { useOfflineSets } from "@/lib/offline/sync";
+import type { QueuedSet } from "@/lib/offline/outbox";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
@@ -46,9 +48,26 @@ export function SetLogger({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [logged, setLogged] = useState(day.logged);
+  // A refresh brings the server's rows, which by then include whatever was
+  // just logged or synced; they replace the provisional ones.
+  useEffect(() => setLogged(day.logged), [day.logged]);
+  // Sets of this day still waiting in the offline outbox (lib/offline): shown
+  // as logged — they count towards the set number and the progress bar — and
+  // marked as not synced, until the replay lands and a refresh brings them
+  // back as real rows.
+  const offline = useOfflineSets();
+  const all = useMemo(() => {
+    const waiting = offline.queued
+      .filter((q) => q.dayId === day.day_id && !q.error)
+      .map(queuedRow)
+      .filter((q) => !logged.some((s) => s.program_exercise_id === q.program_exercise_id && s.set_index === q.set_index));
+    return [...logged, ...waiting];
+  }, [logged, offline.queued, day.day_id]);
   // Shown where it happened — under the block whose Log set was pressed, or
   // above Finish — not in a banner at the top that is off-screen by exercise 4.
   const [error, setErrorAt] = useState<{ at: string; text: string } | null>(null);
+  // "Saved on this phone", under the block whose set went to the outbox.
+  const [notice, setNotice] = useState<{ at: string; text: string } | null>(null);
   const [pr, setPr] = useState<string | null>(null);
   const rest = useRestTimer();
   // Back into the Map the domain lookup takes, once per render rather than
@@ -64,7 +83,7 @@ export function SetLogger({
     for (const exercise of day.exercises) {
       byBlock.set(
         exercise.id,
-        logged.filter((s) =>
+        all.filter((s) =>
           s.program_exercise_id
             ? s.program_exercise_id === exercise.id
             : s.exercise === exercise.exercise,
@@ -72,7 +91,7 @@ export function SetLogger({
       );
     }
     return byBlock;
-  }, [logged, day.exercises]);
+  }, [all, day.exercises]);
 
   const totalTarget = day.exercises.reduce((sum, e) => sum + e.sets, 0);
 
@@ -82,11 +101,11 @@ export function SetLogger({
         <div className="h-2.5 flex-1 overflow-hidden rounded-md bg-surface">
           <div
             className="h-full rounded-md bg-accent transition-all"
-            style={{ width: `${totalTarget ? (logged.length / totalTarget) * 100 : 0}%` }}
+            style={{ width: `${totalTarget ? (all.length / totalTarget) * 100 : 0}%` }}
           />
         </div>
         <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-ink-faint">
-          {fill(t.clientWidgets.setLogger.setsProgress, { done: logged.length, total: totalTarget })}
+          {fill(t.clientWidgets.setLogger.setsProgress, { done: all.length, total: totalTarget })}
         </span>
       </div>
 
@@ -144,10 +163,12 @@ export function SetLogger({
             pending={pending}
             dayId={day.day_id}
             error={error?.at === exercise.id ? error.text : null}
+            notice={notice?.at === exercise.id ? notice.text : null}
             onEdited={(updated) => setLogged((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
             onLog={(entry) =>
               startTransition(async () => {
                 setErrorAt(null);
+                setNotice(null);
                 setPr(null);
                 const setError = (text: string) => setErrorAt({ at: exercise.id, text });
                 // Checked here first, in the person's own unit, so a typo is
@@ -168,7 +189,7 @@ export function SetLogger({
                   );
                   return;
                 }
-                const result = await logSet({
+                const input = {
                   dayId: day.day_id,
                   dayName: day.day_name,
                   exerciseName: exercise.exercise,
@@ -181,12 +202,28 @@ export function SetLogger({
                   rpe: entry.intensity,
                   rir: entry.rir,
                   notes: entry.notes,
-                });
-                if (!result.ok) {
-                  setError(result.message ?? t.clientWidgets.setLogger.couldNotLogSet);
+                  loggedAt: new Date().toISOString(),
+                };
+                // No connection (the browser says so, or the request dies on
+                // the way) and the set goes to the outbox instead of being
+                // lost. An answer from the server, even a refusal, is final.
+                let result: LogSetResult | null = null;
+                let queued: QueuedSet | null = null;
+                if (navigator.onLine === false) queued = await offline.queue(day.day_id, input);
+                else {
+                  try {
+                    result = await logSet(input);
+                  } catch {
+                    queued = await offline.queue(day.day_id, input);
+                  }
+                }
+                if (queued) setNotice({ at: exercise.id, text: t.clientWidgets.setLogger.savedOnPhone });
+                else if (!result?.ok) {
+                  setError(result?.message ?? t.clientWidgets.setLogger.couldNotLogSet);
                   return;
                 }
-                setLogged((prev) => [
+                // A queued set is already on screen, from the outbox.
+                if (result) setLogged((prev) => [
                   ...prev,
                   {
                     id: `tmp_${prev.length}`,
@@ -199,10 +236,10 @@ export function SetLogger({
                     rir: entry.rir,
                     notes: entry.notes,
                     is_pr: Boolean(result.is_pr),
-                    at: new Date().toISOString(),
+                    at: input.loggedAt,
                   },
                 ]);
-                if (result.is_pr) setPr(exercise.exercise);
+                if (result?.is_pr) setPr(exercise.exercise);
                 // The set is saved: now, and only now, the rest starts — for
                 // the resolved duration, towards the next planned set, and
                 // not at all after the workout's final set.
@@ -223,7 +260,9 @@ export function SetLogger({
                   prefs: rest.prefs,
                 });
                 if (plan) rest.start(plan, { dayId: day.day_id, exerciseName: exercise.exercise, setIndex: done + 1 });
-                router.refresh();
+                // Offline, a refresh would fail into a full page load, and with
+                // it the offline page. The sync refreshes once it lands.
+                if (result) router.refresh();
               })
             }
           />
@@ -238,11 +277,22 @@ export function SetLogger({
       ) : null}
       <button
         type="button"
-        disabled={pending || logged.length === 0}
+        disabled={pending || all.length === 0}
         onClick={() =>
           startTransition(async () => {
             setErrorAt(null);
-            const result = await finishWorkout(day.day_id);
+            // Finishing closes the session, so every set must be in it first.
+            const left = await offline.flush();
+            if (left.some((q) => q.dayId === day.day_id && !q.error)) {
+              setErrorAt({ at: "finish", text: t.clientWidgets.setLogger.finishNeedsSync });
+              return;
+            }
+            let result: Awaited<ReturnType<typeof finishWorkout>>;
+            try {
+              result = await finishWorkout(day.day_id);
+            } catch {
+              result = { ok: false, message: t.clientWidgets.setLogger.finishNeedsSync };
+            }
             if (!result.ok) {
               setErrorAt({ at: "finish", text: result.message ?? t.clientWidgets.setLogger.couldNotFinish });
               return;
@@ -275,7 +325,7 @@ type SetEntry = {
 
 function ExerciseBlock({
   name, inCircuit, targetSets, targetReps, targetWeight, previous, targetRpe, rest, restSeconds, exerciseId, videoUrl, videoSource, intensityMode,
-  done, sets, pending, dayId, error, onLog, onEdited,
+  done, sets, pending, dayId, error, notice, onLog, onEdited,
 }: {
   name: string;
   /** Stacked in a circuit wrapper: sized by its content, not stretched to the grid row. */
@@ -301,6 +351,8 @@ function ExerciseBlock({
   dayId: string;
   /** Why the last Log set of this block was refused, if it was. */
   error: string | null;
+  /** Not a failure: the set is safe on this phone and waits to sync. */
+  notice: string | null;
   onLog: (entry: SetEntry) => void;
   onEdited: (set: Pick<LoggedSetRow, "id" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">) => void;
 }) {
@@ -434,12 +486,13 @@ function ExerciseBlock({
           {sets.map((s) => (
             <li key={s.id}>
               {/* A logged set is a button: tap to correct it. Rows still in
-                  flight (tmp_ ids) are not editable until the refresh lands. */}
+                  flight (tmp_ ids) or in the offline outbox (queued_) are not
+                  editable until the server has them. */}
               <button
                 type="button"
                 title={s.notes ?? m.editSet}
                 aria-label={`${m.editSet}: ${kgToDisplay(s.weight_kg, u.weightUnit)} ${u.weightUnit} × ${s.reps}`}
-                disabled={s.id.startsWith("tmp_")}
+                disabled={s.id.startsWith("tmp_") || s.id.startsWith("queued_")}
                 onClick={() => setEditing(editing === s.id ? null : s.id)}
                 className={`min-h-8 rounded-[10px] px-2.5 py-1.5 text-xs tabular-nums ${
                   s.is_pr ? "bg-accent font-semibold text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
@@ -450,6 +503,12 @@ function ExerciseBlock({
                 {s.rpe !== null ? ` · ${s.rpe}/10` : ""}
                 {s.is_pr ? ` · ${m.pr}` : ""}
                 {s.notes ? " · ✎" : ""}
+                {s.id.startsWith("queued_") ? (
+                  <span title={m.notSynced}>
+                    <NavIcon d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0" className="ml-1 inline h-3 w-3 align-[-2px]" />
+                    <span className="sr-only">{m.notSynced}</span>
+                  </span>
+                ) : null}
               </button>
             </li>
           ))}
@@ -505,6 +564,7 @@ function ExerciseBlock({
         </button>
       </div>
       {error ? <p role="alert" className="mt-2 text-[13px] font-semibold text-risk">{error}</p> : null}
+      {notice ? <p role="status" className="mt-2 text-[13px] text-ink-soft">{notice}</p> : null}
       {restPicker && exerciseId ? (
         <RestDurationPicker
           exerciseId={exerciseId}
@@ -576,4 +636,21 @@ function Field({
       />
     </label>
   );
+}
+
+/** An outbox item as a logger row: the shape the blocks and the counter read. */
+function queuedRow(q: QueuedSet): LoggedSetRow {
+  return {
+    id: `queued_${q.id}`,
+    program_exercise_id: q.input.programExerciseId ?? null,
+    exercise: q.input.exerciseName,
+    set_index: q.input.setIndex,
+    weight_kg: q.input.weightKg,
+    reps: q.input.reps,
+    rpe: q.input.rpe,
+    rir: q.input.rir ?? null,
+    notes: q.input.notes ?? null,
+    is_pr: false,
+    at: q.input.loggedAt,
+  };
 }

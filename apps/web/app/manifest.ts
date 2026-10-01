@@ -5,7 +5,8 @@ import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 // Web Push to a site that was added to the Home Screen from a page carrying
 // a manifest, so without this the rest-timer notification could never reach
 // a locked iPhone. Everything else (icons, colours) is what the OS shows for
-// that shortcut. No offline claims are made — the worker caches nothing.
+// that shortcut. The worker (app/sw.ts) caches the app shell and an offline
+// page, never anyone's screens, so no offline-first claim is made here.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: APP_NAME,

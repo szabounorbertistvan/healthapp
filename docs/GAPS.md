@@ -116,12 +116,27 @@ square format and hiding the profile, not a card without the logo.
 The landing page's pricing copy (`pricingTiers`, not rendered today) was
 rewritten to match the gates; no line is "soon" any more.
 
-**No offline anything.** No IndexedDB, no outbox — the web app simply fails
-without a connection, and `sync-ingest` / `packages/shared/src/sync.ts` remain
-unused. The landing page claimed "offline logging" until 2026-09-16. There *is*
-a service worker since 2026-09-19 (`public/sw.js`), but it exists only for the
-rest timer's Web Push and caches nothing — a rest already counting down keeps
-counting offline, that is all.
+**Offline: sets only, and only on an open logger.** Since 2026-10-01:
+- The service worker (`app/sw.ts`, Serwist) precaches the build's assets and an
+  `/offline` page, so a screen that cannot load shows that page instead of the
+  browser's error. Screens are never cached (one person's data), so nothing
+  *opens* offline — the set logger has to be on screen when the signal goes.
+- A set logged with no connection goes to an IndexedDB outbox
+  (`lib/offline/outbox.ts`), shows with a "not synced" clock, and is replayed
+  through the same `logSet()` action by `lib/offline/sync.tsx` (mounted in
+  `(client)/layout.tsx`) on `online`, on tab focus and every 20 s. `logSet` is
+  idempotent — deterministic session and set keys, a replay of a set already
+  on record answers ok — and takes the set's own `loggedAt`, so a set queued
+  before midnight stays in that evening's session. Items carry their user and
+  replay only for that user. Finish waits for the outbox. `e2e/offline-sets.spec.ts`
+  drives both the offline case and the lost-answer replay.
+- Not covered: food logs, habit ticks, edits, check-ins — they still fail
+  without a connection. iOS replays only when the app is opened again (no
+  background sync). `sync-ingest` / `packages/shared/src/sync.ts` stay unused:
+  they are the outbox endpoint for a native app, which the web does not need,
+  and `sync-ingest` predates `logged_sets.rir` (it would drop it).
+- The landing page claimed "offline logging" until 2026-09-16; it still should
+  not, at this scope.
 
 **Rest-timer push: pipeline live, device delivery unobserved.** The Web Push
 path (migration `20260919100000`, edge function `rest-push`, cron

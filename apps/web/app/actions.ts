@@ -15,11 +15,12 @@ export type ActionResult = {
 
 /**
  * Every business code an action can hand a screen: the ones Postgres raises
- * from the invite RPCs, the profile-completion checks, and `mutated()`'s
- * "RLS let the write through with zero rows". A union rather than `string` so
+ * from the invite RPCs, the profile-completion checks, `mutated()`'s
+ * "RLS let the write through with zero rows", and `parseInput()`'s "the
+ * arguments are not the shape this action takes". A union rather than `string` so
  * a screen comparing against a misspelt code fails to compile.
  */
-export type ActionErrorCode = RpcErrorCode | ProfileErrorCode | PlanErrorCode | "NO_ROWS";
+export type ActionErrorCode = RpcErrorCode | ProfileErrorCode | PlanErrorCode | "NO_ROWS" | "INVALID_INPUT";
 export type ProfileErrorCode =
   | "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN" | "ROLE" | "CITY" | "BIO";
 
