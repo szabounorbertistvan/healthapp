@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { DEFAULT_TARGETS, isPlanLimitError, isSetType, swapNeighbour, validateTargets, type ExerciseTargets } from "@healthapp/shared";
+import { DEFAULT_TARGETS, isExerciseMeasure, isPlanLimitError, isSetType, swapNeighbour, validateTargets, type ExerciseTargets } from "@healthapp/shared";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import type { ActionResult } from "./actions";
@@ -333,6 +333,51 @@ export async function setProgramExerciseSetType(
 }
 
 /**
+ * Count an exercise by reps or by time. A timed row keeps target_reps as it
+ * is and reads it as seconds, so switching never loses what the coach typed.
+ */
+export async function setProgramExerciseMeasure(
+  programId: string,
+  exerciseRowId: string,
+  measure: string,
+): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, text(10)]), [programId, exerciseRowId, measure]);
+  if (!parsed.ok) return parsed.result;
+  if (!isExerciseMeasure(measure)) return { ok: false, message: "Unknown measure" };
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase.from("program_exercises").update({ measure }, { count: "exact" }).eq("id", exerciseRowId),
+  );
+  if (failed) return failed;
+  programTouched(programId);
+  return { ok: true };
+}
+
+/** Longest coach cue on one exercise; a paragraph, not an essay. */
+const MAX_EXERCISE_NOTE = 1000;
+
+/**
+ * The coach's own cue for this exercise in this program — tempo, setup, what
+ * to feel — shown to the client beside it. Blank clears it.
+ */
+export async function setProgramExerciseNotes(
+  programId: string,
+  exerciseRowId: string,
+  notes: string,
+): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, z.string().max(MAX_EXERCISE_NOTE * 2)]), [programId, exerciseRowId, notes]);
+  if (!parsed.ok) return parsed.result;
+  const value = notes.trim().slice(0, MAX_EXERCISE_NOTE) || null;
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase.from("program_exercises").update({ notes: value }, { count: "exact" }).eq("id", exerciseRowId),
+  );
+  if (failed) return failed;
+  programTouched(programId);
+  return { ok: true };
+}
+
+/**
  * Copy one prescribed exercise to right after itself — targets, circuit and
  * set type included. duplicate_program_exercise() shifts the rows below and
  * inserts in one transaction, under the editing policies, and refuses anyone
@@ -358,7 +403,7 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
   const { data: source, error: readError } = await supabase
     .from("program_days")
     .select(
-      "week_index, name, muscle_groups, program_exercises(exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, notes, circuit, set_type)",
+      "week_index, name, muscle_groups, program_exercises(exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, notes, circuit, set_type, measure)",
     )
     .eq("id", dayId)
     .single();

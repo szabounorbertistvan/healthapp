@@ -9,7 +9,7 @@ import type { MealSlot } from "@/lib/types";
 import { isoDay, mondayOf } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import {
-  estimated1RM, gramsFromSplit, isPersonalRecord, isValidPortionGrams, MACRO_KEYS, MAX_PORTION_GRAMS, MAX_SET_REPS, MAX_SET_WEIGHT_KG, portionMacros,
+  estimated1RM, gramsFromSplit, isPersonalRecord, isValidPortionGrams, MACRO_KEYS, MAX_PORTION_GRAMS, MAX_SET_REPS, MAX_SET_SECONDS, MAX_SET_WEIGHT_KG, portionMacros,
   recomputePrFlags, validateSetEdit, type Macros, type MacroSplit, type SetEdit, type SetEditError,
 } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
@@ -47,6 +47,8 @@ export type LogSetInput = {
   rir?: number | null;
   /** Free-text comment about the set. */
   notes?: string | null;
+  /** Seconds, for a timed exercise (measure = time) — reps is 0 then. */
+  durationSeconds?: number | null;
   /**
    * When the set was done, ISO. Only the offline outbox (lib/offline) sends
    * it: a set queued at 23:50 and synced after midnight still belongs to that
@@ -69,7 +71,8 @@ export async function logSet(input: LogSetInput): Promise<LogSetResult> {
   // The same rules — and the same plausibility caps — an edit is held to, in
   // words the person can act on rather than the constraint name Postgres
   // would otherwise hand back.
-  const invalid = validateSetEdit({ weight_kg: input.weightKg, reps: input.reps, rpe: input.rpe, rir, notes });
+  const durationSeconds = input.durationSeconds ?? null;
+  const invalid = validateSetEdit({ weight_kg: input.weightKg, reps: input.reps, rpe: input.rpe, rir, notes, duration_seconds: durationSeconds });
   if (invalid) return { ok: false, message: await setErrorMessage(invalid) };
 
   const live = await liveUser();
@@ -118,6 +121,7 @@ export async function logSet(input: LogSetInput): Promise<LogSetResult> {
     set_index: input.setIndex,
     weight_kg: input.weightKg,
     reps: input.reps,
+    duration_seconds: durationSeconds,
     rpe: input.rpe,
     rir,
     notes,
@@ -132,11 +136,14 @@ export async function logSet(input: LogSetInput): Promise<LogSetResult> {
     // under the same number (one deleted in between, say) is still refused.
     const { data: existing } = await supabase
       .from("logged_sets")
-      .select("weight_kg, reps, is_pr")
+      .select("weight_kg, reps, duration_seconds, is_pr")
       .eq("client_generated_id", setKey)
       .maybeSingle();
     // weight_kg is numeric(6,2): a pound-converted weight comes back rounded.
-    if (existing && Math.abs(Number(existing.weight_kg) - input.weightKg) < 0.006 && existing.reps === input.reps) {
+    if (
+      existing && Math.abs(Number(existing.weight_kg) - input.weightKg) < 0.006 && existing.reps === input.reps
+      && (existing.duration_seconds ?? null) === durationSeconds
+    ) {
       return { ok: true, is_pr: Boolean(existing.is_pr), estimated_1rm: estimated1RM(input.weightKg, input.reps) };
     }
   }
@@ -237,6 +244,7 @@ async function setErrorMessage(invalid: SetEditError): Promise<string> {
   const m = (await getI18n()).t.clientWidgets.setLogger;
   if (invalid === "weight") return fill(m.errWeight, { max: MAX_SET_WEIGHT_KG, unit: "kg" });
   if (invalid === "reps") return fill(m.errReps, { max: MAX_SET_REPS });
+  if (invalid === "duration") return fill(m.errDuration, { max: MAX_SET_SECONDS });
   return invalid === "rpe" ? m.errRpe : m.errRir;
 }
 
@@ -272,7 +280,11 @@ export async function updateLoggedSet(
     await supabase
       .from("logged_sets")
       .update(
-        { weight_kg: edit.weight_kg, reps: edit.reps, rpe: edit.rpe, rir: edit.rir, notes: edit.notes?.trim().slice(0, 500) || null },
+        {
+          weight_kg: edit.weight_kg, reps: edit.reps, rpe: edit.rpe, rir: edit.rir, notes: edit.notes?.trim().slice(0, 500) || null,
+          // Only a timed set's edit carries it; a reps edit leaves the column alone.
+          ...(edit.duration_seconds != null ? { duration_seconds: edit.duration_seconds } : {}),
+        },
         { count: "exact" },
       )
       .eq("id", setId)

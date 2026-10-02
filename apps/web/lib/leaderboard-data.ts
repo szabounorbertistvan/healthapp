@@ -34,7 +34,7 @@ export function metricOf(input: string | undefined): LeaderboardMetric {
 }
 /** Unknown or missing scope falls back to the global board. */
 export function scopeOf(input: string | undefined): LeaderboardScope {
-  return input === "following" ? "following" : "global";
+  return input === "following" || input === "gym" ? input : "global";
 }
 
 export function periodOf(input: string | undefined): LeaderboardPeriod {

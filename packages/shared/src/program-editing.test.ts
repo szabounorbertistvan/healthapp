@@ -162,3 +162,17 @@ describe("who may edit a program", () => {
     expect([before, after]).toEqual([true, false]);
   });
 });
+
+describe("timed sets", () => {
+  test("a timed set carries seconds and zero reps", async () => {
+    const { formatSetDuration } = await import("./program-editing");
+    expect(validateSetEdit({ weight_kg: 0, reps: 0, rpe: 7, rir: null, notes: null, duration_seconds: 45 })).toBeNull();
+    expect(validateSetEdit({ weight_kg: 0, reps: 0, rpe: null, rir: null, notes: null, duration_seconds: 0 })).toBe("duration");
+    expect(validateSetEdit({ weight_kg: 0, reps: 0, rpe: null, rir: null, notes: null, duration_seconds: 7201 })).toBe("duration");
+    expect(validateSetEdit({ weight_kg: 0, reps: 0, rpe: null, rir: null, notes: null, duration_seconds: Number.NaN })).toBe("duration");
+    expect(validateSetEdit({ weight_kg: 0, reps: 5, rpe: null, rir: null, notes: null, duration_seconds: 30 })).toBe("reps");
+    expect(formatSetDuration(45)).toBe("45 s");
+    expect(formatSetDuration(90)).toBe("1:30");
+    expect(formatSetDuration(120)).toBe("2:00");
+  });
+});

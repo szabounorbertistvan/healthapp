@@ -8,7 +8,7 @@
 import type { AnalyticsSet } from "@healthapp/shared";
 
 /** The columns analytics reads, plus the session the set belongs to. */
-export const ANALYTICS_SET_SELECT = `id, set_index, weight_kg, reps, rpe, rir, is_pr, exercise_id, program_exercise_id,
+export const ANALYTICS_SET_SELECT = `id, set_index, weight_kg, reps, duration_seconds, rpe, rir, is_pr, exercise_id, program_exercise_id,
   session:logged_sessions!inner(id, started_at, completed_at, day:program_days(name))`;
 
 export type AnalyticsSetJoin = {
@@ -16,6 +16,7 @@ export type AnalyticsSetJoin = {
   set_index: number;
   weight_kg: number | null;
   reps: number | null;
+  duration_seconds?: number | null;
   rpe: number | null;
   rir: number | null;
   is_pr: boolean | null;
@@ -55,6 +56,7 @@ export function toAnalyticsSets(rows: readonly AnalyticsSetJoin[]): AnalyticsSet
       set_index: row.set_index,
       weight_kg: row.weight_kg ?? 0,
       reps: row.reps ?? 0,
+      ...(row.duration_seconds ? { duration_seconds: row.duration_seconds } : {}),
       rpe: row.rpe,
       rir: row.rir,
       is_pr: Boolean(row.is_pr),

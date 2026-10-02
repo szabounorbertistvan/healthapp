@@ -6,6 +6,8 @@ import { pct, timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { getPlan } from "@/lib/plan";
 import { UpgradeHint } from "@/components/upgrade";
+import { CoachRequestsCard } from "@/components/gyms";
+import { getCoachRequestInbox } from "@/lib/gym-data";
 
 /**
  * The coach's morning screen: four headline figures across the top, then the
@@ -14,7 +16,7 @@ import { UpgradeHint } from "@/components/upgrade";
  */
 export default async function DashboardPage() {
   const { t, locale } = await getI18n();
-  const [rows, checkIns, plan] = await Promise.all([getDashboard(), getCheckIns(), getPlan()]);
+  const [rows, checkIns, plan, requests] = await Promise.all([getDashboard(), getCheckIns(), getPlan(), getCoachRequestInbox()]);
   // The adherence signal, its reason, the % and the at-risk count are Coach
   // Pro. A Starter desk keeps the roster, last log, check-ins and messages.
   const pro = plan.e.advancedAnalytics;
@@ -26,6 +28,13 @@ export default async function DashboardPage() {
       <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
         {t.coachApp.dashboard.title}
       </h1>
+
+      {/* People who found this coach at a gym (20261023100000); nothing when there are none. */}
+      {requests.length > 0 ? (
+        <div className="mt-5 sm:mt-6">
+          <CoachRequestsCard requests={requests} />
+        </div>
+      ) : null}
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-4">
         {/* Each tile opens the section it counts: the figure is the summary,

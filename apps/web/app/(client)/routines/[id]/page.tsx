@@ -233,7 +233,7 @@ export default async function RoutineDetailPage({
                             <div className="flex items-baseline justify-between gap-2">
                               <span className="min-w-0 truncate text-[13.5px]">{e.name}</span>
                               <span className="shrink-0 text-[12px] tabular-nums text-ink-soft">
-                                {e.target_sets} × {e.target_reps}
+                                {e.target_sets} × {e.target_reps}{e.measure === "time" ? " s" : ""}
                                 {e.target_rpe !== null && detail.intensity_mode !== "simple"
                                   ? ` · ${detail.intensity_mode === "rir" ? t.clientWidgets.setLogger.rir : t.clientWidgets.setLogger.rpe} ${e.target_rpe}`
                                   : ""}

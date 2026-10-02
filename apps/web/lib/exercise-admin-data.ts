@@ -1,4 +1,5 @@
 import { supabaseServer } from "@/lib/supabase/server";
+import { exerciseSearchTerms } from "@healthapp/shared";
 
 // Reads for /admin/exercises — the translation desk for the shared exercise
 // library. Mirrors lib/food-admin-data.ts, with one difference: an exercise
@@ -36,9 +37,8 @@ export async function getExercisesForTranslation(opts: {
       .select("id, name_en, name_ro, instructions_en, instructions_ro, primary_muscles, images", { count: "exact" })
       .is("owner_id", null);
     if (opts.onlyMissing) query = query.is("name_ro", null);
-    if (q) {
-      const safe = q.replace(/[,()%\\]/g, " ").trim();
-      if (safe) query = query.or(`name_en.ilike.%${safe}%,name_ro.ilike.%${safe}%`);
+    for (const term of exerciseSearchTerms(q)) {
+      query = query.or(`name_en.ilike.%${term}%,name_ro.ilike.%${term}%`);
     }
     return query;
   };

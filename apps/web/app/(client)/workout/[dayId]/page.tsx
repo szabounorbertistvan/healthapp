@@ -63,7 +63,9 @@ export default async function WorkoutDayPage({
       key={e.id}
       exercise={e.exercise_id ? details[e.exercise_id] ?? null : null}
       name={e.exercise}
-      prescription={`${e.sets}×${e.reps}${e.rpe_value !== null ? ` · ${scale} ${e.rpe_value}` : ""}${e.weight_kg ? ` · ${e.weight_kg} kg` : ""}`}
+      note={e.notes ?? null}
+      noteLabel={t.clientWidgets.setLogger.coachNote}
+      prescription={`${e.sets}×${e.reps}${e.measure === "time" ? " s" : ""}${e.rpe_value !== null ? ` · ${scale} ${e.rpe_value}` : ""}${e.weight_kg ? ` · ${e.weight_kg} kg` : ""}`}
     />
   );
 

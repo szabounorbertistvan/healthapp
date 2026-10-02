@@ -147,6 +147,7 @@ export async function setCoachLanguages(codes: string[]): Promise<ActionResult> 
 const LocationsInput = z.array(z.object({
   city: z.string().max(60),
   gymName: z.string().max(COACH_LIMITS.gymName).nullable().optional(),
+  gymId: id.nullable().optional(),
 }).strict()).max(COACH_LIMITS.locations);
 
 export async function setCoachLocations(locations: z.input<typeof LocationsInput>): Promise<ActionResult> {
@@ -155,7 +156,7 @@ export async function setCoachLocations(locations: z.input<typeof LocationsInput
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { error } = await live.supabase.rpc("coach_set_locations", {
-    p_locations: parsed.data.map((l) => ({ city: l.city, gym_name: l.gymName?.trim() || null })),
+    p_locations: parsed.data.map((l) => ({ city: l.city, gym_id: l.gymId ?? null, gym_name: l.gymName?.trim() || null })),
   });
   if (error) return failure(error);
   revalidateCoach();

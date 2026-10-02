@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  circuitSegments, displayToKg, kgToDisplay, MAX_SET_REPS, MAX_SET_WEIGHT_KG, parseDecimal, parseWholeNumber, prefillFor,
+  circuitSegments, displayToKg, formatSetDuration, kgToDisplay, MAX_SET_REPS, MAX_SET_SECONDS, MAX_SET_WEIGHT_KG, parseDecimal, parseWholeNumber, prefillFor,
   previousFor, previousSetFor, progressionVs, resolveRestSeconds, restAfterLoggedSet, validateSetEdit,
   type ExerciseVideoSource, type PreviousWorkout,
 } from "@healthapp/shared";
@@ -152,6 +152,8 @@ export function SetLogger({
             targetWeight={exercise.weight_kg}
             previous={lastTime}
             targetRpe={exercise.rpe_value}
+            timed={exercise.measure === "time"}
+            coachNote={exercise.notes ?? null}
             rest={exercise.rest}
             restSeconds={exercise.rest_seconds}
             exerciseId={exercise.exercise_id ?? null}
@@ -179,12 +181,14 @@ export function SetLogger({
                   rpe: entry.intensity,
                   rir: entry.rir,
                   notes: entry.notes,
+                  duration_seconds: entry.durationSeconds,
                 });
                 if (invalid) {
                   const m = t.clientWidgets.setLogger;
                   setError(
                     invalid === "weight" ? fill(m.errWeight, { max: kgToDisplay(MAX_SET_WEIGHT_KG, u.weightUnit), unit: u.weightUnit })
                     : invalid === "reps" ? fill(m.errReps, { max: MAX_SET_REPS })
+                    : invalid === "duration" ? fill(m.errDuration, { max: MAX_SET_SECONDS })
                     : invalid === "rpe" ? m.errRpe : m.errRir,
                   );
                   return;
@@ -199,6 +203,7 @@ export function SetLogger({
                   // entry.weight is in the unit on screen; the column is kg.
                   weightKg: displayToKg(entry.weight, u.weightUnit),
                   reps: entry.reps,
+                  durationSeconds: entry.durationSeconds,
                   rpe: entry.intensity,
                   rir: entry.rir,
                   notes: entry.notes,
@@ -232,6 +237,7 @@ export function SetLogger({
                     set_index: done + 1,
                     weight_kg: displayToKg(entry.weight, u.weightUnit),
                     reps: entry.reps,
+                    duration_seconds: entry.durationSeconds,
                     rpe: entry.intensity,
                     rir: entry.rir,
                     notes: entry.notes,
@@ -319,12 +325,14 @@ type SetEntry = {
   /** Reps in reserve as typed, RIR-mode programs only. */
   rir: number | null;
   notes: string | null;
+  /** Seconds, on a timed exercise (reps is 0 then); null on a reps exercise. */
+  durationSeconds: number | null;
   /** The REST box, seconds: the pause that starts after this set. Null when left empty. */
   restSeconds: number | null;
 };
 
 function ExerciseBlock({
-  name, inCircuit, targetSets, targetReps, targetWeight, previous, targetRpe, rest, restSeconds, exerciseId, videoUrl, videoSource, intensityMode,
+  name, inCircuit, targetSets, targetReps, targetWeight, previous, targetRpe, timed, coachNote, rest, restSeconds, exerciseId, videoUrl, videoSource, intensityMode,
   done, sets, pending, dayId, error, notice, onLog, onEdited,
 }: {
   name: string;
@@ -336,6 +344,10 @@ function ExerciseBlock({
   /** Every set of the last completed session on this lift; null the first time. */
   previous: PreviousWorkout | null;
   targetRpe: number | null;
+  /** Counted by time: targetReps is seconds, and a set is logged as a duration. */
+  timed: boolean;
+  /** The coach's own cue for this exercise, if they wrote one. */
+  coachNote: string | null;
   rest: string;
   /** The coach's prescribed rest, raw; the timer resolves it against the person's own settings. */
   restSeconds: number | null;
@@ -346,7 +358,7 @@ function ExerciseBlock({
   videoSource: ExerciseVideoSource | null;
   intensityMode: "rpe" | "rir" | "simple";
   done: number;
-  sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">[];
+  sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "duration_seconds" | "rpe" | "rir" | "notes" | "is_pr">[];
   pending: boolean;
   dayId: string;
   /** Why the last Log set of this block was refused, if it was. */
@@ -389,6 +401,16 @@ function ExerciseBlock({
     initial.weight_kg === null ? "" : String(kgToDisplay(initial.weight_kg, u.weightUnit)),
   );
   const [reps, setReps] = useState(initial.reps ? String(initial.reps) : "");
+  // A timed set's box: the last hold today, else the low end of the target.
+  const targetSeconds = parseWholeNumber(targetReps.split("-")[0]);
+  const [seconds, setSeconds] = useState(
+    String(doneToday?.duration_seconds ?? targetSeconds ?? ""),
+  );
+  // "60 kg x 8", or "45 s" / "10 kg · 45 s" for a timed set.
+  const setText = (s: { weight_kg: number; reps: number; duration_seconds?: number | null }) =>
+    s.duration_seconds
+      ? `${s.weight_kg > 0 ? `${kgToDisplay(s.weight_kg, u.weightUnit)} ${u.weightUnit} · ` : ""}${formatSetDuration(s.duration_seconds)}`
+      : `${kgToDisplay(s.weight_kg, u.weightUnit)} ${u.weightUnit} × ${s.reps}`;
   const [rir, setRir] = useState(asRir && targetRpe !== null ? String(targetRpe) : "");
   const [intensity, setIntensity] = useState<number>(
     targetRpe === null ? 7 : Math.round(clamp(asRir ? 10 - targetRpe : targetRpe, 1, 10)),
@@ -441,8 +463,10 @@ function ExerciseBlock({
     const rirValue = asRir && rir.trim() !== "" ? (parseDecimal(rir) ?? NaN) : null;
     const restTyped = parseWholeNumber(restInput);
     onLog({
-      weight: parseDecimal(weight) ?? NaN,
-      reps: parseWholeNumber(reps) ?? NaN,
+      // A plank or a hang is usually bodyweight: an empty box is 0, not a typo.
+      weight: parseDecimal(weight) ?? (timed && weight.trim() === "" ? 0 : NaN),
+      reps: timed ? 0 : parseWholeNumber(reps) ?? NaN,
+      durationSeconds: timed ? (parseWholeNumber(seconds) ?? NaN) : null,
       intensity,
       rir: rirValue,
       notes: notes.trim() || null,
@@ -460,7 +484,7 @@ function ExerciseBlock({
         <div className="min-w-0">
           <p className="truncate font-display text-lg font-bold tracking-tight">{name}</p>
           <p className="mt-1 text-[12.5px] tabular-nums text-ink-faint">
-            {targetSets}×{targetReps}
+            {targetSets}×{targetReps}{timed ? " s" : ""}
             {targetRpe !== null ? ` · ${asRir ? m.rir : m.rpe} ${targetRpe}` : ""}
             {targetWeight ? ` · ${kgToDisplay(targetWeight, u.weightUnit)} ${u.weightUnit}` : ""} · {m.rest} {rest}
           </p>
@@ -474,6 +498,12 @@ function ExerciseBlock({
         </span>
       </div>
 
+      {coachNote ? (
+        <div className="mt-2.5 rounded-xl border-l-[3px] border-accent bg-accent-soft/40 py-1.5 pl-2.5 pr-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-ink">{m.coachNote}</p>
+          <p className="mt-0.5 whitespace-pre-line text-[12.5px] text-ink">{coachNote}</p>
+        </div>
+      ) : null}
       <PreviousSets previous={previous} exerciseId={exerciseId} />
       {exerciseId ? (
         <div className="mt-2">
@@ -491,14 +521,14 @@ function ExerciseBlock({
               <button
                 type="button"
                 title={s.notes ?? m.editSet}
-                aria-label={`${m.editSet}: ${kgToDisplay(s.weight_kg, u.weightUnit)} ${u.weightUnit} × ${s.reps}`}
+                aria-label={`${m.editSet}: ${setText(s)}`}
                 disabled={s.id.startsWith("tmp_") || s.id.startsWith("queued_")}
                 onClick={() => setEditing(editing === s.id ? null : s.id)}
                 className={`min-h-8 rounded-[10px] px-2.5 py-1.5 text-xs tabular-nums ${
                   s.is_pr ? "bg-accent font-semibold text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
                 } ${editing === s.id ? "ring-2 ring-accent-ink" : ""}`}
               >
-                {kgToDisplay(s.weight_kg, u.weightUnit)} {u.weightUnit} × {s.reps}
+                {setText(s)}
                 {s.rir !== null ? ` · ${m.rir} ${s.rir}` : ""}
                 {s.rpe !== null ? ` · ${s.rpe}/10` : ""}
                 {s.is_pr ? ` · ${m.pr}` : ""}
@@ -520,6 +550,7 @@ function ExerciseBlock({
         return target ? (
           <EditSet
             set={target}
+            timed={timed}
             asRir={asRir}
             dayId={dayId}
             onDone={(updated) => { setEditing(null); if (updated) onEdited(updated); }}
@@ -529,7 +560,14 @@ function ExerciseBlock({
 
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <Field label={u.weightUnit} value={weight} onChange={setWeight} />
-        <Field label={m.reps} value={reps} onChange={setReps} />
+        {timed ? (
+          <>
+            <Field label={m.seconds} value={seconds} onChange={setSeconds} />
+            <Stopwatch onStop={(s) => setSeconds(String(s))} />
+          </>
+        ) : (
+          <Field label={m.reps} value={reps} onChange={setReps} />
+        )}
         {asRir ? <Field label={m.rir} value={rir} onChange={setRir} /> : null}
         {/* The pause after this set, in seconds. The label opens the presets,
             which also save the value as this lift's default. */}
@@ -613,6 +651,42 @@ function ExerciseBlock({
   );
 }
 
+/**
+ * Counts up from a tap and hands the whole seconds to the box on Stop. A
+ * stopwatch rather than a countdown: the box keeps the target, and a hold
+ * that ran long is logged as it actually ran. Timestamp-based like the rest
+ * timer, so a backgrounded tab does not drift.
+ */
+function Stopwatch({ onStop }: { onStop: (seconds: number) => void }) {
+  const { t } = useI18n();
+  const m = t.clientWidgets.setLogger;
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    if (startedAt === null) return;
+    const timer = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, [startedAt]);
+  const elapsed = startedAt === null ? 0 : Math.max(0, Math.floor((now - startedAt) / 1000));
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (startedAt === null) { const at = Date.now(); setNow(at); setStartedAt(at); return; }
+        onStop(Math.max(1, Math.round((Date.now() - startedAt) / 1000)));
+        setStartedAt(null);
+      }}
+      aria-pressed={startedAt !== null}
+      className={`inline-flex h-11 items-center gap-1.5 rounded-xl px-3 text-[12.5px] font-semibold tabular-nums ${
+        startedAt === null ? "bg-bg text-ink-soft hover:text-ink" : "bg-accent-soft text-accent-ink"
+      }`}
+    >
+      <NavIcon d={startedAt === null ? "M8 5v14l11-7z" : "M6 6h12v12H6z"} className="h-3.5 w-3.5" />
+      {startedAt === null ? m.timerStart : `${formatSetDuration(elapsed)} · ${m.timerStop}`}
+    </button>
+  );
+}
+
 function clamp(n: number, min: number, max: number): number {
   return Math.min(Math.max(n, min), max);
 }
@@ -647,6 +721,7 @@ function queuedRow(q: QueuedSet): LoggedSetRow {
     set_index: q.input.setIndex,
     weight_kg: q.input.weightKg,
     reps: q.input.reps,
+    duration_seconds: q.input.durationSeconds ?? null,
     rpe: q.input.rpe,
     rir: q.input.rir ?? null,
     notes: q.input.notes ?? null,

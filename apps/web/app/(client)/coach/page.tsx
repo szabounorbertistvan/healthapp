@@ -3,6 +3,8 @@ import { Card, EmptyState } from "@/components/ui";
 import { JoinCoach } from "@/components/join-coach";
 import { MessageThread } from "@/components/message-thread";
 import { getI18n } from "@/lib/i18n/server";
+import { GymCoachesCard } from "@/components/gyms";
+import { getGymCoaches, getMyCoachRequests, getMyGyms } from "@/lib/gym-data";
 
 export default async function CoachPage() {
   const { t } = await getI18n();
@@ -13,6 +15,9 @@ export default async function CoachPage() {
   // has simply never messaged them — offering the join form to the second would
   // send them into accept_invite only to be told ALREADY_HAS_COACH.
   if (!coached) {
+    // Coaches listed at this person's gym, and the requests already sent.
+    const [gyms, requests] = await Promise.all([getMyGyms(), getMyCoachRequests()]);
+    const coaches = gyms.home ? await getGymCoaches(gyms.home.id) : [];
     return (
       <div className="mx-auto max-w-md">
         <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
@@ -26,6 +31,9 @@ export default async function CoachPage() {
           <p className="text-[13.5px] leading-relaxed text-ink-soft">{t.clientApp.welcome.withCoachBody}</p>
           <JoinCoach autoFocus={false} />
         </Card>
+        <div className="mt-3.5">
+          <GymCoachesCard gym={gyms.home ? { id: gyms.home.id, name: gyms.home.name } : null} coaches={coaches} requests={requests} />
+        </div>
       </div>
     );
   }

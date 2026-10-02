@@ -40,7 +40,8 @@ export type DraftState = {
   specializations: string[];
   primarySpecialization: string | null;
   languages: string[];
-  locations: { city: string; gymName: string }[];
+  /** gymId: a row of `gyms` (20261024100000), when the gym was picked from the list. */
+  locations: { city: string; gymName: string; gymId?: string | null }[];
   /** Only what the checklist needs from a service. */
   services: { active: boolean; priceUnit: PriceUnit; priceCents: number | null }[];
   hasAvatar: boolean;

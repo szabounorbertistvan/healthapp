@@ -22,6 +22,8 @@ import { Logo } from "../logo";
 import { AvatarPicker } from "../account";
 import { Card, Chip, Switch } from "../ui";
 import { CertificationsStep, ServicesStep } from "./lists";
+import { searchGyms } from "@/app/gym-actions";
+import type { GymHit } from "@/lib/gym-data";
 import { CoachProfilePreview } from "./preview";
 import { COACH_PROFILE_PATH, useCoachError } from "./status";
 
@@ -49,7 +51,7 @@ export function initialDraft(data: MyCoachProfile): Saved {
     specializations: data.specializations.map((s) => s.slug),
     primarySpecialization: data.specializations.find((s) => s.is_primary)?.slug ?? data.specializations[0]?.slug ?? null,
     languages: data.languages,
-    locations: data.locations.map((l) => ({ city: l.city_slug, gymName: l.gym_name ?? "" })),
+    locations: data.locations.map((l) => ({ city: l.city_slug, gymName: l.gym_name ?? "", gymId: l.gym_id })),
   };
 }
 
@@ -127,7 +129,7 @@ export function CoachProfileWizard({
       }
       if (!same(d.languages, s.languages)) calls.push(() => setCoachLanguages(d.languages));
       if (!same(d.locations, s.locations)) {
-        calls.push(() => setCoachLocations(d.locations.map((l) => ({ city: l.city, gymName: l.gymName || null }))));
+        calls.push(() => setCoachLocations(d.locations.map((l) => ({ city: l.city, gymName: l.gymName || null, gymId: l.gymId ?? null }))));
       }
     }
     if (calls.length === 0) return true;
@@ -462,6 +464,19 @@ function WhereStep({ draft, setDraft, catalog }: StepProps & { catalog: CoachCat
   const [country, setCountry] = useState(catalog.countries[0]?.code ?? "RO");
   const [city, setCity] = useState("");
   const [gym, setGym] = useState("");
+  // A gym picked from the shared list (gyms, 20261024100000): "coaches at
+  // your gym" finds this profile through it. Typing again unpicks it.
+  const [gymId, setGymId] = useState<string | null>(null);
+  const [gymHits, setGymHits] = useState<GymHit[]>([]);
+  useEffect(() => {
+    if (gymId || gym.trim().length < 2) { setGymHits([]); return; }
+    let live = true;
+    const timer = setTimeout(async () => {
+      const found = await searchGyms(gym);
+      if (live) setGymHits(found.filter((h) => h.status === "active").slice(0, 5));
+    }, 250);
+    return () => { live = false; clearTimeout(timer); };
+  }, [gym, gymId]);
   const cities = catalog.cities.filter((x) => x.country_code === country && !draft.locations.some((l) => l.city === x.slug));
   const cityName = (slug: string) => {
     const x = catalog.cities.find((y) => y.slug === slug);
@@ -471,9 +486,10 @@ function WhereStep({ draft, setDraft, catalog }: StepProps & { catalog: CoachCat
 
   function add() {
     if (!city || full) return;
-    setDraft((d) => ({ ...d, locations: [...d.locations, { city, gymName: gym.trim().slice(0, COACH_LIMITS.gymName) }] }));
+    setDraft((d) => ({ ...d, locations: [...d.locations, { city, gymName: gym.trim().slice(0, COACH_LIMITS.gymName), gymId }] }));
     setCity("");
     setGym("");
+    setGymId(null);
   }
 
   return (
@@ -540,10 +556,28 @@ function WhereStep({ draft, setDraft, catalog }: StepProps & { catalog: CoachCat
                 <input
                   id={`${ids}-gym`} className={FIELD} value={gym} maxLength={COACH_LIMITS.gymName}
                   aria-describedby={`${ids}-gym-hint`}
-                  onChange={(e) => setGym(e.target.value)}
+                  onChange={(e) => { setGym(e.target.value); setGymId(null); }}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
                 />
               </label>
+              {gymId ? (
+                <p className={`${HINT} -mt-2 text-accent-ink sm:col-span-2`}>{c.gymLinked}</p>
+              ) : gymHits.length > 0 ? (
+                <ul className="-mt-2 grid gap-1 sm:col-span-2" aria-label={c.gymSuggestions}>
+                  {gymHits.map((h) => (
+                    <li key={h.id}>
+                      <button
+                        type="button"
+                        className="w-full rounded-xl bg-bg px-3 py-2 text-left text-[13px] hover:bg-accent-soft/40"
+                        onClick={() => { setGym(h.name); setGymId(h.id); setGymHits([]); }}
+                      >
+                        <span className="font-semibold">{h.name}</span>
+                        <span className="text-ink-faint"> · {[h.address, h.city].filter(Boolean).join(", ")}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <p id={`${ids}-gym-hint`} className={`${HINT} -mt-2 sm:col-span-2`}>{c.gymHint}</p>
               <div className="sm:col-span-2">
                 <button type="button" className={SMALL_BUTTON} disabled={!city} onClick={add}>{c.add}</button>

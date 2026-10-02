@@ -89,6 +89,27 @@ export type ExerciseTargets = {
   rest_seconds: number | null;
 };
 
+/**
+ * How a prescribed exercise is counted: by reps, or by time. For a timed row
+ * target_reps keeps its "30" / "30-45" shape and means seconds, and its sets
+ * are logged with reps = 0 and duration_seconds. Mirrors the
+ * program_exercises.measure check.
+ */
+export const EXERCISE_MEASURES = ["reps", "time"] as const;
+export type ExerciseMeasure = (typeof EXERCISE_MEASURES)[number];
+
+export function isExerciseMeasure(x: unknown): x is ExerciseMeasure {
+  return typeof x === "string" && (EXERCISE_MEASURES as readonly string[]).includes(x);
+}
+
+/** A duration for a set chip or a target: "45 s", "1:30", "2:00". */
+export function formatSetDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds} s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export const DEFAULT_TARGETS: ExerciseTargets = { target_sets: 3, target_reps: "10", target_weight_kg: null, target_rpe: 2, rest_seconds: 90 };
 
 export type TargetsError = "sets" | "reps" | "rpe" | "rest" | "weight";
@@ -139,13 +160,27 @@ export function parseWholeNumber(input: string | number | null | undefined): num
 export const MAX_SET_REPS = 200;
 export const MAX_SET_WEIGHT_KG = 1000;
 
-export type SetEdit = { weight_kg: number; reps: number; rpe: number | null; rir: number | null; notes: string | null };
-export type SetEditError = "weight" | "reps" | "rpe" | "rir";
+/** Mirrors the logged_sets.duration_seconds check: two hours clears any hold, carry or interval. */
+export const MAX_SET_SECONDS = 7200;
+
+export type SetEdit = {
+  weight_kg: number;
+  reps: number;
+  rpe: number | null;
+  rir: number | null;
+  notes: string | null;
+  /** Set on a timed set only (measure = time); such a set carries reps = 0. */
+  duration_seconds?: number | null;
+};
+export type SetEditError = "weight" | "reps" | "rpe" | "rir" | "duration";
 
 /** The same rules logSet() applies when a set is first logged. */
 export function validateSetEdit(e: SetEdit): SetEditError | null {
   if (!Number.isFinite(e.weight_kg) || e.weight_kg < 0 || e.weight_kg > MAX_SET_WEIGHT_KG) return "weight";
-  if (!Number.isInteger(e.reps) || e.reps <= 0 || e.reps > MAX_SET_REPS) return "reps";
+  if (e.duration_seconds !== undefined && e.duration_seconds !== null) {
+    if (!Number.isInteger(e.duration_seconds) || e.duration_seconds < 1 || e.duration_seconds > MAX_SET_SECONDS) return "duration";
+    if (e.reps !== 0) return "reps";
+  } else if (!Number.isInteger(e.reps) || e.reps <= 0 || e.reps > MAX_SET_REPS) return "reps";
   if (e.rpe !== null && (!Number.isFinite(e.rpe) || e.rpe < 1 || e.rpe > 10)) return "rpe";
   if (e.rir !== null && (!Number.isFinite(e.rir) || e.rir < 0 || e.rir > 10)) return "rir";
   return null;

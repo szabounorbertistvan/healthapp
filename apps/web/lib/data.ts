@@ -2,7 +2,7 @@
 import "server-only";
 import { cache } from "react";
 import { liveUser, supabaseServer } from "./supabase/server";
-import { effectiveTier, isLengthUnit, isWeightUnit, normalizeRestPrefs, portionMacros, sumMacros } from "@healthapp/shared";
+import { effectiveTier, isExerciseMeasure, isLengthUnit, isWeightUnit, normalizeRestPrefs, portionMacros, sumMacros } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { liveAdherenceFor } from "./live-adherence";
 import type {
@@ -240,7 +240,7 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
     .select(`id, name, status, intensity_mode, weeks,
       client:users!programs_client_id_fkey(full_name),
       program_days(id, name, week_index, day_index, muscle_groups,
-        program_exercises(id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit, set_type,
+        program_exercises(id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit, set_type, measure, notes,
           exercise:exercises(name_en, name_ro)))`)
     .eq("id", id)
     .single();
@@ -254,6 +254,7 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
       program_exercises: {
         id: string; position: number; target_sets: number; target_reps: string;
         target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null; circuit: number | null; set_type: string | null;
+        measure: string | null; notes: string | null;
         exercise: { name_en: string; name_ro: string | null };
       }[];
     }[])
@@ -276,6 +277,8 @@ export async function getProgram(id: string): Promise<ProgramDetail | null> {
           position: e.position,
           circuit: e.circuit ?? null,
           set_type: e.set_type ?? "normal",
+          measure: isExerciseMeasure(e.measure) ? e.measure : "reps",
+          notes: e.notes ?? null,
         })),
     })),
   };

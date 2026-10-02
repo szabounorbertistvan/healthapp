@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { kgToDisplay, type PreviousWorkout, type Progression } from "@healthapp/shared";
+import { formatSetDuration, kgToDisplay, type PreviousWorkout, type Progression } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
@@ -57,7 +57,9 @@ export function PreviousSets({
           <li key={s.set_index} className="flex items-baseline gap-2 text-[11.5px] tabular-nums text-ink-soft">
             <span className="w-3 shrink-0 text-right text-[10px] text-ink-faint">{s.set_index}</span>
             <span className="font-semibold text-ink">
-              {kgToDisplay(s.weight_kg, u.weightUnit)} {u.weightUnit} × {s.reps}
+              {s.duration_seconds
+                ? `${s.weight_kg > 0 ? `${kgToDisplay(s.weight_kg, u.weightUnit)} ${u.weightUnit} · ` : ""}${formatSetDuration(s.duration_seconds)}`
+                : `${kgToDisplay(s.weight_kg, u.weightUnit)} ${u.weightUnit} × ${s.reps}`}
             </span>
             {s.rir !== null ? <span className="text-ink-faint">· {m.rir} {s.rir}</span> : null}
             {s.rir === null && s.rpe !== null ? <span className="text-ink-faint">· {s.rpe}/10</span> : null}

@@ -67,3 +67,19 @@ function ex(over: Partial<ExerciseSummary>): ExerciseSummary {
     ...over,
   };
 }
+
+describe("search terms", () => {
+  test("words are matched separately, hyphens and plurals do not matter", async () => {
+    const { exerciseSearchTerms } = await import("./exercises");
+    expect(exerciseSearchTerms("sit ups")).toEqual(["sit", "up"]);
+    expect(exerciseSearchTerms("Reverse lunges")).toEqual(["reverse", "lunge"]);
+    expect(exerciseSearchTerms("bench press")).toEqual(["bench", "press"]);
+    expect(exerciseSearchTerms("sit-up, (100%)")).toEqual(["sit", "up", "100"]);
+    expect(exerciseSearchTerms("  ")).toEqual([]);
+    expect(exerciseSearchTerms("fandare inversă")).toEqual(["fandare", "inversă"]);
+  });
+  test("the library filter uses them", () => {
+    const lib = [ex({ external_id: "su", name_en: "Sit-Up" }), ex({ external_id: "fsu", name_en: "Frog Sit-Ups" }), ex({ external_id: "sq", name_en: "Squat" })];
+    expect(filterExercises(lib, { q: "sit ups" }).map((e) => e.external_id)).toEqual(["su", "fsu"]);
+  });
+});

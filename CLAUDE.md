@@ -58,7 +58,7 @@ written. Every "client app" screen today is a web route under
 Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
 check-ins, messages, settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
 (overview, users, users/[id], activity, auth, invitations, workouts,
-exercises (+ /translate), foods, nutrition, social, challenges, notifications,
+exercises (+ /translate), foods, nutrition, gyms, social, challenges, notifications,
 feedback, errors, system, search) — its own layout, gated by `lib/admin/guard.ts` and, in the
 database, by `admin_assert()` inside every `admin_*` RPC
 (`20260920100000_admin_panel.sql`; reads in `lib/admin/data.ts`, writes in
@@ -204,6 +204,11 @@ third-party text writes it.
   the client typed in an RIR program; `notes` is the per-set comment. In a
   program, `program_exercises.target_rpe` holds whatever the coach typed under
   the program's own scale (RIR for RIR programs) — the builder writes it raw.
+  `program_exercises.measure = 'time'` makes `target_reps` mean **seconds**;
+  such a set is logged with `reps = 0` and `logged_sets.duration_seconds`, which
+  keeps it out of every weight × reps formula (e1RM, PRs, volume) untouched.
+  `program_exercises.notes` is the coach's personal cue, shown to the client
+  on the day page and in the logger (migration `20261025100000`).
 - Never run `npm run build` (or anything else writing `apps/web/.next`) while
   the dev server is up: the production build clobbers the dev server's `.next`
   and every route then serves a bare "Internal Server Error" with

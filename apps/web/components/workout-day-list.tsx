@@ -141,7 +141,7 @@ function DayCard({ day, sex }: { day: ClientWorkoutDay; sex: Sex | null }) {
             <li key={e.id} className="flex justify-between gap-3">
               <span className="truncate">{e.exercise}</span>
               <span className="shrink-0 tabular-nums text-ink-faint">
-                {e.sets}×{e.reps}
+                {e.sets}×{e.reps}{e.measure === "time" ? " s" : ""}
               </span>
             </li>
           ))}

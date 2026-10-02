@@ -1,5 +1,5 @@
 "use server";
-import { filterExercises, isPlanLimitError, PLAN_LIMIT_REACHED, youtubeVideoId, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
+import { exerciseSearchTerms, filterExercises, isPlanLimitError, PLAN_LIMIT_REACHED, youtubeVideoId, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { exerciseLibrary } from "@/lib/exercise-library";
 import { notSignedIn, upgradeRequired } from "@/lib/action-result";
@@ -36,9 +36,11 @@ export async function searchExerciseLibrary(
     .order("name_en")
     .range(offset, offset + EXERCISE_PAGE_SIZE - 1);
 
-  if (filter.q?.trim()) {
-    const safe = filter.q.replace(/[,()%\\]/g, " ").trim();
-    query = query.or(`name_en.ilike.%${safe}%,name_ro.ilike.%${safe}%`);
+  // Every word must appear in one of the names — "sit ups" finds "Sit-Up".
+  // The terms are letters and digits only, so nothing reaches the filter
+  // syntax; successive or() filters are ANDed by PostgREST.
+  for (const term of exerciseSearchTerms(filter.q)) {
+    query = query.or(`name_en.ilike.%${term}%,name_ro.ilike.%${term}%`);
   }
   if (filter.muscle) query = query.contains("primary_muscles", [filter.muscle]);
   if (filter.equipment) query = query.eq("equipment", filter.equipment);

@@ -8,6 +8,8 @@ import { SocialPrivacyCard } from "@/components/social-v2";
 import { getMySocialPrivacy } from "@/lib/social-data";
 import { getMyCoachProfileStatus } from "@/lib/coach-profile-data";
 import { BecomeCoachCard, CoachProfileSettingsCard } from "@/components/coach-profile/status";
+import { MyGymCard } from "@/components/gyms";
+import { getMyGyms } from "@/lib/gym-data";
 
 /**
  * The client's account screen. It carries only controls that change something:
@@ -16,8 +18,8 @@ import { BecomeCoachCard, CoachProfileSettingsCard } from "@/components/coach-pr
  * the header, so they are not repeated.
  */
 export default async function AccountPage() {
-  const [{ t }, profile, privacy, coachStatus] = await Promise.all([
-    getI18n(), getProfile(), getMySocialPrivacy(), getMyCoachProfileStatus(),
+  const [{ t }, profile, privacy, coachStatus, gyms] = await Promise.all([
+    getI18n(), getProfile(), getMySocialPrivacy(), getMyCoachProfileStatus(), getMyGyms(),
   ]);
   if (!profile) return null;
   const a = t.clientApp.account;
@@ -41,6 +43,8 @@ export default async function AccountPage() {
           weightUnit={profile.weight_unit}
           lengthUnit={profile.length_unit}
         />
+
+        <MyGymCard my={gyms} />
 
         <RestTimerCard prefs={profile.rest_prefs} />
 

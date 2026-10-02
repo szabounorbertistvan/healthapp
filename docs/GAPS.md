@@ -254,8 +254,8 @@ join. Leaderboards gained a `following` scope, which needed migration
 `20260916120000_leaderboard_following.sql` because `social_leaderboard()`
 validated `p_scope` against `'global'` alone. The scope narrows the visible set
 and never widens it: someone private stays off the board even if you follow
-them. **Not applied to the live project yet.** `club` and `gym` scopes are still
-unbuilt.
+them. **Not applied to the live project yet.** The `gym` scope exists since
+20261023100000 (below); `club` is still unbuilt.
 
 **Progress photos shipped 2026-09-16.** Storage is Cloudinary
 (`lib/cloudinary.ts`), not Supabase Storage. Assets are `type: authenticated`
@@ -318,9 +318,23 @@ them the section renders a "not configured" note instead of a broken upload.
 - **Comment replies stop at one level**, by constraint rather than by omission
   (`social_comment_depth_guard`). Threading deeper needs a different renderer
   than a single indent, and a decision about what a phone shows.
-- **"Gym" and "specialisation" do not exist** on `users`, so people search
-  filters on name, username and `city` only. Adding them is two nullable
-  columns plus profile editing — deliberately not invented to satisfy a filter.
+- **Gyms, 2026-10-02 (`20261023100000_gyms.sql` + `20261024100000_gyms_coach_discovery.sql`,
+  both applied live).** An admin-curated `gyms` table (users can suggest;
+  `/admin/gyms` approves, and a pasted Google Maps link prefills name + pin),
+  `users.home_gym_id` with an opt-in `gym_board`, and the `gym` leaderboard
+  scope (reciprocal: only someone on the board sees it). Unified with Coach
+  Discovery: a coach is "at a gym" through `coach_locations.gym_id` (picked in
+  the profile editor's Where step, so the claim is reviewed with the profile),
+  "Coaches at your gym" on /coach lists published profiles there, and every
+  request is a `coaching_requests` row, accepted by `accept_coaching_request()`
+  into the same `trainer_clients` + conversation `accept_invite()` creates.
+  One active coach per client stays: `request_coaching()` refuses
+  ALREADY_HAS_COACH, and accepting a request whose client found a coach
+  meanwhile closes it (`status = 'closed'`). The coach's inbox is on
+  /dashboard and /clients. Still missing: **a map** (no provider chosen;
+  `lat`/`lng`, `google_place_id`, `osm_id` wait for it), **a notification** when
+  a request arrives, a link from `gyms.city` to `cities`, and gym filters in
+  coach search.
 - **Nothing shares outside the app yet.** `lib/share-payload.ts` builds the
   card data for every post kind, but no button calls it and no image is
   rendered from it; §19 asked for the infrastructure, not the integration.

@@ -138,6 +138,8 @@ export type RoutineDay = {
     target_rpe: number | null;
     rest_seconds: number | null;
     set_type: string;
+    /** reps or time — then target_reps is seconds. Absent reads as reps. */
+    measure?: string;
     notes: string | null;
     equipment: string | null;
     /** False when the library row is gone or unreadable — an orphan prescription. */
@@ -171,7 +173,7 @@ export async function getRoutineDetail(programId: string): Promise<RoutineDetail
       .select(`intensity_mode,
         program_days(id, name, week_index, day_index, muscle_groups,
           program_exercises(id, exercise_id, position, circuit, target_sets, target_reps,
-            target_weight_kg, target_rpe, rest_seconds, set_type, notes,
+            target_weight_kg, target_rpe, rest_seconds, set_type, measure, notes,
             exercise:exercises(name_en, name_ro, equipment)))`)
       .eq("id", programId)
       .maybeSingle(),
@@ -185,7 +187,7 @@ export async function getRoutineDetail(programId: string): Promise<RoutineDetail
   type ExJoin = {
     id: string; exercise_id: string; position: number; circuit: number | null;
     target_sets: number; target_reps: string; target_weight_kg: number | null;
-    target_rpe: number | null; rest_seconds: number | null; set_type: string | null; notes: string | null;
+    target_rpe: number | null; rest_seconds: number | null; set_type: string | null; measure: string | null; notes: string | null;
     exercise: { name_en: string; name_ro: string | null; equipment: string | null } | null;
   };
   type DayJoin = {
@@ -218,6 +220,7 @@ export async function getRoutineDetail(programId: string): Promise<RoutineDetail
           target_rpe: e.target_rpe,
           rest_seconds: e.rest_seconds,
           set_type: e.set_type ?? "normal",
+          measure: e.measure ?? "reps",
           notes: e.notes,
           equipment: e.exercise?.equipment ?? null,
           exercise_known: e.exercise !== null,

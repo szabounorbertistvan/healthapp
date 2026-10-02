@@ -73,11 +73,13 @@ export const COACH_PROFILE_ERRORS = [
   "TOO_MANY_LOCATIONS",
   "UNKNOWN_CITY",
   "GYM_NAME_TOO_LONG",
+  "GYM_NOT_FOUND",
   "COACH_NOT_FOUND",
   "CANNOT_REQUEST_SELF",
   "NOT_ACCEPTING_CLIENTS",
   "UNKNOWN_SERVICE",
   "ALREADY_COACHED",
+  "ALREADY_HAS_COACH",
   "MESSAGE_TOO_LONG",
   "REQUEST_RATE",
   "REQUEST_PENDING",
@@ -191,7 +193,7 @@ export type MyCoachProfile = {
   profile: CoachProfileRow;
   specializations: { slug: string; is_primary: boolean }[];
   languages: string[];
-  locations: { city_slug: string; gym_name: string | null }[];
+  locations: { city_slug: string; gym_name: string | null; gym_id: string | null }[];
   services: CoachServiceRow[];
   certifications: CoachCertificationRow[];
   verifications: CoachVerificationRow[];

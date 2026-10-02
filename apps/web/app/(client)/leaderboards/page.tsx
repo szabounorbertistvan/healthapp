@@ -4,6 +4,7 @@ import { getLeaderboard, metricOf, periodOf, scopeOf } from "@/lib/leaderboard-d
 import { LeaderboardCard } from "@/components/leaderboard";
 import { EmptyState } from "@/components/ui";
 import { getI18n } from "@/lib/i18n/server";
+import { getMyGyms } from "@/lib/gym-data";
 
 /**
  * /leaderboards — one board at a time: a period (this week by default) and a
@@ -21,7 +22,11 @@ export default async function LeaderboardsPage({
   const metric = metricOf(params.metric);
   const period = periodOf(params.period);
   const scope = scopeOf(params.scope);
-  const board = await getLeaderboard(metric, period, scope);
+  const [board, gyms] = await Promise.all([
+    getLeaderboard(metric, period, scope),
+    scope === "gym" ? getMyGyms() : null,
+  ]);
+  const g = t.gyms.board;
   const l = t.common.leaderboards;
   const href = (m: string, p: string, s: string = scope) =>
     `/leaderboards?metric=${m}&period=${p}&scope=${s}`;
@@ -81,6 +86,22 @@ export default async function LeaderboardsPage({
       <div className="mt-4">
         {scope === "following" && board.entries.length === 0 ? (
           <EmptyState plain title={l.emptyFollowing} hint={l.emptyFollowingHint} />
+        ) : scope === "gym" && !gyms?.home ? (
+          <div>
+            <EmptyState plain title={g.noGymTitle} hint={g.noGymHint} />
+            <Link href="/account" className="mt-3 inline-flex h-9 items-center rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink">
+              {g.pickGym}
+            </Link>
+          </div>
+        ) : scope === "gym" && !gyms?.board ? (
+          <div>
+            <EmptyState plain title={g.optInTitle} hint={g.optInHint} />
+            <Link href="/account" className="mt-3 inline-flex h-9 items-center rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink">
+              {g.optIn}
+            </Link>
+          </div>
+        ) : scope === "gym" && board.entries.length <= 1 ? (
+          <EmptyState plain title={g.emptyTitle} hint={g.emptyHint} />
         ) : (
           <LeaderboardCard board={board} metric={metric} period={period} />
         )}

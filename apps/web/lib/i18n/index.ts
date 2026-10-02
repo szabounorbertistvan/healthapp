@@ -7,6 +7,7 @@ import { coachAppMessages } from "./messages/coach-app";
 import { coachWidgetsMessages } from "./messages/coach-widgets";
 import { adminMessages } from "./messages/admin";
 import { coachProfileMessages } from "./messages/coach-profile";
+import { gymsMessages } from "./messages/gyms";
 
 export function getDictionary(locale: Locale) {
   return {
@@ -20,6 +21,7 @@ export function getDictionary(locale: Locale) {
     coachWidgets: coachWidgetsMessages[locale],
     admin: adminMessages[locale],
     coachProfile: coachProfileMessages[locale],
+    gyms: gymsMessages[locale],
   };
 }
 

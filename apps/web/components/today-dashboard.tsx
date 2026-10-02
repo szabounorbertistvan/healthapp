@@ -212,7 +212,7 @@ export function TrainingCard({ doneToday, recent, next, coached, streak }: {
               {next.exercises.slice(0, EXERCISE_PREVIEW).map((e) => (
                 <li key={e.id} className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-3 text-[13px]">
                   <span className="truncate font-medium">{e.exercise}</span>
-                  <span className="tabular-nums text-ink-soft">{e.sets} × {e.reps}</span>
+                  <span className="tabular-nums text-ink-soft">{e.sets} × {e.reps}{e.measure === "time" ? " s" : ""}</span>
                   <span className="min-w-[3.5rem] text-right tabular-nums text-ink-faint">{e.weight || "—"}</span>
                 </li>
               ))}

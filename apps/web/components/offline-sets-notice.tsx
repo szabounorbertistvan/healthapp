@@ -2,7 +2,7 @@
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useOfflineSets } from "@/lib/offline/sync";
-import { kgToDisplay } from "@healthapp/shared";
+import { formatSetDuration, kgToDisplay } from "@healthapp/shared";
 import { useUnits } from "@/lib/units/client";
 
 /**
@@ -30,7 +30,11 @@ export function OfflineSetsNotice() {
           {failed.map((item) => (
             <p key={item.id} className="text-[13px] font-semibold text-risk">
               {fill(m.syncFailed, {
-                set: `${item.input.exerciseName} · ${kgToDisplay(item.input.weightKg, u.weightUnit)} ${u.weightUnit} × ${item.input.reps}`,
+                set: `${item.input.exerciseName} · ${
+                  item.input.durationSeconds
+                    ? formatSetDuration(item.input.durationSeconds)
+                    : `${kgToDisplay(item.input.weightKg, u.weightUnit)} ${u.weightUnit} × ${item.input.reps}`
+                }`,
                 message: item.error || m.couldNotLogSet,
               })}
             </p>

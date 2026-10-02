@@ -39,6 +39,21 @@ export type ExerciseFilter = {
 };
 
 /**
+ * A search box's text as the words every match must contain, each anywhere in
+ * the name. "sit ups" has to find "Sit-Up": as one substring it never would
+ * (the library hyphenates, and says "Up"), so the text is split on anything
+ * that is not a letter or a digit and a plural "s" is dropped — "ups" → "up",
+ * "lunges" → "lunge", but "press" stays "press". Dropping it only widens a
+ * substring match, never narrows it. Accents are kept: the database's ilike
+ * compares them as typed. At most five words; an empty list means no filter.
+ */
+export function exerciseSearchTerms(query: string | null | undefined): string[] {
+  const words = (query ?? "").toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const terms = words.map((w) => (w.length >= 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w));
+  return [...new Set(terms)].slice(0, 5);
+}
+
+/**
  * Free-text over both names, plus muscle and equipment facets. A muscle match
  * counts whether the exercise trains it directly or as a helper — a coach
  * looking for "biceps" wants chin-ups in the list — but direct matches sort
@@ -48,12 +63,12 @@ export function filterExercises(
   library: readonly ExerciseSummary[],
   filter: ExerciseFilter,
 ): ExerciseSummary[] {
-  const q = filter.q?.trim();
+  const terms = exerciseSearchTerms(filter.q);
   const muscle = filter.muscle ? normalizeForSearch(filter.muscle) : "";
   const equipment = filter.equipment ? normalizeForSearch(filter.equipment) : "";
 
   const matched = library.filter((e) => {
-    if (q && !matchesQuery(`${e.name_en} ${e.name_ro ?? ""}`, q)) return false;
+    if (terms.some((term) => !matchesQuery(`${e.name_en} ${e.name_ro ?? ""}`, term))) return false;
     if (equipment && normalizeForSearch(e.equipment ?? "") !== equipment) return false;
     if (muscle && musclePriority(e, muscle) === 0) return false;
     return true;

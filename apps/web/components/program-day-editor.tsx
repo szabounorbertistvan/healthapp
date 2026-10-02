@@ -1,12 +1,13 @@
 "use client";
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import {
-  DEFAULT_TARGETS, circuitLabel, circuitSegments, displayToKg, exerciseRef, kgToDisplay,
+  DEFAULT_TARGETS, circuitLabel, circuitSegments, displayToKg, EXERCISE_MEASURES, exerciseRef, kgToDisplay,
   nextCircuit, parseDecimal, SET_TYPES, type ExerciseSummary, type ExerciseTargets,
 } from "@healthapp/shared";
 import {
   addProgramExercise, duplicateProgramExercise, moveProgramDay, moveProgramExercise, removeProgramExercise, renameProgramDay,
-  replaceProgramExercise, setExerciseCircuit, setProgramExerciseSetType, updateProgramExercise,
+  replaceProgramExercise, setExerciseCircuit, setProgramExerciseMeasure, setProgramExerciseNotes, setProgramExerciseSetType,
+  updateProgramExercise,
 } from "@/app/builder-actions";
 import { ExercisePicker } from "@/components/exercise-picker";
 import { NavIcon } from "@/components/client-nav";
@@ -143,6 +144,8 @@ export function ProgramDayEditor({
                   onRemove={() => run(() => removeProgramExercise(program.id, row.id))}
                   onDuplicate={() => run(() => duplicateProgramExercise(program.id, row.id))}
                   onSetType={(setType) => run(() => setProgramExerciseSetType(program.id, row.id, setType))}
+                  onMeasure={(measure) => run(() => setProgramExerciseMeasure(program.id, row.id, measure))}
+                  onNotes={(notes) => run(() => setProgramExerciseNotes(program.id, row.id, notes))}
                 />
               ))}
             </div>
@@ -247,7 +250,7 @@ function DayName({ name, disabled, onSave }: { name: string; disabled: boolean; 
 
 function ExerciseCard({
   row, intensityLabel, circuits, first, last, disabled, replacing,
-  onSave, onMove, onCircuit, onNewCircuit, onReplace, onRemove, onDuplicate, onSetType,
+  onSave, onMove, onCircuit, onNewCircuit, onReplace, onRemove, onDuplicate, onSetType, onMeasure, onNotes,
 }: {
   row: ProgramExerciseRow;
   intensityLabel: string;
@@ -264,9 +267,15 @@ function ExerciseCard({
   onRemove: () => void;
   onDuplicate: () => void;
   onSetType: (setType: string) => void;
+  onMeasure: (measure: string) => void;
+  onNotes: (notes: string) => void;
 }) {
   const { t } = useI18n();
   const r = t.clientApp.routines;
+  const timed = row.measure === "time";
+  // The cue opens on its own once there is one; an empty one stays a link.
+  const [notesOpen, setNotesOpen] = useState(Boolean(row.notes));
+  const [notes, setNotes] = useState(row.notes ?? "");
   const u = useUnits();
   const m = t.coachWidgets.programBuilder;
   const [values, setValues] = useState<ExerciseTargets>({
@@ -302,8 +311,8 @@ function ExerciseCard({
       <div className="mt-2.5 grid grid-cols-3 gap-2 sm:grid-cols-6">
         <label className="flex flex-col gap-1"><span className={label}>{m.colSets}</span>
           <input type="number" min={1} max={20} inputMode="numeric" value={values.target_sets} disabled={disabled} onChange={(e) => change({ ...latest.current, target_sets: Number(e.target.value) })} onBlur={commit} onKeyDown={enter} className={cell} /></label>
-        <label className="flex flex-col gap-1"><span className={label}>{m.colReps}</span>
-          <input value={values.target_reps} disabled={disabled} placeholder="8-10" onChange={(e) => change({ ...latest.current, target_reps: e.target.value })} onBlur={commit} onKeyDown={enter} className={cell} /></label>
+        <label className="flex flex-col gap-1"><span className={label}>{timed ? m.colSeconds : m.colReps}</span>
+          <input value={values.target_reps} disabled={disabled} placeholder={timed ? "30-45" : "8-10"} onChange={(e) => change({ ...latest.current, target_reps: e.target.value })} onBlur={commit} onKeyDown={enter} className={cell} /></label>
         <label className="flex flex-col gap-1"><span className={label}>{intensityLabel}</span>
           <input inputMode="decimal" value={values.target_rpe ?? ""} disabled={disabled} onChange={(e) => change({ ...latest.current, target_rpe: num(e.target.value) })} onBlur={commit} onKeyDown={enter} className={cell} /></label>
         <label className="flex flex-col gap-1"><span className={label}>{m.colKg}</span>
@@ -345,7 +354,30 @@ function ExerciseCard({
           >
             {SET_TYPES.map((st) => <option key={st} value={st}>{r.setType[st]}</option>)}
           </select></label>
+        <label className="flex flex-col gap-1"><span className={label}>{m.measure}</span>
+          <select value={row.measure ?? "reps"} disabled={disabled} onChange={(e) => onMeasure(e.target.value)} className={cell}>
+            {EXERCISE_MEASURES.map((ms) => <option key={ms} value={ms}>{ms === "time" ? m.measureTime : m.measureReps}</option>)}
+          </select></label>
       </div>
+      {/* The coach's own words for this client on this exercise — the
+          library's how-to is generic, this is personal. Saved on blur. */}
+      {notesOpen ? (
+        <label className="mt-2.5 flex flex-col gap-1"><span className={label}>{m.coachNote}</span>
+          <textarea
+            value={notes}
+            rows={2}
+            maxLength={1000}
+            disabled={disabled}
+            placeholder={m.coachNotePlaceholder}
+            onChange={(e) => setNotes(e.target.value)}
+            onBlur={() => { if (notes.trim() !== (row.notes ?? "").trim()) onNotes(notes); }}
+            className="min-h-[4.5rem] w-full rounded-xl border border-line bg-bg px-2.5 py-2 text-sm outline-none focus:border-accent"
+          /></label>
+      ) : (
+        <button type="button" disabled={disabled} onClick={() => setNotesOpen(true)} className="mt-2 text-[12.5px] font-semibold text-ink-faint hover:text-accent-ink">
+          {m.coachNoteAdd}
+        </button>
+      )}
     </div>
   );
 }

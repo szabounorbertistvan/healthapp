@@ -44,7 +44,7 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile | null> {
   const [specs, langs, locs, services, certs, verifications, missing] = await Promise.all([
     supabase.from("coach_specializations").select("is_primary, specializations(slug)").eq("coach_profile_id", profile.id),
     supabase.from("coach_languages").select("language_code").eq("coach_profile_id", profile.id),
-    supabase.from("coach_locations").select("gym_name, cities(slug)").eq("coach_profile_id", profile.id),
+    supabase.from("coach_locations").select("gym_name, gym_id, cities(slug)").eq("coach_profile_id", profile.id),
     supabase.from("coach_services").select(SERVICE_COLUMNS).eq("coach_profile_id", profile.id).order("sort_order"),
     supabase.from("coach_certifications").select(CERTIFICATION_COLUMNS).eq("coach_profile_id", profile.id).order("sort_order"),
     supabase.from("coach_verifications").select(VERIFICATION_COLUMNS).eq("coach_profile_id", profile.id),
@@ -63,8 +63,8 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile | null> {
     specializations: ((specs.data ?? []) as { is_primary: boolean; specializations: Embedded }[])
       .map((s) => ({ slug: slugOf(s.specializations), is_primary: s.is_primary })),
     languages: ((langs.data ?? []) as { language_code: string }[]).map((l) => l.language_code),
-    locations: ((locs.data ?? []) as { gym_name: string | null; cities: Embedded }[])
-      .map((l) => ({ city_slug: slugOf(l.cities), gym_name: l.gym_name })),
+    locations: ((locs.data ?? []) as { gym_name: string | null; gym_id: string | null; cities: Embedded }[])
+      .map((l) => ({ city_slug: slugOf(l.cities), gym_name: l.gym_name, gym_id: l.gym_id })),
     services: (services.data ?? []) as CoachServiceRow[],
     certifications: (certs.data ?? []) as CoachCertificationRow[],
     verifications: (verifications.data ?? []) as CoachVerificationRow[],

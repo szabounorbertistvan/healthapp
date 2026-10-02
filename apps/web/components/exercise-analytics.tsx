@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState, type ReactNode } from "react";
 import {
+  formatSetDuration,
   EXERCISE_RANGES,
   metricSeries,
   ONE_RM_MAX_REPS,
@@ -419,8 +420,12 @@ function RepRecords({ records }: { records: RepRecord[] }) {
 
 // ---------- formatting ----------
 
-/** One set as a gym reads it: "80 kg × 5", or "15 reps" when nothing was loaded. */
-function setLabel(set: { weight_kg: number; reps: number }, u: Units, repsUnit: string): string {
+/** One set as a gym reads it: "80 kg × 5", "15 reps" when nothing was loaded, "45 s" when it was a hold. */
+function setLabel(set: { weight_kg: number; reps: number; duration_seconds?: number | null }, u: Units, repsUnit: string): string {
+  if (set.duration_seconds) {
+    const time = formatSetDuration(set.duration_seconds);
+    return set.weight_kg > 0 ? `${kgToDisplay(set.weight_kg, u.weightUnit)} ${u.weightUnit} · ${time}` : time;
+  }
   return set.weight_kg > 0
     ? `${kgToDisplay(set.weight_kg, u.weightUnit)} ${u.weightUnit} × ${set.reps}`
     : `${set.reps} ${repsUnit}`;

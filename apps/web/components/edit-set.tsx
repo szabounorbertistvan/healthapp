@@ -1,13 +1,13 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { displayToKg, kgToDisplay, parseDecimal } from "@healthapp/shared";
+import { displayToKg, kgToDisplay, parseDecimal, parseWholeNumber } from "@healthapp/shared";
 import { updateLoggedSet } from "@/app/client-actions-app";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import type { LoggedSetRow } from "@/lib/types";
 
-type Editable = Pick<LoggedSetRow, "id" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">;
+type Editable = Pick<LoggedSetRow, "id" | "weight_kg" | "reps" | "duration_seconds" | "rpe" | "rir" | "notes" | "is_pr">;
 
 const field = "w-full min-w-0 rounded-lg border border-line bg-bg px-2 py-2 text-sm tabular-nums outline-none focus:border-accent";
 const label = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint";
@@ -22,11 +22,14 @@ const label = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint
 export function EditSet({
   set,
   asRir,
+  timed = false,
   dayId,
   onDone,
 }: {
   set: Editable;
   asRir: boolean;
+  /** A timed exercise: the box is seconds rather than reps. */
+  timed?: boolean;
   dayId?: string | null;
   /** Called with the saved values, or null when cancelled. */
   onDone: (updated: Editable | null) => void;
@@ -38,7 +41,8 @@ export function EditSet({
   const [pending, startTransition] = useTransition();
   // Shown and typed in the reader's unit; the row stays kilograms.
   const [weight, setWeight] = useState(String(kgToDisplay(set.weight_kg, u.weightUnit)));
-  const [reps, setReps] = useState(String(set.reps));
+  const isTimed = timed || Boolean(set.duration_seconds);
+  const [reps, setReps] = useState(String(isTimed ? (set.duration_seconds ?? "") : set.reps));
   const [rir, setRir] = useState(set.rir === null ? "" : String(set.rir));
   const [rpe, setRpe] = useState(set.rpe === null ? "" : String(set.rpe));
   const [notes, setNotes] = useState(set.notes ?? "");
@@ -50,7 +54,8 @@ export function EditSet({
         const typed = parseDecimal(weight);
         return typed === null ? NaN : displayToKg(typed, u.weightUnit);
       })(),
-      reps: Number(reps),
+      reps: isTimed ? 0 : Number(reps),
+      duration_seconds: isTimed ? (parseWholeNumber(reps) ?? NaN) : null,
       rpe: rpe.trim() === "" ? null : parseDecimal(rpe),
       rir: asRir && rir.trim() !== "" ? parseDecimal(rir) : null,
       notes: notes.trim() || null,
@@ -73,7 +78,7 @@ export function EditSet({
       <div className={`grid gap-2 ${asRir ? "grid-cols-4" : "grid-cols-3"}`}>
         <label className="flex flex-col gap-0.5"><span className={label}>{u.weightUnit}</span>
           <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} className={field} /></label>
-        <label className="flex flex-col gap-0.5"><span className={label}>{m.reps}</span>
+        <label className="flex flex-col gap-0.5"><span className={label}>{isTimed ? m.seconds : m.reps}</span>
           <input inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className={field} /></label>
         {asRir ? (
           <label className="flex flex-col gap-0.5"><span className={label}>{m.rir}</span>

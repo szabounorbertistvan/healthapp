@@ -2,7 +2,7 @@ import type {
   AdherenceResult, ChallengeCategory, ChallengeDifficulty, ChallengeStatus, ChallengeType, ChallengeUnit, LoadTrend, Macros, PostPayload, PostType,
   PhotoOverlay, PostVisibility, ReactionType, TrainingLoad,
 } from "@healthapp/shared";
-import type { ExerciseVideoSource, LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
+import type { ExerciseMeasure, ExerciseVideoSource, LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
 import type { ExerciseType } from "./exercise-types";
 
@@ -133,6 +133,10 @@ export type ProgramExerciseRow = {
   circuit: number | null;
   /** How the sets are performed (SET_TYPES). Absent on reads that do not ask for it. */
   set_type?: string;
+  /** reps, or time — then `reps` is seconds (EXERCISE_MEASURES). Absent reads as reps. */
+  measure?: ExerciseMeasure;
+  /** The coach's own cue for this exercise (program_exercises.notes). */
+  notes?: string | null;
   /** Visual type of the exercise (exerciseTypeOf), for its thumbnail; client reads only. */
   type?: ExerciseType | null;
   /** The resolved demo (lib/exercise-video-links); client reads only. */
@@ -227,6 +231,8 @@ export type LoggedSetRow = {
   set_index: number;
   weight_kg: number;
   reps: number;
+  /** Seconds, on a timed set (reps is 0 then); null for a reps set. */
+  duration_seconds?: number | null;
   /** Felt intensity 1..10 (the slider). */
   rpe: number | null;
   /** Reps in reserve as typed, RIR-mode programs only. */
@@ -277,7 +283,7 @@ export type WorkoutHistorySession = {
     name: string;
     /** For the link to /exercises/[id]; null when the set predates the column being read. */
     exercise_id?: string | null;
-    sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "rpe" | "rir" | "notes" | "is_pr">[];
+    sets: Pick<LoggedSetRow, "id" | "set_index" | "weight_kg" | "reps" | "duration_seconds" | "rpe" | "rir" | "notes" | "is_pr">[];
   }[];
 };
 

@@ -4,6 +4,7 @@ import "server-only";
 import { cache } from "react";
 import {
   dailyLoad,
+  isExerciseMeasure,
   loadTrend,
   pickProgram,
   sumLoad,
@@ -64,7 +65,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
       .from("programs")
       .select(`id, name, intensity_mode, coach_id, updated_at,
         program_days(id, name, week_index, day_index, muscle_groups,
-          program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit,
+          program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit, measure, notes,
             exercise:exercises(name_en, name_ro, primary_muscles, category, video_url)))`)
       .eq("client_id", userId)
       .eq("status", "published"),
@@ -84,6 +85,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   type ExJoin = {
     id: string; exercise_id: string; position: number; target_sets: number; target_reps: string;
     target_weight_kg: number | null; target_rpe: number | null; rest_seconds: number | null; circuit: number | null;
+    measure: string | null; notes: string | null;
     exercise: { name_en: string; name_ro: string | null; primary_muscles: string[]; category: string | null; video_url: string | null } | null;
   };
   type DayJoin = { id: string; name: string; day_index: number; muscle_groups: string[] | null; program_exercises: ExJoin[] };
@@ -138,6 +140,8 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
               rest_seconds: e.rest_seconds,
               position: e.position,
               circuit: e.circuit ?? null,
+              measure: isExerciseMeasure(e.measure) ? e.measure : "reps",
+              notes: e.notes?.trim() || null,
               type: exerciseTypeOf(e.exercise?.primary_muscles ?? [], e.exercise?.category ?? null),
               ...resolveVideo(links, e.exercise_id, e.exercise?.video_url),
             })),
@@ -263,7 +267,7 @@ function groupByExercise(sets: LoggedSetRow[]): WorkoutHistorySession["exercises
       order.push(s.exercise);
     }
     bucket.push({
-      id: s.id, set_index: s.set_index, weight_kg: s.weight_kg, reps: s.reps,
+      id: s.id, set_index: s.set_index, weight_kg: s.weight_kg, reps: s.reps, duration_seconds: s.duration_seconds ?? null,
       rpe: s.rpe, rir: s.rir, notes: s.notes, is_pr: s.is_pr,
     });
   }

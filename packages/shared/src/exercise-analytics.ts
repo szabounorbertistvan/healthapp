@@ -34,6 +34,8 @@ export type AnalyticsSet = {
   set_index: number;
   weight_kg: number;
   reps: number;
+  /** Seconds, on a timed set (reps is 0 then). Optional: older readers leave it out. */
+  duration_seconds?: number | null;
   /** Felt intensity 1..10. */
   rpe: number | null;
   /** Reps in reserve as typed (RIR programs). */
@@ -46,6 +48,8 @@ export type PerformedSetRow = {
   set_index: number;
   weight_kg: number;
   reps: number;
+  /** Seconds, on a timed set; null otherwise. */
+  duration_seconds?: number | null;
   rpe: number | null;
   rir: number | null;
   is_pr: boolean;
@@ -131,7 +135,12 @@ export function totalVolume(sets: readonly { weight_kg: number; reps: number }[]
 }
 
 function toRow(s: AnalyticsSet): PerformedSetRow {
-  return { set_index: s.set_index, weight_kg: s.weight_kg, reps: s.reps, rpe: s.rpe, rir: s.rir, is_pr: s.is_pr };
+  return {
+    set_index: s.set_index, weight_kg: s.weight_kg, reps: s.reps,
+    // Only on a timed set, so a reps set keeps the shape it always had.
+    ...(s.duration_seconds ? { duration_seconds: s.duration_seconds } : {}),
+    rpe: s.rpe, rir: s.rir, is_pr: s.is_pr,
+  };
 }
 
 function bySetIndex(a: PerformedSetRow, b: PerformedSetRow): number {

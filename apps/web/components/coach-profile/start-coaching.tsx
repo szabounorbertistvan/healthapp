@@ -69,6 +69,7 @@ export function StartCoachingProvider({
         result.errorCode === "REQUEST_PENDING" ? p.errPending
           : result.errorCode === "NOT_ACCEPTING_CLIENTS" ? p.errNotAccepting
           : result.errorCode === "ALREADY_COACHED" ? p.errAlreadyClient
+          : result.errorCode === "ALREADY_HAS_COACH" ? p.errHasCoach
           : result.errorCode === "REQUEST_RATE" ? p.errRate
           : result.errorCode === "COACH_NOT_FOUND" ? p.errGone
           : p.errGeneric,

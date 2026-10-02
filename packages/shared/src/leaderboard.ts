@@ -10,20 +10,20 @@
 // streak is streakRuns(). Nothing here ever sees a body weight, a calorie or
 // a set: a row carries a name, an avatar and a number.
 //
-// Scope is `global` today; `club` and `gym` are the planned extensions — the
-// RPC takes the argument now so the call sites need not change later.
+// Scopes: `global`, `following`, and `gym` (the viewer's own home gym, people
+// there who opted in — 20261023100000). `club` is still only planned.
 import { streakRuns, type WorkoutDay } from "./streaks";
 import { weekOf } from "./weekly-summary";
 
 export type LeaderboardMetric = "training_load" | "volume" | "workouts" | "active_days" | "streak";
 export type LeaderboardPeriod = "week" | "month" | "all";
-/** "following" ranks only the people the viewer follows, plus themselves. */
-export type LeaderboardScope = "global" | "following";
+/** "following" ranks only the people the viewer follows, "gym" the opted-in members of their gym; both plus themselves. */
+export type LeaderboardScope = "global" | "following" | "gym";
 export type LeaderboardVisibility = "public" | "followers" | "private";
 
 export const LEADERBOARD_METRICS: readonly LeaderboardMetric[] = ["training_load", "volume", "workouts", "active_days", "streak"];
 export const LEADERBOARD_PERIODS: readonly LeaderboardPeriod[] = ["week", "month", "all"];
-export const LEADERBOARD_SCOPES: readonly LeaderboardScope[] = ["global", "following"];
+export const LEADERBOARD_SCOPES: readonly LeaderboardScope[] = ["global", "following", "gym"];
 export const LEADERBOARD_TOP = 10;
 
 export function isLeaderboardMetric(x: unknown): x is LeaderboardMetric {

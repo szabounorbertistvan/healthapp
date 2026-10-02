@@ -12,10 +12,12 @@ import { SocialPrivacyCard } from "@/components/social-v2";
 import { getMySocialPrivacy } from "@/lib/social-data";
 import { getMyCoachProfileStatus } from "@/lib/coach-profile-data";
 import { CoachProfileSettingsCard } from "@/components/coach-profile/status";
+import { MyGymCard } from "@/components/gyms";
+import { getMyGyms } from "@/lib/gym-data";
 
 export default async function SettingsPage() {
-  const [{ t }, profile, privacy, coachStatus] = await Promise.all([
-    getI18n(), getProfile(), getMySocialPrivacy(), getMyCoachProfileStatus(),
+  const [{ t }, profile, privacy, coachStatus, gyms] = await Promise.all([
+    getI18n(), getProfile(), getMySocialPrivacy(), getMyCoachProfileStatus(), getMyGyms(),
   ]);
   if (!profile) return null;
   const tier = profile.tier;
@@ -47,6 +49,10 @@ export default async function SettingsPage() {
           weightUnit={profile.weight_unit}
           lengthUnit={profile.length_unit}
         />
+
+        {/* The gym they train at themselves (its board, like a client's). Where
+            they coach is part of the coach profile (its "Where" step). */}
+        <MyGymCard my={gyms} />
 
         {/* A coach trains too (My training): their own rest between sets. */}
         <RestTimerCard prefs={profile.rest_prefs} />

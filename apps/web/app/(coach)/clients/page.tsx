@@ -5,6 +5,8 @@ import { Card, EmptyState, SignalBadge } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { pct, timeAgo } from "@/lib/format";
 import { InviteButton } from "@/components/invite-button";
+import { CoachRequestsCard } from "@/components/gyms";
+import { getCoachRequestInbox } from "@/lib/gym-data";
 // TIER_LABEL — Trial / Pro hidden for now (was imported from "@/lib/entitlements").
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
@@ -16,7 +18,7 @@ const ICON = {
 
 export default async function ClientsPage() {
   const { t, locale } = await getI18n();
-  const [clients, plan] = await Promise.all([getClients(), getPlan()]);
+  const [clients, plan, requests] = await Promise.all([getClients(), getPlan(), getCoachRequestInbox()]);
   const maxClients = plan.e.maxClients;
   // Signal and adherence % are Coach Pro (the dashboard carries the hint).
   const pro = plan.e.advancedAnalytics;
@@ -53,6 +55,12 @@ export default async function ClientsPage() {
         <p className="mt-4 rounded-2xl bg-warn-soft px-5 py-3.5 text-[13px] leading-relaxed text-warn">
           {t.coachApp.clients.limitReached}
         </p>
+      ) : null}
+
+      {requests.length > 0 ? (
+        <div className="mt-4 sm:mt-6">
+          <CoachRequestsCard requests={requests} />
+        </div>
       ) : null}
 
       <div className="mt-4 sm:mt-6">

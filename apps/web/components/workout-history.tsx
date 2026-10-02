@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { formatSetDuration } from "@healthapp/shared";
 import { useI18n } from "@/lib/i18n/client";
 import type { WorkoutHistorySession } from "@/lib/types";
 import { shareCardFromHistory, type ShareCardProfile } from "@/lib/share-card";
@@ -104,13 +105,13 @@ export function WorkoutHistory({ sessions, share }: {
                           <button
                             type="button"
                             title={s.notes ?? t.clientWidgets.setLogger.editSet}
-                            aria-label={`${t.clientWidgets.setLogger.editSet}: ${s.weight_kg} kg × ${s.reps}`}
+                            aria-label={`${t.clientWidgets.setLogger.editSet}: ${setText(s)}`}
                             onClick={() => setEditing(editing === s.id ? null : s.id)}
                             className={`min-h-8 rounded-[10px] px-2.5 py-1.5 text-xs tabular-nums ${
                               s.is_pr ? "bg-accent font-semibold text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
                             } ${editing === s.id ? "ring-2 ring-accent-ink" : ""}`}
                           >
-                            {s.weight_kg} kg × {s.reps}
+                            {setText(s)}
                             {s.rir !== null ? ` · ${d.rir} ${s.rir}` : ""}
                             {s.rpe !== null ? ` · ${s.rpe}/10 ${d.intensity}` : ""}
                           </button>
@@ -148,4 +149,10 @@ export function WorkoutHistory({ sessions, share }: {
       })}
     </div>
   );
+}
+
+/** "60 kg × 8", or "45 s" / "10 kg · 45 s" for a timed set. */
+function setText(s: { weight_kg: number; reps: number; duration_seconds?: number | null }): string {
+  if (s.duration_seconds) return `${s.weight_kg > 0 ? `${s.weight_kg} kg · ` : ""}${formatSetDuration(s.duration_seconds)}`;
+  return `${s.weight_kg} kg × ${s.reps}`;
 }
