@@ -99,6 +99,31 @@ Now read (one extra parallel query, no extra wave). **Per-set and per-session
 feedback still do not exist** — nothing writes `reference_type` `set`,
 `session` or `set_video`, so the landing page no longer claims it.
 
+## Coach Discovery
+
+**Database and server actions only** (2026-10-01, migration
+`20261020100000_coach_discovery_foundation.sql`, suite
+`supabase/tests/coach_discovery.test.sql`). Built: `coach_profiles` (1:1 with
+`users`), reference tables (`countries`, `cities`, `languages`,
+`specializations`), `coach_specializations` / `coach_languages` /
+`coach_locations` / `coach_services` / `coach_certifications` /
+`coach_verifications`, `coaching_requests`, `become_coach()`, the draft →
+pending_review → published lifecycle with admin RPCs, `search_text` /
+`search_doc`, and `coach_public_profile(slug)` — the **only** function in the
+database granted to `anon` that returns profile data. Writes:
+`app/coach-profile-actions.ts`; reads: `lib/coach-profile-data.ts`; shapes:
+`lib/coach-profile.ts`. **Not applied to the live project yet.**
+
+Not built: any screen (onboarding wizard, `/coaches/[slug]`, admin queue), the
+middleware exception that will let anonymous visitors reach `/coaches`,
+`search_coaches()`, sitemap / robots / JSON-LD, notifications for requests,
+document upload for verification, reviews, booking, payments.
+**`accept_coaching_request` does not exist**: what happens to a client who
+already has an active coach (`one_active_coach_per_client`) is an open product
+decision. **Content is editable only in `draft`**: a published coach who wants
+to fix a typo withdraws (page goes offline), edits, and resubmits — staged
+revisions would remove that, later.
+
 ## Paid tiers and the landing page
 
 **The paywall is built but switched off** (2026-09-23, see ENGINES.md →

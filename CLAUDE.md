@@ -129,7 +129,11 @@ ending a relationship revokes access to new data automatically. Engine tables
 policy** — service role writes them only. **`foods` is not listable** (since
 2026-10-01): reads go through `search_foods()` / `food_by_id()` /
 `food_by_barcode()`, and the select policy only shows rows the user already
-references — a new read of `foods` must use those, not `.from("foods")`. Don't work around a policy in app code;
+references — a new read of `foods` must use those, not `.from("foods")`. **Nothing is
+readable by `anon`** except through `coach_public_profile(slug)` (Coach Discovery,
+2026-10-01): `coach_*` tables have owner/admin policies only, and that security
+definer function's field list *is* the public contract — adding a key publishes it.
+Don't work around a policy in app code;
 change the policy and add a pgTAP test.
 
 **5. Domain math lives in `packages/shared` and is mirrored in SQL.** Macros,
