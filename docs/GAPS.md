@@ -101,28 +101,60 @@ feedback still do not exist** — nothing writes `reference_type` `set`,
 
 ## Coach Discovery
 
-**Database and server actions only** (2026-10-01, migration
-`20261020100000_coach_discovery_foundation.sql`, suite
-`supabase/tests/coach_discovery.test.sql`). Built: `coach_profiles` (1:1 with
-`users`), reference tables (`countries`, `cities`, `languages`,
-`specializations`), `coach_specializations` / `coach_languages` /
+**Database, server actions and the coach's onboarding UI** (2026-10-01). Migration
+`20261020100000_coach_discovery_foundation.sql` (suite
+`supabase/tests/coach_discovery.test.sql`) is **applied to the live project**.
+Built: `coach_profiles` (1:1 with `users`), reference tables (`countries`, `cities`,
+`languages`, `specializations`), `coach_specializations` / `coach_languages` /
 `coach_locations` / `coach_services` / `coach_certifications` /
 `coach_verifications`, `coaching_requests`, `become_coach()`, the draft →
 pending_review → published lifecycle with admin RPCs, `search_text` /
 `search_doc`, and `coach_public_profile(slug)` — the **only** function in the
 database granted to `anon` that returns profile data. Writes:
 `app/coach-profile-actions.ts`; reads: `lib/coach-profile-data.ts`; shapes:
-`lib/coach-profile.ts`. **Not applied to the live project yet.**
+`lib/coach-profile.ts`; wizard model: `lib/coach-onboarding.ts` (unit-tested).
 
-Not built: any screen (onboarding wizard, `/coaches/[slug]`, admin queue), the
-middleware exception that will let anonymous visitors reach `/coaches`,
-`search_coaches()`, sitemap / robots / JSON-LD, notifications for requests,
-document upload for verification, reviews, booking, payments.
+UI: `/settings/coach-profile` (under `(coach)`, so clients are redirected) — a
+six-step wizard (`components/coach-profile/`), step in `?step=n`, saved on
+Continue / Back and by a 1.5 s debounced autosave on the field steps; services and
+certifications save per row. Entry points: "Become a coach" on the client's
+`/account`, a status card on `/settings`. Outside `draft` the page shows the status
+and a read-only preview; "Edit profile" withdraws to draft. e2e:
+`e2e/coach-onboarding.spec.ts`.
+
+Public page (2026-10-01, migration `20261021100000_coach_public_profile.sql`, applied
+live, suite `coach_public_profile.test.sql`): `/coaches/[slug]` — hero, about, specializations,
+services with per-service Start coaching, certifications (verified badge only when an admin
+verified it), posts and public routines, follow, a sticky phone CTA, `generateMetadata`
+(title / description / canonical / Open Graph / Twitter) and schema.org `ProfilePage` JSON-LD.
+`components/coach-profile/preview.tsx` (`CoachProfileView`) is both the public page and
+the onboarding preview. Start coaching sends `request_coaching()`; a pending request can be
+cancelled from the page. **Anonymous readers get post text and counts, never post photos**
+(`/api/media` requires a session); signed-in readers get the Social V2 `PostCard`. e2e:
+`e2e/coach-public-profile.spec.ts` — the published-page tests need `E2E_PUBLISHED_COACH=<slug>`
+and a published coach on live (none exists yet; they were run against the seeded coach
+published temporarily, then restored).
+
+Discovery (2026-10-01, migration `20261022100000_coach_search.sql`, applied live, suite
+`coach_search.test.sql`): `/coaches` — search (tsvector prefix match + substring + pg_trgm
+typo tolerance, unaccented), filters (country, city, online / in person, specializations — any
+of, experience 1/3/5/10+, price range in RON on public prices only, accepting clients — on by
+default), sorts (recommended = accepting → completeness → verified → relevance → followers →
+newest; relevance; most experienced; most followed; newest), 24 per page with a crawlable
+"Load more" link (`?page=n`, up to 10). All state in the URL (`lib/coach-discovery.ts`);
+filtered URLs are `noindex`. `rank_score` is still never written and not used. e2e:
+`e2e/coach-discovery.spec.ts` (cards need `E2E_PUBLISHED_COACH`).
+
+Not built: sitemap / robots, city / specialization landing pages, the admin review queue UI (admins can only publish via
+the `admin_*` RPCs), notifications for requests (the coach has no inbox for them yet — requests are only in
+the table), certification document upload
+(no private storage path yet), reviews, booking, payments.
 **`accept_coaching_request` does not exist**: what happens to a client who
 already has an active coach (`one_active_coach_per_client`) is an open product
 decision. **Content is editable only in `draft`**: a published coach who wants
 to fix a typo withdraws (page goes offline), edits, and resubmits — staged
-revisions would remove that, later.
+revisions would remove that, later. The submit e2e is skipped while the seeded
+coach has no profile photo (an upload cannot run in a spec).
 
 ## Paid tiers and the landing page
 

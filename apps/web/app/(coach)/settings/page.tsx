@@ -10,9 +10,13 @@ import { ProfileForm } from "@/components/account";
 import { RestTimerCard } from "@/components/rest-settings";
 import { SocialPrivacyCard } from "@/components/social-v2";
 import { getMySocialPrivacy } from "@/lib/social-data";
+import { getMyCoachProfileStatus } from "@/lib/coach-profile-data";
+import { CoachProfileSettingsCard } from "@/components/coach-profile/status";
 
 export default async function SettingsPage() {
-  const [{ t }, profile, privacy] = await Promise.all([getI18n(), getProfile(), getMySocialPrivacy()]);
+  const [{ t }, profile, privacy, coachStatus] = await Promise.all([
+    getI18n(), getProfile(), getMySocialPrivacy(), getMyCoachProfileStatus(),
+  ]);
   if (!profile) return null;
   const tier = profile.tier;
   const paid = tier === "coach_pro" && profile.has_stripe;
@@ -24,6 +28,9 @@ export default async function SettingsPage() {
       </header>
 
       <div className="mt-5 grid gap-3.5 sm:mt-6">
+        {/* Coach Discovery: the public coach page, built at /settings/coach-profile. */}
+        <CoachProfileSettingsCard status={coachStatus} />
+
         {/* The coach had no way to edit their own profile until now: the form
             is the client's, minus the check-in day and leaderboard switch. */}
         <ProfileForm

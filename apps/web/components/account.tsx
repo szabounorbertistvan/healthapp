@@ -6,20 +6,14 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { Role } from "@/lib/entitlements";
 import { isValidUsername } from "@/lib/profile";
+import { BUTTON, FIELD, SMALL_BUTTON } from "@/lib/form-classes";
+import { checkImage, uploadSignedImage } from "@/lib/cloudinary-upload";
 import { Card } from "./ui";
 import { Avatar } from "./social";
 import {
   downloadMyData, removeAvatar, requestAccountDeletion, requestAvatarUpload, saveAvatar, updateAccount,
 } from "@/app/profile-actions";
 
-const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
-
-const FIELD =
-  "mt-1.5 h-11 w-full rounded-2xl bg-bg px-3.5 text-[14px] text-ink outline-none ring-accent/50 focus:ring-2";
-const BUTTON =
-  "inline-flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50";
-const SMALL_BUTTON =
-  "inline-flex h-9 items-center justify-center rounded-xl bg-bg px-3.5 text-[13px] font-semibold text-ink hover:bg-accent-soft/60 disabled:opacity-50";
 
 /**
  * Profile fields plus the time zone the reminder jobs read. Shared by the
@@ -200,7 +194,9 @@ export function ProfileForm({
       </div>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-faint">{a.unitsHint}</p>
 
-      {role === "client" ? (
+      {/* `both` is a client who became a coach (become_coach()): the check-in
+          reminder job still runs for them, so they keep the control. */}
+      {role === "client" || role === "both" ? (
       <>
       <label className="mt-3.5 block text-[13px] font-semibold text-ink-soft">
         {a.checkInDay}
@@ -251,12 +247,13 @@ export function ProfileForm({
 }
 
 /**
- * The profile picture: upload one, replace it, or drop it. The file goes to
+ * The profile picture: upload one, replace it, or drop it. Exported for the
+ * coach profile wizard, whose photo step is this same control. The file goes to
  * Cloudinary from the browser against a ticket the server signed, exactly as
  * progress photos do (components/progress-photos.tsx), and the column is
  * written only once the asset exists.
  */
-function AvatarPicker({ name, url, enabled }: { name: string; url: string | null; enabled: boolean }) {
+export function AvatarPicker({ name, url, enabled }: { name: string; url: string | null; enabled: boolean }) {
   const { t } = useI18n();
   const a = t.clientApp.account;
   const router = useRouter();
@@ -266,12 +263,9 @@ function AvatarPicker({ name, url, enabled }: { name: string; url: string | null
 
   async function upload(file: File) {
     setError(null);
-    if (!file.type.startsWith("image/")) {
-      setError(a.photoNotImage);
-      return;
-    }
-    if (file.size > AVATAR_MAX_BYTES) {
-      setError(a.photoTooLarge);
+    const check = checkImage(file);
+    if (check) {
+      setError(check === "NOT_IMAGE" ? a.photoNotImage : a.photoTooLarge);
       return;
     }
     setBusy(true);
@@ -281,25 +275,12 @@ function AvatarPicker({ name, url, enabled }: { name: string; url: string | null
         setError(permission.message ?? a.errPhoto);
         return;
       }
-      const ticket = permission.ticket;
-      const body = new FormData();
-      body.append("file", file);
-      body.append("api_key", ticket.apiKey);
-      for (const [key, value] of Object.entries(ticket.fields)) body.append(key, value);
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${ticket.cloudName}/image/upload`,
-        { method: "POST", body },
-      );
-      if (!response.ok) {
+      const uploaded = await uploadSignedImage(permission.ticket, file);
+      if (!uploaded) {
         setError(a.errPhoto);
         return;
       }
-      const uploaded = (await response.json()) as { public_id?: string; version?: number };
-      if (!uploaded.public_id || !uploaded.version) {
-        setError(a.errPhoto);
-        return;
-      }
-      const saved = await saveAvatar({ publicId: uploaded.public_id, version: uploaded.version });
+      const saved = await saveAvatar(uploaded);
       if (!saved.ok) {
         setError(saved.message ?? a.errPhoto);
         return;

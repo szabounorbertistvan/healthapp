@@ -232,6 +232,30 @@ export async function deleteCoachService(serviceId: string): Promise<ActionResul
   return { ok: true };
 }
 
+/**
+ * Write the order the coach arranged: each listed service gets its index as
+ * sort_order. One update per row (a handful at most); a row that is not
+ * this coach's, or a profile no longer a draft, fails through mutated().
+ */
+export async function reorderCoachServices(serviceIds: string[]): Promise<ActionResult> {
+  const parsed = await parseInput(z.array(id).max(50), serviceIds);
+  if (!parsed.ok) return parsed.result;
+  const mine = await myProfile();
+  if (!("profileId" in mine)) return mine;
+  const results = await Promise.all(parsed.data.map((serviceId, index) =>
+    mine.live.supabase
+      .from("coach_services").update({ sort_order: index }, { count: "exact" })
+      .eq("id", serviceId).eq("coach_profile_id", mine.profileId),
+  ));
+  for (const result of results) {
+    if (result.error) return failure(result.error);
+    const failed = await mutated(result);
+    if (failed) return failed;
+  }
+  revalidateCoach();
+  return { ok: true };
+}
+
 // ---------- certifications ----------
 // The coach writes name / issuer / year. Verification is an admin's; renaming
 // a verified certificate resets it (trigger). Documents are not uploaded yet.
@@ -343,6 +367,50 @@ export async function removeCover(): Promise<ActionResult> {
     }
   }
   revalidateCoach();
+  return { ok: true };
+}
+
+// ---------- coaching requests ----------
+
+/**
+ * "Start coaching" on a public coach page. The database decides everything:
+ * published, accepting clients, not yourself, not already their client, one
+ * pending request per coach, a daily cap (request_coaching()).
+ */
+export async function requestCoaching(input: {
+  profileId: string;
+  serviceId: string | null;
+  message: string;
+  slug: string;
+}): Promise<ActionResult & { requestId?: string }> {
+  const parsed = await parseInput(z.object({
+    profileId: id,
+    serviceId: id.nullable(),
+    message: z.string().max(COACH_LIMITS.requestMessage),
+    slug: z.string().max(COACH_LIMITS.slugMax),
+  }).strict(), input);
+  if (!parsed.ok) return parsed.result;
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { data, error } = await live.supabase.rpc("request_coaching", {
+    p_coach_profile: parsed.data.profileId,
+    p_service: parsed.data.serviceId,
+    p_message: parsed.data.message.trim() || null,
+  });
+  if (error) return failure(error);
+  revalidatePath(`/coaches/${parsed.data.slug}`);
+  return { ok: true, requestId: data as string };
+}
+
+/** The client takes back a request that is still pending (cancel_coaching_request()). */
+export async function cancelCoachingRequest(input: { requestId: string; slug: string }): Promise<ActionResult> {
+  const parsed = await parseInput(z.object({ requestId: id, slug: z.string().max(COACH_LIMITS.slugMax) }).strict(), input);
+  if (!parsed.ok) return parsed.result;
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { error } = await live.supabase.rpc("cancel_coaching_request", { p_request: parsed.data.requestId });
+  if (error) return failure(error);
+  revalidatePath(`/coaches/${parsed.data.slug}`);
   return { ok: true };
 }
 

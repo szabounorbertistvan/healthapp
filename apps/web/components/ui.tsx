@@ -57,3 +57,72 @@ export function EmptyState({ title, hint, plain = false }: { title: string; hint
     </Card>
   );
 }
+
+/**
+ * A toggle chip: one choice in a set the person can tick several of
+ * (muscle groups, a coach's specializations and languages). A real button with
+ * aria-pressed, so it is reachable and readable from the keyboard.
+ */
+export function Chip({
+  on, onToggle, disabled = false, children, className = "",
+}: {
+  on: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      disabled={disabled}
+      onClick={onToggle}
+      className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-semibold outline-none ring-accent/50 focus-visible:ring-2 disabled:opacity-50 ${
+        on ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
+      } ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * An on/off setting: the label and hint on the left, the switch on the right.
+ * `onLabel` / `offLabel` are the words on the switch itself.
+ */
+export function Switch({
+  checked, onChange, disabled = false, label, hint, onLabel, offLabel, inset = false,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+  label: string;
+  hint?: string;
+  onLabel: string;
+  offLabel: string;
+  /** On a `bg-bg` panel: the off state uses the surface colour so the switch stays visible. */
+  inset?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-[13px] font-semibold text-ink-soft">{label}</p>
+        {hint ? <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-faint">{hint}</p> : null}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={`inline-flex h-9 shrink-0 items-center justify-center rounded-xl px-3.5 text-[13px] font-semibold outline-none ring-accent/50 focus-visible:ring-2 disabled:opacity-50 ${
+          checked ? "bg-accent-soft text-accent-ink" : inset ? "bg-surface text-ink-faint" : "bg-bg text-ink-faint"
+        }`}
+      >
+        {checked ? onLabel : offLabel}
+      </button>
+    </div>
+  );
+}

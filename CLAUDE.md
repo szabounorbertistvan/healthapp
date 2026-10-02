@@ -56,7 +56,7 @@ written. Every "client app" screen today is a web route under
 `apps/web/app/(client)/`.
 
 Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
-check-ins, messages, settings. `(admin)` = the admin panel under `/admin`
+check-ins, messages, settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
 (overview, users, users/[id], activity, auth, invitations, workouts,
 exercises (+ /translate), foods, nutrition, social, challenges, notifications,
 feedback, errors, system, search) — its own layout, gated by `lib/admin/guard.ts` and, in the
@@ -65,7 +65,8 @@ database, by `admin_assert()` inside every `admin_*` RPC
 `app/admin-actions.ts`, strings in `messages/admin.ts`). `(client)` = today, workout (list of every
 published program → `workout/[dayId]` day overview + per-day history →
 `workout/[dayId]/log` set logger), workout/build, food, habits, progress,
-check-in, coach, billing. Ungrouped: landing `page.tsx`, login, complete-profile
+check-in, coach, billing. Ungrouped: landing `page.tsx`, `coaches` (Coach Discovery: search + filters, state in
+the URL) and `coaches/[slug]` (the public coach page) — own header layout, no session needed, login, complete-profile
 (username / sex / age / coach-or-client for accounts that signed up without
 them — both layouts redirect there while `users.username` is null), privacy,
 terms, get-the-app. **Send feedback** (`components/feedback.tsx`, in both sidebars and both
@@ -117,7 +118,7 @@ routes they touch. Client components call the action then `router.refresh()`.
 **3. i18n is cookie-based, not routed.** No `/en/` or `/ro/` prefixes — locale
 lives in the `bg-locale` cookie ([lib/i18n/config.ts](apps/web/lib/i18n/config.ts)).
 Server components use `await getI18n()`, client components `useI18n()`. Strings
-live in `lib/i18n/messages/{common,landing,coach-app,coach-widgets,client-app,client-widgets}.ts`
+live in `lib/i18n/messages/{common,landing,coach-app,coach-widgets,client-app,client-widgets,admin,coach-profile}.ts`
 and **every string must be added to both `en` and `ro`** in the same namespace
 file — the types enforce parity.
 
@@ -130,9 +131,12 @@ policy** — service role writes them only. **`foods` is not listable** (since
 2026-10-01): reads go through `search_foods()` / `food_by_id()` /
 `food_by_barcode()`, and the select policy only shows rows the user already
 references — a new read of `foods` must use those, not `.from("foods")`. **Nothing is
-readable by `anon`** except through `coach_public_profile(slug)` (Coach Discovery,
-2026-10-01): `coach_*` tables have owner/admin policies only, and that security
-definer function's field list *is* the public contract — adding a key publishes it.
+readable by `anon`** except through the Coach Discovery doors —
+`coach_public_profile(slug)`, `coach_public_posts(slug)`, `coach_public_programs(slug)`,
+`search_coaches(...)`, `coach_discovery_facets()` (2026-10-01), all gated by the internal `coach_public_visible()` (published, account
+live, no block): `coach_*` tables have owner/admin policies only, and those functions'
+field lists *are* the public contract — adding a key publishes it. `/coaches/*` is the
+one app route middleware lets through without a session.
 Don't work around a policy in app code;
 change the policy and add a pgTAP test.
 
@@ -174,6 +178,11 @@ third-party text writes it.
   (`h-[clamp(…)]` in the day editor and the nutrition builder) has one
   scroller, the list; anything shown instead of the list must take that
   scroll (`min-h-0 flex-1 overflow-y-auto`) or it is clipped on a phone.
+- Form controls share `lib/form-classes.ts` (`FIELD`, `BUTTON`, `SMALL_BUTTON`, and
+  `*_INSET` variants for a control on a `bg-bg` panel — appending `bg-surface` to
+  `FIELD` does not reliably win in Tailwind). Toggle chips and on/off switches are
+  `Chip` / `Switch` in `components/ui.tsx`; signed Cloudinary uploads from the
+  browser go through `lib/cloudinary-upload.ts` (avatar and coach cover).
 - Tailwind v4 — config is in CSS (`app/globals.css`), not `tailwind.config.js`.
   Semantic color names only, defined in an `@theme` block with a
   `prefers-color-scheme: dark` override: `bg`, `surface`, `ink`, `ink-soft`,

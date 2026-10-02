@@ -11,3 +11,7 @@ export const APP_TAGLINE = "Coach. Plan. Progress.";
 // Public contact address, shown on the legal pages and the landing footer.
 // A Namecheap forward to voinicfit@gmail.com — there is no mailbox behind it.
 export const CONTACT_EMAIL = "contact@voinic.fit";
+
+// The canonical origin for public, indexable pages (the coach pages' canonical
+// and Open Graph URLs). Production unless the deployment says otherwise.
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.voinic.fit").replace(/\/+$/, "");

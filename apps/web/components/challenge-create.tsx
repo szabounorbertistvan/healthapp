@@ -6,9 +6,8 @@ import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
 import { createChallenge } from "@/app/challenge-actions";
+import { FIELD } from "@/lib/form-classes";
 
-const FIELD =
-  "mt-1.5 h-11 w-full rounded-2xl bg-bg px-3.5 text-[14px] text-ink outline-none ring-accent/50 focus:ring-2";
 
 /** yyyy-mm-dd for today and for the last day of this month — the usual window. */
 function defaultWindow() {
