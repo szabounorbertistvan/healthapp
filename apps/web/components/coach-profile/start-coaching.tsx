@@ -1,5 +1,6 @@
 "use client";
-import { createContext, useContext, useEffect, useId, useState, useTransition } from "react";
+import { useContext, useEffect, useId, useState, useTransition } from "react";
+import { sharedContext } from "@/lib/shared-context";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,7 @@ type Ctx = {
   slug: string;
   pendingId: string | null;
 };
-const StartCoachingContext = createContext<Ctx | null>(null);
+const StartCoachingContext = sharedContext<Ctx | null>("start-coaching", null);
 
 export function StartCoachingProvider({
   profile, viewer, state, children,

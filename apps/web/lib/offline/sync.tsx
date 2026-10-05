@@ -1,5 +1,6 @@
 "use client";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { sharedContext } from "@/lib/shared-context";
 import { useRouter } from "next/navigation";
 import { logSet, type LogSetInput } from "@/app/client-actions-app";
 import { listQueued, outboxAvailable, putQueued, removeQueued, type QueuedSet } from "./outbox";
@@ -26,7 +27,7 @@ type OfflineSets = {
   dismissFailed: () => Promise<void>;
 };
 
-const Context = createContext<OfflineSets | null>(null);
+const Context = sharedContext<OfflineSets | null>("offline-sets", null);
 
 const RETRY_MS = 20_000;
 

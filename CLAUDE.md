@@ -220,6 +220,12 @@ third-party text writes it.
   each other and every page crawls. If `http://localhost:3000` already
   answers, attach with the `web-attached` launch entry instead. Before killing
   a stray `next dev`, check whose it is (`Get-CimInstance Win32_Process`).
+- **A React context is `sharedContext(key, default)` (`lib/shared-context.ts`), never a
+  bare `createContext`.** Under `next dev`, routes compiled at different times
+  hold separate instances of the same client module, and a concurrent request
+  to another route swaps the module loader mid-render: a hook then reads a
+  different context than its provider filled, and the page 500s ("useI18n
+  must be used inside <I18nProvider>", 2026-10-05). Production is unaffected.
 - `SUPABASE_TRACE=1` in `.env.local` logs every Supabase round trip with its
   duration to the dev server output — the first thing to reach for when a page
   is slow. Each PostgREST call from this box costs ~120–160 ms and an RPC
