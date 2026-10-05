@@ -1,7 +1,8 @@
 "use client";
 import {
-  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+  useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from "react";
+import { sharedContext } from "@/lib/shared-context";
 import {
   extendRest, isRestActive, markRestNotified, pauseRest, remainingMs, resumeRest, settleRest,
   skipRest, startRest,
@@ -48,7 +49,7 @@ type RestTimerContextValue = {
   finished: boolean;
 };
 
-const RestTimerContext = createContext<RestTimerContextValue | null>(null);
+const RestTimerContext = sharedContext<RestTimerContextValue | null>("rest-timer", null);
 
 const TICK_MS = 250;
 

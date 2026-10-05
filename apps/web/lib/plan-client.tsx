@@ -1,5 +1,6 @@
 "use client";
-import { createContext, useContext } from "react";
+import { useContext } from "react";
+import { sharedContext } from "@/lib/shared-context";
 import { ENTITLEMENTS, TIER_LABEL, type Entitlements } from "@healthapp/shared";
 
 export type Upgrade = { href: string; label: string };
@@ -22,7 +23,7 @@ export type ClientPlan = {
  * (an admin preview, a test) must never lock someone out of a feature
  * because nobody told it the plan.
  */
-const PlanContext = createContext<ClientPlan>({
+const PlanContext = sharedContext<ClientPlan>("plan", {
   e: ENTITLEMENTS.coach_pro,
   upgrade: { href: "/billing", label: TIER_LABEL.premium },
   libraryVideos: false,

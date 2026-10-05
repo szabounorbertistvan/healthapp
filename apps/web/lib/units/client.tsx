@@ -1,5 +1,6 @@
 "use client";
-import { createContext, useContext } from "react";
+import { useContext } from "react";
+import { sharedContext } from "@/lib/shared-context";
 import {
   formatLength, formatWeight, kgToDisplay, cmToDisplay,
   type LengthUnit, type WeightUnit,
@@ -15,7 +16,7 @@ import { useI18n } from "@/lib/i18n/client";
  * holds — so the fallback shows the stored number unconverted rather than a
  * converted-looking wrong one.
  */
-const UnitsContext = createContext<{ weight: WeightUnit; length: LengthUnit }>({
+const UnitsContext = sharedContext<{ weight: WeightUnit; length: LengthUnit }>("units", {
   weight: "kg",
   length: "cm",
 });
