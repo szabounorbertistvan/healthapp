@@ -60,6 +60,17 @@ local check, and it differs in ways that matter:
   carries only the columns the migrations and the admin panel actually read,
   and `auth.uid()` reads `request.jwt.claims` the way the real one does. There
   is no GoTrue, so nothing that depends on an actual sign-in is exercised.
+- **Supabase's default privileges are mirrored, and must stay mirrored.**
+  On a real stack every table, sequence and function `postgres` creates in
+  `public` is granted ALL to `anon`, `authenticated` and `service_role`, so a
+  migration that means "select only" must *revoke* the rest — granting less is
+  not enough. Until 2026-10-05 `bootstrap.sql` did not set these defaults, so
+  a missing revoke raised 42501 here and silently matched zero rows in CI
+  (advanced_achievements 31–33 and social_notifications 43 failed only in CI
+  for days; fixed by `20261030100000_engine_tables_read_only.sql`). Same for
+  stub `auth` tables: they must keep GoTrue's NOT NULLs without adding
+  defaults GoTrue lacks — `auth.audit_log_entries.id` had a default here and
+  none in GoTrue, so admin_panel aborted only in CI.
 - **No `pg_cron`, `pg_net` or `vault`.** The migrations already guard for their
   absence; anything gated behind them is simply not run here.
 - **No PostgREST.** These are SQL-level tests. RLS is exercised by setting the

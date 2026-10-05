@@ -62,8 +62,8 @@ insert into public.social_reactions (post_id, user_id) values
 
 -- a login, as GoTrue would record it
 update auth.users set last_sign_in_at = now() where id = 'e1000000-0000-0000-0000-000000000001';
-insert into auth.audit_log_entries (payload, created_at) values
-  (json_build_object('action', 'login', 'actor_id', 'e1000000-0000-0000-0000-000000000001', 'traits', json_build_object('provider', 'email')), now());
+insert into auth.audit_log_entries (id, payload, created_at) values
+  (gen_random_uuid(), json_build_object('action', 'login', 'actor_id', 'e1000000-0000-0000-0000-000000000001', 'traits', json_build_object('provider', 'email')), now());
 
 -- ============================================================
 -- 1. security: who may call the admin RPCs
