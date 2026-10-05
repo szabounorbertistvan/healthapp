@@ -56,8 +56,10 @@ create table auth.identities (
   last_sign_in_at timestamptz
 );
 
+-- No default on id, as in GoTrue: it supplies the id itself, so a test that
+-- forgets one must fail here the way it fails in CI.
 create table auth.audit_log_entries (
-  id uuid primary key default extensions.gen_random_uuid(),
+  id uuid primary key,
   instance_id uuid,
   payload json,
   created_at timestamptz default now(),
@@ -90,3 +92,15 @@ $$;
 
 grant usage on schema auth, extensions to anon, authenticated, service_role;
 grant select on auth.users to authenticated, service_role;
+
+-- Supabase's own default privileges: every table, sequence and function that
+-- `postgres` creates in `public` is granted in full to anon, authenticated and
+-- service_role. A migration that means "select only" has to revoke the rest;
+-- without these lines a missing revoke passed here and failed in CI.
+grant usage on schema public to anon, authenticated, service_role;
+alter default privileges for role postgres in schema public
+  grant all on tables to anon, authenticated, service_role;
+alter default privileges for role postgres in schema public
+  grant all on sequences to anon, authenticated, service_role;
+alter default privileges for role postgres in schema public
+  grant all on functions to anon, authenticated, service_role;
