@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  EMPTY_QUERY, clearFilters, discoverySearch, emptyKind, filterChips, hasFilters, hasMore, parseDiscoveryQuery,
-  searchArgs, toCoachCard, withChange, type CoachSearchRow, type DiscoveryFacets,
+  EMPTY_QUERY, clearFilters, discoverySearch, emptyKind, filterChips, hasFilters, hasMore, isDiscoveryHome, matchViewerCity,
+  normalizePlace, parseDiscoveryQuery, searchArgs, toCoachCard, withChange, type CoachSearchRow, type DiscoveryFacets,
 } from "./coach-discovery";
 
 const facets: DiscoveryFacets = {
@@ -11,9 +11,10 @@ const facets: DiscoveryFacets = {
   ],
   countries: [{ code: "RO", slug: "romania", name_en: "Romania", name_ro: "România", coaches: 2 }],
   cities: [{ slug: "cluj-napoca", name: "Cluj-Napoca", name_en: "Cluj-Napoca", country_code: "RO", coaches: 1 }],
+  gyms: [{ id: "0f0f0f0f-1111-4222-8333-444444444444", name: "Iron Temple", city: "cluj-napoca", coaches: 1 }],
 };
 const labels = {
-  online: "Online", inPerson: "In person", experience: "{n}+ years", priceFrom: "from {price}",
+  online: "Online", inPerson: "In person", hybrid: "Hybrid", verified: "Verified", experience: "{n}+ years", priceFrom: "from {price}",
   priceTo: "up to {price}", priceRange: "{min}–{max}", includeFull: "Incl. not accepting",
 };
 
@@ -84,8 +85,50 @@ describe("filters", () => {
   });
   it("clear filters keeps the text and the sort; clear all drops the text", () => {
     const q = { ...EMPTY_QUERY, q: "strength", online: true, sort: "newest" as const };
-    expect(clearFilters(q)).toEqual({ ...EMPTY_QUERY, q: "strength", sort: "newest" });
+    expect(clearFilters(q)).toEqual({ ...EMPTY_QUERY, q: "strength", sort: "newest", browse: true });
     expect(clearFilters(q, false).q).toBe("");
+  });
+  it("removing the last chip stays in the listing too", () => {
+    const [chip] = filterChips({ ...EMPTY_QUERY, online: true }, facets, "en", labels);
+    expect(discoverySearch(chip!.remove)).toBe("?all=1");
+  });
+  it("clearing stays in the listing, never back to the home", () => {
+    const cleared = clearFilters({ ...EMPTY_QUERY, online: true }, false);
+    expect(isDiscoveryHome(cleared)).toBe(false);
+    expect(discoverySearch(cleared)).toBe("?all=1");
+  });
+});
+
+describe("verified, hybrid, gym (20261027100000)", () => {
+  it("round-trip through the URL", () => {
+    const url = `?city=cluj-napoca&gym=0f0f0f0f-1111-4222-8333-444444444444&hybrid=true&verified=true`;
+    const q = parseDiscoveryQuery(new URLSearchParams(url));
+    expect(q).toMatchObject({ city: "cluj-napoca", gym: "0f0f0f0f-1111-4222-8333-444444444444", hybrid: true, verified: true });
+    expect(discoverySearch(q)).toBe(url);
+  });
+  it("a malformed gym id is dropped", () => {
+    expect(parseDiscoveryQuery({ gym: "not-a-uuid" }).gym).toBeNull();
+    expect(parseDiscoveryQuery({ gym: "' or 1=1 --" }).gym).toBeNull();
+  });
+  it("become RPC arguments, sent only when set (an unfiltered call fits the older signature)", () => {
+    expect(searchArgs({ ...EMPTY_QUERY, verified: true, hybrid: true, gym: "0f0f0f0f-1111-4222-8333-444444444444" }))
+      .toMatchObject({ p_verified: true, p_hybrid: true, p_gym: "0f0f0f0f-1111-4222-8333-444444444444" });
+    const args = searchArgs(EMPTY_QUERY);
+    expect("p_verified" in args || "p_hybrid" in args || "p_gym" in args).toBe(false);
+  });
+  it("each is a filter with its own chip", () => {
+    const q = { ...EMPTY_QUERY, city: "cluj-napoca", gym: "0f0f0f0f-1111-4222-8333-444444444444", hybrid: true, verified: true };
+    expect(hasFilters({ ...EMPTY_QUERY, verified: true })).toBe(true);
+    const chips = filterChips(q, facets, "en", labels);
+    expect(chips.map((c) => c.label)).toEqual(["Cluj-Napoca", "Iron Temple", "Hybrid", "Verified"]);
+    expect(chips[1]!.remove).toMatchObject({ gym: null, city: "cluj-napoca", hybrid: true });
+    // a gym belongs to its city: removing the city removes the gym
+    expect(chips[0]!.remove).toMatchObject({ city: null, gym: null });
+  });
+  it("combined filters all travel together, and a change goes back to page 1", () => {
+    const q = withChange({ ...EMPTY_QUERY, q: "alex", specializations: ["hypertrophy"], online: true, page: 3 }, { verified: true });
+    expect(q.page).toBe(1);
+    expect(discoverySearch(q)).toBe("?q=alex&online=true&specialization=hypertrophy&verified=true");
   });
 });
 
@@ -117,6 +160,7 @@ describe("card mapping", () => {
       href: "/coaches/ana", name: "Ana", avatarUrl: null, headline: "Strength coach", verified: true,
       city: "București", formats: ["online", "in_person"], years: 10, specializations: ["Forță"],
       moreSpecializations: 3, startingPrice: { cents: 20000, currency: "RON", unit: "month" }, followers: 12, accepting: true,
+      follow: null, isSelf: false,
     });
     expect(toCoachCard(row, "en").city).toBe("Bucharest");
   });
@@ -125,5 +169,73 @@ describe("card mapping", () => {
     expect(card.city).toBeNull();
     expect(card.formats).toEqual(["online"]);
     expect(card.years).toBeNull();
+  });
+});
+
+describe("follow on a card (20261026100000)", () => {
+  const row: CoachSearchRow = {
+    slug: "ana", display_name: "Ana", avatar_url: null, headline: null, verified: false, online: true, in_person: false,
+    coaching_since: null, accepting_clients: true, followers: 0, location: null, specializations: [], specializations_total: 0,
+    starting_price: null,
+  };
+  it("an anonymous search carries no follow target", () => {
+    expect(toCoachCard(row, "en").follow).toBeNull();
+  });
+  it("a signed-in search does, with the reader's state", () => {
+    expect(toCoachCard({ ...row, user_id: "u1", is_self: false, is_following: true, follows_me: false }, "en").follow)
+      .toEqual({ userId: "u1", following: true, followsMe: false });
+  });
+  it("never on your own card", () => {
+    const card = toCoachCard({ ...row, user_id: "me", is_self: true, is_following: false, follows_me: false }, "en");
+    expect(card.follow).toBeNull();
+    expect(card.isSelf).toBe(true);
+  });
+});
+
+describe("Discovery Home", () => {
+  it("is /coaches with nothing asked for", () => {
+    expect(isDiscoveryHome(EMPTY_QUERY)).toBe(true);
+    expect(isDiscoveryHome(parseDiscoveryQuery({ q: "cluj" }))).toBe(false);
+    expect(isDiscoveryHome(parseDiscoveryQuery({ online: "true" }))).toBe(false);
+    expect(isDiscoveryHome(parseDiscoveryQuery({ sort: "newest" }))).toBe(false);
+  });
+  it("?all=1 is the bare listing, and only it carries the flag", () => {
+    const all = parseDiscoveryQuery({ all: "1" });
+    expect(all.browse).toBe(true);
+    expect(isDiscoveryHome(all)).toBe(false);
+    expect(hasFilters(all)).toBe(false);
+    expect(discoverySearch(all)).toBe("?all=1");
+    // a filter already means the listing: no `all` next to it
+    expect(discoverySearch(withChange(all, { online: true }))).toBe("?online=true");
+    expect(emptyKind(0, all)).toBe("no_coaches");
+  });
+});
+
+describe("the reader's city", () => {
+  const cities: DiscoveryFacets["cities"] = [
+    { slug: "cluj-napoca", name: "Cluj-Napoca", name_en: "Cluj-Napoca", country_code: "RO", coaches: 2 },
+    { slug: "bucharest", name: "București", name_en: "Bucharest", country_code: "RO", coaches: 3 },
+    { slug: "iasi", name: "Iași", name_en: "Iasi", country_code: "RO", coaches: 1 },
+    { slug: "targu-mures", name: "Târgu Mureș", name_en: "Targu Mures", country_code: "RO", coaches: 1 },
+    { slug: "targu-jiu", name: "Târgu Jiu", name_en: "Targu Jiu", country_code: "RO", coaches: 1 },
+  ];
+  it("normalises case, diacritics and punctuation", () => {
+    expect(normalizePlace("  Cluj-Napoca ")).toBe("cluj napoca");
+    expect(normalizePlace("IAȘI")).toBe("iasi");
+  });
+  it("matches either language, without diacritics", () => {
+    expect(matchViewerCity("Bucuresti", cities)?.slug).toBe("bucharest");
+    expect(matchViewerCity("bucharest", cities)?.slug).toBe("bucharest");
+    expect(matchViewerCity("Iasi", cities)?.slug).toBe("iasi");
+  });
+  it("a unique prefix is enough, an ambiguous one is not", () => {
+    expect(matchViewerCity("Cluj", cities)?.slug).toBe("cluj-napoca");
+    expect(matchViewerCity("Targu", cities)).toBeNull();
+  });
+  it("nothing typed, or a city without coaches, is no match", () => {
+    expect(matchViewerCity(null, cities)).toBeNull();
+    expect(matchViewerCity("  ", cities)).toBeNull();
+    expect(matchViewerCity("Oradea", cities)).toBeNull();
+    expect(matchViewerCity("Clu", cities)).toBeNull();
   });
 });

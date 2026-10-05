@@ -172,5 +172,7 @@ describe("status", () => {
     expect(statusView("pending_review")).toMatchObject({ editable: false, action: "edit" });
     expect(statusView("published")).toMatchObject({ editable: false, action: "view" });
     expect(statusView("suspended")).toMatchObject({ editable: false, action: null, tone: "risk" });
+    // hidden (20261029100000): locked like published; Edit withdraws it, Show is its own button
+    expect(statusView("hidden")).toMatchObject({ editable: false, action: "edit", tone: "neutral" });
   });
 });

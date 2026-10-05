@@ -31,6 +31,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/exercises", label: n.exercises, icon: "M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM4 4v18M8 8h6" },
     { href: "/admin/nutrition", label: n.nutrition, icon: "M3 12h18a9 9 0 0 1-18 0zM8 12c0-3 2-5 5-6 2 2 3 4 1 6" },
     { href: "/admin/foods", label: n.foods, icon: "M5 4h14v4H5zM5 8v12h14V8M9 12h6" },
+    { href: "/admin/coaches", label: n.coaches, icon: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0M17 4l2 2 3-3" },
     { href: "/admin/gyms", label: t.gyms.admin.nav, icon: "M2 10v4M22 10v4M5 8v8M19 8v8M8 6v12M16 6v12M8 12h8M4 21h16" },
     { href: "/admin/social", label: n.social, icon: "M4 5h16v11H9l-5 4z" },
     { href: "/admin/challenges", label: n.challenges, icon: "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" },

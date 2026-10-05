@@ -6,9 +6,11 @@ import { Dialog } from "@base-ui/react/dialog";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { CoachProfileRow } from "@/lib/coach-profile";
-import { statusView, type StatusView } from "@/lib/coach-onboarding";
+import { statusView, summary, type StatusView } from "@/lib/coach-onboarding";
 import { BUTTON, SMALL_BUTTON } from "@/lib/form-classes";
-import { becomeCoach, saveCoachProfileDraft, withdrawCoachProfile } from "@/app/coach-profile-actions";
+import {
+  becomeCoach, hideCoachProfile, saveCoachProfileDraft, showCoachProfile, withdrawCoachProfile,
+} from "@/app/coach-profile-actions";
 import type { ActionResult } from "@/app/actions";
 import { Card, Switch } from "../ui";
 
@@ -108,6 +110,9 @@ export function CoachProfileSettingsCard({ status }: { status: CoachProfileRow["
  * are read-only (the database refuses the writes anyway): "Edit profile"
  * withdraws it to draft first — out of review, or offline if published — so
  * nothing changes on a public page without an admin approving it again.
+ *
+ * Published ↔ hidden is the coach's own switch (20261029100000): instant, and
+ * no review, because a hidden profile cannot be edited either.
  */
 export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow }) {
   const { t } = useI18n();
@@ -117,6 +122,7 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
   const view = statusView(profile.status);
   const [accepting, setAccepting] = useState(profile.accepting_clients);
   const [confirming, setConfirming] = useState(false);
+  const [confirmingHide, setConfirmingHide] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -124,6 +130,7 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
     profile.status === "draft" ? s.draftBody
       : profile.status === "pending_review" ? s.pendingBody
       : profile.status === "published" ? s.publishedBody
+      : profile.status === "hidden" ? s.hiddenBody
       : s.suspendedBody;
 
   function toggleAccepting(next: boolean) {
@@ -135,6 +142,36 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
         setAccepting(!next);
         setError(coachError(result));
       }
+    });
+  }
+
+  function hide() {
+    setError(null);
+    start(async () => {
+      const result = await hideCoachProfile();
+      setConfirmingHide(false);
+      if (!result.ok) {
+        setError(coachError(result));
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function show() {
+    setError(null);
+    start(async () => {
+      const result = await showCoachProfile();
+      if (result.missing?.length) {
+        const groups = t.coachProfile.publish.groups;
+        setError(fill(s.showMissing, { list: summary(result.missing).filter((x) => !x.done).map((x) => groups[x.group]).join(", ") }));
+        return;
+      }
+      if (!result.ok) {
+        setError(coachError(result));
+        return;
+      }
+      router.refresh();
     });
   }
 
@@ -159,6 +196,17 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
           {view.action === "view" ? (
             <Link href={`/coaches/${profile.slug}`} className={SMALL_BUTTON}>{s.viewPublic}</Link>
           ) : null}
+          {profile.status === "published" ? (
+            <button type="button" className={SMALL_BUTTON} disabled={pending} onClick={() => setConfirmingHide(true)}
+              data-testid="coach-hide">
+              {s.hide}
+            </button>
+          ) : null}
+          {profile.status === "hidden" ? (
+            <button type="button" className={BUTTON} disabled={pending} onClick={show} data-testid="coach-show">
+              {s.show}
+            </button>
+          ) : null}
           {view.action === "edit" || view.action === "view" ? (
             <button type="button" className={SMALL_BUTTON} disabled={pending} onClick={() => setConfirming(true)}>
               {s.edit}
@@ -175,7 +223,7 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
           {fill(s.reviewNote, { note: profile.review_note })}
         </p>
       ) : null}
-      {profile.status === "pending_review" || profile.status === "published" ? (
+      {profile.status === "pending_review" || profile.status === "published" || profile.status === "hidden" ? (
         <div className="mt-4">
           <Switch
             checked={accepting} onChange={toggleAccepting} disabled={pending}
@@ -192,12 +240,31 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
             <Dialog.Popup className="w-full max-w-md rounded-t-2xl border border-line bg-surface p-5 outline-none sm:rounded-2xl">
               <Dialog.Title className="text-base font-bold">{s.editConfirmTitle}</Dialog.Title>
               <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">
-                {profile.status === "published" ? s.editPublishedConfirm : s.editPendingConfirm}
+                {profile.status === "published" ? s.editPublishedConfirm
+                  : profile.status === "hidden" ? s.editHiddenConfirm : s.editPendingConfirm}
               </Dialog.Description>
               <div className="mt-5 flex flex-wrap justify-end gap-2">
                 <Dialog.Close className={SMALL_BUTTON}>{s.cancel}</Dialog.Close>
                 <button type="button" className={BUTTON} disabled={pending} onClick={withdraw}>
                   {s.editConfirm}
+                </button>
+              </div>
+            </Dialog.Popup>
+          </Dialog.Viewport>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={confirmingHide} onOpenChange={setConfirmingHide}>
+        <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
+          <Dialog.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6">
+            <Dialog.Popup className="w-full max-w-md rounded-t-2xl border border-line bg-surface p-5 outline-none sm:rounded-2xl">
+              <Dialog.Title className="text-base font-bold">{s.hideTitle}</Dialog.Title>
+              <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">{s.hideBody}</Dialog.Description>
+              <div className="mt-5 flex flex-wrap justify-end gap-2">
+                <Dialog.Close className={SMALL_BUTTON}>{s.cancel}</Dialog.Close>
+                <button type="button" className={BUTTON} disabled={pending} onClick={hide} data-testid="coach-hide-confirm">
+                  {s.hideConfirm}
                 </button>
               </div>
             </Dialog.Popup>

@@ -9,7 +9,8 @@
  * `Database` type in this repo, so the row shapes are written out by hand.
  */
 
-export const COACH_PROFILE_STATUSES = ["draft", "pending_review", "published", "suspended"] as const;
+/** hidden (20261029100000): published, then switched off by the coach; back without a review. */
+export const COACH_PROFILE_STATUSES = ["draft", "pending_review", "published", "hidden", "suspended"] as const;
 export type CoachProfileStatus = (typeof COACH_PROFILE_STATUSES)[number];
 
 export const SERVICE_KINDS = [
@@ -226,7 +227,7 @@ export type CoachPublicProfile = {
    * only when fitness_score_visibility is public; null otherwise. Absent in a
    * preview built from the draft.
    */
-  stats?: { posts: number; workouts: number | null; badges: number | null; fitness_score: number | null };
+  stats?: { posts: number; programs?: number; workouts: number | null; badges: number | null; fitness_score: number | null };
   badges: VerificationBadge[];
   specializations: { slug: string; name_en: string; name_ro: string; is_primary: boolean }[];
   languages: { code: string; name_en: string; name_ro: string; native_name: string }[];

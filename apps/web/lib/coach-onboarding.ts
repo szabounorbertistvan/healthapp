@@ -211,6 +211,7 @@ export function statusView(status: CoachProfileStatus): StatusView {
     case "draft": return { status, editable: true, action: "continue", tone: "neutral" };
     case "pending_review": return { status, editable: false, action: "edit", tone: "warn" };
     case "published": return { status, editable: false, action: "view", tone: "accent" };
+    case "hidden": return { status, editable: false, action: "edit", tone: "neutral" };
     case "suspended": return { status, editable: false, action: null, tone: "risk" };
   }
 }

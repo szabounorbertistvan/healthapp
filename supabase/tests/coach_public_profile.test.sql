@@ -12,7 +12,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(48);
+select plan(53);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -115,6 +115,14 @@ select ok(position('Secret block' in public.coach_public_programs('ana-coach')::
   'private, followers-only and archived routines never come out');
 select ok(position('@' in public.coach_public_programs('ana-coach')::text) = 0,
   'the routine author is the public name, never the e-mail full_name');
+-- 20261028100000: an anonymous card carries no account id and no source program id
+select ok(position('cf000000-0000-0000-0000-000000000001' in public.coach_public_programs('ana-coach')::text) = 0
+          and not exists (select 1 from jsonb_array_elements(public.coach_public_programs('ana-coach')) c
+                          where c ->> 'coach_id' is not null or c ->> 'client_id' is not null
+                             or c ->> 'author_id' is not null or c ->> 'source_program_id' is not null),
+  'anonymous program cards carry no account or source ids');
+select is((public.coach_public_profile('ana-coach') #>> '{stats,programs}')::int, 1,
+  'stats.programs counts exactly the programs the page lists');
 
 -- ============================================================================
 -- 2. draft / pending / suspended: nothing at all
@@ -208,6 +216,17 @@ values ('cf000000-0000-0000-0000-000000000001', 'cf000000-0000-0000-0000-0000000
 select pg_temp.authenticate_as('cf000000-0000-0000-0000-000000000003');
 select is(public.coach_public_profile('ana-coach'), null, 'a reader the coach blocked does not get the page');
 select is((select count(*)::int from public.coach_public_posts('ana-coach')), 0, 'nor the posts');
+select is(public.coach_viewer_state((select id from ids where slug = 'ana-coach')), null,
+  'nor any viewer state across the block (20261028100000)');
+
+reset role;
+select pg_temp.authenticate_as('cf000000-0000-0000-0000-000000000002');
+select ok(public.coach_viewer_state((select id from ids where slug = 'ana-coach')) is not null, 'the client still gets viewer state');
+reset role;
+update public.users set suspended_at = now() where id = 'cf000000-0000-0000-0000-000000000001';
+select pg_temp.authenticate_as('cf000000-0000-0000-0000-000000000002');
+select is(public.coach_viewer_state((select id from ids where slug = 'ana-coach')), null,
+  'no viewer state once the coach''s account is suspended');
 
 reset role;
 select * from finish();

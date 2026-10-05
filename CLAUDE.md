@@ -58,14 +58,14 @@ written. Every "client app" screen today is a web route under
 Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
 check-ins, messages, settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
 (overview, users, users/[id], activity, auth, invitations, workouts,
-exercises (+ /translate), foods, nutrition, gyms, social, challenges, notifications,
+exercises (+ /translate), foods, nutrition, gyms, coaches (+ /[id], the coach-profile review queue), social, challenges, notifications,
 feedback, errors, system, search) — its own layout, gated by `lib/admin/guard.ts` and, in the
 database, by `admin_assert()` inside every `admin_*` RPC
 (`20260920100000_admin_panel.sql`; reads in `lib/admin/data.ts`, writes in
 `app/admin-actions.ts`, strings in `messages/admin.ts`). `(client)` = today, workout (list of every
 published program → `workout/[dayId]` day overview + per-day history →
 `workout/[dayId]/log` set logger), workout/build, food, habits, progress,
-check-in, coach, billing. Ungrouped: landing `page.tsx`, `coaches` (Coach Discovery: search + filters, state in
+check-in, coach, billing. Ungrouped: landing `page.tsx`, `coaches` (Coach Discovery: bare `/coaches` is the Discovery Home, `?all=1` or any search/filter the listing; state in
 the URL) and `coaches/[slug]` (the public coach page) — own header layout, no session needed, login, complete-profile
 (username / sex / age / coach-or-client for accounts that signed up without
 them — both layouts redirect there while `users.username` is null), privacy,

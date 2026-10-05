@@ -153,10 +153,15 @@ async function discoveryClient() {
   return (await currentUserId()) ? await supabaseServer() : supabasePublic();
 }
 
-/** One page of coach cards — every filter, the order and the total in one RPC (search_coaches). */
-export async function searchCoaches(query: DiscoveryQuery): Promise<CoachSearchResult> {
+/**
+ * One page of coach cards — every filter, the order and the total in one RPC
+ * (search_coaches). `limit` overrides the page size (the Discovery Home's
+ * short rows); the total is the whole result either way.
+ */
+export async function searchCoaches(query: DiscoveryQuery, limit?: number): Promise<CoachSearchResult> {
   const client = await discoveryClient();
-  const { data, error } = await client.rpc("search_coaches", searchArgs(query));
+  const args = searchArgs(query);
+  const { data, error } = await client.rpc("search_coaches", limit ? { ...args, p_limit: limit } : args);
   if (error) throw new Error(`coach search: ${error.message}`);
   const result = data as CoachSearchResult | null;
   return { total: result?.total ?? 0, items: result?.items ?? [] };
@@ -167,5 +172,5 @@ export async function getDiscoveryFacets(): Promise<DiscoveryFacets> {
   const { data, error } = await supabasePublic().rpc("coach_discovery_facets");
   if (error) throw new Error(`coach facets: ${error.message}`);
   const f = data as Partial<DiscoveryFacets> | null;
-  return { specializations: f?.specializations ?? [], countries: f?.countries ?? [], cities: f?.cities ?? [] };
+  return { specializations: f?.specializations ?? [], countries: f?.countries ?? [], cities: f?.cities ?? [], gyms: f?.gyms ?? [] };
 }

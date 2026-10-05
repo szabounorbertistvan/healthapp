@@ -117,3 +117,43 @@ export function coachJsonLd(p: CoachPublicProfile, url: string, locale: Locale):
   };
   return { "@context": "https://schema.org", "@type": "ProfilePage", url, mainEntity: person };
 }
+
+// ---------- the page ----------
+
+/** How the coach works: both formats is "hybrid", the one word the page and the filters use. */
+export function coachFormat(p: Pick<CoachPublicProfile, "online" | "in_person">): "hybrid" | "online" | "in_person" | null {
+  if (p.online && p.in_person) return "hybrid";
+  if (p.online) return "online";
+  if (p.in_person) return "in_person";
+  return null;
+}
+
+/**
+ * "Why train with …": one line per fact the profile actually has, strongest
+ * first. Nothing is estimated and nothing is shown at zero — a coach with an
+ * empty profile gets an empty list, and the section draws only its CTA.
+ */
+export type WhyPoint =
+  | { kind: "verified" }
+  | { kind: "experience"; years: number }
+  | { kind: "since"; year: number }
+  | { kind: "focus"; slugs: string[] }
+  | { kind: "services"; n: number }
+  | { kind: "programs"; n: number }
+  | { kind: "posts"; n: number };
+
+export function coachWhyPoints(
+  p: Pick<CoachPublicProfile, "badges" | "coaching_since" | "specializations" | "services" | "stats">,
+  now = new Date(),
+): WhyPoint[] {
+  const points: WhyPoint[] = [];
+  if (p.badges.length > 0) points.push({ kind: "verified" });
+  const years = yearsOfExperience(p.coaching_since, now);
+  if (years) points.push({ kind: "experience", years });
+  else if (p.coaching_since) points.push({ kind: "since", year: p.coaching_since });
+  if (p.specializations.length > 0) points.push({ kind: "focus", slugs: p.specializations.slice(0, 3).map((s) => s.slug) });
+  if (p.services.length > 0) points.push({ kind: "services", n: p.services.length });
+  if (p.stats?.programs) points.push({ kind: "programs", n: p.stats.programs });
+  if (p.stats?.posts) points.push({ kind: "posts", n: p.stats.posts });
+  return points;
+}
