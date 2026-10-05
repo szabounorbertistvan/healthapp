@@ -18,11 +18,30 @@ async function anonymousPage(browser: Browser, viewport = { width: 1280, height:
 }
 
 test.describe("not public", () => {
-  test("an unknown slug is a 404", async ({ browser }) => {
+  test("an unknown slug is a 404 with a way back to discovery, never indexed", async ({ browser }) => {
     const { context, page } = await anonymousPage(browser);
     const response = await page.goto("/coaches/no-such-coach-e2e");
     expect(response?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: "Coach not found", level: 1 })).toBeVisible();
+    await expect(page).toHaveTitle("Coach not found | Voinic");
+    // ours, and the one Next adds to every not-found
+    await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute("content", /noindex/);
+    await page.getByRole("link", { name: "Browse coaches" }).click();
+    await expect(page).toHaveURL(/\/coaches$/);
     await context.close();
+  });
+
+  test.describe("a regular user", () => {
+    test.use({ storageState: authFile("client") });
+    test("their username is not a coach page, and they get the same not-found", async ({ page }) => {
+      // the seeded client has a social profile (/people/<id>) but no coach profile
+      await page.goto("/account");
+      const username = await page.getByLabel("Username").inputValue().catch(() => "");
+      test.skip(!username, "could not read the client's username");
+      const response = await page.goto(`/coaches/${username.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
+      expect(response?.status()).toBe(404);
+      await expect(page.getByTestId("coach-not-found")).toBeVisible();
+    });
   });
 
   test.describe("a draft", () => {
@@ -51,6 +70,10 @@ test.describe("published", () => {
     await expect(page.getByRole("heading", { name: "Services" })).toBeVisible();
     await expect(page.getByTestId("coach-public-services").locator("li").first()).toBeVisible();
     expect(await page.content()).not.toMatch(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}/);
+    // "why train with" is built from real facts only, and ends in the one real next step
+    await expect(page.getByTestId("coach-why")).toBeVisible();
+    await expect(page.getByTestId("coach-why")).not.toContainText(/rating|★|% of clients/i);
+    await expect(page.locator('meta[property="og:type"]')).toHaveAttribute("content", "profile");
     await expect(page).toHaveTitle(/\| Voinic$/);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/coaches/${PUBLISHED}$`));
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", /Voinic/);

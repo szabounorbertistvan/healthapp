@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CoachPublicProfile, CoachViewerState } from "./coach-profile";
 import {
-  coachJsonLd, coachPageDescription, coachPageTitle, startCoachingState, yearsOfExperience,
+  coachFormat, coachJsonLd, coachPageDescription, coachPageTitle, coachWhyPoints, startCoachingState, yearsOfExperience,
 } from "./coach-public";
 
 const profile: CoachPublicProfile = {
@@ -88,5 +88,37 @@ describe("metadata", () => {
     expect(offers[0]).toMatchObject({ name: "Online Coaching", price: "200.00", priceCurrency: "RON" });
     expect(offers[1]).not.toHaveProperty("price");
     expect(JSON.stringify(ld)).not.toContain("@coach");
+  });
+});
+
+describe("the page", () => {
+  it("names the format; both is hybrid", () => {
+    expect(coachFormat({ online: true, in_person: true })).toBe("hybrid");
+    expect(coachFormat({ online: true, in_person: false })).toBe("online");
+    expect(coachFormat({ online: false, in_person: true })).toBe("in_person");
+    expect(coachFormat({ online: false, in_person: false })).toBeNull();
+  });
+  it("why-points come only from facts the profile has, strongest first", () => {
+    const points = coachWhyPoints({ ...profile, stats: { posts: 3, programs: 2, workouts: null, badges: null, fitness_score: null } },
+      new Date("2026-10-05"));
+    expect(points).toEqual([
+      { kind: "verified" },
+      { kind: "experience", years: 10 },
+      { kind: "focus", slugs: ["hypertrophy", "strength"] },
+      { kind: "services", n: 2 },
+      { kind: "programs", n: 2 },
+      { kind: "posts", n: 3 },
+    ]);
+  });
+  it("an empty profile makes no claims — nothing at zero, nothing invented", () => {
+    const empty = { ...profile, badges: [], coaching_since: null, specializations: [], services: [],
+      stats: { posts: 0, programs: 0, workouts: null, badges: null, fitness_score: null } };
+    expect(coachWhyPoints(empty)).toEqual([]);
+    // a preview from the draft has no stats at all
+    expect(coachWhyPoints({ ...empty, stats: undefined })).toEqual([]);
+  });
+  it("a first-year coach shows the year, not \"0 years\"", () => {
+    expect(coachWhyPoints({ ...profile, badges: [], coaching_since: 2026 }, new Date("2026-10-05"))[0])
+      .toEqual({ kind: "since", year: 2026 });
   });
 });

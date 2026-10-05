@@ -1,4 +1,5 @@
--- pgTAP · Coach Discovery search (20261022100000)
+-- pgTAP · Coach Discovery search (20261022100000, viewer keys 20261026100000,
+-- verified / hybrid / gym filters 20261027100000)
 --
 -- search_coaches() and coach_discovery_facets() are open to anonymous callers.
 -- Only published coaches of live accounts come out, only public fields, and a
@@ -9,7 +10,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(47);
+select plan(64);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -101,14 +102,20 @@ update public.coach_profiles set status = 'published', published_at = now() wher
 update public.coach_profiles set status = 'pending_review' where slug = 'eva-pending-s';
 update public.coach_profiles set status = 'suspended', suspended_at = now(), suspension_reason = 'x' where slug = 'fane-susp-s';
 update public.users set suspended_at = now() where id = 'ce000000-0000-0000-0000-000000000010';
+insert into public.gyms (id, name, city, status)
+values ('ce000000-0000-0000-0000-0000000000f1', 'Iron Temple Gym', 'Cluj-Napoca', 'active'),
+       ('ce000000-0000-0000-0000-0000000000f2', 'Pending Gym', 'Cluj-Napoca', 'pending');
+update public.coach_locations set gym_id = 'ce000000-0000-0000-0000-0000000000f1', gym_name = 'Iron Temple Gym'
+ where coach_profile_id in (select id from public.coach_profiles where slug in ('ana-search', 'dan-draft-s'));
 insert into public.social_follows (follower_id, following_id)
-values ('ce000000-0000-0000-0000-000000000011', 'ce000000-0000-0000-0000-00000000000a');
+values ('ce000000-0000-0000-0000-000000000011', 'ce000000-0000-0000-0000-00000000000a'),
+       ('ce000000-0000-0000-0000-00000000000c', 'ce000000-0000-0000-0000-000000000011');
 
 -- ============================================================================
 -- 1. anonymous: who comes out
 -- ============================================================================
 select pg_temp.anonymous();
-select ok(has_function_privilege('anon', 'public.search_coaches(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, int, int)', 'execute'),
+select ok(has_function_privilege('anon', 'public.search_coaches(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, int, int, boolean, boolean, uuid)', 'execute'),
   '15. anonymous callers may search');
 select is((public.search_coaches() ->> 'total')::int, 2, '1. by default: the published coaches that accept clients');
 select is((public.search_coaches(p_accepting => false) ->> 'total')::int, 3, 'accepting=false lists every published coach');
@@ -120,7 +127,8 @@ select ok(position('@' in public.search_coaches(p_accepting => false)::text) = 0
           and position('999999' in public.search_coaches(p_accepting => false)::text) = 0,
   '5. no e-mail, no document, no private price in the result');
 select ok(not exists (select 1 from jsonb_array_elements(public.search_coaches(p_accepting => false) -> 'items') i
-                      where i ?| array['status', 'email', 'full_name', 'user_id', 'about', 'search_text', 'rank_score']),
+                      where i ?| array['status', 'email', 'full_name', 'user_id', 'about', 'search_text', 'rank_score',
+                                      'is_self', 'is_following', 'follows_me']),
   '5. no private or internal key on a card');
 
 -- ============================================================================
@@ -134,6 +142,7 @@ select is(pg_temp.slugs(public.search_coaches(p_query => 'cluj')), 'ana-search',
 select is(pg_temp.slugs(public.search_coaches(p_query => 'Bucuresti')), 'cristi-pl', '8. by city, without the diacritics');
 select is((public.search_coaches(p_query => 'românia') ->> 'total')::int, 2, 'by country');
 select is(pg_temp.slugs(public.search_coaches(p_query => 'meet prep')), 'cristi-pl', 'by service name');
+select is(pg_temp.slugs(public.search_coaches(p_query => 'iron temple')), 'ana-search', 'by the gym a coach works at (20261026100000)');
 select is(pg_temp.slugs(public.search_coaches(p_query => 'hypertrphy')), 'ana-search', 'a typo still finds the coach');
 select is((public.search_coaches(p_query => 'zzzqqq') ->> 'total')::int, 0, 'nonsense finds nobody');
 select is((public.search_coaches(p_query => $$'):*|!&$$) ->> 'total')::int, 2, 'tsquery syntax in the query is ignored');
@@ -150,6 +159,15 @@ select is((public.search_coaches(p_online => true, p_in_person => true, p_accept
 select is(pg_temp.slugs(public.search_coaches(p_accepting => true, p_sort => 'newest')), 'cristi-pl,ana-search',
   '11. accepting clients only');
 select is(pg_temp.slugs(public.search_coaches(p_city => 'cluj-napoca', p_accepting => false)), 'ana-search', 'city filter');
+select is(pg_temp.slugs(public.search_coaches(p_verified => true, p_accepting => false)), 'cristi-pl', 'verified only (20261027100000)');
+select is((public.search_coaches(p_verified => false, p_accepting => false) ->> 'total')::int, 3, 'verified off is no filter');
+select is(pg_temp.slugs(public.search_coaches(p_hybrid => true, p_accepting => false)), 'ana-search', 'hybrid: online and in person');
+select is(pg_temp.slugs(public.search_coaches(p_gym => 'ce000000-0000-0000-0000-0000000000f1', p_accepting => false)), 'ana-search',
+  'gym filter: the published coach there, not the draft one');
+select is((public.search_coaches(p_gym => 'ce000000-0000-0000-0000-0000000000f2') ->> 'total')::int, 0, 'a gym with no coach: nobody');
+select is(pg_temp.slugs(public.search_coaches(p_verified => true, p_in_person => true, p_specializations => array['powerlifting'],
+                                              p_city => 'bucharest', p_min_years => 5)), 'cristi-pl', 'filters combine (AND)');
+select is((public.search_coaches(p_verified => true, p_hybrid => true) ->> 'total')::int, 0, 'verified AND hybrid: nobody here');
 select is((public.search_coaches(p_country => 'romania', p_accepting => false) ->> 'total')::int, 2,
   'country filter (an online-only coach has no location)');
 select is(pg_temp.slugs(public.search_coaches(p_specializations => array['powerlifting', 'weight-loss'], p_accepting => false, p_sort => 'newest')),
@@ -193,6 +211,9 @@ select is((select (c ->> 'coaches')::int from jsonb_array_elements(public.coach_
 select is((select count(*)::int from jsonb_array_elements(public.coach_discovery_facets() -> 'cities')), 2,
   'only cities with a published coach are offered');
 select ok(jsonb_array_length(public.coach_discovery_facets() -> 'specializations') >= 11, 'every active specialization is offered');
+select is(public.coach_discovery_facets() -> 'gyms',
+  '[{"id": "ce000000-0000-0000-0000-0000000000f1", "name": "Iron Temple Gym", "city": "cluj-napoca", "coaches": 1}]'::jsonb,
+  'facets: active gyms with a published coach, counting only published ones');
 select throws_ok($$ select public.coach_search_tsquery('x') $$, '42501', null, 'the tsquery helper is internal');
 
 -- ============================================================================
@@ -201,12 +222,36 @@ select throws_ok($$ select public.coach_search_tsquery('x') $$, '42501', null, '
 reset role;
 select pg_temp.authenticate_as('ce000000-0000-0000-0000-000000000011');
 select is((public.search_coaches(p_accepting => false) ->> 'total')::int, 3, 'a signed-in reader sees the same coaches');
+-- the viewer keys (20261026100000): what a card's Follow button needs
+create or replace function pg_temp.card(p_slug text) returns jsonb language sql as $fn$
+  select i from jsonb_array_elements(public.search_coaches(p_accepting => false) -> 'items') i where i ->> 'slug' = p_slug;
+$fn$;
+select is(pg_temp.card('ana-search') ->> 'user_id', 'ce000000-0000-0000-0000-00000000000a', 'a signed-in reader gets the coach''s user id');
+select is(jsonb_build_object('is_self', pg_temp.card('ana-search') -> 'is_self', 'is_following', pg_temp.card('ana-search') -> 'is_following',
+                             'follows_me', pg_temp.card('ana-search') -> 'follows_me'),
+          '{"is_self": false, "is_following": true, "follows_me": false}'::jsonb, 'following a coach shows on their card');
+select is(pg_temp.card('cristi-pl') ->> 'follows_me', 'true', 'a coach who follows the reader: follows_me');
+select is(pg_temp.card('cristi-pl') ->> 'is_following', 'false', 'not followed back: is_following false');
+reset role;
+select pg_temp.authenticate_as('ce000000-0000-0000-0000-00000000000a');
+select is(pg_temp.card('ana-search') ->> 'is_self', 'true', 'a coach''s own card says is_self');
 reset role;
 insert into public.social_user_blocks (blocker_id, blocked_id)
 values ('ce000000-0000-0000-0000-00000000000a', 'ce000000-0000-0000-0000-000000000011');
 select pg_temp.authenticate_as('ce000000-0000-0000-0000-000000000011');
 select is(pg_temp.slugs(public.search_coaches(p_query => 'hypertrophy')), '', 'a coach who blocked the reader is not listed');
 
+reset role;
+-- a coach whose account is being deleted leaves search; a follower being deleted leaves the count
+insert into public.account_deletion_requests (user_id) values ('ce000000-0000-0000-0000-00000000000b');
+select pg_temp.anonymous();
+select is((public.search_coaches(p_accepting => false) ->> 'total')::int, 2, 'a coach with a pending account deletion is not listed');
+select is((public.search_coaches(p_query => 'Bogdan', p_accepting => false) ->> 'total')::int, 0, 'not even by name');
+reset role;
+insert into public.account_deletion_requests (user_id) values ('ce000000-0000-0000-0000-000000000011');
+select pg_temp.anonymous();
+select is((select (i ->> 'followers')::int from jsonb_array_elements(public.search_coaches(p_accepting => false) -> 'items') i
+            where i ->> 'slug' = 'ana-search'), 0, 'a follower with a pending deletion is not counted');
 reset role;
 select * from finish();
 rollback;

@@ -4,7 +4,7 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { CoachPublicProfile, VerificationBadge } from "@/lib/coach-profile";
 import { formatPrice } from "@/lib/coach-onboarding";
-import { yearsOfExperience } from "@/lib/coach-public";
+import { coachFormat, coachWhyPoints, yearsOfExperience } from "@/lib/coach-public";
 import { Avatar } from "../social";
 import { StartCoachingButton } from "./start-coaching";
 
@@ -21,15 +21,23 @@ import { StartCoachingButton } from "./start-coaching";
  * The layout reads its own width (a container query), not the window's: in
  * the wizard's narrow card it is one column, on the public page main column
  * plus a sticky sidebar. Sections with nothing in them are not drawn.
- * Reviews do not exist yet; when they do they are one more section here.
+ *
+ * One column (phones) is ordered for someone deciding: who → Follow / Start
+ * coaching → what they focus on → about → the key facts → services →
+ * certifications → programs → posts → why train with them. Wide, the facts
+ * move to the sticky sidebar. Reviews do not exist yet; when they do they are
+ * one more section here, and they feed "why train with".
  */
 export function CoachProfileView({
-  profile, follow, posts, programs,
+  profile, follow, posts, programs, live = false,
 }: {
   profile: CoachPublicProfile;
   follow?: React.ReactNode;
+  /** Whole sections (CoachSection + content), or nothing; the page decides whether there is anything to show. */
   posts?: React.ReactNode;
   programs?: React.ReactNode;
+  /** The public page: an empty field is left out, never shown as a "not written yet" placeholder. */
+  live?: boolean;
 }) {
   const { t, locale } = useI18n();
   const p = t.coachProfile.publicPage;
@@ -37,8 +45,10 @@ export function CoachProfileView({
   const years = yearsOfExperience(profile.coaching_since);
   const cityOf = (l: CoachPublicProfile["locations"][number]) => (locale === "ro" ? l.city : l.city_en);
   const local = <T extends { name_en: string; name_ro: string }>(x: T) => (locale === "ro" ? x.name_ro : x.name_en);
-  const formats = [profile.online ? t.coachProfile.preview.online : null, profile.in_person ? t.coachProfile.preview.inPerson : null]
-    .filter((x): x is string => Boolean(x));
+  const format = coachFormat(profile);
+  const formats = format === "hybrid" ? [p.hybridLong]
+    : format === "online" ? [t.coachProfile.preview.online]
+    : format === "in_person" ? [t.coachProfile.preview.inPerson] : [];
 
   return (
     <div className="@container">
@@ -71,9 +81,10 @@ export function CoachProfileView({
               </h1>
               <VerifiedBadges badges={profile.badges} />
             </div>
+            {profile.username ? <p className="mt-0.5 text-[14px] text-ink-faint">@{profile.username}</p> : null}
             {profile.headline ? (
               <p className="mt-1.5 text-[16px] text-ink-soft @2xl:text-[18px]">{profile.headline}</p>
-            ) : (
+            ) : live ? null : (
               <p className="mt-1.5 text-[16px] italic text-ink-faint">{t.coachProfile.preview.noHeadline}</p>
             )}
 
@@ -109,8 +120,6 @@ export function CoachProfileView({
       {/* ---------- body: main + sidebar ---------- */}
       <div className="mt-10 grid gap-10 @4xl:grid-cols-[minmax(0,1fr)_320px] @4xl:gap-12">
         <div className="min-w-0 space-y-12">
-          <About profile={profile} />
-
           {profile.specializations.length > 0 ? (
             <Section title={p.specializations}>
               <ul className="flex flex-wrap gap-2">
@@ -125,6 +134,12 @@ export function CoachProfileView({
               </ul>
             </Section>
           ) : null}
+          <About profile={profile} live={live} />
+
+          {/* one column: the facts right after About; wide: they live in the sidebar */}
+          <div className="@4xl:hidden">
+            <Facts profile={profile} formats={formats} years={years} />
+          </div>
 
           {profile.services.length > 0 ? (
             <Section title={p.services} id="services">
@@ -179,13 +194,16 @@ export function CoachProfileView({
             </Section>
           ) : null}
 
-          {posts ? <Section title={p.posts}>{posts}</Section> : null}
-          {programs ? <Section title={p.programs}>{programs}</Section> : null}
+          {/* whole sections from the page (CoachSection), streamed for a signed-in reader */}
+          {programs}
+          {posts}
+
+          <WhyCoach profile={profile} follow={follow} />
         </div>
 
-        <aside className="@4xl:sticky @4xl:top-6 @4xl:self-start">
+        <aside className="hidden @4xl:sticky @4xl:top-6 @4xl:block @4xl:self-start">
           <Facts profile={profile} formats={formats} years={years} />
-          <div className="mt-4 hidden @4xl:block">
+          <div className="mt-4">
             <StartCoachingButton className="w-full" />
           </div>
         </aside>
@@ -201,6 +219,11 @@ export function CoachProfilePreview({ profile }: { profile: CoachPublicProfile }
 
 function Dot() {
   return <span aria-hidden className="h-1 w-1 rounded-full bg-ink-faint" />;
+}
+
+/** A titled block of the coach page; exported for the sections the page builds itself (programs, posts). */
+export function CoachSection({ title, id, children }: { title: string; id?: string; children: React.ReactNode }) {
+  return <Section title={title} id={id}>{children}</Section>;
 }
 
 function Section({ title, id, children }: { title: string; id?: string; children: React.ReactNode }) {
@@ -233,11 +256,12 @@ function VerifiedBadges({ badges }: { badges: VerificationBadge[] }) {
 }
 
 /** About, folded after a few lines so a long story does not push Services off the screen. */
-function About({ profile }: { profile: CoachPublicProfile }) {
+function About({ profile, live }: { profile: CoachPublicProfile; live: boolean }) {
   const { t } = useI18n();
   const p = t.coachProfile.publicPage;
   const [open, setOpen] = useState(false);
   const text = profile.about?.trim();
+  if (!text && live) return null;
   const long = (text?.length ?? 0) > 420 || (text?.split("\n").length ?? 0) > 5;
   return (
     <Section title={p.aboutMe}>
@@ -294,6 +318,7 @@ function Facts({ profile, formats, years }: { profile: CoachPublicProfile; forma
   if (profile.stats) {
     // A zero is not social proof: only figures that say something are shown (followers always).
     if (profile.stats.posts > 0) stats.push({ label: p.publicPosts, value: profile.stats.posts });
+    if (profile.stats.programs) stats.push({ label: p.publicPrograms, value: profile.stats.programs });
     if (profile.stats.workouts) stats.push({ label: p.workouts, value: profile.stats.workouts });
     if (profile.stats.badges) stats.push({ label: p.badges, value: profile.stats.badges });
     if (profile.stats.fitness_score) stats.push({ label: p.fitnessScore, value: profile.stats.fitness_score });
@@ -321,5 +346,58 @@ function Facts({ profile, formats, years }: { profile: CoachPublicProfile; forma
         ))}
       </dl>
     </div>
+  );
+}
+
+/**
+ * The closing argument, for the reader who scrolled this far: only facts the
+ * profile has (coachWhyPoints — no ratings, client counts or success rates,
+ * none of which Voinic tracks), then the one real next step, Start coaching
+ * (a request the coach accepts; no payment). A coach who is full gets Follow
+ * instead of a dead button.
+ */
+function WhyCoach({ profile, follow }: { profile: CoachPublicProfile; follow?: React.ReactNode }) {
+  const { t, locale } = useI18n();
+  const p = t.coachProfile.publicPage;
+  const name = profile.display_name;
+  const specName = (slug: string) => {
+    const s = profile.specializations.find((x) => x.slug === slug);
+    return s ? (locale === "ro" ? s.name_ro : s.name_en) : slug;
+  };
+  const lines = coachWhyPoints(profile).map((pt) => {
+    switch (pt.kind) {
+      case "verified": return p.whyVerified;
+      case "experience": return fill(p.whyExperience, { n: pt.years });
+      case "since": return fill(p.whySince, { year: pt.year });
+      case "focus": return fill(p.whyFocus, { list: pt.slugs.map(specName).join(", ") });
+      case "services": return pt.n === 1 ? p.whyServicesOne : fill(p.whyServices, { n: pt.n });
+      case "programs": return pt.n === 1 ? p.whyProgramsOne : fill(p.whyPrograms, { n: pt.n });
+      case "posts": return fill(p.whyPosts, { n: pt.n });
+    }
+  });
+
+  return (
+    <section aria-labelledby="why-coach" data-testid="coach-why" className="rounded-3xl bg-surface p-6 @2xl:p-8">
+      <h2 id="why-coach" className="font-display text-[22px] font-extrabold leading-tight tracking-tight @2xl:text-[26px]">
+        {fill(p.whyTitle, { name })}
+      </h2>
+      {lines.length > 0 ? (
+        <ul className="mt-5 grid gap-2.5 @xl:grid-cols-2">
+          {lines.map((line) => (
+            <li key={line} className="flex items-start gap-2.5 text-[14.5px]">
+              <span aria-hidden className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-accent-fg">✓</span>
+              {line}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="mt-5 max-w-[60ch] text-[13.5px] text-ink-soft">
+        {fill(profile.accepting_clients ? p.whyHint : p.whyFull, { name })}
+      </p>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {profile.accepting_clients ? <StartCoachingButton /> : null}
+        {follow}
+      </div>
+    </section>
   );
 }

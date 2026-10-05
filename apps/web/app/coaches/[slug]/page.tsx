@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { APP_NAME, SITE_URL } from "@/lib/brand";
+import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { currentUserId } from "@/lib/supabase/server";
 import {
@@ -10,19 +12,21 @@ import {
 import { coachJsonLd, coachPageDescription, coachPageTitle, startCoachingState } from "@/lib/coach-public";
 import { getFeed } from "@/lib/social-data";
 import { getProfileRoutines } from "@/lib/routine-data";
-import { CoachProfileView } from "@/components/coach-profile/preview";
+import { CoachProfileView, CoachSection } from "@/components/coach-profile/preview";
+import { CoachSectionSkeleton } from "@/components/coach-profile/skeleton";
 import { StartCoachingProvider } from "@/components/coach-profile/start-coaching";
 import { PublicPostList } from "@/components/coach-profile/public-posts";
 import { FollowButton, PostCard } from "@/components/social";
 import { RoutineCardView } from "@/components/routine-card";
+import type { RoutineCard } from "@healthapp/shared";
 
 type Props = { params: Promise<{ slug: string }> };
 
 /** Every read here goes through coach_public_profile(); nothing unpublished is ever a page. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ slug }, { locale }] = await Promise.all([params, getI18n()]);
+  const [{ slug }, { t, locale }] = await Promise.all([params, getI18n()]);
   const profile = await getPublicCoachProfile(slug);
-  if (!profile) return { title: APP_NAME, robots: { index: false, follow: false } };
+  if (!profile) return { title: `${t.coachProfile.publicPage.notFoundTitle} | ${APP_NAME}`, robots: { index: false, follow: false } };
   const url = `${SITE_URL}/coaches/${profile.slug}`;
   const title = coachPageTitle(profile, locale, APP_NAME);
   const description = coachPageDescription(profile, locale);
@@ -33,6 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: url },
     openGraph: {
       type: "profile",
+      ...(profile.username ? { username: profile.username } : {}),
       url,
       title,
       description,
@@ -59,22 +64,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * the Social V2 PostCard (pictures, kudos, comments) and the routine cards
  * as the social profile shows them, the follow button, and their own state
  * (coach_viewer_state) for Start coaching.
+ *
+ * Round trips: an anonymous reader's three reads all take the slug, so they
+ * run side by side (one wave). A signed-in reader's need the profile's ids
+ * first: the viewer state is awaited (the buttons depend on it), the posts
+ * and programs stream in behind skeletons. Posts and programs are capped (3
+ * and 6), never a history. There is no route loading.tsx: it would start the
+ * response before notFound(), and an unknown or private coach must stay a 404.
  */
 export default async function CoachPage({ params }: Props) {
   const [{ slug }, { locale }, viewerId] = await Promise.all([params, getI18n(), currentUserId()]);
-  const profile = await getPublicCoachProfile(slug);
+  const signedIn = Boolean(viewerId);
+  // the public doors return nothing for a slug that is not a published coach, so they can start with the profile
+  const [profile, publicPosts, publicPrograms] = await Promise.all([
+    getPublicCoachProfile(slug),
+    signedIn ? Promise.resolve([]) : getPublicCoachPosts(slug),
+    signedIn ? Promise.resolve([]) : getPublicCoachPrograms(slug),
+  ]);
   if (!profile) notFound();
   if (slug !== profile.slug) notFound();
 
-  const signedIn = Boolean(viewerId);
   const coachId = profile.user_id; // set for a signed-in reader only
-  const [viewer, feed, routines, publicPosts, publicPrograms] = await Promise.all([
-    signedIn ? getCoachViewerState(profile.id) : Promise.resolve(null),
-    signedIn && coachId ? getFeed({ author: coachId }) : Promise.resolve(null),
-    signedIn && coachId ? getProfileRoutines(coachId) : Promise.resolve([]),
-    signedIn ? Promise.resolve([]) : getPublicCoachPosts(profile.slug),
-    signedIn ? Promise.resolve([]) : getPublicCoachPrograms(profile.slug),
-  ]);
+  const viewer = signedIn ? await getCoachViewerState(profile.id) : null;
   const state = startCoachingState(profile, viewer, { signedIn });
   const loginHref = `/login?${new URLSearchParams({ next: `/coaches/${profile.slug}` })}`;
   const allPostsHref = coachId ? `/people/${coachId}` : loginHref;
@@ -91,20 +102,23 @@ export default async function CoachPage({ params }: Props) {
     </Link>
   );
 
-  const posts = feed
-    ? feed.items.length > 0 ? (
-        <div className="grid gap-3">
-          {feed.items.slice(0, 3).map((post) => <PostCard key={post.id} post={post} />)}
-          <Link href={allPostsHref} className="text-[14px] font-semibold text-accent-ink hover:underline">{p.seeAllPosts} →</Link>
-        </div>
-      ) : null
-    : publicPosts.length > 0 ? <PublicPostList posts={publicPosts} allHref={allPostsHref} /> : null;
-
-  const cards = signedIn ? routines : publicPrograms;
-  const programs = cards.length > 0 ? (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {cards.map((card) => <RoutineCardView key={card.id} card={card} showSave={signedIn} />)}
-    </div>
+  const name = profile.display_name;
+  const postsTitle = fill(p.postsBy, { name });
+  const programsTitle = fill(p.programsBy, { name });
+  // anonymous: the public doors, already loaded; signed in: the social system's own reads, streamed
+  const posts = signedIn && coachId ? (
+    <Suspense fallback={<CoachSectionSkeleton cards={1} />}>
+      <SignedInPosts coachId={coachId} title={postsTitle} allHref={allPostsHref} seeAll={p.seeAllPosts} />
+    </Suspense>
+  ) : publicPosts.length > 0 ? (
+    <CoachSection title={postsTitle} id="posts"><PublicPostList posts={publicPosts} allHref={allPostsHref} /></CoachSection>
+  ) : null;
+  const programs = signedIn && coachId ? (
+    <Suspense fallback={<CoachSectionSkeleton />}>
+      <SignedInPrograms coachId={coachId} title={programsTitle} />
+    </Suspense>
+  ) : publicPrograms.length > 0 ? (
+    <CoachSection title={programsTitle} id="programs"><ProgramGrid cards={publicPrograms} showSave={false} /></CoachSection>
   ) : null;
 
   const jsonLd = coachJsonLd(profile, `${SITE_URL}/coaches/${profile.slug}`, locale);
@@ -117,8 +131,37 @@ export default async function CoachPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <StartCoachingProvider profile={profile} viewer={viewer} state={state}>
-        <CoachProfileView profile={profile} follow={follow} posts={posts} programs={programs} />
+        <CoachProfileView profile={profile} follow={follow} posts={posts} programs={programs} live />
       </StartCoachingProvider>
     </>
   );
+}
+
+function ProgramGrid({ cards, showSave }: { cards: RoutineCard[]; showSave: boolean }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {cards.map((card) => <RoutineCardView key={card.id} card={card} showSave={showSave} />)}
+    </div>
+  );
+}
+
+/** The coach's posts as the feed shows them to this reader (kudos, comments, pictures) — the first three. */
+async function SignedInPosts({ coachId, title, allHref, seeAll }: { coachId: string; title: string; allHref: string; seeAll: string }) {
+  const feed = await getFeed({ author: coachId });
+  if (feed.items.length === 0) return null;
+  return (
+    <CoachSection title={title} id="posts">
+      <div className="grid gap-3">
+        {feed.items.slice(0, 3).map((post) => <PostCard key={post.id} post={post} />)}
+        <Link href={allHref} className="text-[14px] font-semibold text-accent-ink hover:underline">{seeAll} →</Link>
+      </div>
+    </CoachSection>
+  );
+}
+
+/** The coach's programs this reader may see (social_profile_programs), with Save. */
+async function SignedInPrograms({ coachId, title }: { coachId: string; title: string }) {
+  const cards = await getProfileRoutines(coachId);
+  if (cards.length === 0) return null;
+  return <CoachSection title={title} id="programs"><ProgramGrid cards={cards} showSave /></CoachSection>;
 }

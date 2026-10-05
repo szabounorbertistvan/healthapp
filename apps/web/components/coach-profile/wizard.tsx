@@ -713,6 +713,28 @@ function PublishStep({
               ) : null}
             </li>
           ))}
+          {/* optional: worth adding, never required (coach_profile_missing() does not ask for them) */}
+          {[
+            { key: "certifications", done: certifications.length > 0, label: c.optionalCertifications, step: 3 },
+            { key: "cover", done: Boolean(data.profile.cover_url), label: c.optionalCover, step: null },
+          ].map((item) => (
+            <li key={item.key} className="flex items-center justify-between gap-3 text-[14px]" data-optional data-done={item.done}>
+              <span className="flex items-center gap-2">
+                <span aria-hidden className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                  item.done ? "bg-accent text-accent-fg" : "border border-line text-ink-faint"}`}>
+                  {item.done ? "✓" : ""}
+                </span>
+                <span className={item.done ? "" : "text-ink-soft"}>
+                  {item.label} <span className="text-[12px] text-ink-faint">· {c.optional}</span>
+                </span>
+              </span>
+              {!item.done && item.step !== null ? (
+                <button type="button" className="text-[13px] font-semibold text-accent-ink hover:underline" onClick={() => onGo(item.step!)}>
+                  {c.add}
+                </button>
+              ) : null}
+            </li>
+          ))}
         </ul>
         <p className={`${HINT} mt-4`}>{c.submitHint}</p>
         <div className="mt-4 flex flex-wrap gap-2">

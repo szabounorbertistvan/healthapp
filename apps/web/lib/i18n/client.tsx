@@ -1,8 +1,9 @@
 "use client";
-import { createContext, useContext } from "react";
+import { useContext } from "react";
+import { sharedContext } from "@/lib/shared-context";
 import type { Dictionary, Locale } from "./index";
 
-const I18nContext = createContext<{ locale: Locale; t: Dictionary } | null>(null);
+const I18nContext = sharedContext<{ locale: Locale; t: Dictionary } | null>("i18n", null);
 
 export function I18nProvider({
   locale,

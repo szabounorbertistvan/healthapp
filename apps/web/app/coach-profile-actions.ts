@@ -441,3 +441,37 @@ export async function withdrawCoachProfile(): Promise<ActionResult> {
   revalidateCoach(mine.slug);
   return { ok: true };
 }
+
+// ---------- hide / show (20261029100000) ----------
+
+/** Discovery and the coach's page: both change the moment a profile hides or shows. */
+function revalidateDiscovery(slug: string) {
+  revalidateCoach(slug);
+  revalidatePath("/coaches");
+}
+
+/** published → hidden: out of discovery at once; the account, posts and programs are untouched. */
+export async function hideCoachProfile(): Promise<ActionResult> {
+  const mine = await myProfile();
+  if (!("profileId" in mine)) return mine;
+  const { error } = await mine.live.supabase.rpc("hide_coach_profile");
+  if (error) return failure(error);
+  revalidateDiscovery(mine.slug);
+  return { ok: true };
+}
+
+/**
+ * hidden → published, without a new review (the content could not change
+ * while hidden). The database re-runs the checklist; what is missing comes
+ * back instead of an error, and the profile stays hidden.
+ */
+export async function showCoachProfile(): Promise<ActionResult & { missing?: CoachProfileMissing[] }> {
+  const mine = await myProfile();
+  if (!("profileId" in mine)) return mine;
+  const { data, error } = await mine.live.supabase.rpc("show_coach_profile");
+  if (error) return failure(error);
+  const missing = (data ?? []) as CoachProfileMissing[];
+  if (missing.length > 0) return { ok: false, errorCode: "PROFILE_INCOMPLETE", message: "PROFILE_INCOMPLETE", missing };
+  revalidateDiscovery(mine.slug);
+  return { ok: true };
+}

@@ -52,6 +52,10 @@ test.describe("access", () => {
       await page.goto("/account");
       await expect(page.getByRole("button", { name: "Become a coach" })).toBeVisible();
     });
+    test("the coach review queue is admin-only", async ({ page }) => {
+      await page.goto("/admin/coaches");
+      await expect(page).toHaveURL(/\/today$/);
+    });
   });
 
   test.describe("coach", () => {
@@ -59,6 +63,12 @@ test.describe("access", () => {
     test("settings show the coach profile card", async ({ page }) => {
       await page.goto("/settings");
       await expect(page.getByText("Coach profile", { exact: true }).or(page.getByText("Coach on Voinic"))).toBeVisible();
+    });
+    test("a coach cannot open the review queue or a review page either", async ({ page }) => {
+      await page.goto("/admin/coaches");
+      await expect(page).toHaveURL(/\/dashboard$/);
+      await page.goto("/admin/coaches/00000000-0000-4000-8000-000000000000");
+      await expect(page).toHaveURL(/\/dashboard$/);
     });
   });
 });
@@ -172,7 +182,9 @@ test.describe("wizard", () => {
     await expect(page.getByText("This is how people will see your page.")).toBeVisible();
     const summary = page.getByTestId("coach-submit-summary");
     await expect(summary.getByText("Professional information")).toBeVisible();
-    const open = await summary.locator("li[data-done=false]").count();
+    // optional rows (certifications, cover) show as open circles but never block submitting
+    await expect(summary.locator("li[data-optional]")).toHaveCount(2);
+    const open = await summary.locator("li[data-done=false]:not([data-optional])").count();
     const submit = summary.getByRole("button", { name: "Submit for review" });
     if (open > 0) await expect(submit).toBeDisabled();
     else await expect(submit).toBeEnabled();

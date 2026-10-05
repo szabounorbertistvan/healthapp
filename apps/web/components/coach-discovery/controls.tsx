@@ -22,17 +22,23 @@ const PATH = "/coaches";
 /**
  * A filter, sort or chip is a step the reader may want to go back from, so it
  * pushes a history entry; the debounced search text replaces the current one
- * (one entry per search, not one per word).
+ * (one entry per search, not one per word). Every control here leads to the
+ * listing, so turning the last filter off shows every coach (?all=1) rather
+ * than swapping the page for the Discovery Home under the reader's hand.
  */
 function useDiscoveryNav() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const go = (next: DiscoveryQuery, mode: "push" | "replace" = "push") =>
-    start(() => router[mode](`${PATH}${discoverySearch(next)}`, { scroll: false }));
+    start(() => router[mode](`${PATH}${discoverySearch({ ...next, browse: true })}`, { scroll: false }));
   return { go, pending };
 }
 
-/** The big search box. Debounced (250 ms, as PeopleSearchBox) — not a request per key. */
+/**
+ * The big search box. Debounced (250 ms, as PeopleSearchBox) — not a request
+ * per key — and every filter in the URL rides along. Emptying it shows every
+ * coach (?all=1, see useDiscoveryNav).
+ */
 export function CoachSearchBox({ query }: { query: DiscoveryQuery }) {
   const { t } = useI18n();
   const d = t.coachProfile.discovery;
@@ -67,10 +73,49 @@ export function CoachSearchBox({ query }: { query: DiscoveryQuery }) {
         <input
           type="search" name="q" value={q} maxLength={100} onChange={(e) => setQ(e.target.value)}
           placeholder={d.searchPlaceholder} autoComplete="off" enterKeyHint="search"
-          className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-faint"
+          className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-faint [&::-webkit-search-cancel-button]:hidden"
         />
+        {q ? (
+          <button
+            type="button" aria-label={d.clearSearch} title={d.clearSearch}
+            onClick={() => { setQ(""); go(withChange(latest.current, { q: "" })); }}
+            className="-mr-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-faint hover:bg-bg hover:text-ink"
+          >
+            <NavIcon d="M6 6l12 12M18 6L6 18" className="h-4 w-4" />
+          </button>
+        ) : null}
       </label>
     </form>
+  );
+}
+
+/**
+ * The hero's location control: the cities that have a published coach
+ * (coach_discovery_facets), the same filter as the sidebar's city select.
+ */
+export function CitySelect({ query, facets }: { query: DiscoveryQuery; facets: DiscoveryFacets }) {
+  const { t, locale } = useI18n();
+  const h = t.coachProfile.discovery.home;
+  const { go, pending } = useDiscoveryNav();
+  const id = useId();
+  return (
+    <div className="relative sm:w-[220px]">
+      <label htmlFor={id} className="sr-only">{h.cityLabel}</label>
+      <NavIcon
+        d="M12 21s-7-6.1-7-11.5a7 7 0 1 1 14 0C19 14.9 12 21 12 21zm0-9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"
+        className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-faint"
+      />
+      <select
+        id={id} aria-busy={pending} value={query.city ?? ""}
+        onChange={(e) => go(withChange(query, { city: e.target.value || null }))}
+        className="h-14 w-full appearance-none rounded-2xl border border-line bg-surface pl-11 pr-4 text-[15px] text-ink shadow-sm outline-none focus:border-accent"
+      >
+        <option value="">{h.anyCity}</option>
+        {facets.cities.map((c) => (
+          <option key={c.slug} value={c.slug}>{locale === "ro" ? c.name : c.name_en} ({c.coaches})</option>
+        ))}
+      </select>
+    </div>
   );
 }
 
@@ -103,6 +148,8 @@ function FilterFields({ query, facets }: { query: DiscoveryQuery; facets: Discov
     const country = facets.countries.find((x) => x.slug === query.country);
     return !country || c.country_code === country.code;
   });
+  // the gyms of the chosen city, or of the cities left by the chosen country
+  const gyms = facets.gyms.filter((g) => (query.city ? g.city === query.city : cities.some((c) => c.slug === g.city)));
 
   // prices: typed freely, applied after a pause
   const [min, setMin] = useState(query.priceMin?.toString() ?? "");
@@ -125,16 +172,26 @@ function FilterFields({ query, facets }: { query: DiscoveryQuery; facets: Discov
         <legend className={LABEL}>{d.location}</legend>
         <label className="sr-only" htmlFor={`${ids}-country`}>{d.country}</label>
         <select id={`${ids}-country`} className={FIELD} value={query.country ?? ""}
-          onChange={(e) => go(withChange(query, { country: e.target.value || null, city: null }))}>
+          onChange={(e) => go(withChange(query, { country: e.target.value || null, city: null, gym: null }))}>
           <option value="">{d.anyCountry}</option>
           {facets.countries.map((c) => <option key={c.slug} value={c.slug}>{name(c)} ({c.coaches})</option>)}
         </select>
         <label className="sr-only" htmlFor={`${ids}-city`}>{d.city}</label>
         <select id={`${ids}-city`} className={FIELD} value={query.city ?? ""}
-          onChange={(e) => go(withChange(query, { city: e.target.value || null }))}>
+          onChange={(e) => go(withChange(query, { city: e.target.value || null, gym: null }))}>
           <option value="">{d.anyCity}</option>
           {cities.map((c) => <option key={c.slug} value={c.slug}>{locale === "ro" ? c.name : c.name_en} ({c.coaches})</option>)}
         </select>
+        {gyms.length > 0 || query.gym ? (
+          <>
+            <label className="sr-only" htmlFor={`${ids}-gym`}>{d.gym}</label>
+            <select id={`${ids}-gym`} className={FIELD} value={query.gym ?? ""}
+              onChange={(e) => go(withChange(query, { gym: e.target.value || null }))}>
+              <option value="">{d.anyGym}</option>
+              {gyms.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.coaches})</option>)}
+            </select>
+          </>
+        ) : null}
       </fieldset>
 
       <fieldset>
@@ -142,7 +199,9 @@ function FilterFields({ query, facets }: { query: DiscoveryQuery; facets: Discov
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Chip on={query.online} onToggle={() => go(withChange(query, { online: !query.online }))}>{d.online}</Chip>
           <Chip on={query.inPerson} onToggle={() => go(withChange(query, { inPerson: !query.inPerson }))}>{d.inPerson}</Chip>
+          <Chip on={query.hybrid} onToggle={() => go(withChange(query, { hybrid: !query.hybrid }))}>{d.hybrid}</Chip>
         </div>
+        <p className={HINT}>{d.hybridHint}</p>
       </fieldset>
 
       <fieldset>
@@ -191,6 +250,11 @@ function FilterFields({ query, facets }: { query: DiscoveryQuery; facets: Discov
       </fieldset>
 
       <Switch
+        checked={query.verified} onChange={(v) => go(withChange(query, { verified: v }))}
+        label={d.verifiedOnly} hint={d.verifiedHint} onLabel={w.on} offLabel={w.off}
+      />
+
+      <Switch
         checked={query.accepting} onChange={(v) => go(withChange(query, { accepting: v }))}
         label={d.acceptingOnly} hint={d.acceptingHint} onLabel={w.on} offLabel={w.off}
       />
@@ -212,7 +276,9 @@ export function FiltersSidebar({ query, facets }: { query: DiscoveryQuery; facet
 }
 
 /** Phones and tablets: [Filters (n)] opens a bottom sheet; [Sort] sits beside it. */
-export function MobileFilterBar({ query, facets, active }: { query: DiscoveryQuery; facets: DiscoveryFacets; active: number }) {
+export function MobileFilterBar({ query, facets, active, total }: {
+  query: DiscoveryQuery; facets: DiscoveryFacets; active: number; total: number;
+}) {
   const { t } = useI18n();
   const d = t.coachProfile.discovery;
   const [open, setOpen] = useState(false);
@@ -228,7 +294,7 @@ export function MobileFilterBar({ query, facets, active }: { query: DiscoveryQue
           <Dialog.Viewport className="fixed inset-0 z-50 flex items-end justify-center">
             <Dialog.Popup className="flex max-h-[88dvh] w-full max-w-lg flex-col rounded-t-2xl border border-line bg-surface outline-none">
               <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-                <Dialog.Title className="font-display text-lg font-bold">{d.filters}</Dialog.Title>
+                <Dialog.Title className="font-display text-lg font-bold">{d.filters}{active > 0 ? ` (${active})` : ""}</Dialog.Title>
                 <Link href={`${PATH}${discoverySearch(clearFilters(query))}`} scroll={false}
                   className="text-[13px] font-semibold text-accent-ink">{d.clearAll}</Link>
               </div>
@@ -236,7 +302,10 @@ export function MobileFilterBar({ query, facets, active }: { query: DiscoveryQue
                 <FilterFields query={query} facets={facets} />
               </div>
               <div className="border-t border-line px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-                <Dialog.Close className={`${BUTTON} w-full`}>{d.done}</Dialog.Close>
+                {/* every tap above already ran the search: this only closes, with the live count */}
+                <Dialog.Close className={`${BUTTON} w-full`} data-testid="filters-show">
+                  {total === 0 ? d.showNone : total === 1 ? d.showCountOne : fill(d.showCount, { n: total })}
+                </Dialog.Close>
               </div>
             </Dialog.Popup>
           </Dialog.Viewport>
@@ -270,7 +339,7 @@ export function ActiveFilters({ query, facets }: { query: DiscoveryQuery; facets
   const { t, locale } = useI18n();
   const d = t.coachProfile.discovery;
   const chips = filterChips(query, facets, locale, {
-    online: d.online, inPerson: d.inPerson, experience: d.yearsPlus, priceFrom: d.priceFrom,
+    online: d.online, inPerson: d.inPerson, hybrid: d.hybrid, verified: d.verifiedChip, experience: d.yearsPlus, priceFrom: d.priceFrom,
     priceTo: d.priceTo, priceRange: d.priceRange, includeFull: d.includeFull,
   });
   if (chips.length === 0) return null;

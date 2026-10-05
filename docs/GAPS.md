@@ -145,8 +145,71 @@ newest; relevance; most experienced; most followed; newest), 24 per page with a 
 filtered URLs are `noindex`. `rank_score` is still never written and not used. e2e:
 `e2e/coach-discovery.spec.ts` (cards need `E2E_PUBLISHED_COACH`).
 
-Not built: sitemap / robots, city / specialization landing pages, the admin review queue UI (admins can only publish via
-the `admin_*` RPCs), notifications for requests (the coach has no inbox for them yet — requests are only in
+Discovery Home (2026-10-05, migration `20261026100000_coach_search_viewer.sql`, applied live
+2026-10-05, no drift after): bare `/coaches` is now a home page, not the listing —
+hero + search + city picker, quick filters (Near me, Online, In person, four specializations;
+all plain links into the listing), "Recommended coaches" (the same deterministic `recommended`
+order, first 8; it falls back to coaches not taking clients before saying "no coaches"),
+"Coaches near you" and "Explore by specialty". `?all=1` (`DiscoveryQuery.browse`) is the bare
+listing; any search or filter is the listing too. **Near you is only the free-text
+`users.city`** from the reader's profile, matched to a city that has a coach
+(`matchViewerCity`: exact name in either language, or a unique prefix — "Cluj"). No
+geolocation, no gym-based proximity. Anonymous readers get a city picker instead. Coach cards
+carry the existing `FollowButton`: the migration adds `user_id`, `is_self`, `is_following`,
+`follows_me` to `search_coaches()` items **for signed-in callers only** (anonymous output
+unchanged), and puts `coach_locations.gym_name` into `search_text` (search by gym). The home
+with real coach cards has not been checked against the live project yet (no published coach
+there; the published-coach e2e cases skip). Not built: personalised recommendations, specialization counts on the tiles,
+"coaches at your gym" on the home (`gym_coaches_at()` exists).
+
+Search & filters v2 (2026-10-05, migration `20261027100000_coach_search_filters.sql`, **not
+pushed live** at the time of writing): `search_coaches()` gains `p_verified` (an accepted
+`coach_verifications` row), `p_hybrid` (online AND in person) and `p_gym` (a
+`coach_locations.gym_id`); `coach_discovery_facets()` returns `gyms` (active gyms with a
+published coach). Followers on a card no longer count accounts with a pending deletion. The
+app sends the three new arguments only when set, so everything else keeps working before the
+push; `?verified=true`, `?hybrid=true` and `?gym=` return 500 until it lands, so **push the
+migration before deploying this code**. In the listing, removing the last filter, Clear all and
+emptying the search all stay in the listing (`?all=1`) instead of jumping to the home. Not
+filterable (no structured data): languages are stored (`coach_languages`) but have no filter
+yet; there are no ratings/reviews, no price-per-session normalisation across units, no
+distance (gyms have lat/lng, coaches do not), no availability calendar. Lint: the repo has no
+ESLint config (`next lint` only offers to create one).
+
+Public coach page v2 (2026-10-05, migration `20261028100000_coach_public_hardening.sql`, **not
+pushed live** at the time of writing). Privacy: `coach_public_programs()` (anonymous) returned
+whole `program_card_rows()` rows — coach_id / client_id / author_id (the coach's account id) and
+source_program_id; they are now null. `coach_viewer_state()` now refuses suspended, deleting and
+blocked coaches like `coach_public_visible()`. `stats.programs` (exact count of the public
+programs the page lists) is new. Page: mobile order identity → actions → specializations → about
+→ facts → services → certifications → programs → posts → "Why train with …" (built only from
+real fields: verification, experience, specializations, service / program / post counts — no
+ratings, client counts or outcomes, none of which exist); `@username`; "Hybrid" when a coach is
+online and in person; empty About / headline are left out on the live page (placeholders stay in
+the onboarding preview); anonymous reads run in one wave; signed-in posts / programs stream
+behind `CoachSectionSkeleton`. **No route `loading.tsx` on purpose**: it starts the response
+before `notFound()` and turns the 404 into a 200. `app/coaches/[slug]/not-found.tsx` is the same
+page for unknown, unpublished, suspended and blocked. Open: a signed-in not-found intermittently
+500s app-wide on the dev server (`useI18n must be used inside <I18nProvider>`, also on
+/achievements and /exercises) — not coach-specific. `/people/[id]` does not yet link to a coach's
+page (needs the slug in the social profile read). Reviews, ratings and booking do not exist.
+
+Onboarding v2 (2026-10-05, migration `20261029100000_coach_hide_and_review.sql`, **not pushed
+live** at the time of writing). Pre-moderation kept (the user, 2026-10-05). New: the coach's own
+**Hide / Show** switch — status `hidden`, published ↔ hidden instantly with no new review, because
+content is locked outside draft; Show re-runs `coach_profile_missing()` and refuses (staying
+hidden) if e.g. the photo was removed; withdraw works from hidden. Every public door already
+requires `published`, so hidden leaves search, facets, the page and requests at once. The admin
+review UI exists: `/admin/coaches` (queue by status, counts) and `/admin/coaches/[id]` (the
+profile drawn with the public page's component via `admin_coach_review()`, plus Approve / Send
+back with a note / Take offline / Suspend / Restore — exactly the transitions SQL allows, each
+audited). Approving never verifies. The publish checklist shows certifications and cover as
+optional ○ rows. Until the migration is live the two admin pages read nothing (the RPCs do not
+exist) — push before deploying. The coach is not notified of a decision (they see it on
+/settings/coach-profile); verification has RPCs but no admin UI yet.
+
+Not built: sitemap / robots, city / specialization landing pages, notifications for coach-profile
+decisions and for requests (the coach has no inbox for them yet — requests are only in
 the table), certification document upload
 (no private storage path yet), reviews, booking, payments.
 **`accept_coaching_request` does not exist**: what happens to a client who
