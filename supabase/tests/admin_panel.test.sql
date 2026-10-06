@@ -62,8 +62,8 @@ insert into public.social_reactions (post_id, user_id) values
 
 -- a login, as GoTrue would record it
 update auth.users set last_sign_in_at = now() where id = 'e1000000-0000-0000-0000-000000000001';
-insert into auth.audit_log_entries (payload, created_at) values
-  (json_build_object('action', 'login', 'actor_id', 'e1000000-0000-0000-0000-000000000001', 'traits', json_build_object('provider', 'email')), now());
+insert into auth.audit_log_entries (id, payload, created_at) values
+  (gen_random_uuid(), json_build_object('action', 'login', 'actor_id', 'e1000000-0000-0000-0000-000000000001', 'traits', json_build_object('provider', 'email')), now());
 
 -- ============================================================
 -- 1. security: who may call the admin RPCs
@@ -226,7 +226,7 @@ select is((select (public.admin_auth_stats() -> 'logins_by_provider_30d' ->> 'em
 select is((select (public.admin_workout_stats(30) ->> 'completed')::int), 2, 'admin_workout_stats counts completed sessions');
 select is((select (public.admin_workout_stats(30) -> 'top_exercises' -> 0 ->> 'name')), 'Bench Press', '…and ranks the exercise');
 select is((select (public.admin_exercises(p_search => 'bench') ->> 'total')::int), 1, 'admin_exercises searches');
-select is((select (public.admin_exercises() -> 'rows' -> 0 ->> 'logged_sets')::int), 3, '…and counts the sets that reference it');
+select is((select (public.admin_exercises(p_search => 'bench') -> 'rows' -> 0 ->> 'logged_sets')::int), 3, '…and counts the sets that reference it');
 select is((select (public.admin_nutrition_stats(30) ->> 'foods_no_kcal')::int), 1, 'admin_nutrition_stats flags the food without kcal');
 select is((select (public.admin_nutrition_stats(30) -> 'logs_by_method' ->> 'barcode')::int), 1, '…and counts barcode logs');
 select is((select (public.admin_social_posts(p_status => 'deleted') ->> 'total')::int), 1, 'admin_social_posts filters deleted posts');

@@ -57,7 +57,7 @@ create table auth.identities (
 );
 
 create table auth.audit_log_entries (
-  id uuid primary key default extensions.gen_random_uuid(),
+  id uuid primary key,  -- no default, as on Supabase: an insert must name it
   instance_id uuid,
   payload json,
   created_at timestamptz default now(),
@@ -90,3 +90,11 @@ $$;
 
 grant usage on schema auth, extensions to anon, authenticated, service_role;
 grant select on auth.users to authenticated, service_role;
+
+-- Supabase's default ACL for `postgres` in `public` (verified live 2026-10-05):
+-- every table a migration creates starts with ALL for anon and authenticated.
+-- Without it here, a missing revoke passes offline and fails in CI.
+alter default privileges for role postgres in schema public
+  grant all on tables to anon, authenticated, service_role;
+alter default privileges for role postgres in schema public
+  grant usage, select, update on sequences to anon, authenticated, service_role;
