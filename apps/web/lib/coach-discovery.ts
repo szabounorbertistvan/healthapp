@@ -274,6 +274,10 @@ export type CoachSearchRow = {
   is_self?: boolean;
   is_following?: boolean;
   follows_me?: boolean;
+  /** The caller's own shortlist (20261102100000); absent for anonymous callers. */
+  is_saved?: boolean;
+  /** The profile id (public already), for the Save button. Absent before 20261102100000. */
+  id?: string;
 };
 export type CoachSearchResult = { total: number; items: CoachSearchRow[] };
 
@@ -298,6 +302,12 @@ export type CoachCardModel = {
    * anonymous reader gets a sign-in link, the coach themselves nothing.
    */
   follow: { userId: string; following: boolean; followsMe: boolean } | null;
+  /**
+   * The Save button's state: null when it cannot be shown as a toggle (an
+   * anonymous reader — Save then leads to sign-in — or the coach's own card).
+   */
+  save: { profileId: string; saved: boolean } | null;
+  profileId: string | null;
   isSelf: boolean;
 };
 
@@ -322,6 +332,8 @@ export function toCoachCard(row: CoachSearchRow, locale: "en" | "ro", now = new 
       ? { userId: row.user_id, following: row.is_following === true, followsMe: row.follows_me === true }
       : null,
     isSelf: row.is_self === true,
+    save: row.id && row.user_id && !row.is_self ? { profileId: row.id, saved: row.is_saved === true } : null,
+    profileId: row.id ?? null,
   };
 }
 

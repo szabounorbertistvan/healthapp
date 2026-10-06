@@ -49,6 +49,20 @@ describe("notificationHref", () => {
   });
 });
 
+describe("contact requests (20261103100000)", () => {
+  it("one category reads as four sentences, by the event", () => {
+    expect(notificationSentence("coaching_request", { event: "sent" })).toBe("request_sent");
+    expect(notificationSentence("coaching_request", { event: "accepted" })).toBe("request_accepted");
+    expect(notificationSentence("coaching_request", { event: "declined" })).toBe("request_declined");
+    expect(notificationSentence("coaching_request", { event: "cancelled" })).toBe("request_cancelled");
+    expect(notificationSentence("coaching_request", { event: "other" })).toBeNull();
+  });
+  it("the coach's notices open Requests, the client's open My requests", () => {
+    expect(notificationHref("coaching_request", { screen: "coach_requests" })).toBe("/requests");
+    expect(notificationHref("coaching_request", { screen: "my_requests" })).toBe("/coaches/requests");
+  });
+});
+
 describe("notificationSentence", () => {
   it("tells a caption mention from a comment mention", () => {
     expect(notificationSentence("new_mention", { post_id: POST, comment_id: COMMENT })).toBe("new_mention");

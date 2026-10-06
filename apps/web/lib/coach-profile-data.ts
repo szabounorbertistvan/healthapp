@@ -8,7 +8,7 @@ import {
 } from "@/lib/coach-discovery";
 import type {
   City, CoachCertificationRow, CoachProfileMissing, CoachProfileRow, CoachPublicProfile,
-  CoachCatalog, CoachPublicPost, CoachServiceRow, CoachVerificationRow, CoachViewerState, Country, Language,
+  CoachCatalog, CoachPublicPost, CoachServiceRow, CoachVerificationRow, CoachViewerState, CoachingRequestStatus, Country, Language,
   MyCoachProfile, Specialization,
 } from "@/lib/coach-profile";
 
@@ -16,11 +16,12 @@ import type {
 
 const PROFILE_COLUMNS =
   "id, user_id, slug, headline, about, cover_url, coaching_since, accepting_clients, online, in_person, " +
-  "status, submitted_at, reviewed_at, review_note, published_at, suspended_at, suspension_reason, created_at, updated_at";
+  "status, submitted_at, reviewed_at, review_note, published_at, suspended_at, suspension_reason, created_at, updated_at, " +
+  "verification_status, verification_requested_at, verification_message, verification_decided_at, verification_note";
 const SERVICE_COLUMNS =
-  "id, coach_profile_id, name, description, kind, price_cents, currency, price_unit, price_public, active, sort_order";
+  "id, coach_profile_id, name, description, kind, delivery, duration_value, duration_unit, price_cents, currency, price_unit, price_public, active, sort_order";
 // Exactly the granted columns: document_ref and admin_note are not readable.
-const CERTIFICATION_COLUMNS = "id, coach_profile_id, name, issuer, year, verification_status, verified_at, sort_order";
+const CERTIFICATION_COLUMNS = "id, coach_profile_id, name, issuer, year, credential_number, expires_on, verification_status, verified_at, sort_order";
 const VERIFICATION_COLUMNS = "id, coach_profile_id, kind, status, verified_at";
 
 /**
@@ -168,9 +169,59 @@ export async function searchCoaches(query: DiscoveryQuery, limit?: number): Prom
 }
 
 /** What the filters offer: specializations, and the countries / cities that have a published coach. */
+/**
+ * The signed-in reader's saved coaches (/coaches/saved): search_coaches() with
+ * p_saved — the same cards, the same visibility (a coach who went hidden or
+ * suspended simply is not there), most recently saved first, one call.
+ * Everyone published counts, taking clients or not.
+ */
+export async function getSavedCoaches(limit = 100): Promise<CoachSearchResult> {
+  const live = await liveUser();
+  if (!live) return { total: 0, items: [] };
+  const { data, error } = await live.supabase.rpc("search_coaches", {
+    p_saved: true, p_accepting: false, p_sort: "saved", p_limit: limit, p_offset: 0, p_currency: "RON",
+  });
+  if (error) throw new Error(`saved coaches: ${error.message}`);
+  const result = data as CoachSearchResult | null;
+  return { total: result?.total ?? 0, items: result?.items ?? [] };
+}
+
 export async function getDiscoveryFacets(): Promise<DiscoveryFacets> {
   const { data, error } = await supabasePublic().rpc("coach_discovery_facets");
   if (error) throw new Error(`coach facets: ${error.message}`);
   const f = data as Partial<DiscoveryFacets> | null;
   return { specializations: f?.specializations ?? [], countries: f?.countries ?? [], cities: f?.cities ?? [], gyms: f?.gyms ?? [] };
+}
+
+// ---------- contact requests (20261103100000) ----------
+
+export type CoachRequestRow = {
+  id: string; status: CoachingRequestStatus; client_id: string; client_name: string; client_username: string | null;
+  client_avatar: string | null; service_name: string | null; message: string | null; goal: string | null;
+  preferred_format: "online" | "in_person" | "hybrid" | null; gym_name: string | null;
+  created_at: string; resolved_at: string | null; started: boolean;
+};
+export type MyCoachingRequestRow = {
+  id: string; status: CoachingRequestStatus; coach_name: string; coach_slug: string | null; coach_avatar: string | null;
+  service_name: string | null; message: string | null; goal: string | null;
+  preferred_format: "online" | "in_person" | "hybrid" | null;
+  created_at: string; resolved_at: string | null; started: boolean;
+};
+
+/** The signed-in coach's requests, pending first (coach_requests()). */
+export async function getCoachRequests(status: CoachingRequestStatus | null = null): Promise<CoachRequestRow[]> {
+  const live = await liveUser();
+  if (!live) return [];
+  const { data, error } = await live.supabase.rpc("coach_requests", { p_status: status });
+  if (error) throw new Error(`coach requests: ${error.message}`);
+  return (data ?? []) as CoachRequestRow[];
+}
+
+/** The signed-in reader's sent requests, pending first (my_coaching_requests()). */
+export async function getMyCoachingRequests(): Promise<MyCoachingRequestRow[]> {
+  const live = await liveUser();
+  if (!live) return [];
+  const { data, error } = await live.supabase.rpc("my_coaching_requests");
+  if (error) throw new Error(`my requests: ${error.message}`);
+  return (data ?? []) as MyCoachingRequestRow[];
 }

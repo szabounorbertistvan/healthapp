@@ -170,6 +170,20 @@ test.describe("anonymous", () => {
     await context.close();
   });
 
+  test("saved coaches are private: an anonymous visitor is sent to sign in", async ({ browser }) => {
+    const { context, page } = await anonymousPage(browser);
+    await page.goto("/coaches/saved");
+    await expect(page).toHaveURL(/\/login\?next=%2Fcoaches%2Fsaved/);
+    await context.close();
+  });
+
+  test("sent requests are private: an anonymous visitor is sent to sign in", async ({ browser }) => {
+    const { context, page } = await anonymousPage(browser);
+    await page.goto("/coaches/requests");
+    await expect(page).toHaveURL(/login\?next=%2Fcoaches%2Frequests/);
+    await context.close();
+  });
+
   test("filtered pages are not indexed, the listing is", async ({ browser }) => {
     const { context, page } = await anonymousPage(browser);
     await page.goto("/coaches?online=true");
@@ -221,6 +235,32 @@ test.describe("with a published coach", () => {
     await context.close();
   });
 
+  test.describe("saved coaches (needs 20261102100000)", () => {
+    test.use({ storageState: authFile("client") });
+    test("the saved page is the reader's own, with an empty state or their cards", async ({ page }) => {
+      const response = await page.goto("/coaches/saved");
+      test.skip(response?.status() === 500, "migration 20261102100000 is not on this database yet");
+      await expect(page.getByRole("heading", { level: 1, name: "Saved coaches" })).toBeVisible();
+      await expect(page.getByTestId("saved-coaches-empty").or(page.getByTestId("saved-coaches"))).toBeVisible();
+      await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute("content", /noindex/);
+    });
+    test("Save on a card flips at once without opening the profile, and is undone", async ({ page }) => {
+      test.skip(!PUBLISHED, "set E2E_PUBLISHED_COACH to a published coach's slug");
+      const response = await page.goto(`/coaches?all=1&q=${PUBLISHED}`);
+      test.skip(response?.status() === 500, "migration 20261102100000 is not on this database yet");
+      const card = page.getByTestId("coach-card").filter({ has: page.locator(`a[href="/coaches/${PUBLISHED}"]`) });
+      const save = card.getByTestId("save-coach");
+      const before = await save.getAttribute("data-saved");
+      await save.click();
+      await expect(save).toHaveAttribute("data-saved", before === "true" ? "false" : "true");
+      await expect(page).toHaveURL(/\/coaches\?/); // the profile did not open
+      await page.reload();
+      await expect(card.getByTestId("save-coach")).toHaveAttribute("data-saved", before === "true" ? "false" : "true");
+      await card.getByTestId("save-coach").click(); // undo
+      await expect(card.getByTestId("save-coach")).toHaveAttribute("data-saved", before ?? "false");
+    });
+  });
+
   test.describe("signed in", () => {
     test.use({ storageState: authFile("coach2") });
 
@@ -253,12 +293,12 @@ test.describe("with a published coach", () => {
       await expect(follow()).toHaveAttribute("aria-pressed", before!);
 
       // start coaching, then cancel the request
-      const start = page.getByRole("button", { name: "Start coaching" }).first();
+      const start = page.getByRole("button", { name: "Contact coach" }).first();
       test.skip(!(await start.isVisible().catch(() => false)), "this coach is not taking requests from this account");
       try {
         await start.click();
         const dialog = page.getByRole("dialog");
-        await dialog.getByLabel("Message (optional)").fill("E2E request — please ignore");
+        await dialog.getByLabel("Message", { exact: true }).fill("E2E request — please ignore");
         await dialog.getByRole("button", { name: "Send request" }).click();
         await expect(dialog.getByTestId("coaching-request-sent")).toBeVisible();
         await dialog.getByRole("button", { name: "Close" }).click();

@@ -52,7 +52,8 @@ const en = {
   },
   inbox: {
     title: "Coaching requests",
-    hint: "People who asked you to coach them. Accepting makes them your client, exactly like an invite code.",
+    hint: "People who'd like to work with you. Accepting means \"let's talk\"; you start coaching from Requests when you're both ready.",
+    seeAll: "All requests",
     service: "Service: {name}",
     foundAt: "Found you at {gym}",
     accept: "Accept",
@@ -183,7 +184,8 @@ const ro: typeof en = {
   },
   inbox: {
     title: "Cereri de coaching",
-    hint: "Oameni care ți-au cerut să-i antrenezi. Dacă accepți, devin clienții tăi, exact ca printr-un cod de invitație.",
+    hint: "Oameni care ar vrea să lucreze cu tine. A accepta înseamnă „hai să vorbim”; începi coaching-ul din Solicitări când sunteți pregătiți.",
+    seeAll: "Toate solicitările",
     service: "Serviciu: {name}",
     foundAt: "Te-a găsit la {gym}",
     accept: "Acceptă",

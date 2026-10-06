@@ -14,19 +14,33 @@ export const COACH_PROFILE_STATUSES = ["draft", "pending_review", "published", "
 export type CoachProfileStatus = (typeof COACH_PROFILE_STATUSES)[number];
 
 export const SERVICE_KINDS = [
-  "online_coaching", "personal_training", "nutrition_coaching", "group_coaching", "consultation", "other",
+  "online_coaching", "personal_training", "nutrition_coaching", "training_nutrition", "training_program",
+  "group_coaching", "consultation", "other",
 ] as const;
 export type ServiceKind = (typeof SERVICE_KINDS)[number];
 
-export const PRICE_UNITS = ["session", "month", "package", "custom"] as const;
+/**
+ * What a price is per (20261031100000). The pricing model is derived from it
+ * (lib/coach-onboarding.ts pricingOf): free · one-time (session, package) ·
+ * recurring (week, month, year — the unit is the billing period) · on request
+ * (custom). Nothing is charged: Voinic has no payments yet.
+ */
+export const PRICE_UNITS = ["session", "package", "week", "month", "year", "free", "custom"] as const;
 export type PriceUnit = (typeof PRICE_UNITS)[number];
+
+/** How a service reaches the client. digital = a plan or program, no live sessions. */
+export const SERVICE_DELIVERY = ["online", "in_person", "hybrid", "digital"] as const;
+export type ServiceDelivery = (typeof SERVICE_DELIVERY)[number];
+
+export const DURATION_UNITS = ["minutes", "days", "weeks", "months"] as const;
+export type DurationUnit = (typeof DURATION_UNITS)[number];
 
 export const VERIFICATION_KINDS = ["identity", "certification", "business"] as const;
 export type VerificationKind = (typeof VERIFICATION_KINDS)[number];
 /** What the public sees: one badge per verified kind. */
 export type VerificationBadge = `${VerificationKind}_verified`;
 
-export const COACHING_REQUEST_STATUSES = ["pending", "accepted", "declined", "cancelled"] as const;
+export const COACHING_REQUEST_STATUSES = ["pending", "accepted", "declined", "cancelled", "closed"] as const;
 export type CoachingRequestStatus = (typeof COACHING_REQUEST_STATUSES)[number];
 
 /** Limits the database enforces, mirrored so the editor can say so first. */
@@ -85,8 +99,24 @@ export const COACH_PROFILE_ERRORS = [
   "REQUEST_RATE",
   "REQUEST_PENDING",
   "REQUEST_NOT_PENDING",
+  "LAST_ACTIVE_SERVICE",
+  "BAD_ORDER",
+  "BAD_TRANSITION",
+  "CANNOT_SAVE_SELF",
+  "GOAL_TOO_LONG",
+  "INVALID_FORMAT",
+  "REQUEST_NOT_ACCEPTED",
+  "CLIENT_LIMIT",
 ] as const;
 export type CoachProfileErrorCode = (typeof COACH_PROFILE_ERRORS)[number];
+
+/**
+ * The coach-level Voinic verification (20261101100000). "verified" is the only
+ * state that earns the Voinic Verified badge; the public sees nothing else.
+ */
+export const COACH_VERIFICATION_STATUSES = ["unverified", "pending", "verified", "rejected"] as const;
+export type CoachVerificationStatus = (typeof COACH_VERIFICATION_STATUSES)[number];
+export type CredentialStatus = "unverified" | "pending" | "verified" | "rejected";
 
 /**
  * The business code inside a Supabase error, if it is one of ours. SLUG_TAKEN
@@ -121,6 +151,12 @@ export type CoachProfileRow = {
   suspension_reason: string | null;
   created_at: string;
   updated_at: string;
+  verification_status: CoachVerificationStatus;
+  verification_requested_at: string | null;
+  verification_message: string | null;
+  verification_decided_at: string | null;
+  /** The admin's reason after a rejection — shown to the coach only. */
+  verification_note: string | null;
 };
 
 export type CoachServiceRow = {
@@ -129,7 +165,11 @@ export type CoachServiceRow = {
   name: string;
   description: string | null;
   kind: ServiceKind;
-  /** Minor units (bani / cents). Null = price on request. */
+  delivery: ServiceDelivery;
+  /** Both set or both null: "60 minutes", "12 weeks". */
+  duration_value: number | null;
+  duration_unit: DurationUnit | null;
+  /** Minor units (bani / cents). Null = price on request (or free). */
   price_cents: number | null;
   currency: string;
   price_unit: PriceUnit;
@@ -145,8 +185,12 @@ export type CoachCertificationRow = {
   name: string;
   issuer: string | null;
   year: number | null;
-  verification_status: "unverified" | "pending" | "verified" | "rejected";
+  verification_status: CredentialStatus;
   verified_at: string | null;
+  /** Owner and admins only; never on the public page. */
+  credential_number: string | null;
+  /** ISO date. */
+  expires_on: string | null;
   sort_order: number;
 };
 
@@ -228,6 +272,9 @@ export type CoachPublicProfile = {
    * preview built from the draft.
    */
   stats?: { posts: number; programs?: number; workouts: number | null; badges: number | null; fitness_score: number | null };
+  /** Voinic Verified: the coach-level decision (20261101100000). Absent in older payloads = false. */
+  verified?: boolean;
+  /** What was checked, only ever non-empty when verified. */
   badges: VerificationBadge[];
   specializations: { slug: string; name_en: string; name_ro: string; is_primary: boolean }[];
   languages: { code: string; name_en: string; name_ro: string; native_name: string }[];
@@ -235,9 +282,10 @@ export type CoachPublicProfile = {
     city_slug: string; city: string; city_en: string;
     country_code: string; country_en: string; country_ro: string; gym_name: string | null;
   }[];
-  certifications: { name: string; issuer: string | null; year?: number | null; verified: boolean }[];
+  certifications: { name: string; issuer: string | null; year?: number | null; expires_on?: string | null; verified: boolean }[];
   services: {
     id: string; name: string; description: string | null; kind: ServiceKind; price_unit: PriceUnit;
+    delivery: ServiceDelivery; duration_value: number | null; duration_unit: DurationUnit | null;
     price_public: boolean;
     /** Null when the price is private or on request. */
     price_cents: number | null;
@@ -261,7 +309,11 @@ export type CoachViewerState = {
   is_self: boolean;
   is_following: boolean;
   follows_me: boolean;
+  /** In the reader's private shortlist (20261102100000). */
+  is_saved?: boolean;
   is_client: boolean;
   has_other_coach: boolean;
   pending_request: { id: string; service_id: string | null; created_at: string } | null;
+  /** The reader's latest request to this coach, any state (20261103100000). */
+  last_request?: { id: string; status: CoachingRequestStatus; service_id: string | null; created_at: string; started: boolean } | null;
 };

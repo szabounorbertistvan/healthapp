@@ -17,6 +17,7 @@ import { CoachSectionSkeleton } from "@/components/coach-profile/skeleton";
 import { StartCoachingProvider } from "@/components/coach-profile/start-coaching";
 import { PublicPostList } from "@/components/coach-profile/public-posts";
 import { FollowButton, PostCard } from "@/components/social";
+import { SaveCoachButton } from "@/components/coach-discovery/save-coach-button";
 import { RoutineCardView } from "@/components/routine-card";
 import type { RoutineCard } from "@healthapp/shared";
 
@@ -93,13 +94,20 @@ export default async function CoachPage({ params }: Props) {
   // follow: the existing button for a signed-in reader, sign-in for anyone else, nothing on your own page
   const { t } = await getI18n();
   const p = t.coachProfile.publicPage;
-  const follow = viewer?.is_self ? null : signedIn && coachId ? (
+  const followButton = signedIn && coachId ? (
     <FollowButton userId={coachId} following={viewer?.is_following ?? false} followsMe={viewer?.follows_me ?? false} />
   ) : (
     <Link href={loginHref} title={p.signInToFollow}
       className="inline-flex h-12 items-center justify-center rounded-2xl bg-surface px-5 text-[14px] font-semibold text-ink hover:bg-accent-soft/60">
       {p.follow}
     </Link>
+  );
+  // Follow (public, social) and Save (a private shortlist) side by side; neither on your own page
+  const follow = viewer?.is_self ? null : (
+    <>
+      {followButton}
+      <SaveCoachButton variant="pill" profileId={profile.id} saved={viewer?.is_saved ?? false} signedIn={signedIn} />
+    </>
   );
 
   const name = profile.display_name;

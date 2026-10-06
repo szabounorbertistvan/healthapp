@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   STEPS, centsToPrice, formatPrice, coachingSinceError, identityErrors, missingFor, moveItem, nextStep, parseStep,
   previousStep, priceToCents, serviceErrors, slugify, statusView, stepForMissing, stepsTouched, summary,
-  toggleSpecialization, type DraftState,
+  toggleSpecialization, type DraftState, PRICING_MODELS, credentialLabel, verificationView, parseDuration, pricingOf, takesPrice, unitsFor,
 } from "./coach-onboarding";
 
 const empty: DraftState = {
@@ -158,6 +158,39 @@ describe("services", () => {
     expect(serviceErrors({ name: "x", description: "", price: "", priceUnit: "month" })).toEqual({ price: "REQUIRED" });
     expect(serviceErrors({ name: "x", description: "", price: "ten", priceUnit: "month" })).toEqual({ price: "FORMAT" });
   });
+  it("free and on-request take no price; a duration must be a whole number 1..1000 (20261031100000)", () => {
+    expect(serviceErrors({ name: "Intro call", description: "", price: "", priceUnit: "free" })).toEqual({});
+    expect(serviceErrors({ name: "x", description: "", price: "", priceUnit: "custom" })).toEqual({});
+    expect(serviceErrors({ name: "x", description: "", price: "50", priceUnit: "week", durationValue: "60" })).toEqual({});
+    expect(serviceErrors({ name: "x", description: "", price: "50", priceUnit: "year", durationValue: "0" })).toEqual({ duration: "FORMAT" });
+    expect(serviceErrors({ name: "x", description: "", price: "50", priceUnit: "session", durationValue: "1001" })).toEqual({ duration: "FORMAT" });
+    expect(serviceErrors({ name: "x", description: "", price: "-5", priceUnit: "session" })).toEqual({ price: "FORMAT" });
+  });
+  it("the pricing model is derived from the unit, and each model offers its units", () => {
+    expect(pricingOf("free")).toBe("free");
+    expect(pricingOf("custom")).toBe("on_request");
+    expect(pricingOf("session")).toBe("one_time");
+    expect(pricingOf("package")).toBe("one_time");
+    expect(["week", "month", "year"].map((u) => pricingOf(u as "week"))).toEqual(["recurring", "recurring", "recurring"]);
+    expect(unitsFor("recurring")).toEqual(["week", "month", "year"]);
+    expect(unitsFor("one_time")).toEqual(["session", "package"]);
+    // every unit belongs to exactly one model, and round-trips
+    for (const m of PRICING_MODELS) for (const u of unitsFor(m)) expect(pricingOf(u)).toBe(m);
+    expect(takesPrice("free")).toBe(false);
+    expect(takesPrice("custom")).toBe(false);
+    expect(takesPrice("month")).toBe(true);
+  });
+  it("parses a duration as typed", () => {
+    expect(parseDuration("")).toBeNull();
+    expect(parseDuration(" 60 ")).toBe(60);
+    expect(parseDuration("12.5")).toBeUndefined();
+    expect(parseDuration("abc")).toBeUndefined();
+  });
+  it("a free active service is not missing a price; a priced one without a price is", () => {
+    const withServices = (services: DraftState["services"]) => missingFor({ ...complete, services });
+    expect(withServices([{ active: true, priceUnit: "free", priceCents: null }])).not.toContain("SERVICE_PRICE");
+    expect(withServices([{ active: true, priceUnit: "week", priceCents: null }])).toContain("SERVICE_PRICE");
+  });
   it("reorders without losing anything", () => {
     expect(moveItem(["a", "b", "c"], 1, -1)).toEqual(["b", "a", "c"]);
     expect(moveItem(["a", "b", "c"], 1, 1)).toEqual(["a", "c", "b"]);
@@ -174,5 +207,26 @@ describe("status", () => {
     expect(statusView("suspended")).toMatchObject({ editable: false, action: null, tone: "risk" });
     // hidden (20261029100000): locked like published; Edit withdraws it, Show is its own button
     expect(statusView("hidden")).toMatchObject({ editable: false, action: "edit", tone: "neutral" });
+  });
+});
+
+describe("verification (20261101100000)", () => {
+  it("only an unverified or rejected coach can ask; pending and verified cannot", () => {
+    expect(verificationView("unverified").canRequest).toBe(true);
+    expect(verificationView("rejected").canRequest).toBe(true);
+    expect(verificationView("pending").canRequest).toBe(false);
+    expect(verificationView("verified").canRequest).toBe(false);
+  });
+  it("a credential is Voinic's word only when an admin verified it", () => {
+    const today = "2026-10-06";
+    for (const status of ["unverified", "pending", "rejected"] as const) {
+      expect(credentialLabel({ verification_status: status, expires_on: null }, today).source).toBe("coach");
+    }
+    expect(credentialLabel({ verification_status: "verified", expires_on: null }, today).source).toBe("voinic");
+  });
+  it("an expired credential says so, whoever checked it", () => {
+    expect(credentialLabel({ verification_status: "verified", expires_on: "2026-10-05" }, "2026-10-06").expired).toBe(true);
+    expect(credentialLabel({ verification_status: "unverified", expires_on: "2026-10-06" }, "2026-10-06").expired).toBe(false);
+    expect(credentialLabel({ verification_status: "unverified", expires_on: null }, "2026-10-06").expired).toBe(false);
   });
 });

@@ -80,15 +80,31 @@ test.describe("published", () => {
     const ld = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent()) ?? "{}");
     expect(ld["@type"]).toBe("ProfilePage");
     // Start coaching and Follow lead to sign-in
-    await expect(page.getByRole("link", { name: "Start coaching" }).first()).toHaveAttribute("href", /\/login\?next=/);
+    await expect(page.getByRole("link", { name: "Contact coach" }).first()).toHaveAttribute("href", /\/login\?next=/);
     await expect(page.getByRole("link", { name: "Follow" }).first()).toHaveAttribute("href", /\/login\?next=/);
+    await context.close();
+  });
+
+  // 20261101100000: the badge follows the coach-level decision only. The seeded
+  // test coach is never verified, so neither its page nor its card may show it,
+  // and its credentials read as provided by the coach.
+  test("an unverified coach shows no Voinic Verified badge, anywhere", async ({ browser }) => {
+    const { context, page } = await anonymousPage(browser);
+    await page.goto(`/coaches/${PUBLISHED}`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByTestId("voinic-verified")).toHaveCount(0);
+    await expect(page.locator('[data-testid="public-credential"][data-verified="true"]')).toHaveCount(0);
+    await page.goto(`/coaches?all=1&q=${PUBLISHED}`);
+    const card = page.getByTestId("coach-card").filter({ has: page.locator(`a[href="/coaches/${PUBLISHED}"]`) });
+    await expect(card).toBeVisible();
+    await expect(card.getByTestId("voinic-verified")).toHaveCount(0);
     await context.close();
   });
 
   test("on a phone the page is one column with a sticky Start coaching bar", async ({ browser }) => {
     const { context, page } = await anonymousPage(browser, { width: 390, height: 844 });
     await page.goto(`/coaches/${PUBLISHED}`);
-    const bar = page.locator("body > div.fixed").filter({ has: page.getByRole("link", { name: "Start coaching" }) });
+    const bar = page.locator("body > div.fixed").filter({ has: page.getByRole("link", { name: "Contact coach" }) });
     await expect(bar).toBeVisible();
     const width = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(width).toBeLessThanOrEqual(390);
@@ -101,7 +117,7 @@ test.describe("published", () => {
     test("an existing client sees that they train with the coach, not Start coaching", async ({ page }) => {
       await page.goto(`/coaches/${PUBLISHED}`);
       await expect(page.getByRole("link", { name: "You train with this coach" }).first()).toBeVisible();
-      await expect(page.getByRole("button", { name: "Start coaching" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Contact coach" })).toHaveCount(0);
     });
   });
 
@@ -109,16 +125,28 @@ test.describe("published", () => {
     // coach2 is not this coach's client: anyone signed in may ask
     test.use({ storageState: authFile("coach2") });
 
-    test("Start coaching sends one request, shows it pending, and can be cancelled", async ({ page }) => {
+    test("the contact form asks for a message before anything is sent", async ({ page }) => {
       await page.goto(`/coaches/${PUBLISHED}`);
-      const start = page.getByRole("button", { name: "Start coaching" }).first();
+      const start = page.getByTestId("contact-coach").first();
+      test.skip(!(await start.isVisible().catch(() => false)), "this coach is not taking requests from this account");
+      await start.click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByTestId("coaching-request-send").click();
+      await expect(dialog.getByText("Write a short message.")).toBeVisible();
+      await expect(dialog.getByTestId("coaching-request-sent")).toHaveCount(0);
+      await dialog.getByRole("button", { name: "Cancel" }).click();
+    });
+
+    test("Contact coach sends one request, shows it pending, and can be cancelled", async ({ page }) => {
+      await page.goto(`/coaches/${PUBLISHED}`);
+      const start = page.getByRole("button", { name: "Contact coach" }).first();
       test.skip(!(await start.isVisible().catch(() => false)), "this coach is not taking requests from this account");
       try {
         await start.click();
         const dialog = page.getByRole("dialog");
         await expect(dialog).toBeVisible();
         await dialog.getByRole("radio").first().check();
-        await dialog.getByLabel("Message (optional)").fill("E2E request — please ignore");
+        await dialog.getByLabel("Message", { exact: true }).fill("E2E request — please ignore");
         await dialog.getByRole("button", { name: "Send request" }).click();
         await expect(dialog.getByTestId("coaching-request-sent")).toBeVisible();
         await dialog.getByRole("button", { name: "Close" }).click();
@@ -126,7 +154,7 @@ test.describe("published", () => {
         // no second request: the button is gone while one is pending, and it stays so after a reload
         await page.reload();
         await expect(page.getByTestId("coaching-request-pending").first()).toBeVisible();
-        await expect(page.getByRole("button", { name: "Start coaching" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Contact coach" })).toHaveCount(0);
       } finally {
         const cancel = page.getByRole("button", { name: "Cancel request" }).first();
         if (await cancel.isVisible().catch(() => false)) {

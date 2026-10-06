@@ -10,6 +10,7 @@ const profile: CoachPublicProfile = {
   headline: "Personal Trainer", about: "I help busy people get strong.\n\nTen years in the gym.",
   coaching_since: 2016, accepting_clients: true, online: true, in_person: true, published_at: "2026-10-01T00:00:00Z",
   followers: 12, stats: { posts: 3, workouts: null, badges: null, fitness_score: null },
+  verified: true,
   badges: ["identity_verified"],
   specializations: [
     { slug: "hypertrophy", name_en: "Hypertrophy", name_ro: "Hipertrofie", is_primary: true },
@@ -20,9 +21,9 @@ const profile: CoachPublicProfile = {
     country_en: "Romania", country_ro: "România", gym_name: "Iron Gym" }],
   certifications: [{ name: "ISSA CPT", issuer: "ISSA", year: 2016, verified: true }],
   services: [
-    { id: "s1", name: "Online Coaching", description: null, kind: "online_coaching", price_unit: "month",
+    { id: "s1", name: "Online Coaching", description: null, kind: "online_coaching", price_unit: "month", delivery: "online", duration_value: null, duration_unit: null,
       price_public: true, price_cents: 20000, currency: "RON" },
-    { id: "s2", name: "VIP", description: null, kind: "personal_training", price_unit: "session",
+    { id: "s2", name: "VIP", description: null, kind: "personal_training", price_unit: "session", delivery: "in_person", duration_value: 60, duration_unit: "minutes",
       price_public: false, price_cents: null, currency: null },
   ],
 };
@@ -49,6 +50,19 @@ describe("start coaching state", () => {
     const full = { ...profile, accepting_clients: false };
     expect(startCoachingState(full, viewer(), { signedIn: true })).toBe("not_accepting");
     expect(startCoachingState(full, null, { signedIn: false })).toBe("not_accepting");
+  });
+  it("the CTA follows the last request (20261103100000)", () => {
+    const last = (status: "accepted" | "declined" | "cancelled" | "closed", started = false) =>
+      viewer({ last_request: { id: "r", status, service_id: null, created_at: "", started } });
+    expect(startCoachingState(profile, last("accepted"), { signedIn: true })).toBe("accepted");
+    expect(startCoachingState(profile, last("declined"), { signedIn: true })).toBe("contact_again");
+    expect(startCoachingState(profile, last("cancelled"), { signedIn: true })).toBe("contact_again");
+    expect(startCoachingState(profile, last("closed"), { signedIn: true })).toBe("contact_again");
+    // once coaching started the reader is a client, which wins
+    expect(startCoachingState(profile, { ...last("accepted", true), is_client: true }, { signedIn: true })).toBe("client");
+    // a pending request wins over an older answer
+    expect(startCoachingState(profile, { ...last("declined"), pending_request: { id: "p", service_id: null, created_at: "" } }, { signedIn: true }))
+      .toBe("pending");
   });
   it("the preview never goes live", () => {
     expect(startCoachingState(profile, viewer(), { preview: true, signedIn: true })).toBe("preview");
@@ -111,14 +125,14 @@ describe("the page", () => {
     ]);
   });
   it("an empty profile makes no claims — nothing at zero, nothing invented", () => {
-    const empty = { ...profile, badges: [], coaching_since: null, specializations: [], services: [],
+    const empty = { ...profile, verified: false, badges: [], coaching_since: null, specializations: [], services: [],
       stats: { posts: 0, programs: 0, workouts: null, badges: null, fitness_score: null } };
     expect(coachWhyPoints(empty)).toEqual([]);
     // a preview from the draft has no stats at all
     expect(coachWhyPoints({ ...empty, stats: undefined })).toEqual([]);
   });
   it("a first-year coach shows the year, not \"0 years\"", () => {
-    expect(coachWhyPoints({ ...profile, badges: [], coaching_since: 2026 }, new Date("2026-10-05"))[0])
+    expect(coachWhyPoints({ ...profile, verified: false, coaching_since: 2026 }, new Date("2026-10-05"))[0])
       .toEqual({ kind: "since", year: 2026 });
   });
 });

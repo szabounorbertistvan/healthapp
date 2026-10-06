@@ -6,14 +6,16 @@ import { mutated } from "@/lib/supabase/mutate";
 import { notSignedIn } from "@/lib/action-result";
 import { id, parseInput } from "@/lib/validate";
 import {
-  COACH_LIMITS, PRICE_UNITS, SERVICE_KINDS, coachProfileErrorCode, isValidCoachSlug,
+  COACH_LIMITS, DURATION_UNITS, PRICE_UNITS, SERVICE_DELIVERY, SERVICE_KINDS, coachProfileErrorCode, isValidCoachSlug,
   type CoachProfileMissing,
 } from "@/lib/coach-profile";
+import { CURRENCIES, takesPrice } from "@/lib/coach-onboarding";
 import {
   COVER_PUBLIC_ID, CloudinaryNotConfiguredError, cloudinaryConfigured, coverFolder, coverUrl,
   destroyCover, signCoverUpload, type AvatarUploadTicket,
 } from "@/lib/cloudinary";
 import type { ActionResult } from "./actions";
+import { getPlan } from "@/lib/plan";
 
 // Coach Discovery writes: the coach's own profile, saved a piece at a time
 // while it is a draft. The database decides everything that matters — only a
@@ -170,14 +172,21 @@ const ServiceInput = z.object({
   name: z.string().max(COACH_LIMITS.serviceName),
   description: z.string().max(COACH_LIMITS.serviceDescription).nullable().optional(),
   kind: z.enum(SERVICE_KINDS),
-  /** Minor units; null = on request. */
+  delivery: z.enum(SERVICE_DELIVERY).default("online"),
+  durationValue: z.number().int().min(1).max(1000).nullable().default(null),
+  durationUnit: z.enum(DURATION_UNITS).nullable().default(null),
+  /** Minor units; null = on request (or free). */
   priceCents: z.number().int().min(0).max(100_000_000).nullable(),
-  currency: z.string().regex(/^[A-Z]{3}$/).default("RON"),
+  currency: z.enum(CURRENCIES).default("RON"),
   priceUnit: z.enum(PRICE_UNITS),
   pricePublic: z.boolean().default(true),
   active: z.boolean().default(true),
   sortOrder: z.number().int().min(0).max(1000).default(0),
-}).strict();
+}).strict()
+  // the same rules as the table's constraints, so a bad form never reaches the database
+  .refine((s) => (s.durationValue === null) === (s.durationUnit === null), { message: "SERVICE_DURATION" })
+  .refine((s) => takesPrice(s.priceUnit) ? s.priceCents !== null : true, { message: "SERVICE_PRICE" })
+  .refine((s) => s.priceUnit !== "free" || !s.priceCents, { message: "SERVICE_FREE_PRICE" });
 export type CoachServiceInput = z.input<typeof ServiceInput>;
 
 /** Insert (no id) or update (id) one service. Drafts only — RLS refuses otherwise. */
@@ -195,7 +204,11 @@ export async function saveCoachService(input: CoachServiceInput): Promise<Action
     name,
     description: s.description?.trim() || null,
     kind: s.kind,
-    price_cents: s.priceCents,
+    delivery: s.delivery,
+    duration_value: s.durationValue,
+    duration_unit: s.durationUnit,
+    // free and on-request carry no price
+    price_cents: takesPrice(s.priceUnit) ? s.priceCents : null,
     currency: s.currency,
     price_unit: s.priceUnit,
     price_public: s.pricePublic,
@@ -234,26 +247,39 @@ export async function deleteCoachService(serviceId: string): Promise<ActionResul
 }
 
 /**
- * Write the order the coach arranged: each listed service gets its index as
- * sort_order. One update per row (a handful at most); a row that is not
- * this coach's, or a profile no longer a draft, fails through mutated().
+ * Write the order the coach arranged (coach_reorder_services, 20261031100000):
+ * one call, the whole list, in any status but suspended — order is operational,
+ * not content, so a published coach reorders without a new review. The list
+ * must be exactly the coach's services (BAD_ORDER otherwise).
  */
 export async function reorderCoachServices(serviceIds: string[]): Promise<ActionResult> {
   const parsed = await parseInput(z.array(id).max(50), serviceIds);
   if (!parsed.ok) return parsed.result;
   const mine = await myProfile();
   if (!("profileId" in mine)) return mine;
-  const results = await Promise.all(parsed.data.map((serviceId, index) =>
-    mine.live.supabase
-      .from("coach_services").update({ sort_order: index }, { count: "exact" })
-      .eq("id", serviceId).eq("coach_profile_id", mine.profileId),
-  ));
-  for (const result of results) {
-    if (result.error) return failure(result.error);
-    const failed = await mutated(result);
-    if (failed) return failed;
-  }
-  revalidateCoach();
+  const { error } = await mine.live.supabase.rpc("coach_reorder_services", { p_ids: parsed.data });
+  if (error) return failure(error);
+  revalidateCoach(mine.slug);
+  return { ok: true };
+}
+
+/**
+ * Offer a service or stop offering it (coach_set_service_active). Like the
+ * order, an operational switch: allowed while published or hidden, with the
+ * public page following at once. LAST_ACTIVE_SERVICE when it would leave a
+ * non-draft profile with nothing on offer.
+ */
+export async function setCoachServiceActive(serviceId: string, active: boolean): Promise<ActionResult> {
+  const parsed = await parseInput(z.object({ serviceId: id, active: z.boolean() }).strict(), { serviceId, active });
+  if (!parsed.ok) return parsed.result;
+  const mine = await myProfile();
+  if (!("profileId" in mine)) return mine;
+  const { error } = await mine.live.supabase.rpc("coach_set_service_active", {
+    p_service: parsed.data.serviceId, p_active: parsed.data.active,
+  });
+  if (error) return failure(error);
+  revalidateCoach(mine.slug);
+  revalidatePath("/coaches");
   return { ok: true };
 }
 
@@ -266,6 +292,10 @@ const CertificationInput = z.object({
   name: z.string().max(COACH_LIMITS.certificationName),
   issuer: z.string().max(COACH_LIMITS.certificationIssuer).nullable().optional(),
   year: z.number().int().min(1950).max(2100).nullable().optional(),
+  /** Owner and admins only (20261101100000); never public. */
+  credentialNumber: z.string().max(80).nullable().optional(),
+  /** ISO date, 1950..2100. */
+  expiresOn: z.string().regex(/^(19[5-9]\d|20\d\d|2100)-\d{2}-\d{2}$/).nullable().optional(),
   sortOrder: z.number().int().min(0).max(1000).default(0),
 }).strict();
 export type CoachCertificationInput = z.input<typeof CertificationInput>;
@@ -280,7 +310,10 @@ export async function saveCoachCertification(input: CoachCertificationInput): Pr
   const mine = await myProfile();
   if (!("profileId" in mine)) return mine;
   const { live, profileId } = mine;
-  const row = { name, issuer: c.issuer?.trim() || null, year: c.year ?? null, sort_order: c.sortOrder };
+  const row = {
+    name, issuer: c.issuer?.trim() || null, year: c.year ?? null, sort_order: c.sortOrder,
+    credential_number: c.credentialNumber?.trim() || null, expires_on: c.expiresOn || null,
+  };
 
   if (!c.id) {
     const { data, error } = await live.supabase
@@ -382,12 +415,17 @@ export async function requestCoaching(input: {
   profileId: string;
   serviceId: string | null;
   message: string;
+  goal?: string | null;
+  format?: "online" | "in_person" | "hybrid" | null;
   slug: string;
 }): Promise<ActionResult & { requestId?: string }> {
   const parsed = await parseInput(z.object({
     profileId: id,
     serviceId: id.nullable(),
-    message: z.string().max(COACH_LIMITS.requestMessage),
+    // the contact form asks for a message (20261103100000); the gym's quick ask may leave it out
+    message: z.string().trim().min(1).max(COACH_LIMITS.requestMessage),
+    goal: z.string().trim().max(300).nullable().optional(),
+    format: z.enum(["online", "in_person", "hybrid"]).nullable().optional(),
     slug: z.string().max(COACH_LIMITS.slugMax),
   }).strict(), input);
   if (!parsed.ok) return parsed.result;
@@ -396,10 +434,13 @@ export async function requestCoaching(input: {
   const { data, error } = await live.supabase.rpc("request_coaching", {
     p_coach_profile: parsed.data.profileId,
     p_service: parsed.data.serviceId,
-    p_message: parsed.data.message.trim() || null,
+    p_message: parsed.data.message,
+    p_goal: parsed.data.goal || null,
+    p_format: parsed.data.format ?? null,
   });
   if (error) return failure(error);
   revalidatePath(`/coaches/${parsed.data.slug}`);
+  revalidatePath("/coaches/requests");
   return { ok: true, requestId: data as string };
 }
 
@@ -442,6 +483,26 @@ export async function withdrawCoachProfile(): Promise<ActionResult> {
   return { ok: true };
 }
 
+// ---------- verification (20261101100000) ----------
+
+/**
+ * Ask Voinic to verify this coach: unverified | rejected → pending. Never
+ * verifies anything — only an admin can (admin_set_coach_verification_status).
+ * A profile that is not complete gets its missing items back instead.
+ */
+export async function requestCoachVerification(message: string): Promise<ActionResult & { missing?: CoachProfileMissing[] }> {
+  const parsed = await parseInput(z.string().max(1000), message ?? "");
+  if (!parsed.ok) return parsed.result;
+  const mine = await myProfile();
+  if (!("profileId" in mine)) return mine;
+  const { data, error } = await mine.live.supabase.rpc("request_coach_verification", { p_message: parsed.data.trim() || null });
+  if (error) return failure(error);
+  const missing = (data ?? []) as CoachProfileMissing[];
+  if (missing.length > 0) return { ok: false, errorCode: "PROFILE_INCOMPLETE", message: "PROFILE_INCOMPLETE", missing };
+  revalidateCoach(mine.slug);
+  return { ok: true };
+}
+
 // ---------- hide / show (20261029100000) ----------
 
 /** Discovery and the coach's page: both change the moment a profile hides or shows. */
@@ -473,5 +534,86 @@ export async function showCoachProfile(): Promise<ActionResult & { missing?: Coa
   const missing = (data ?? []) as CoachProfileMissing[];
   if (missing.length > 0) return { ok: false, errorCode: "PROFILE_INCOMPLETE", message: "PROFILE_INCOMPLETE", missing };
   revalidateDiscovery(mine.slug);
+  return { ok: true };
+}
+
+// ---------- saved coaches (20261102100000) ----------
+
+/**
+ * Save a coach to the reader's private shortlist, or take them off it. The
+ * database decides: one save per coach (a second tap that loses the race is
+ * answered as saved), never yourself (CANNOT_SAVE_SELF), never a coach the
+ * reader cannot see (the insert policy). Nobody else ever reads a save.
+ */
+export async function toggleCoachSave(profileId: string, saved: boolean): Promise<ActionResult & { saved?: boolean }> {
+  const parsed = await parseInput(z.object({ profileId: id, saved: z.boolean() }).strict(), { profileId, saved });
+  if (!parsed.ok) return parsed.result;
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  if (parsed.data.saved) {
+    const { error } = await supabase.from("coach_saves").delete()
+      .eq("user_id", userId).eq("coach_profile_id", parsed.data.profileId);
+    if (error) return failure(error);
+    revalidatePath("/coaches/saved");
+    return { ok: true, saved: false };
+  }
+  const { error } = await supabase.from("coach_saves").insert({ user_id: userId, coach_profile_id: parsed.data.profileId });
+  if (error && error.code !== "23505") return failure(error);
+  revalidatePath("/coaches/saved");
+  return { ok: true, saved: true };
+}
+
+// ---------- the coach answers (20261103100000) ----------
+
+const REQUEST_PATHS = ["/requests", "/dashboard", "/clients", "/coaches/requests"];
+function requestsTouched() {
+  for (const path of REQUEST_PATHS) revalidatePath(path);
+}
+
+/** pending → accepted: "let's talk". Makes nobody a client; the client is notified. */
+export async function acceptCoachingRequest(requestId: string): Promise<ActionResult> {
+  const parsed = await parseInput(id, requestId);
+  if (!parsed.ok) return parsed.result;
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { error } = await live.supabase.rpc("accept_coaching_request", { p_request: parsed.data });
+  if (error) return failure(error);
+  requestsTouched();
+  return { ok: true };
+}
+
+/** pending → declined; the client is notified. */
+export async function declineCoachingRequest(requestId: string): Promise<ActionResult> {
+  const parsed = await parseInput(id, requestId);
+  if (!parsed.ok) return parsed.result;
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { error } = await live.supabase.rpc("decline_coaching_request", { p_request: parsed.data, p_reason: null });
+  if (error) return failure(error);
+  requestsTouched();
+  return { ok: true };
+}
+
+/**
+ * The explicit second step on an accepted request: the person becomes this
+ * coach's client (start_coaching_from_request — one active coach per client),
+ * within the coach's plan limit, like an invite.
+ */
+export async function startCoachingFromRequest(requestId: string): Promise<ActionResult> {
+  const parsed = await parseInput(id, requestId);
+  if (!parsed.ok) return parsed.result;
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const [plan, { count }] = await Promise.all([
+    getPlan(),
+    live.supabase.from("trainer_clients").select("id", { count: "exact", head: true })
+      .eq("coach_id", live.userId).eq("status", "active"),
+  ]);
+  if ((count ?? 0) >= plan.e.maxClients) return { ok: false, errorCode: "CLIENT_LIMIT", message: "CLIENT_LIMIT" };
+  const { error } = await live.supabase.rpc("start_coaching_from_request", { p_request: parsed.data });
+  if (error) return failure(error);
+  requestsTouched();
+  revalidatePath("/messages");
   return { ok: true };
 }

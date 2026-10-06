@@ -52,3 +52,45 @@ export async function suspendCoachProfile(profileId: string, reason: string): Pr
 export async function restoreCoachProfile(profileId: string, to: "published" | "draft"): Promise<ActionResult> {
   return setStatus(profileId, to);
 }
+
+// ---------- verification (20261101100000) ----------
+
+/**
+ * The Voinic verification decision: pending → verified | rejected,
+ * rejected → pending, verified → rejected (revoke). A rejection needs the
+ * reason the coach will read. admin_set_coach_verification_status() re-checks
+ * is_admin(), allows only these moves, and audits each one.
+ */
+export async function setCoachVerification(
+  profileId: string, status: "verified" | "rejected" | "pending", note = "",
+): Promise<ActionResult> {
+  return adminRpc("admin_set_coach_verification_status", {
+    p_profile: uuidOf(profileId), p_status: status, p_note: note.trim().slice(0, 1000) || null,
+  });
+}
+
+/** One credential: verified by Voinic, or not accepted (with a note). Never set by the coach. */
+export async function setCredentialStatus(
+  certificationId: string, status: "verified" | "rejected" | "pending", note = "",
+): Promise<ActionResult> {
+  return adminRpc("admin_set_certification_status", {
+    p_certification: uuidOf(certificationId), p_status: status, p_note: note.trim().slice(0, 1000) || null,
+  });
+}
+
+async function adminRpc(name: string, args: Record<string, unknown>): Promise<ActionResult> {
+  if (!(await adminActor())) return { ok: false, message: "Admins only" };
+  if (Object.values(args).some((v, i) => i === 0 && !v)) return { ok: false, message: "Invalid id" };
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc(name, args);
+  if (error) {
+    const { t } = await getI18n();
+    const known = t.admin.coaches.errors;
+    const code = (Object.keys(known) as (keyof typeof known)[]).find((k) => error.message.includes(k));
+    return { ok: false, message: code ? known[code] : error.message };
+  }
+  revalidatePath("/admin/coaches", "layout");
+  revalidatePath("/coaches", "layout");
+  revalidatePath("/settings", "layout");
+  return { ok: true };
+}
