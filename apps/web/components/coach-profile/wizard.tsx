@@ -782,7 +782,9 @@ export function buildPreview({
     in_person: draft.inPerson,
     published_at: data.profile.published_at,
     followers: 0,
-    badges: data.verifications.filter((v) => v.status === "verified").map((v) => `${v.kind}_verified` as const),
+    verified: data.profile.verification_status === "verified",
+    badges: data.profile.verification_status === "verified"
+      ? data.verifications.filter((v) => v.status === "verified").map((v) => `${v.kind}_verified` as const) : [],
     specializations: draft.specializations
       .map((slug) => catalog.specializations.find((s) => s.slug === slug))
       .filter((s): s is NonNullable<typeof s> => Boolean(s))
@@ -803,9 +805,12 @@ export function buildPreview({
           }];
         })
       : [],
-    certifications: certifications.map((c) => ({ name: c.name, issuer: c.issuer, verified: c.verification_status === "verified" })),
+    certifications: certifications.map((c) => ({
+      name: c.name, issuer: c.issuer, year: c.year, expires_on: c.expires_on, verified: c.verification_status === "verified",
+    })),
     services: services.filter((s) => s.active).map((s) => ({
       id: s.id, name: s.name, description: s.description, kind: s.kind, price_unit: s.price_unit,
+      delivery: s.delivery, duration_value: s.duration_value, duration_unit: s.duration_unit,
       price_public: s.price_public, price_cents: s.price_public ? s.price_cents : null,
       currency: s.price_public ? s.currency : null,
     })),

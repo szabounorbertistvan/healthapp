@@ -17,6 +17,8 @@ export type StartCoachingState =
   | "self"           // the coach's own page
   | "client"         // already this coach's client
   | "pending"        // a request is waiting for the coach
+  | "accepted"       // the coach accepted: they'll get in touch (no relationship yet)
+  | "contact_again"  // the last request was declined, cancelled or closed: a new one is welcome
   | "not_accepting"  // the coach is full
   | "available";
 
@@ -31,6 +33,9 @@ export function startCoachingState(
   if (viewer?.pending_request) return "pending";
   if (!profile.accepting_clients) return "not_accepting";
   if (!opts.signedIn) return "sign_in";
+  const last = viewer?.last_request;
+  if (last?.status === "accepted" && !last.started) return "accepted";
+  if (last && ["declined", "cancelled", "closed"].includes(last.status)) return "contact_again";
   return "available";
 }
 
@@ -143,11 +148,11 @@ export type WhyPoint =
   | { kind: "posts"; n: number };
 
 export function coachWhyPoints(
-  p: Pick<CoachPublicProfile, "badges" | "coaching_since" | "specializations" | "services" | "stats">,
+  p: Pick<CoachPublicProfile, "verified" | "coaching_since" | "specializations" | "services" | "stats">,
   now = new Date(),
 ): WhyPoint[] {
   const points: WhyPoint[] = [];
-  if (p.badges.length > 0) points.push({ kind: "verified" });
+  if (p.verified) points.push({ kind: "verified" });
   const years = yearsOfExperience(p.coaching_since, now);
   if (years) points.push({ kind: "experience", years });
   else if (p.coaching_since) points.push({ kind: "since", year: p.coaching_since });

@@ -39,6 +39,9 @@ const SCREEN_HREF: Record<string, string> = {
   feed: "/feed",
   challenges: "/challenges",
   notifications: "/notifications",
+  // contact requests (20261103100000)
+  coach_requests: "/requests",
+  my_requests: "/coaches/requests",
 };
 
 export function notificationHref(category: string, payload: Record<string, unknown> | null): string | null {
@@ -81,7 +84,11 @@ export type NotificationSentence =
   | "new_mention_post"
   | "badge_earned"
   | "challenge_milestone"
-  | "challenge_completed";
+  | "challenge_completed"
+  | "request_sent"
+  | "request_accepted"
+  | "request_declined"
+  | "request_cancelled";
 
 /**
  * Which sentence a row reads as. A mention in a caption and a mention in a
@@ -103,6 +110,15 @@ export function notificationSentence(category: string, payload: Record<string, u
     // newly reached, and 100 when the challenge was just completed.
     case "challenge_milestone":
       return payload?.milestone === 100 ? "challenge_completed" : "challenge_milestone";
+    // one category for a contact request's four moves; the payload says which
+    case "coaching_request":
+      switch (payload?.event) {
+        case "sent": return "request_sent";
+        case "accepted": return "request_accepted";
+        case "declined": return "request_declined";
+        case "cancelled": return "request_cancelled";
+        default: return null;
+      }
     default:
       return null;
   }

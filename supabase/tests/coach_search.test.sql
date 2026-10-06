@@ -94,6 +94,8 @@ insert into public.coach_certifications (coach_profile_id, name, document_ref)
 select id, 'ISSA', 'vault://secret-search-doc' from public.coach_profiles where slug = 'ana-search';
 insert into public.coach_verifications (coach_profile_id, kind, status)
 select id, 'identity', 'verified' from public.coach_profiles where slug = 'cristi-pl';
+-- Voinic Verified is the coach-level decision (20261101100000), not the kind row alone
+update public.coach_profiles set verification_status = 'verified' where slug = 'cristi-pl';
 
 update public.coach_profiles set status = 'published', published_at = now() - interval '3 days' where slug = 'ana-search';
 update public.coach_profiles set status = 'published', published_at = now() - interval '2 days' where slug = 'bogdan-fit';
@@ -115,7 +117,7 @@ values ('ce000000-0000-0000-0000-000000000011', 'ce000000-0000-0000-0000-0000000
 -- 1. anonymous: who comes out
 -- ============================================================================
 select pg_temp.anonymous();
-select ok(has_function_privilege('anon', 'public.search_coaches(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, int, int, boolean, boolean, uuid)', 'execute'),
+select ok(has_function_privilege('anon', 'public.search_coaches(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, int, int, boolean, boolean, uuid, boolean)', 'execute'),
   '15. anonymous callers may search');
 select is((public.search_coaches() ->> 'total')::int, 2, '1. by default: the published coaches that accept clients');
 select is((public.search_coaches(p_accepting => false) ->> 'total')::int, 3, 'accepting=false lists every published coach');

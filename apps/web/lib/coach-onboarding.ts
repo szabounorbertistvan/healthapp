@@ -8,7 +8,8 @@
  * disagree the server's list wins — submit shows what the RPC returned.
  */
 import {
-  COACH_LIMITS, isValidCoachSlug, type CoachProfileMissing, type CoachProfileStatus, type PriceUnit,
+  COACH_LIMITS, isValidCoachSlug, type CoachProfileMissing, type CoachProfileStatus, type CoachVerificationStatus,
+  type CredentialStatus, type PriceUnit,
 } from "./coach-profile";
 
 export const STEPS = ["identity", "expertise", "where", "certifications", "services", "publish"] as const;
@@ -57,7 +58,7 @@ export function missingFor(d: DraftState, currentYear = new Date().getFullYear()
   if (d.inPerson && d.locations.length === 0) missing.push("LOCATION");
   const active = d.services.filter((s) => s.active);
   if (active.length === 0) missing.push("SERVICE");
-  if (active.some((s) => s.priceUnit !== "custom" && s.priceCents === null)) missing.push("SERVICE_PRICE");
+  if (active.some((s) => s.priceUnit !== "custom" && s.priceUnit !== "free" && s.priceCents === null)) missing.push("SERVICE_PRICE");
   if (!d.hasAvatar) missing.push("AVATAR");
   if (!isValidCoachSlug(d.slug)) missing.push("SLUG");
   if (d.coachingSince !== null && d.coachingSince > currentYear) missing.push("COACHING_SINCE");
@@ -172,17 +173,66 @@ export type ServiceDraft = {
   description: string;
   price: string;
   priceUnit: PriceUnit;
+  /** As typed; empty = no duration. */
+  durationValue?: string;
 };
-export type ServiceErrors = { name?: "REQUIRED" | "TOO_LONG"; description?: "TOO_LONG"; price?: "FORMAT" | "REQUIRED" };
+export type ServiceErrors = {
+  name?: "REQUIRED" | "TOO_LONG";
+  description?: "TOO_LONG";
+  price?: "FORMAT" | "REQUIRED";
+  duration?: "FORMAT";
+};
+
+// ---------- pricing (20261031100000) ----------
+
+/** The pricing model a price unit means. The unit is stored; the model is derived, never stored twice. */
+export const PRICING_MODELS = ["one_time", "recurring", "free", "on_request"] as const;
+export type PricingModel = (typeof PRICING_MODELS)[number];
+
+export function pricingOf(unit: PriceUnit): PricingModel {
+  switch (unit) {
+    case "free": return "free";
+    case "custom": return "on_request";
+    case "week": case "month": case "year": return "recurring";
+    case "session": case "package": return "one_time";
+  }
+}
+
+/** The units a model offers (one-time: per session / package; recurring: the billing period). */
+export function unitsFor(model: PricingModel): PriceUnit[] {
+  switch (model) {
+    case "one_time": return ["session", "package"];
+    case "recurring": return ["week", "month", "year"];
+    case "free": return ["free"];
+    case "on_request": return ["custom"];
+  }
+}
+
+/** Does this unit take a price? Free and on-request never do. */
+export function takesPrice(unit: PriceUnit): boolean {
+  return unit !== "free" && unit !== "custom";
+}
+
+/** A duration as typed → whole number 1..1000, null when empty, undefined when malformed. */
+export function parseDuration(value: string | undefined): number | null | undefined {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  if (!/^\d{1,4}$/.test(v)) return undefined;
+  const n = Number(v);
+  return n >= 1 && n <= 1000 ? n : undefined;
+}
 
 export function serviceErrors(s: ServiceDraft): ServiceErrors {
   const e: ServiceErrors = {};
   if (!s.name.trim()) e.name = "REQUIRED";
   else if (s.name.trim().length > COACH_LIMITS.serviceName) e.name = "TOO_LONG";
   if (s.description.trim().length > COACH_LIMITS.serviceDescription) e.description = "TOO_LONG";
-  const cents = priceToCents(s.price);
-  if (cents === undefined) e.price = "FORMAT";
-  else if (cents === null && s.priceUnit !== "custom") e.price = "REQUIRED";
+  if (takesPrice(s.priceUnit)) {
+    const cents = priceToCents(s.price);
+    if (cents === undefined) e.price = "FORMAT";
+    else if (cents === null) e.price = "REQUIRED";
+  }
+  if (parseDuration(s.durationValue) === undefined) e.duration = "FORMAT";
   return e;
 }
 
@@ -214,4 +264,37 @@ export function statusView(status: CoachProfileStatus): StatusView {
     case "hidden": return { status, editable: false, action: "edit", tone: "neutral" };
     case "suspended": return { status, editable: false, action: null, tone: "risk" };
   }
+}
+
+
+// ---------- verification (20261101100000) ----------
+
+/**
+ * What the coach's Verification card says and offers for a status. The
+ * database decides every transition; this only picks what to draw.
+ */
+export function verificationView(status: CoachVerificationStatus): { canRequest: boolean; tone: StatusView["tone"] } {
+  switch (status) {
+    case "unverified": return { canRequest: true, tone: "neutral" };
+    case "pending": return { canRequest: false, tone: "warn" };
+    case "verified": return { canRequest: false, tone: "accent" };
+    case "rejected": return { canRequest: true, tone: "risk" };
+  }
+}
+
+/**
+ * How one credential reads: verified by Voinic, or provided by the coach
+ * (pending review, refused, or just self-reported) — and expired on top of
+ * any of them once its expiry date has passed. Never "verified" unless an
+ * admin set it.
+ */
+export function credentialLabel(
+  c: { verification_status: CredentialStatus; expires_on: string | null },
+  today = new Date().toISOString().slice(0, 10),
+): { source: "voinic" | "coach"; status: CredentialStatus; expired: boolean } {
+  return {
+    source: c.verification_status === "verified" ? "voinic" : "coach",
+    status: c.verification_status,
+    expired: Boolean(c.expires_on && c.expires_on < today),
+  };
 }

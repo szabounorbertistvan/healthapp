@@ -52,6 +52,10 @@ test.describe("access", () => {
       await page.goto("/account");
       await expect(page.getByRole("button", { name: "Become a coach" })).toBeVisible();
     });
+    test("the coach's Requests page is coach-only: a client lands on Today", async ({ page }) => {
+      await page.goto("/requests");
+      await expect(page).toHaveURL(/\/today$/);
+    });
     test("the coach review queue is admin-only", async ({ page }) => {
       await page.goto("/admin/coaches");
       await expect(page).toHaveURL(/\/today$/);
@@ -170,6 +174,35 @@ test.describe("wizard", () => {
       await expect(list.getByText(name)).toBeVisible();
       await page.reload();
       await expect(page.getByTestId("coach-services").getByText(name)).toBeVisible();
+    } finally {
+      await page.getByRole("button", { name: `Delete ${name}` }).click();
+      await expect(page.getByTestId("coach-services").getByText(name)).toHaveCount(0);
+    }
+  });
+
+  // 20261031100000: delivery, duration, a free price, switching off and on. Undone in the test.
+  test("a free service with delivery and duration is saved, switched off and on, and deleted", async ({ page }) => {
+    await openWizard(page, 5);
+    const name = `E2E free ${Date.now()}`;
+    await page.getByRole("button", { name: "+ Add service" }).click();
+    const form = page.getByTestId("coach-service-form");
+    await form.getByLabel("Service name").fill(name);
+    await form.getByLabel("Delivery").selectOption("online");
+    await form.getByLabel("Length").fill("30");
+    await form.getByRole("radio", { name: "Free" }).click();
+    await expect(form.getByLabel("Price", { exact: true })).toHaveCount(0); // free takes no price
+    await form.getByRole("button", { name: "Save service" }).click();
+    const row = page.getByTestId("coach-services").locator("li").filter({ hasText: name });
+    try {
+      await expect(row).toContainText("Free");
+      await expect(row).toContainText("30 minutes");
+      await row.getByTestId("coach-service-toggle").click();
+      await expect(row).toHaveAttribute("data-active", "false");
+      await page.reload();
+      const again = page.getByTestId("coach-services").locator("li").filter({ hasText: name });
+      await expect(again).toHaveAttribute("data-active", "false");
+      await again.getByTestId("coach-service-toggle").click();
+      await expect(again).toHaveAttribute("data-active", "true");
     } finally {
       await page.getByRole("button", { name: `Delete ${name}` }).click();
       await expect(page.getByTestId("coach-services").getByText(name)).toHaveCount(0);

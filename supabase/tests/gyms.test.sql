@@ -7,7 +7,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(52);
+select plan(55);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -160,6 +160,9 @@ select pg_temp.authenticate_as('c1000000-0000-0000-0000-0000000000c1');
 select is((select gym_name from public.coach_request_inbox() where client_username = 'ana'), 'Iron Temple',
   'the coach''s inbox has Ana''s request and the gym');
 select is(public.accept_coaching_request((select id from r)), 'accepted', 'the coach accepts');
+-- 20261103100000: accepting is "let's talk", not coaching
+select is(public.is_active_coach_of('d1000000-0000-0000-0000-0000000000d1'), false, 'accepting alone makes nobody a client');
+select lives_ok($$ select public.start_coaching_from_request((select id from r)) $$, 'the coach starts coaching, as a second step');
 select is(public.is_active_coach_of('d1000000-0000-0000-0000-0000000000d1'), true, 'the relationship is active');
 select is((select trainer_client_id is not null from public.coaching_requests where id = (select id from r)), true,
   'the request records the relationship it became');
@@ -170,19 +173,21 @@ select pg_temp.authenticate_as('d1000000-0000-0000-0000-0000000000d1');
 select throws_ok($$ select public.request_coaching((select id from cp)) $$, '55000', null,
   'a client with this coach cannot ask again (ALREADY_COACHED)');
 
--- Ion asked too, then got a coach by invite: accepting closes it instead.
+-- Ion asked too, then got a coach by invite: the coach may still accept the
+-- conversation, but cannot start coaching him (one active coach per client).
 reset role;
 insert into public.trainer_clients (coach_id, client_id, status, started_at)
 values ('c2000000-0000-0000-0000-0000000000c2', 'd2000000-0000-0000-0000-0000000000d2', 'active', now());
 select pg_temp.authenticate_as('c1000000-0000-0000-0000-0000000000c1');
-select is(public.accept_coaching_request((select id from r2)), 'already_has_coach',
-  'a client who found a coach meanwhile is not accepted');
+select is(public.accept_coaching_request((select id from r2)), 'accepted', 'a client who has a coach can still be talked to');
+select throws_ok($$ select public.start_coaching_from_request((select id from r2)) $$, '55000', 'ALREADY_HAS_COACH',
+  'but not coached: one active coach per client');
 reset role;
-select is((select status from public.coaching_requests where id = (select id from r2)), 'closed',
-  'and the request is closed, not left pending');
+select is((select status from public.coaching_requests where id = (select id from r2)), 'accepted',
+  'and the request stays accepted');
 select pg_temp.authenticate_as('d2000000-0000-0000-0000-0000000000d2');
-select throws_ok($$ select public.request_coaching((select id from cp)) $$, '55000', null,
-  'one active coach: someone with a coach cannot ask another (ALREADY_HAS_COACH)');
+select lives_ok($$ select public.request_coaching((select id from cp), null, 'Another question') $$,
+  'contacting is not coaching: someone with a coach may still ask (no pending one left)');
 
 -- ---------- 6. deleting a gym ----------
 reset role;

@@ -7,6 +7,8 @@ import { formatPrice } from "@/lib/coach-onboarding";
 import { coachFormat, coachWhyPoints, yearsOfExperience } from "@/lib/coach-public";
 import { Avatar } from "../social";
 import { StartCoachingButton } from "./start-coaching";
+import { VerifiedBadge } from "../coach-discovery/verified-badge";
+import { useServiceDuration } from "./service-format";
 
 /**
  * A coach's page, drawn from exactly the shape coach_public_profile() returns.
@@ -43,6 +45,9 @@ export function CoachProfileView({
   const p = t.coachProfile.publicPage;
   const s = t.coachProfile.services;
   const years = yearsOfExperience(profile.coaching_since);
+  const durationText = useServiceDuration();
+  const v = t.coachProfile.verification;
+  const today = new Date().toISOString().slice(0, 10);
   const cityOf = (l: CoachPublicProfile["locations"][number]) => (locale === "ro" ? l.city : l.city_en);
   const local = <T extends { name_en: string; name_ro: string }>(x: T) => (locale === "ro" ? x.name_ro : x.name_en);
   const format = coachFormat(profile);
@@ -79,9 +84,10 @@ export function CoachProfileView({
               <h1 className="font-display text-[28px] font-extrabold leading-tight tracking-tight @2xl:text-[40px]">
                 {profile.display_name}
               </h1>
-              <VerifiedBadges badges={profile.badges} />
+              <VerifiedBadge verified={profile.verified} size="md" />
             </div>
             {profile.username ? <p className="mt-0.5 text-[14px] text-ink-faint">@{profile.username}</p> : null}
+            <VerifiedDetail profile={profile} />
             {profile.headline ? (
               <p className="mt-1.5 text-[16px] text-ink-soft @2xl:text-[18px]">{profile.headline}</p>
             ) : live ? null : (
@@ -136,23 +142,30 @@ export function CoachProfileView({
           ) : null}
           <About profile={profile} live={live} />
 
-          {/* one column: the facts right after About; wide: they live in the sidebar */}
-          <div className="@4xl:hidden">
-            <Facts profile={profile} formats={formats} years={years} />
-          </div>
-
           {profile.services.length > 0 ? (
             <Section title={p.services} id="services">
               <ul className="grid gap-3 @xl:grid-cols-2" data-testid="coach-public-services">
                 {profile.services.map((sv) => {
                   const price = sv.price_public ? formatPrice(sv.price_cents, sv.currency, locale) : null;
+                  const duration = durationText(sv.duration_value ?? null, sv.duration_unit ?? null);
                   return (
-                    <li key={sv.id} className="flex flex-col rounded-3xl bg-surface p-5">
+                    <li key={sv.id} className="flex flex-col rounded-3xl bg-surface p-5" data-testid="coach-public-service">
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{s.kinds[sv.kind]}</p>
                       <p className="mt-1 font-display text-lg font-bold tracking-tight">{sv.name}</p>
-                      {sv.description ? <p className="mt-1.5 text-[14px] leading-relaxed text-ink-soft">{sv.description}</p> : null}
+                      {/* how and how long — the two things people ask before the price */}
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {sv.delivery ? (
+                          <li className="rounded-full bg-bg px-2.5 py-1 text-[12px] font-semibold text-ink-soft">{s.deliveries[sv.delivery]}</li>
+                        ) : null}
+                        {duration ? (
+                          <li className="rounded-full bg-bg px-2.5 py-1 text-[12px] font-semibold text-ink-soft">{duration}</li>
+                        ) : null}
+                      </ul>
+                      {sv.description ? <p className="mt-2 text-[14px] leading-relaxed text-ink-soft">{sv.description}</p> : null}
                       <p className="mt-4 font-display text-[22px] font-extrabold tracking-tight" data-testid="coach-service-price">
-                        {price ? (
+                        {sv.price_unit === "free" ? (
+                          <span>{s.free}</span>
+                        ) : price ? (
                           <>
                             {price}
                             {s.unitShort[sv.price_unit] ? (
@@ -173,8 +186,14 @@ export function CoachProfileView({
             </Section>
           ) : null}
 
+          {/* one column: where and how after the offer; wide: the facts live in the sidebar */}
+          <div className="@4xl:hidden">
+            <Facts profile={profile} formats={formats} years={years} />
+          </div>
+
           {profile.certifications.length > 0 ? (
             <Section title={p.certifications}>
+              <p className="-mt-2 mb-3 text-[13px] text-ink-faint">{v.credentialsNote}</p>
               <ul className="divide-y divide-line">
                 {profile.certifications.map((c, i) => (
                   <li key={`${c.name}-${i}`} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0">
@@ -182,12 +201,17 @@ export function CoachProfileView({
                       <p className="font-semibold">{c.name}</p>
                       <p className="text-[13px] text-ink-faint">{[c.issuer, c.year].filter(Boolean).join(" · ")}</p>
                     </div>
-                    {/* verified only when an admin approved it — existence alone earns no badge */}
-                    {c.verified ? (
-                      <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink">
-                        ✓ {p.verified}
-                      </span>
-                    ) : null}
+                    {/* Voinic's word only when an admin verified this credential; otherwise it is the coach's */}
+                    <span className="flex flex-wrap items-center gap-1.5" data-testid="public-credential" data-verified={c.verified}>
+                      {c.expires_on && c.expires_on < today ? (
+                        <span className="rounded-full bg-risk-soft px-2.5 py-1 text-[11.5px] font-semibold text-risk">{v.credentialExpired}</span>
+                      ) : null}
+                      {c.verified ? (
+                        <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink">✓ {v.credentialVerified}</span>
+                      ) : (
+                        <span className="rounded-full bg-bg px-2.5 py-1 text-[11.5px] font-semibold text-ink-faint">{v.credentialProvided}</span>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -235,23 +259,25 @@ function Section({ title, id, children }: { title: string; id?: string; children
   );
 }
 
-function VerifiedBadges({ badges }: { badges: VerificationBadge[] }) {
+/**
+ * Under the name of a verified coach: what Voinic checked (identity /
+ * certifications / business, when recorded) — one quiet line, never more
+ * badges. Nothing for anyone else.
+ */
+function VerifiedDetail({ profile }: { profile: CoachPublicProfile }) {
   const { t } = useI18n();
   const p = t.coachProfile.publicPage;
-  if (badges.length === 0) return null;
+  const v = t.coachProfile.verification;
+  if (!profile.verified) return null;
   const label: Record<VerificationBadge, string> = {
     identity_verified: p.verifiedIdentity,
     certification_verified: p.verifiedCertification,
     business_verified: p.verifiedBusiness,
   };
   return (
-    <ul className="flex flex-wrap gap-1.5">
-      {badges.map((b) => (
-        <li key={b} title={label[b]} className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink">
-          ✓ {label[b]}
-        </li>
-      ))}
-    </ul>
+    <p className="mt-1.5 text-[12.5px] text-ink-faint" data-testid="voinic-verified-detail">
+      {profile.badges.length ? `${v.checked} ${profile.badges.map((b) => label[b].toLowerCase()).join(" · ")}` : v.badgeHint}
+    </p>
   );
 }
 
@@ -298,6 +324,15 @@ function Facts({ profile, formats, years }: { profile: CoachPublicProfile; forma
   }
   if (formats.length) rows.push({ label: p.format, value: formats.join(" · ") });
   if (profile.languages.length) rows.push({ label: p.languages, value: profile.languages.map((l) => l.native_name).join(" · ") });
+  if (profile.certifications.length) {
+    // provided by the coach vs checked by Voinic, never blurred into one number
+    const checked = profile.certifications.filter((c) => c.verified).length;
+    rows.push({
+      label: t.coachProfile.verification.credentialsRow,
+      value: [fill(t.coachProfile.verification.credentialsAdded, { n: profile.certifications.length }),
+              checked ? fill(t.coachProfile.verification.credentialsChecked, { n: checked }) : null].filter(Boolean).join(" · "),
+    });
+  }
   if (profile.in_person && profile.locations.length) {
     rows.push({
       label: p.locations,

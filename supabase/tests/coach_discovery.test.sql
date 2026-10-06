@@ -190,6 +190,9 @@ select ok(exists (select 1 from public.admin_audit_events
 
 -- the search foundation (read as the owner: search_text is never served)
 reset role;
+-- Voinic Verified is the coach-level decision (20261101100000); the per-kind
+-- badges checked below only show under it
+update public.coach_profiles set verification_status = 'verified' where slug = 'andrei-pop';
 select ok((select search_text like '%hypertrophy%' and search_text like '%hipertrofie%'
                   and search_text like '%cluj-napoca%' and search_text like '%online coaching%'
            from public.coach_profiles where slug = 'andrei-pop'),

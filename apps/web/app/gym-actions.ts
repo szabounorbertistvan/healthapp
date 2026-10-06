@@ -79,30 +79,13 @@ const INBOX_PATHS = ["/clients", "/dashboard", "/messages"];
 
 /**
  * The coach answers a request. Accepting (accept_coaching_request(),
- * 20261024100000) is held to the same client limit the invite button is, and
- * keeps one active coach per client: if the client found one meanwhile the
- * request is closed and ALREADY_HAS_COACH comes back.
+ * 20261103100000) means "let's talk": it makes nobody a client, so it is not
+ * held to the client limit. Starting coaching is its own step, on /requests
+ * (startCoachingFromRequest in coach-profile-actions.ts), which is.
  */
 export async function respondCoachRequest(requestId: string, accept: boolean): Promise<GymResult> {
   const id = idOf(requestId);
   if (!id) return { ok: false, error: "REQUEST_NOT_PENDING" };
-  if (!accept) return call("decline_coaching_request", { p_request: id, p_reason: null }, INBOX_PATHS);
-
-  const live = await liveUser();
-  if (!live) return { ok: false };
-  const [plan, { count }] = await Promise.all([
-    getPlan(),
-    live.supabase.from("trainer_clients").select("id", { count: "exact", head: true })
-      .eq("coach_id", live.userId).eq("status", "active"),
-  ]);
-  if ((count ?? 0) >= plan.e.maxClients) return { ok: false, error: "CLIENT_LIMIT" };
-
-  const { data, error } = await live.supabase.rpc("accept_coaching_request", { p_request: id });
-  for (const path of INBOX_PATHS) revalidatePath(path);
-  if (error) {
-    const code = codeOf(error.message);
-    if (!code) console.error("accept_coaching_request failed:", error.message);
-    return { ok: false, error: code };
-  }
-  return data === "accepted" ? { ok: true } : { ok: false, error: "ALREADY_HAS_COACH" };
+  if (!accept) return call("decline_coaching_request", { p_request: id, p_reason: null }, [...INBOX_PATHS, "/requests"]);
+  return call("accept_coaching_request", { p_request: id }, [...INBOX_PATHS, "/requests"]);
 }

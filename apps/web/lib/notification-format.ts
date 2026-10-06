@@ -61,6 +61,11 @@ export function notificationKind(sentence: NotificationSentence | null): Notific
     case "badge_earned": return "badge";
     case "challenge_milestone":
     case "challenge_completed": return "challenge";
+    // a person reaching out (or answering): the person mark, like a follow
+    case "request_sent":
+    case "request_accepted":
+    case "request_declined":
+    case "request_cancelled": return "follow";
     default: return "system";
   }
 }

@@ -208,6 +208,54 @@ optional ○ rows. Until the migration is live the two admin pages read nothing 
 exist) — push before deploying. The coach is not notified of a decision (they see it on
 /settings/coach-profile); verification has RPCs but no admin UI yet.
 
+Services / offers (2026-10-06, migration `20261031100000_coach_service_offers.sql`, **not pushed live** at
+the time of writing). `coach_services` extended, not duplicated: `delivery` (online / in_person / hybrid /
+digital), `duration_value` + `duration_unit` (minutes / days / weeks / months, both or neither), kinds
+`training_program` and `training_nutrition`, currency limited to RON/EUR/USD/GBP/MDL. `price_unit` gains `free`,
+`week`, `year`; the pricing model is derived from it, never stored (`pricingOf()` in lib/coach-onboarding.ts):
+free · one-time (session, package) · recurring (week / month / year = billing period) · on request (custom).
+Content still changes only in draft (pre-moderation); switching a service on/off and reordering are operational
+and work in review / published / hidden through `coach_set_service_active()` / `coach_reorder_services()` — the
+"Your services" card on /settings/coach-profile — and the last active service of a non-draft profile cannot be
+switched off. The public page shows delivery, duration and Free; its per-service CTA is the existing Start
+coaching request (no payment, no booking). Until the migration is live, /settings/coach-profile cannot read the
+new columns — **push before deploying**.
+
+Verification & trust (2026-10-06, migration `20261101100000_coach_verification.sql`, **not pushed live**
+at the time of writing). "Voinic Verified" = `coach_profiles.verification_status = 'verified'` and nothing
+else: unverified → (coach: `request_coach_verification()`, complete profile required) → pending → (admin:
+`admin_set_coach_verification_status()`) → verified | rejected (reason shown to the coach); rejected → pending;
+verified → rejected = revoke. Coaches never write it. Credentials (`coach_certifications`) gain
+`credential_number` (owner/admin only, never public) and `expires_on`; each stays "provided by coach" until an
+admin verifies it (`admin_set_certification_status`); any edit resets it. One reusable badge,
+`components/coach-discovery/verified-badge.tsx`, on the search card and the public page; the per-kind
+`coach_verifications` rows only add a "checked: identity · …" line under it. Search ranking unchanged (verified
+stays one tie-breaker). Admin: a verification panel on /admin/coaches/[id] and a "Verification requests" queue
+(`?verification=pending`). Credentials are still editable in draft only (pre-moderation). Not built: KYC,
+document upload (`document_ref` exists, unused), external registry checks, notifying the coach of a decision.
+
+Saved coaches (2026-10-06, migration `20261102100000_coach_saves.sql`, **not pushed live** at the time of
+writing). A private shortlist, not Follow: `coach_saves` (user_id, coach_profile_id, created_at; primary key on the
+pair), owner-only select / insert / delete, no update, nothing for anon; a trigger refuses saving yourself
+(CANNOT_SAVE_SELF) and the insert policy refuses a coach the saver cannot see (`coach_saveable()`). No save count
+exists anywhere. `search_coaches()` gains `p_saved`, a `saved` sort and, for signed-in callers, `is_saved` per card
+(one query, no request per card); `coach_viewer_state()` gains `is_saved`. UI: `SaveCoachButton` (bookmark) on every
+card and beside Follow on the profile, sign-in link for anonymous readers, `/coaches/saved` (static segment;
+"saved" is a reserved slug), a header link for signed-in readers. A coach who goes hidden or suspended drops out of
+the list (the row is kept); a deleted profile or account cascades.
+
+Contact requests (2026-10-06, migration `20261103100000_coach_contact_requests.sql`, **not pushed live** at the
+time of writing). `coaching_requests` extended (goal, preferred_format), not duplicated. **Two steps, decided
+2026-10-06**: Accept = "let's talk" — status only, the client is notified, nobody becomes a client;
+`start_coaching_from_request()` on an accepted request is the explicit second step (trainer_clients + conversation,
+one-active-coach rule, the plan's client limit in the action). Contacting no longer requires having no coach. Notices
+go into the existing notifications table, category `coaching_request` with payload.event (sent / accepted / declined /
+cancelled) and payload.screen, gated by social_notify_ok(). Reads: `coach_requests(status)` (public name, username,
+avatar and what the request carries — no city, no e-mail) and `my_coaching_requests()`; `coach_viewer_state()` gains
+last_request. UI: the profile CTA is "Contact coach" / Request sent / Request accepted / Contact again; the dialog asks
+for a message (required), an optional service, goal and format; /requests (coach, nav item) and /coaches/requests
+(client). The gyms inbox card stays, with corrected copy and a link to /requests. "requests" is a reserved slug.
+
 Not built: sitemap / robots, city / specialization landing pages, notifications for coach-profile
 decisions and for requests (the coach has no inbox for them yet — requests are only in
 the table), certification document upload

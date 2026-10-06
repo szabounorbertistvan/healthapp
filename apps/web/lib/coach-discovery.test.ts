@@ -160,7 +160,7 @@ describe("card mapping", () => {
       href: "/coaches/ana", name: "Ana", avatarUrl: null, headline: "Strength coach", verified: true,
       city: "București", formats: ["online", "in_person"], years: 10, specializations: ["Forță"],
       moreSpecializations: 3, startingPrice: { cents: 20000, currency: "RON", unit: "month" }, followers: 12, accepting: true,
-      follow: null, isSelf: false,
+      follow: null, isSelf: false, save: null, profileId: null,
     });
     expect(toCoachCard(row, "en").city).toBe("Bucharest");
   });
@@ -237,5 +237,25 @@ describe("the reader's city", () => {
     expect(matchViewerCity("  ", cities)).toBeNull();
     expect(matchViewerCity("Oradea", cities)).toBeNull();
     expect(matchViewerCity("Clu", cities)).toBeNull();
+  });
+});
+
+describe("save on a card (20261102100000)", () => {
+  const row: CoachSearchRow = {
+    slug: "ana", display_name: "Ana", avatar_url: null, headline: null, verified: false, online: true, in_person: false,
+    coaching_since: null, accepting_clients: true, followers: 0, location: null, specializations: [], specializations_total: 0,
+    starting_price: null, id: "p1",
+  };
+  it("an anonymous card has no save state (Save leads to sign-in), but knows its profile", () => {
+    const card = toCoachCard(row, "en");
+    expect(card.save).toBeNull();
+    expect(card.profileId).toBe("p1");
+  });
+  it("a signed-in card carries the reader's saved state", () => {
+    expect(toCoachCard({ ...row, user_id: "u1", is_self: false, is_saved: true }, "en").save).toEqual({ profileId: "p1", saved: true });
+    expect(toCoachCard({ ...row, user_id: "u1", is_self: false, is_saved: false }, "en").save).toEqual({ profileId: "p1", saved: false });
+  });
+  it("never on your own card", () => {
+    expect(toCoachCard({ ...row, user_id: "me", is_self: true, is_saved: false }, "en").save).toBeNull();
   });
 });

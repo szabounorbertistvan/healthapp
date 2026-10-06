@@ -26,6 +26,21 @@ export default async function CoachesLayout({ children }: { children: React.Reac
           <LanguageSelector />
           <ThemeToggle />
           {appHref ? (
+            <Link href="/coaches/requests" className="hidden h-10 items-center rounded-full px-3 text-[13.5px] font-semibold text-ink-soft hover:text-ink sm:inline-flex">
+              {t.coachProfile.requests.mine.title}
+            </Link>
+          ) : null}
+          {/* the private shortlist (20261102100000): only for someone who can have one */}
+          {appHref ? (
+            <Link href="/coaches/saved" aria-label={t.coachProfile.saved.title}
+              className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-semibold text-ink-soft hover:text-ink">
+              <svg viewBox="0 0 24 24" aria-hidden className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round">
+                <path d="M6 3h12v18l-6-4.5L6 21z" />
+              </svg>
+              <span className="hidden sm:inline">{t.coachProfile.saved.nav}</span>
+            </Link>
+          ) : null}
+          {appHref ? (
             <Link href={appHref} className={pill}>{p.openApp}</Link>
           ) : (
             <LoginModal label={p.signIn} className={pill} />

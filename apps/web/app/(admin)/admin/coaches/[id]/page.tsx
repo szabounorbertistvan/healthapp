@@ -8,8 +8,10 @@ import { getI18n } from "@/lib/i18n/server";
 import { summary } from "@/lib/coach-onboarding";
 import type { CoachProfileMissing, CoachProfileStatus, CoachPublicProfile } from "@/lib/coach-profile";
 import {
-  approveCoachProfile, restoreCoachProfile, returnCoachProfileToDraft, suspendCoachProfile,
+  approveCoachProfile, restoreCoachProfile, returnCoachProfileToDraft, setCoachVerification, setCredentialStatus,
+  suspendCoachProfile,
 } from "@/app/admin-coach-actions";
+import type { CoachVerificationStatus, CredentialStatus } from "@/lib/coach-profile";
 import { ConfirmAction } from "@/components/admin/confirm-action";
 import { AdminHeader, Note, Pill, Section, fmtDateTime } from "@/components/admin/ui";
 import { CoachProfilePreview } from "@/components/coach-profile/preview";
@@ -24,6 +26,15 @@ type Review = CoachPublicProfile & {
   updated_at: string;
   account_suspended: boolean;
   missing: CoachProfileMissing[];
+  verification_status: CoachVerificationStatus;
+  verification_requested_at: string | null;
+  verification_message: string | null;
+  verification_decided_at: string | null;
+  verification_note: string | null;
+  credentials: {
+    id: string; name: string; issuer: string | null; year: number | null; credential_number: string | null;
+    expires_on: string | null; verification_status: CredentialStatus; admin_note: string | null;
+  }[];
 };
 
 export const dynamic = "force-dynamic";
@@ -113,6 +124,10 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
       </Section>
 
       <div className="mt-4">
+        <VerificationPanel review={review} />
+      </div>
+
+      <div className="mt-4">
         <Section title={m.preview} hint={m.previewHint}>
           <div className="rounded-3xl bg-bg p-2 sm:p-4">
             <CoachProfilePreview profile={review} />
@@ -120,5 +135,82 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
         </Section>
       </div>
     </div>
+  );
+}
+
+/**
+ * Voinic verification (20261101100000): the coach's request and message, each
+ * credential with Verify / Not accepted, and the decisions the database
+ * allows from this status. Separate from publishing, and never automatic.
+ */
+async function VerificationPanel({ review }: { review: Review }) {
+  const { t, locale } = await getI18n();
+  const v = t.admin.coaches.verification;
+  const name = review.display_name;
+  const s = review.verification_status;
+  return (
+    <Section title={v.title} hint={v.intro}>
+      <div className="grid gap-3 text-[13.5px]" data-testid="admin-coach-verification" data-status={s}>
+        <p>
+          <Pill tone={s === "pending" ? "warn" : s === "verified" ? "accent" : s === "rejected" ? "risk" : "neutral"}>{v.statuses[s]}</Pill>
+          {review.verification_requested_at ? (
+            <span className="ml-2 text-ink-faint">{fill(v.requested, { date: fmtDateTime(review.verification_requested_at, locale) })}</span>
+          ) : null}
+        </p>
+        {review.verification_message ? <p className="text-ink-soft">{fill(v.message, { message: review.verification_message })}</p> : null}
+        {review.verification_note ? <p className="text-ink-faint">{fill(v.lastNote, { note: review.verification_note })}</p> : null}
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{v.credentials}</p>
+          {review.credentials.length === 0 ? <Note>{v.noCredentials}</Note> : (
+            <ul className="mt-1.5 grid gap-1.5">
+              {review.credentials.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-bg px-3.5 py-2.5">
+                  <span>
+                    <span className="block font-semibold">{c.name}</span>
+                    <span className="block text-[12px] text-ink-faint">
+                      {[c.issuer, c.year, c.credential_number ? fill(v.number, { n: c.credential_number }) : null,
+                        c.expires_on ? fill(v.expires, { date: c.expires_on }) : null].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Pill tone={c.verification_status === "verified" ? "accent" : c.verification_status === "pending" ? "warn" : c.verification_status === "rejected" ? "risk" : "neutral"}>
+                      {v.credStatuses[c.verification_status]}
+                    </Pill>
+                    {c.verification_status !== "verified" ? (
+                      <ConfirmAction tone="accent" label={v.credVerify} title={fill(v.credVerifyTitle, { name: c.name })} body={v.credVerifyBody}
+                        action={setCredentialStatus.bind(null, c.id, "verified")} />
+                    ) : null}
+                    {c.verification_status !== "rejected" ? (
+                      <ConfirmAction tone="neutral" withReason label={v.credReject} title={fill(v.credRejectTitle, { name: c.name })} body={v.credRejectBody}
+                        action={setCredentialStatus.bind(null, c.id, "rejected")} />
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {s === "pending" ? (
+            <>
+              <ConfirmAction tone="accent" label={v.verify} title={fill(v.verifyTitle, { name })} body={v.verifyBody}
+                action={setCoachVerification.bind(null, review.id, "verified")} />
+              <ConfirmAction tone="neutral" withReason label={v.reject} title={fill(v.rejectTitle, { name })} body={v.rejectBody}
+                action={setCoachVerification.bind(null, review.id, "rejected")} />
+            </>
+          ) : null}
+          {s === "rejected" ? (
+            <ConfirmAction tone="neutral" label={v.reopen} title={fill(v.reopenTitle, { name })} body={v.reopenBody}
+              action={setCoachVerification.bind(null, review.id, "pending")} />
+          ) : null}
+          {s === "verified" ? (
+            <ConfirmAction withReason label={v.revoke} title={fill(v.revokeTitle, { name })} body={v.revokeBody}
+              action={setCoachVerification.bind(null, review.id, "rejected")} />
+          ) : null}
+        </div>
+      </div>
+    </Section>
   );
 }

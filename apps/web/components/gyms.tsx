@@ -463,7 +463,10 @@ export function CoachRequestsCard({ requests }: { requests: InboxRequest[] }) {
 
   return (
     <Card plain>
-      <p className="font-display text-lg font-bold tracking-tight">{r.title} · {requests.length}</p>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="font-display text-lg font-bold tracking-tight">{r.title} · {requests.length}</p>
+        <Link href="/requests" className="text-[13px] font-semibold text-accent-ink hover:underline">{r.seeAll} →</Link>
+      </div>
       <p className="mt-1 text-[12.5px] leading-relaxed text-ink-faint">{r.hint}</p>
       <ul className="mt-3 grid gap-2.5">
         {requests.map((q) => (
@@ -477,7 +480,6 @@ export function CoachRequestsCard({ requests }: { requests: InboxRequest[] }) {
                     {[
                       q.gym_name ? fill(r.foundAt, { gym: q.gym_name }) : null,
                       q.service_name ? fill(r.service, { name: q.service_name }) : null,
-                      q.client_city,
                     ].filter(Boolean).join(" · ")}
                   </span>
                 </span>

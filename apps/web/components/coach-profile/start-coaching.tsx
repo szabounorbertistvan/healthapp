@@ -14,11 +14,13 @@ import { BUTTON, FIELD, HINT, LABEL, SMALL_BUTTON } from "@/lib/form-classes";
 import { cancelCoachingRequest, requestCoaching } from "@/app/coach-profile-actions";
 
 /**
- * "Start coaching": every button on the page (hero, each service, the phone's
- * bottom bar) opens one dialog — pick a service, add a note, send. The
- * request goes through request_coaching(), which is the authority on every
- * rule; the states below only decide what to draw. Without the provider (the
- * onboarding preview) the buttons are drawn and inert.
+ * "Contact coach": every button on the page (hero, each service, the phone's
+ * bottom bar) opens one dialog — an optional service, a short message, an
+ * optional goal and format, send. A request to talk, never a booking or a
+ * payment (20261103100000). The request goes through request_coaching(),
+ * which is the authority on every rule; the states below only decide what to
+ * draw: Contact / Request sent (cancel) / Request accepted / Contact again.
+ * Without the provider (the onboarding preview) the buttons are inert.
  */
 type Ctx = {
   state: StartCoachingState;
@@ -44,6 +46,9 @@ export function StartCoachingProvider({
   const [open, setOpen] = useState(false);
   const [service, setService] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [goal, setGoal] = useState("");
+  const [format, setFormat] = useState<"online" | "in_person" | "hybrid" | null>(null);
+  const [touched, setTouched] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -56,18 +61,31 @@ export function StartCoachingProvider({
     setOpen(true);
   }
 
+  const messageMissing = !message.trim();
+  // formats the coach offers; hybrid only when they do both
+  const formats = ([profile.online ? "online" : null, profile.in_person ? "in_person" : null,
+    profile.online && profile.in_person ? "hybrid" : null] as const).filter((f): f is "online" | "in_person" | "hybrid" => Boolean(f));
+
   function send() {
+    setTouched(true);
+    if (messageMissing || pending) return;
     setError(null);
     start(async () => {
-      const result = await requestCoaching({ profileId: profile.id, serviceId: service, message, slug: profile.slug });
+      const result = await requestCoaching({
+        profileId: profile.id, serviceId: service, message, goal: goal.trim() || null, format, slug: profile.slug,
+      });
       if (result.ok) {
         setSent(true);
         setMessage("");
+        setGoal("");
+        setFormat(null);
+        setTouched(false);
         router.refresh();
         return;
       }
       setError(
-        result.errorCode === "REQUEST_PENDING" ? p.errPending
+        result.errorCode === "GOAL_TOO_LONG" ? p.errGoal
+          : result.errorCode === "REQUEST_PENDING" ? p.errPending
           : result.errorCode === "NOT_ACCEPTING_CLIENTS" ? p.errNotAccepting
           : result.errorCode === "ALREADY_COACHED" ? p.errAlreadyClient
           : result.errorCode === "ALREADY_HAS_COACH" ? p.errHasCoach
@@ -98,7 +116,8 @@ export function StartCoachingProvider({
                   <Dialog.Description className="mt-2 text-[14px] leading-relaxed text-ink-soft">
                     {fill(p.sentBody, { name })}
                   </Dialog.Description>
-                  <div className="mt-5 flex justify-end">
+                  <div className="mt-5 flex flex-wrap justify-end gap-2">
+                    <Link href="/coaches/requests" className={`${SMALL_BUTTON} h-11 px-5`}>{p.myRequests}</Link>
                     <Dialog.Close className={BUTTON}>{p.close}</Dialog.Close>
                   </div>
                 </div>
@@ -145,12 +164,39 @@ export function StartCoachingProvider({
 
                   <label className={`${LABEL} mt-4`} htmlFor={`${ids}-message`}>{p.message}</label>
                   <textarea
-                    id={`${ids}-message`} rows={4} maxLength={COACH_LIMITS.requestMessage} value={message}
+                    id={`${ids}-message`} rows={4} maxLength={COACH_LIMITS.requestMessage} value={message} required
+                    placeholder={p.messagePlaceholder} aria-invalid={touched && messageMissing}
                     className={`${FIELD} h-auto min-h-24 resize-y py-2.5 leading-relaxed`}
                     aria-describedby={`${ids}-message-hint`}
                     onChange={(e) => setMessage(e.target.value)}
                   />
-                  <p id={`${ids}-message-hint`} className={HINT}>{p.messageHint}</p>
+                  <p id={`${ids}-message-hint`} className={HINT}>
+                    {touched && messageMissing ? <span className="text-risk">{p.messageRequired}</span> : p.messageHint}
+                    <span className="float-right tabular-nums text-ink-faint">{message.length}/{COACH_LIMITS.requestMessage}</span>
+                  </p>
+
+                  <label className={`${LABEL} mt-4`} htmlFor={`${ids}-goal`}>{p.goal}</label>
+                  <input
+                    id={`${ids}-goal`} className={FIELD} maxLength={300} value={goal} placeholder={p.goalPlaceholder}
+                    onChange={(e) => setGoal(e.target.value)}
+                  />
+
+                  {formats.length > 1 ? (
+                    <fieldset className="mt-4">
+                      <legend className={LABEL}>{p.formatLabel}</legend>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {[null, ...formats].map((f) => (
+                          <button
+                            key={f ?? "any"} type="button" aria-pressed={format === f} onClick={() => setFormat(f)}
+                            className={`h-10 rounded-full px-4 text-[13px] font-semibold transition ${
+                              format === f ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"}`}
+                          >
+                            {f ? s.deliveries[f] : p.anyFormat}
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                  ) : null}
 
                   {viewer?.has_other_coach ? (
                     <p className="mt-3 rounded-2xl bg-warn-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-warn">
@@ -161,7 +207,8 @@ export function StartCoachingProvider({
 
                   <div className="mt-5 flex flex-wrap justify-end gap-2">
                     <Dialog.Close className={`${SMALL_BUTTON} h-11 px-5`}>{p.cancel}</Dialog.Close>
-                    <button type="button" className={BUTTON} disabled={pending} onClick={send}>
+                    <button type="button" className={BUTTON} disabled={pending || (touched && messageMissing)} onClick={send}
+                      data-testid="coaching-request-send">
                       {pending ? p.sending : p.send}
                     </button>
                   </div>
@@ -198,10 +245,18 @@ export function StartCoachingButton({
 
   switch (state) {
     case "available":
+    case "contact_again":
       return (
-        <button type="button" className={`${primary} ${size} ${className}`} onClick={() => ctx?.open(serviceId)}>
-          {p.startCoaching}
+        <button type="button" className={`${primary} ${size} ${className}`} onClick={() => ctx?.open(serviceId)}
+          data-testid="contact-coach" data-state={state}>
+          {state === "contact_again" ? p.contactAgain : p.startCoaching}
         </button>
+      );
+    case "accepted":
+      return (
+        <Link href="/coaches/requests" className={`${QUIET} ${size} ${className}`} data-testid="coaching-request-accepted">
+          ✓ {p.requestAccepted}
+        </Link>
       );
     case "sign_in":
       return (
@@ -235,7 +290,7 @@ function StickyCta() {
   const ctx = useContext(StartCoachingContext);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted || !ctx || (ctx.state !== "available" && ctx.state !== "sign_in")) return null;
+  if (!mounted || !ctx || (ctx.state !== "available" && ctx.state !== "sign_in" && ctx.state !== "contact_again")) return null;
   return createPortal(
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:hidden">
       <StartCoachingButtonInContext ctx={ctx} />

@@ -5,6 +5,8 @@ import { useI18n } from "@/lib/i18n/client";
 import type { CoachCardModel } from "@/lib/coach-discovery";
 import { formatPrice } from "@/lib/coach-onboarding";
 import { Avatar, FollowButton } from "../social";
+import { VerifiedBadge } from "./verified-badge";
+import { SaveCoachButton } from "./save-coach-button";
 
 /**
  * One coach in a list: scanned in a second, decided on the profile. Photo,
@@ -24,7 +26,10 @@ export function CoachCard({ card, signedIn }: { card: CoachCardModel; signedIn: 
   const d = t.coachProfile.discovery;
   const p = t.coachProfile.publicPage;
   const s = t.coachProfile.services;
-  const price = card.startingPrice ? formatPrice(card.startingPrice.cents, card.startingPrice.currency, locale) : null;
+  // the cheapest public offer; a free one reads "Free offer", never "from 0 RON"
+  const freeOffer = card.startingPrice?.unit === "free";
+  const price = card.startingPrice && !freeOffer
+    ? formatPrice(card.startingPrice.cents, card.startingPrice.currency, locale) : null;
   const where = [card.city, ...card.formats.map((f) => (f === "online" ? d.online : d.inPerson))].filter(Boolean).join(" · ");
 
   const follow = card.follow ? (
@@ -43,7 +48,13 @@ export function CoachCard({ card, signedIn }: { card: CoachCardModel; signedIn: 
       data-testid="coach-card"
       className="group relative flex h-full flex-col rounded-3xl bg-surface p-5 ring-accent/60 transition hover:-translate-y-0.5 hover:shadow-lg focus-within:ring-2"
     >
-      <div className="flex items-start gap-3.5">
+      {/* Save: a private shortlist, above the stretched link like Follow; never on your own card */}
+      {!card.isSelf ? (
+        <div className="absolute right-3 top-3 z-10">
+          <SaveCoachButton profileId={card.save?.profileId ?? card.profileId} saved={card.save?.saved ?? false} signedIn={signedIn && Boolean(card.save)} />
+        </div>
+      ) : null}
+      <div className="flex items-start gap-3.5 pr-11">
         <Avatar name={card.name} url={card.avatarUrl} size="h-14 w-14" />
         <div className="min-w-0 flex-1">
           <h3 className="flex items-center gap-1.5">
@@ -53,11 +64,7 @@ export function CoachCard({ card, signedIn }: { card: CoachCardModel; signedIn: 
             >
               {card.name}
             </Link>
-            {card.verified ? (
-              <span title={c.verified} className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-fg">
-                ✓<span className="sr-only">{c.verified}</span>
-              </span>
-            ) : null}
+            <VerifiedBadge verified={card.verified} />
           </h3>
           {card.headline ? <p className="mt-0.5 line-clamp-2 text-[13.5px] text-ink-soft">{card.headline}</p> : null}
         </div>
@@ -82,7 +89,9 @@ export function CoachCard({ card, signedIn }: { card: CoachCardModel; signedIn: 
 
       <div className="mt-auto pt-5">
         <p className="font-display text-[15px] font-extrabold tracking-tight">
-          {price ? (
+          {freeOffer ? (
+            <span className="text-[13px] font-semibold text-accent-ink">{c.freeOffer}</span>
+          ) : price ? (
             <>
               {fill(c.from, { price })}
               {s.unitShort[card.startingPrice!.unit] ? (

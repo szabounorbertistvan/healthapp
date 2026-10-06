@@ -7,6 +7,8 @@ import { parseStep } from "@/lib/coach-onboarding";
 import { BecomeCoachCard, CoachProfileStatusPanel } from "@/components/coach-profile/status";
 import { CoachProfileWizard } from "@/components/coach-profile/wizard";
 import { CoachProfileReadOnly } from "@/components/coach-profile/read-only";
+import { ServicesManager } from "@/components/coach-profile/lists";
+import { VerificationCard } from "@/components/coach-profile/verification";
 
 /**
  * The coach's public profile, built in six steps (Coach Discovery). Under
@@ -37,6 +39,8 @@ export default async function CoachProfilePage({ searchParams }: { searchParams:
             {mine.profile.status !== "draft" || mine.profile.review_note ? (
               <CoachProfileStatusPanel profile={mine.profile} />
             ) : null}
+            {/* Voinic Verified is separate from publishing (20261101100000): the coach asks, an admin decides */}
+            <VerificationCard data={mine} />
             {mine.profile.status === "draft" ? (
               <CoachProfileWizard
                 data={mine}
@@ -47,7 +51,11 @@ export default async function CoachProfilePage({ searchParams }: { searchParams:
                 photoUploads={cloudinaryConfigured()}
               />
             ) : (
-              <CoachProfileReadOnly data={mine} catalog={catalog} displayName={displayName(profile)} avatarUrl={profile.avatar_url} />
+              <>
+                {/* switching and ordering services needs no review (20261031100000); a suspended profile changes nothing */}
+                {mine.profile.status !== "suspended" && mine.services.length > 0 ? <ServicesManager initial={mine.services} /> : null}
+                <CoachProfileReadOnly data={mine} catalog={catalog} displayName={displayName(profile)} avatarUrl={profile.avatar_url} />
+              </>
             )}
           </>
         )}
