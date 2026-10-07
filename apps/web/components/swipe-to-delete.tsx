@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { Dialog } from "@base-ui/react/dialog";
 import { useI18n } from "@/lib/i18n/client";
 
 const REVEAL_PX = 88;
@@ -7,7 +8,9 @@ const DRAG_THRESHOLD_PX = 8;
 
 /**
  * Swipe the wrapped card to the left to reveal a delete action; tapping it asks
- * once more before calling `onDelete`. Vertical scrolling is untouched
+ * once more — in a real modal (Base UI Dialog: portalled, focus-trapped,
+ * Escape closes, the page behind is inert, focus starts on Keep so a stray
+ * Enter is the safe answer) — before calling `onDelete`. Vertical scrolling is untouched
  * (`touch-action: pan-y`), and a swipe never fires the card's own click — the
  * card is usually a link, and a drag that ends in a navigation is the classic
  * mobile-list bug. A small trash button at the top right does the same for
@@ -36,6 +39,7 @@ export function SwipeToDelete({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
+  const keepRef = useRef<HTMLButtonElement>(null);
   const axis = useRef<"none" | "x" | "y">("none");
   const dragged = useRef(false);
 
@@ -115,6 +119,7 @@ export function SwipeToDelete({
       }}
       aria-label={m.delete}
       title={m.delete}
+      data-testid="swipe-delete-trigger"
       className={
         placed
           ? "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-bg text-ink-faint hover:bg-risk-soft hover:text-risk disabled:opacity-50"
@@ -146,6 +151,7 @@ export function SwipeToDelete({
           data-swipe-action
           tabIndex={open ? 0 : -1}
           onClick={() => setConfirming(true)}
+          data-testid="swipe-delete-tray"
           className="flex w-full items-center justify-center rounded-r-3xl bg-risk text-xs font-bold text-white"
         >
           {m.delete}
@@ -182,35 +188,43 @@ export function SwipeToDelete({
         {!placed && !disabled && !open ? trigger : null}
       </div>
 
-      {confirming ? (
-        <div
-          role="alertdialog"
-          aria-label={m.confirm}
-          className="absolute inset-y-0 left-22 right-0 z-10 flex flex-col items-start justify-center gap-2 rounded-3xl bg-surface/95 p-4 backdrop-blur-sm sm:left-0"
-        >
-          <p className="text-sm font-semibold">{confirmText}</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              data-swipe-action
-              disabled={busy}
-              onClick={confirmDelete}
-              className="rounded-xl bg-risk px-3.5 py-2 text-xs font-bold text-white disabled:opacity-50"
+      {/* Portalled: the card sits in a .glass parent whose backdrop-filter would
+          trap a fixed overlay inside it (CLAUDE.md, overlays). */}
+      <Dialog.Root open={confirming} onOpenChange={(next) => { if (!next && !busy) close(); }}>
+        <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm" />
+          <Dialog.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6">
+            <Dialog.Popup
+              initialFocus={keepRef}
+              role="alertdialog"
+              className="w-full max-w-sm rounded-t-2xl border border-line bg-surface p-5 outline-none sm:rounded-2xl"
+              data-testid="swipe-delete-confirm"
             >
-              {busy ? "…" : m.delete}
-            </button>
-            <button
-              type="button"
-              data-swipe-action
-              disabled={busy}
-              onClick={close}
-              className="rounded-xl bg-bg px-3.5 py-2 text-xs font-semibold text-ink-soft hover:text-ink"
-            >
-              {m.keep}
-            </button>
-          </div>
-        </div>
-      ) : null}
+              <Dialog.Title className="text-base font-bold">{confirmText}</Dialog.Title>
+              <div className="mt-5 flex flex-wrap justify-end gap-2">
+                <button
+                  ref={keepRef}
+                  type="button"
+                  disabled={busy}
+                  onClick={close}
+                  className="inline-flex h-10 items-center rounded-xl bg-bg px-4 text-sm font-semibold text-ink-soft hover:text-ink"
+                >
+                  {m.keep}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={confirmDelete}
+                  className="inline-flex h-10 items-center rounded-xl bg-risk px-4 text-sm font-bold text-white disabled:opacity-50"
+                  data-testid="swipe-delete-confirm-button"
+                >
+                  {busy ? "…" : m.delete}
+                </button>
+              </div>
+            </Dialog.Popup>
+          </Dialog.Viewport>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }
