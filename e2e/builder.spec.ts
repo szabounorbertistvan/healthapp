@@ -45,6 +45,21 @@ test("a solo program can be created, given a day, and deleted", async ({ page })
     await page.getByRole("button", { name: "Add a day" }).click();
     await expect(page.getByText("No days yet. Add your first one.")).toHaveCount(0);
     await expect(page.getByText(day).or(page.locator(`input[value="${day}"]`)).first()).toBeVisible();
+
+    // deleting the day asks in a real modal: focus starts on Keep, Keep changes nothing, Delete removes it
+    await page.getByTestId("swipe-delete-trigger").first().click();
+    await page.getByTestId("swipe-delete-tray").first().click();
+    const dialog = page.getByTestId("swipe-delete-confirm");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute("role", "alertdialog");
+    await expect(dialog.getByRole("button", { name: "Keep" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByText("No days yet. Add your first one.")).toHaveCount(0);
+    await page.getByTestId("swipe-delete-trigger").first().click();
+    await page.getByTestId("swipe-delete-tray").first().click();
+    await dialog.getByTestId("swipe-delete-confirm-button").click();
+    await expect(page.getByText("No days yet. Add your first one.")).toBeVisible();
   } finally {
     await deleteIfOurs(page, name);
   }
