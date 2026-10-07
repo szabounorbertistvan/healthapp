@@ -86,6 +86,23 @@ function EnglishContent() {
         </section>
 
         <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">Coach directory measurement</h2>
+          <p>
+            On the public coach directory and coach pages we count, without cookies and
+            without storing anything on your device, how often pages are viewed and which
+            buttons (contact, book, save, create an account) are used, and where a visit
+            came from (for example a search engine, Instagram or a utm_ link). A visitor is
+            counted as a code computed from that day&apos;s random key, your IP address and
+            browser type; the IP address and browser type are never stored, and the key is
+            deleted the next day, so no visitor can be recognised or followed across days.
+            Raw counts are deleted after 180 days. When you create an account from a coach
+            page, we keep which coach page and source it came from, until your account is
+            deleted or for two years. Coaches see only totals about their own page. Nothing
+            is shared with any third party.
+          </p>
+        </section>
+
+        <section>
           <h2 className="mb-2 text-lg font-bold text-ink">Your rights (GDPR)</h2>
           <ul className="list-disc space-y-1 pl-5">
             <li><b className="text-ink">Export</b> — download everything we hold about you, from Settings, at any time.</li>
@@ -179,6 +196,23 @@ function RomanianContent() {
             autentificat. Nu există cookie-uri de analiză, de publicitate sau de urmărire.
             Deoarece aceste cookie-uri sunt esențiale, consimțământul nu este necesar — doar
             vă informăm.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">Măsurarea directorului de antrenori</h2>
+          <p>
+            În directorul public de antrenori și pe paginile antrenorilor numărăm, fără
+            cookie-uri și fără a stoca ceva pe dispozitivul dumneavoastră, cât de des sunt
+            vizitate paginile, ce butoane sunt folosite (contact, programare, salvare, creare
+            cont) și de unde a venit vizita (de exemplu un motor de căutare, Instagram sau un
+            link utm_). Un vizitator este numărat ca un cod calculat din cheia aleatorie a
+            zilei, adresa IP și tipul browserului; adresa IP și tipul browserului nu sunt
+            stocate niciodată, iar cheia este ștearsă a doua zi, așa că niciun vizitator nu
+            poate fi recunoscut sau urmărit de la o zi la alta. Numărătorile brute se șterg
+            după 180 de zile. Când creați un cont de pe pagina unui antrenor, păstrăm de pe ce
+            pagină și din ce sursă a venit, până la ștergerea contului sau timp de doi ani.
+            Antrenorii văd doar totaluri despre propria pagină. Nimic nu este partajat cu terți.
           </p>
         </section>
 

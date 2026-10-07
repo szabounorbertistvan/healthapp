@@ -191,7 +191,7 @@ export function CoachProfileView({
                       </p>
                       <div className="mt-auto grid gap-2 pt-4">
                         {bookHrefs?.[sv.id] ? (
-                          <a href={bookHrefs[sv.id]} data-testid="book-service"
+                          <a href={bookHrefs[sv.id]} data-testid="book-service" data-mkt="cta_book"
                             className="inline-flex h-10 w-full items-center justify-center rounded-2xl bg-accent px-4 font-display text-[13.5px] font-bold text-accent-fg hover:opacity-90">
                             {t.coachProfile.bookings.book.cta}
                           </a>

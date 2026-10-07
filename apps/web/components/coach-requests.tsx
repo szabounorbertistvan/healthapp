@@ -121,7 +121,7 @@ export function CoachRequestList({ rows }: { rows: CoachRequestRow[] }) {
               </div>
             </div>
             <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${PILL[q.status] ?? PILL.closed}`}>
-              {q.started ? r.started : r.statuses[q.status]}
+              {q.started ? (q.relationship_status ? r.relationshipStatuses[q.relationship_status] : r.started) : r.statuses[q.status]}
             </span>
           </div>
           <ul className="mt-3 flex flex-wrap gap-1.5 text-[12.5px]">
@@ -148,7 +148,10 @@ export function CoachRequestList({ rows }: { rows: CoachRequestRow[] }) {
                 <span className="text-[12.5px] text-ink-faint">{r.startHint}</span>
               </>
             ) : null}
-            {q.started ? <Link href={`/clients/${q.client_id}`} className={QUIET_BTN}>{r.openClient}</Link> : null}
+            {/* an active client opens their page; a paused or past one, the client lists (their relationship pages) */}
+            {q.started ? (
+              <Link href={q.relationship_status && q.relationship_status !== "active" ? "/clients" : `/clients/${q.client_id}`} className={QUIET_BTN}>{r.openClient}</Link>
+            ) : null}
             <Link href={`/people/${q.client_id}`} className="text-[13px] font-semibold text-ink-faint hover:text-ink">{r.profile}</Link>
           </div>
         </article>
@@ -211,8 +214,16 @@ export function MyRequestList({ rows }: { rows: MyCoachingRequestRow[] }) {
                 {m.cancel}
               </button>
             ) : null}
-            {q.status === "accepted" && q.started ? (
-              <><span className="font-semibold text-accent-ink">{m.startedNext}</span><Link href="/coach" className={QUIET_BTN}>{m.openCoach}</Link></>
+            {q.status === "accepted" && q.started && q.relationship_status === "ended" ? (
+              <>
+                <span className="font-semibold text-ink-soft">{m.endedNext}</span>
+                {q.coach_slug ? <Link href={`/coaches/${q.coach_slug}`} className={QUIET_BTN}>{t.coachProfile.coaching.startNew}</Link> : null}
+              </>
+            ) : q.status === "accepted" && q.started ? (
+              <>
+                <span className="font-semibold text-accent-ink">{q.relationship_status === "paused" ? m.pausedNext : m.startedNext}</span>
+                <Link href="/coach" className={QUIET_BTN}>{m.openCoach}</Link>
+              </>
             ) : q.status === "accepted" ? (
               <>
                 <MessageButton requestId={q.id} side="client" label={m.messageCoach} className={ACCENT_BTN} />

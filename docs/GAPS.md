@@ -256,6 +256,17 @@ last_request. UI: the profile CTA is "Contact coach" / Request sent / Request ac
 for a message (required), an optional service, goal and format; /requests (coach, nav item) and /coaches/requests
 (client). The gyms inbox card stays, with corrected copy and a link to /requests. "requests" is a reserved slug.
 
+Marketplace trust, ranking & analytics (2026-10-07, migrations `20261110100000` → `20261110130000`, **not pushed live**;
+apply all four, in order, before the code — search_coaches is redefined, and the admin pages, the beacon and the
+Performance card answer empty without them). Not built: sign-up attribution for Google OAuth sign-ups (no metadata
+on that path), dedicated city / specialization landing pages (they are /coaches?city= and ?specialization=, which
+already rank and are measured), response *time* as a signal (only "answered within 48 h"), per-step conversion
+rates (counts only, by design until the log is old enough), an admin test account to drive the admin pages.
+
+Coaching lifecycle (2026-10-07, migrations `20261109100000` + `20261109110000`, live since 2026-10-07). Not built: a coach-side
+"End coaching" from the active client page itself (it links to the relationship page), invite-path start notice,
+per-relationship review (one review per client and coach, by design).
+
 Marketplace operations (2026-10-07, migration `20261108100000_coach_marketplace_ops.sql`, **not pushed live** —
 /marketplace and the revision editor need it; the unpushed chain is 20261104 → 20261108, all before the code). Not built:
 profile-view analytics, response rate, a notice to the coach when an admin decides a revision or a profile, a

@@ -15,7 +15,9 @@ export type StartCoachingState =
   | "preview"        // the onboarding preview: drawn, never live
   | "sign_in"        // anonymous: the button leads to sign-in
   | "self"           // the coach's own page
-  | "client"         // already this coach's client
+  | "client"         // already this coach's client (active)
+  | "paused"         // this coach's client, coaching paused (20261109110000)
+  | "start_new"      // coached by them before, ended: a new engagement is a new request
   | "pending"        // a request is waiting for the coach
   | "accepted"       // the coach accepted: Message coach (no relationship yet, 20261104100000)
   | "contact_again"  // the last request was declined, cancelled or closed: a new one is welcome
@@ -29,13 +31,16 @@ export function startCoachingState(
 ): StartCoachingState {
   if (opts.preview) return "preview";
   if (viewer?.is_self) return "self";
-  if (viewer?.is_client) return "client";
+  if (viewer?.is_client || viewer?.relationship?.status === "active") return "client";
+  if (viewer?.relationship?.status === "paused") return "paused";
   if (viewer?.pending_request) return "pending";
   // An accepted conversation stays open when the coach later stops taking clients.
   const last = viewer?.last_request;
   if (last?.status === "accepted" && !last.started) return "accepted";
   if (!profile.accepting_clients) return "not_accepting";
   if (!opts.signedIn) return "sign_in";
+  // their coaching ended: never silently back — a new request, said as such
+  if (viewer?.relationship?.status === "ended") return "start_new";
   if (last && ["declined", "cancelled", "closed"].includes(last.status)) return "contact_again";
   return "available";
 }
@@ -205,10 +210,25 @@ export function coachTeaser(p: CoachPublicProfile): { profile: CoachPublicProfil
 }
 
 /** Where "See the full profile" / "Create a free account" go: sign-in or sign-up, and back to this exact page. */
-export function coachGateHref(slug: string, mode: "signin" | "signup"): string {
+export function coachGateHref(slug: string, mode: "signin" | "signup", attribution: Record<string, string> = {}): string {
   const params = new URLSearchParams({ next: `/coaches/${slug}` });
   if (mode === "signup") params.set("mode", "signup");
+  for (const [k, v] of Object.entries(attribution)) params.set(k, v);
   return `/login?${params}`;
+}
+
+/**
+ * This visit's source as utm_* query parameters, for the sign-in / sign-up
+ * links of a public coach page (20261110120000): the login form reads them
+ * back into the sign-up's attribution. Nothing is stored on the device.
+ */
+export function attributionParams(a: { source: string | null; medium: string | null; campaign: string | null } | null): Record<string, string> {
+  if (!a?.source || a.source === "internal") return {};
+  return {
+    utm_source: a.source,
+    ...(a.medium ? { utm_medium: a.medium } : {}),
+    ...(a.campaign ? { utm_campaign: a.campaign } : {}),
+  };
 }
 
 /**

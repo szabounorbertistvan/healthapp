@@ -49,6 +49,8 @@ const SCREEN_HREF: Record<string, string> = {
   my_bookings: "/coaches/bookings",
   // reviews (20261106100000): the coach's list; a reviewer's answer is on the coach's page
   coach_reviews: "/reviews",
+  // moderation outcomes (20261110110000): the coach's own profile settings
+  coach_profile_settings: "/settings/coach-profile",
 };
 
 export function notificationHref(category: string, payload: Record<string, unknown> | null): string | null {
@@ -82,6 +84,11 @@ export function notificationHref(category: string, payload: Record<string, unkno
   if (category === "review" && payload?.screen === "coach_profile") {
     const slug = typeof payload?.slug === "string" && SLUG.test(payload.slug) ? payload.slug : null;
     return slug ? `/coaches/${slug}#reviews` : null;
+  }
+  // a lifecycle change seen by the coach opens that relationship's page (20261109110000)
+  if (category === "coaching" && payload?.screen === "coach_relationship") {
+    const rel = id(payload, "relationship_id");
+    return rel ? `/clients/relationship/${rel}` : "/clients";
   }
   if (category === "challenge_milestone") {
     const challenge = id(payload, "challenge_id");
@@ -117,7 +124,18 @@ export type NotificationSentence =
   | "booking_cancelled"
   | "booking_reminder"
   | "review_published"
-  | "review_response";
+  | "review_response"
+  | "coaching_paused"
+  | "coaching_resumed"
+  | "coaching_ended"
+  | MarketplaceSentence;
+
+/** What moderation told a coach about their listing (20261110110000). */
+export const MARKETPLACE_EVENTS = [
+  "verification_verified", "verification_rejected", "profile_published", "profile_returned", "profile_unpublished",
+  "profile_suspended", "profile_restored", "review_hidden",
+] as const;
+export type MarketplaceSentence = `marketplace_${(typeof MARKETPLACE_EVENTS)[number]}`;
 
 /**
  * Which sentence a row reads as. A mention in a caption and a mention in a
@@ -151,6 +169,14 @@ export function notificationSentence(category: string, payload: Record<string, u
         case "started": return "request_started";
         default: return null;
       }
+    // the lifecycle's three notices (20261109110000)
+    case "coaching":
+      return payload?.event === "paused" ? "coaching_paused" : payload?.event === "resumed" ? "coaching_resumed"
+        : payload?.event === "ended" ? "coaching_ended" : null;
+    // moderation outcomes, one category (20261110110000)
+    case "marketplace":
+      return (MARKETPLACE_EVENTS as readonly unknown[]).includes(payload?.event)
+        ? (`marketplace_${payload?.event as (typeof MARKETPLACE_EVENTS)[number]}` as const) : null;
     // one category for a review's two notices (20261106100000)
     case "review":
       return payload?.event === "published" ? "review_published" : payload?.event === "response" ? "review_response" : null;

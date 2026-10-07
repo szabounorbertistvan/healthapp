@@ -29,11 +29,13 @@ type Ctx = {
   pendingId: string | null;
   /** The accepted request "Message coach" opens the conversation from. */
   acceptedId: string | null;
+  /** Where this visit came from, carried into a sign-in (and so a sign-up) — utm_* only (20261110120000). */
+  loginParams: Record<string, string>;
 };
 const StartCoachingContext = sharedContext<Ctx | null>("start-coaching", null);
 
 export function StartCoachingProvider({
-  profile, viewer, state, children, intent = null,
+  profile, viewer, state, children, intent = null, loginParams = {},
 }: {
   profile: CoachPublicProfile;
   viewer: CoachViewerState | null;
@@ -45,6 +47,7 @@ export function StartCoachingProvider({
    * be sent; then drop the intent from the URL either way.
    */
   intent?: { kind: "contact"; serviceId: string | null } | null;
+  loginParams?: Record<string, string>;
 }) {
   const { t, locale } = useI18n();
   const p = t.coachProfile.publicPage;
@@ -73,7 +76,7 @@ export function StartCoachingProvider({
   useEffect(() => {
     if (!intent || intentDone.current) return;
     intentDone.current = true;
-    if (state === "available" || state === "contact_again") {
+    if (state === "available" || state === "contact_again" || state === "start_new") {
       show(intent.serviceId && profile.services.some((sv) => sv.id === intent.serviceId) ? intent.serviceId : null);
     }
     router.replace(`/coaches/${profile.slug}`, { scroll: false });
@@ -122,7 +125,7 @@ export function StartCoachingProvider({
 
   return (
     <StartCoachingContext.Provider value={{ state, open: show, slug: profile.slug, pendingId: viewer?.pending_request?.id ?? null,
-      acceptedId: viewer?.last_request?.status === "accepted" ? viewer.last_request.id : null }}>
+      acceptedId: viewer?.last_request?.status === "accepted" ? viewer.last_request.id : null, loginParams }}>
       {children}
       <StickyCta />
       <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -266,19 +269,22 @@ export function StartCoachingButton({
   switch (state) {
     case "available":
     case "contact_again":
+    case "start_new":
       return (
         <button type="button" className={`${primary} ${size} ${className}`} onClick={() => ctx?.open(serviceId)}
-          data-testid="contact-coach" data-state={state}>
-          {state === "contact_again" ? p.contactAgain : p.startCoaching}
+          data-testid="contact-coach" data-state={state} data-mkt="cta_contact">
+          {state === "start_new" ? p.startNewCoaching : state === "contact_again" ? p.contactAgain : p.startCoaching}
         </button>
       );
+    case "paused":
+      return <Link href="/coach" className={`${QUIET} ${size} ${className}`} data-testid="coaching-paused-cta">⏸ {p.coachingPaused}</Link>;
     case "accepted":
       return <MessageCoach ctx={ctx!} className={`${primary} ${size} ${className}`} />;
     case "sign_in":
       return (
         // sign in, then back here with the dialog open (and the service picked) — not on a dashboard
-        <Link href={`/login?${new URLSearchParams({ next: `/coaches/${ctx!.slug}?${new URLSearchParams({ intent: "contact", ...(serviceId ? { service: serviceId } : {}) })}` })}`}
-          className={`${primary} ${size} ${className}`} data-testid="contact-coach-signin">
+        <Link href={`/login?${new URLSearchParams({ next: `/coaches/${ctx!.slug}?${new URLSearchParams({ intent: "contact", ...(serviceId ? { service: serviceId } : {}) })}`, ...ctx!.loginParams })}`}
+          className={`${primary} ${size} ${className}`} data-testid="contact-coach-signin" data-mkt="cta_contact">
           {p.startCoaching}
         </Link>
       );
@@ -308,7 +314,7 @@ function StickyCta() {
   const ctx = useContext(StartCoachingContext);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted || !ctx || !["available", "sign_in", "contact_again", "accepted"].includes(ctx.state)) return null;
+  if (!mounted || !ctx || !["available", "sign_in", "contact_again", "accepted", "start_new"].includes(ctx.state)) return null;
   return createPortal(
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:hidden">
       <StartCoachingButtonInContext ctx={ctx} />

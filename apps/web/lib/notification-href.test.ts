@@ -113,6 +113,32 @@ describe("reviews (20261106100000)", () => {
   });
 });
 
+describe("marketplace moderation notices (20261110110000)", () => {
+  it("open the coach's own settings or their reviews", () => {
+    expect(notificationHref("marketplace", { event: "profile_suspended", screen: "coach_profile_settings" })).toBe("/settings/coach-profile");
+    expect(notificationHref("marketplace", { event: "review_hidden", screen: "coach_reviews" })).toBe("/reviews");
+  });
+  it("read as a fixed sentence, unknown events as nothing", () => {
+    expect(notificationSentence("marketplace", { event: "verification_verified" })).toBe("marketplace_verification_verified");
+    expect(notificationSentence("marketplace", { event: "review_hidden" })).toBe("marketplace_review_hidden");
+    expect(notificationSentence("marketplace", { event: "whatever" })).toBeNull();
+  });
+});
+
+describe("coaching lifecycle (20261109110000)", () => {
+  it("the client opens their coach, the coach opens that relationship", () => {
+    expect(notificationHref("coaching", { screen: "coach", event: "paused" })).toBe("/coach");
+    expect(notificationHref("coaching", { screen: "coach_relationship", relationship_id: POST })).toBe(`/clients/relationship/${POST}`);
+    expect(notificationHref("coaching", { screen: "coach_relationship", relationship_id: "../x" })).toBe("/clients");
+  });
+  it("reads as paused / resumed / ended", () => {
+    expect(notificationSentence("coaching", { event: "paused" })).toBe("coaching_paused");
+    expect(notificationSentence("coaching", { event: "resumed" })).toBe("coaching_resumed");
+    expect(notificationSentence("coaching", { event: "ended" })).toBe("coaching_ended");
+    expect(notificationSentence("coaching", { event: "x" })).toBeNull();
+  });
+});
+
 describe("notificationSentence", () => {
   it("tells a caption mention from a comment mention", () => {
     expect(notificationSentence("new_mention", { post_id: POST, comment_id: COMMENT })).toBe("new_mention");

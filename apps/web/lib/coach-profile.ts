@@ -327,4 +327,6 @@ export type CoachViewerState = {
   pending_request: { id: string; service_id: string | null; created_at: string } | null;
   /** The reader's latest request to this coach, any state (20261103100000). */
   last_request?: { id: string; status: CoachingRequestStatus; service_id: string | null; created_at: string; started: boolean } | null;
+  /** The reader's own coaching with this coach, current first (20261109110000) — the CTA's source of truth. */
+  relationship?: { id: string; status: "active" | "paused" | "ended"; started_at: string; paused_at: string | null; ended_at: string | null } | null;
 };

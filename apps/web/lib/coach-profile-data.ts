@@ -216,12 +216,15 @@ export type CoachRequestRow = {
   client_avatar: string | null; service_name: string | null; message: string | null; goal: string | null;
   preferred_format: "online" | "in_person" | "hybrid" | null; gym_name: string | null;
   created_at: string; resolved_at: string | null; started: boolean;
+  /** What a started request became, as it stands now (20261109110000). */
+  relationship_status?: "active" | "paused" | "ended" | null;
 };
 export type MyCoachingRequestRow = {
   id: string; status: CoachingRequestStatus; coach_name: string; coach_slug: string | null; coach_avatar: string | null;
   service_name: string | null; message: string | null; goal: string | null;
   preferred_format: "online" | "in_person" | "hybrid" | null;
   created_at: string; resolved_at: string | null; started: boolean;
+  relationship_status?: "active" | "paused" | "ended" | null;
 };
 
 /** The signed-in coach's requests, pending first (coach_requests()). */

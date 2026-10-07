@@ -20,13 +20,15 @@ const BOOKMARK = "M6 3h12v18l-6-4.5L6 21z";
  *   icon — a 40 px bookmark for a card corner;
  *   pill — the bookmark and its label, beside Follow on the profile.
  */
-export function SaveCoachButton({ profileId, saved, signedIn, variant = "icon", signInNext }: {
+export function SaveCoachButton({ profileId, saved, signedIn, variant = "icon", signInNext, signInParams }: {
   profileId: string | null;
   saved: boolean;
   signedIn: boolean;
   variant?: "icon" | "pill";
   /** Where to come back after signing in — the coach page passes itself with ?intent=save (20261108100000). */
   signInNext?: string;
+  /** utm_* of this visit, carried through the sign-in (20261110120000). */
+  signInParams?: Record<string, string>;
 }) {
   const { t } = useI18n();
   const s = t.coachProfile.saved;
@@ -51,8 +53,8 @@ export function SaveCoachButton({ profileId, saved, signedIn, variant = "icon", 
   if (!signedIn || !profileId) {
     const here = signInNext ?? `${pathname}${search?.toString() ? `?${search}` : ""}`;
     return (
-      <Link href={`/login?${new URLSearchParams({ next: here })}`} className={base} title={s.signInToSave}
-        aria-label={variant === "icon" ? s.signInToSave : undefined} data-testid="save-coach">
+      <Link href={`/login?${new URLSearchParams({ next: here, ...signInParams })}`} className={base} title={s.signInToSave}
+        aria-label={variant === "icon" ? s.signInToSave : undefined} data-testid="save-coach" data-mkt="cta_save">
         {icon}
         {variant === "pill" ? <span>{s.save}</span> : null}
       </Link>
@@ -63,7 +65,7 @@ export function SaveCoachButton({ profileId, saved, signedIn, variant = "icon", 
     <>
       <button
         type="button" disabled={pending} aria-pressed={state} title={error ?? label}
-        aria-label={variant === "icon" ? label : undefined} data-testid="save-coach" data-saved={state}
+        aria-label={variant === "icon" ? label : undefined} data-testid="save-coach" data-saved={state} data-mkt={state ? undefined : "cta_save"}
         className={`${base} disabled:opacity-60 ${error ? "ring-2 ring-risk/60" : ""}`}
         onClick={() => {
           setError(null);

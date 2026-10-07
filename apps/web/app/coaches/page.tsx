@@ -14,6 +14,7 @@ import { DiscoveryHome, type NearState } from "@/components/coach-discovery/home
 import {
   ActiveFilters, CoachSearchBox, ExampleQueries, FiltersSidebar, MobileFilterBar, SortSelect,
 } from "@/components/coach-discovery/controls";
+import { MarketplaceTracker } from "@/components/marketplace-tracker";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -53,7 +54,12 @@ export default async function CoachesPage({ searchParams }: Props) {
   const [{ t, locale }, params, profile] = await Promise.all([getI18n(), searchParams, getProfile()]);
   const signedIn = Boolean(profile);
   const query = parseDiscoveryQuery(params);
-  if (isDiscoveryHome(query)) return <Home query={query} profile={profile} locale={locale} />;
+  // a directory view, with the city / specialization a listing is about (20261110120000)
+  const tracker = (
+    <MarketplaceTracker view="directory_view" city={query.city}
+      specialization={query.specializations.length === 1 ? query.specializations[0] : null} />
+  );
+  if (isDiscoveryHome(query)) return <>{tracker}<Home query={query} profile={profile} locale={locale} /></>;
 
   const d = t.coachProfile.discovery;
   const [result, facets] = await Promise.all([searchCoaches(query), getDiscoveryFacets()]);
@@ -65,6 +71,7 @@ export default async function CoachesPage({ searchParams }: Props) {
 
   return (
     <div>
+      {tracker}
       {/* ---------- search: compact on a phone, so the results start on the first screen ---------- */}
       <section className="mx-auto max-w-3xl pb-5 pt-2 text-center sm:pb-10 sm:pt-8">
         <Link href="/coaches" className="text-[13px] font-semibold text-ink-faint hover:text-ink">← {d.backToDiscover}</Link>

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { classifyAttribution } from "@healthapp/shared";
 import { notFound, permanentRedirect } from "next/navigation";
 import { APP_NAME, SITE_URL } from "@/lib/brand";
 import { fill } from "@/lib/i18n";
@@ -10,9 +12,11 @@ import {
   getCoachSlugRedirect, getCoachViewerState, getPublicCoachPosts, getPublicCoachPrograms, getPublicCoachProfile,
 } from "@/lib/coach-profile-data";
 import {
-  TEASER_PROGRAMS, TEASER_REVIEWS, coachGateHref, coachIndexable, coachPageDescription, coachPageJsonLd, coachPageTitle,
-  coachTeaser, startCoachingState,
+  TEASER_PROGRAMS, TEASER_REVIEWS, attributionParams, coachGateHref, coachIndexable, coachPageDescription, coachPageJsonLd,
+  coachPageTitle, coachTeaser, startCoachingState,
 } from "@/lib/coach-public";
+import { MarketplaceTracker } from "@/components/marketplace-tracker";
+import { ModerationMenuButton } from "@/components/moderation";
 import { ratingLabel } from "@/lib/coach-review";
 import { getProfile } from "@/lib/data";
 import { PublicProfileGate } from "@/components/coach-profile/public-gate";
@@ -31,7 +35,10 @@ import { SaveCoachButton } from "@/components/coach-discovery/save-coach-button"
 import { RoutineCardView } from "@/components/routine-card";
 import type { RoutineCard } from "@healthapp/shared";
 
-type Props = { params: Promise<{ slug: string }>; searchParams?: Promise<{ intent?: string; service?: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ intent?: string; service?: string; utm_source?: string; utm_medium?: string; utm_campaign?: string }>;
+};
 
 /** Every read here goes through coach_public_profile(); nothing unpublished is ever a page. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -123,6 +130,12 @@ export default async function CoachPage({ params, searchParams }: Props) {
   // cut on the server — and the gate back to this very page after sign-up.
   const teaser = signedIn ? null : coachTeaser(profile);
   const query = (await searchParams) ?? {};
+  // where this visit came from (20261110120000): carried into the sign-in / sign-up links so a new
+  // account remembers it; the page view itself is recorded by MarketplaceTracker in the browser
+  const loginParams = signedIn ? {} : attributionParams(classifyAttribution({
+    utmSource: query.utm_source, utmMedium: query.utm_medium, utmCampaign: query.utm_campaign,
+    referrer: (await headers()).get("referer"), siteHost: new URL(SITE_URL).hostname,
+  }));
   const intent = query.intent === "save" ? { kind: "save" as const, serviceId: null }
     : query.intent === "contact" ? { kind: "contact" as const, serviceId: typeof query.service === "string" ? query.service : null }
     : null;
@@ -142,16 +155,23 @@ export default async function CoachPage({ params, searchParams }: Props) {
       {p.follow}
     </Link>
   );
+  const name = profile.display_name;
   // Follow (public, social) and Save (a private shortlist) side by side; neither on your own page
   const follow = viewer?.is_self ? null : (
     <>
       {followButton}
       <SaveCoachButton variant="pill" profileId={profile.id} saved={viewer?.is_saved ?? false} signedIn={signedIn}
-        signInNext={`/coaches/${profile.slug}?intent=save`} />
+        signInNext={`/coaches/${profile.slug}?intent=save`} signInParams={loginParams} />
+      {/* report the profile (20261110110000): the one reporting path, signed in only */}
+      {signedIn ? (
+        <span className="self-center">
+          <ModerationMenuButton target={{ userId: coachId ?? "", name }} coachProfileId={profile.id}
+            muted={false} blocked={false} place="coach" />
+        </span>
+      ) : null}
     </>
   );
 
-  const name = profile.display_name;
   const postsTitle = fill(p.postsBy, { name });
   const programsTitle = fill(p.programsBy, { name });
   // anonymous: the public doors, already loaded; signed in: the social system's own reads, streamed
@@ -179,7 +199,7 @@ export default async function CoachPage({ params, searchParams }: Props) {
 
   const gate = !signedIn ? (
     <PublicProfileGate kind="anonymous" coachName={name} moreServices={teaser?.moreServices ?? 0}
-      signupHref={coachGateHref(profile.slug, "signup")} signinHref={coachGateHref(profile.slug, "signin")} />
+      signupHref={coachGateHref(profile.slug, "signup", loginParams)} signinHref={coachGateHref(profile.slug, "signin", loginParams)} />
   ) : me && !me.username ? (
     // signed in through Google, profile not finished: actions need a username
     <PublicProfileGate kind="incomplete" coachName={name} moreServices={0}
@@ -200,7 +220,8 @@ export default async function CoachPage({ params, searchParams }: Props) {
       {signedIn && intent?.kind === "save" && !viewer?.is_self ? (
         <SaveIntent profileId={profile.id} saved={viewer?.is_saved ?? false} slug={profile.slug} />
       ) : null}
-      <StartCoachingProvider profile={shown} viewer={viewer} state={state}
+      {viewer?.is_self ? null : <MarketplaceTracker view="profile_view" slug={profile.slug} />}
+      <StartCoachingProvider profile={shown} viewer={viewer} state={state} loginParams={loginParams}
         intent={signedIn && intent?.kind === "contact" ? { kind: "contact", serviceId: intent.serviceId } : null}>
         <CoachProfileView profile={shown} follow={follow} posts={posts} programs={programs} live bookHrefs={bookHrefs}
           reviews={reviewsSection} gate={gate} headerRating={headerRating} />

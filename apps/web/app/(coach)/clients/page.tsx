@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { getClients } from "@/lib/data";
+import { getCoachClientRelationships } from "@/lib/coaching-data";
+import { CoachRelationshipSection } from "@/components/coaching-lists";
 import { getPlan } from "@/lib/plan";
 import { Card, EmptyState, SignalBadge } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
@@ -18,7 +20,11 @@ const ICON = {
 
 export default async function ClientsPage() {
   const { t, locale } = await getI18n();
-  const [clients, plan, requests] = await Promise.all([getClients(), getPlan(), getCoachRequestInbox()]);
+  const [clients, plan, requests, relationships] = await Promise.all([
+    getClients(), getPlan(), getCoachRequestInbox(),
+    // paused and past clients (20261109110000): their own sections, never the active roster
+    getCoachClientRelationships("all"),
+  ]);
   const maxClients = plan.e.maxClients;
   // Signal and adherence % are Coach Pro (the dashboard carries the hint).
   const pro = plan.e.advancedAnalytics;
@@ -202,6 +208,8 @@ export default async function ClientsPage() {
           </>
         )}
       </div>
+      <CoachRelationshipSection kind="paused" rows={relationships.filter((r) => r.status === "paused")} />
+      <CoachRelationshipSection kind="past" rows={relationships.filter((r) => r.status === "ended")} />
     </div>
   );
 }

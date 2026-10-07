@@ -18,6 +18,9 @@ import { CoachProfilePreview } from "@/components/coach-profile/preview";
 import { getAdminReviews } from "@/lib/review-data";
 import { AdminReviewModeration } from "@/components/admin/review-moderation";
 import { AdminRevisionReview, type AdminRevision } from "@/components/admin/revision-review";
+import { getAdminRanking, getAdminReports } from "@/lib/admin/marketplace-data";
+import { ReportsTable } from "@/components/admin/reports-table";
+import { RankingTable } from "@/components/admin/ranking-table";
 
 type Review = CoachPublicProfile & {
   status: CoachProfileStatus;
@@ -66,10 +69,14 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
   const name = review.display_name;
   const open = summary(review.missing ?? []).filter((x) => !x.done).map((x) => groups[x.group]);
   // the coach's reviews, any state (20261106100000)
-  const [reviews, { data: revisionData }] = await Promise.all([
+  const [reviews, { data: revisionData }, reports, ranking] = await Promise.all([
     review.user_id ? getAdminReviews(review.user_id) : Promise.resolve([]),
     // a published coach's staged changes (20261108100000); a database without them answers an error, read as none
     supabase.rpc("admin_coach_revision", { p_profile: id }),
+    // reports about the profile and its reviews, any status (20261110110000)
+    getAdminReports({ coachProfile: id, status: null, limit: 50 }),
+    // where the coach stands in the default listing, and why (20261110130000)
+    getAdminRanking({ profile: id, limit: 1 }),
   ]);
   const revision = (revisionData ?? null) as AdminRevision | null;
   const s = review.status;
@@ -140,7 +147,24 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
       ) : null}
 
       <div className="mt-4">
+        <Section title={t.admin.reports.coachSection}>
+          {reports.length === 0 ? <Note>{t.admin.reports.coachNone}</Note> : <ReportsTable rows={reports} />}
+        </Section>
+      </div>
+
+      <div className="mt-4">
         <VerificationPanel review={review} />
+      </div>
+
+      <div className="mt-4">
+        <Section title={t.admin.marketplace.coachRanking} hint={t.admin.marketplace.coachRankingHint}>
+          {ranking.length === 0 ? <Note>{t.admin.marketplace.notRanked}</Note> : (
+            <div data-testid="admin-coach-ranking">
+              <p className="mb-2 text-[13px] font-semibold">{fill(t.admin.marketplace.position, { n: ranking[0].ord })}</p>
+              <RankingTable rows={ranking} />
+            </div>
+          )}
+        </Section>
       </div>
 
       <div className="mt-4">

@@ -59,13 +59,13 @@ Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
 check-ins, messages, marketplace (the coach's overview; one sidebar entry that also covers requests, bookings (+ `bookings/availability`), reviews and `settings/coach-profile`, with `MarketplaceTabs` over them), settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
 (overview, users, users/[id], activity, auth, invitations, workouts,
 exercises (+ /translate), foods, nutrition, gyms, coaches (+ /[id], the coach-profile review queue), social, challenges, notifications,
-feedback, errors, system, search) — its own layout, gated by `lib/admin/guard.ts` and, in the
+feedback, errors, system, search, reports (the social_reports queue, coach profiles and reviews included), marketplace (aggregate analytics + the ranking inspector)) — its own layout, gated by `lib/admin/guard.ts` and, in the
 database, by `admin_assert()` inside every `admin_*` RPC
 (`20260920100000_admin_panel.sql`; reads in `lib/admin/data.ts`, writes in
 `app/admin-actions.ts`, strings in `messages/admin.ts`). `(client)` = today, workout (list of every
 published program → `workout/[dayId]` day overview + per-day history →
 `workout/[dayId]/log` set logger), workout/build, food, habits, progress,
-check-in, coach (+ `coach/messages/[id]`, any thread on the client's side — e.g. a coach whose request was accepted), billing. Ungrouped: landing `page.tsx`, `coaches` (Coach Discovery: bare `/coaches` is the Discovery Home, `?all=1` or any search/filter the listing; state in
+check-in, coach (+ `coach/messages/[id]`, any thread on the client's side — e.g. a coach whose request was accepted; the current coach with pause/resume/end and past coaches), billing. Ungrouped: landing `page.tsx`, `coaches` (Coach Discovery: bare `/coaches` is the Discovery Home, `?all=1` or any search/filter the listing; state in
 the URL) and `coaches/[slug]` (the public coach page; `coaches/[slug]/book` books a service, `coaches/[slug]/review` writes the reader's one review, `coaches/bookings` lists the reader's bookings) — own header layout, no session needed, login, complete-profile
 (username / sex / age / coach-or-client for accounts that signed up without
 them — both layouts redirect there while `users.username` is null), privacy,
@@ -134,10 +134,15 @@ references — a new read of `foods` must use those, not `.from("foods")`. **Not
 readable by `anon`** except through the Coach Discovery doors —
 `coach_public_profile(slug)`, `coach_public_posts(slug)`, `coach_public_programs(slug)`,
 `search_coaches(...)`, `coach_discovery_facets()` (2026-10-01), `coach_booking_services(slug)` and
-`coach_booking_slots(...)` (free start/end times only, 2026-10-07), `coach_public_reviews(slug)`, `coach_slug_redirect(slug)` and `coach_sitemap()` (2026-10-07), all gated by the internal `coach_public_visible()` / `booking_eligibility()` (published, account
+`coach_booking_slots(...)` (free start/end times only, 2026-10-07), `coach_public_reviews(slug)`, `coach_slug_redirect(slug)` and `coach_sitemap()` (2026-10-07), and the one anonymous *write* `marketplace_track()` (first-party, cookieless measurement — the visitor hash is computed in SQL from the request headers; 20261110120000), all gated by the internal `coach_public_visible()` / `booking_eligibility()` (published, account
 live, no block): `coach_*` tables have owner/admin policies only, and those functions'
 field lists *are* the public contract — adding a key publishes it. `/coaches/*` is the
 one app route middleware lets through without a session.
+**`trainer_clients` is written only by functions** (since 2026-10-07): the lifecycle
+invited → active → (paused ⇄ active) → ended is a trigger, participant moves go through
+`coaching_transition()`, and one *current* (active or paused) coach per client is a unique index.
+**The directory's order is `coach_ranked()`** (20261110130000) — one internal ranking layer behind
+`search_coaches()`; never re-sort coaches in app code, and never return its scores from a public RPC.
 Don't work around a policy in app code;
 change the policy and add a pgTAP test.
 
