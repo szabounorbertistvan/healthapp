@@ -55,11 +55,61 @@ describe("contact requests (20261103100000)", () => {
     expect(notificationSentence("coaching_request", { event: "accepted" })).toBe("request_accepted");
     expect(notificationSentence("coaching_request", { event: "declined" })).toBe("request_declined");
     expect(notificationSentence("coaching_request", { event: "cancelled" })).toBe("request_cancelled");
+    expect(notificationSentence("coaching_request", { event: "started" })).toBe("request_started");
     expect(notificationSentence("coaching_request", { event: "other" })).toBeNull();
   });
   it("the coach's notices open Requests, the client's open My requests", () => {
     expect(notificationHref("coaching_request", { screen: "coach_requests" })).toBe("/requests");
     expect(notificationHref("coaching_request", { screen: "my_requests" })).toBe("/coaches/requests");
+    // coaching started: the client's coach page and thread
+    expect(notificationHref("coaching_request", { screen: "coach" })).toBe("/coach");
+  });
+});
+
+describe("messages (20261104100000)", () => {
+  it("opens the thread on the recipient's side", () => {
+    expect(notificationHref("new_message", { conversation_id: POST, screen: "coach_thread" })).toBe(`/messages/${POST}`);
+    expect(notificationHref("new_message", { conversation_id: POST, screen: "client_thread" })).toBe(`/coach/messages/${POST}`);
+  });
+  it("falls back to the catalog screen, and never links a bad id", () => {
+    expect(notificationHref("new_message", { screen: "messages" })).toBe("/coach");
+    expect(notificationHref("new_message", { conversation_id: "../admin", screen: "coach_thread" })).toBeNull();
+  });
+  it("reads as a sentence about the sender", () => {
+    expect(notificationSentence("new_message", { conversation_id: POST })).toBe("new_message");
+  });
+});
+
+describe("bookings (20261105100000)", () => {
+  it("one category reads as six sentences, by the event", () => {
+    expect(notificationSentence("booking", { event: "requested" })).toBe("booking_requested");
+    expect(notificationSentence("booking", { event: "booked" })).toBe("booking_booked");
+    expect(notificationSentence("booking", { event: "confirmed" })).toBe("booking_confirmed");
+    expect(notificationSentence("booking", { event: "declined" })).toBe("booking_declined");
+    expect(notificationSentence("booking", { event: "cancelled" })).toBe("booking_cancelled");
+    expect(notificationSentence("booking", { event: "reminder" })).toBe("booking_reminder");
+    expect(notificationSentence("booking", { event: "other" })).toBeNull();
+  });
+  it("the coach's notices open Bookings, the client's open My bookings", () => {
+    expect(notificationHref("booking", { screen: "coach_bookings" })).toBe("/bookings");
+    expect(notificationHref("booking", { screen: "my_bookings" })).toBe("/coaches/bookings");
+  });
+});
+
+describe("reviews (20261106100000)", () => {
+  it("a new review opens the coach's Reviews, an answer opens the coach's page at its reviews", () => {
+    expect(notificationHref("review", { event: "published", screen: "coach_reviews", slug: "andrei-popescu" })).toBe("/reviews");
+    expect(notificationHref("review", { event: "response", screen: "coach_profile", slug: "andrei-popescu" }))
+      .toBe("/coaches/andrei-popescu#reviews");
+  });
+  it("never builds a link from a slug that is not one", () => {
+    expect(notificationHref("review", { screen: "coach_profile", slug: "../admin" })).toBeNull();
+    expect(notificationHref("review", { screen: "coach_profile", slug: null })).toBeNull();
+  });
+  it("reads as a sentence about the person", () => {
+    expect(notificationSentence("review", { event: "published" })).toBe("review_published");
+    expect(notificationSentence("review", { event: "response" })).toBe("review_response");
+    expect(notificationSentence("review", { event: "other" })).toBeNull();
   });
 });
 

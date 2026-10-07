@@ -13,7 +13,8 @@ export type ReportReason = (typeof REPORT_REASONS)[number];
 
 export const REPORT_DETAILS_MAX = 500;
 
-export type ReportTarget = "post" | "comment" | "user";
+/** What can be reported: social_report()'s targets; a coach review since 20261106100000. */
+export type ReportTarget = "post" | "comment" | "user" | "review";
 
 export function isReportReason(v: unknown): v is ReportReason {
   return typeof v === "string" && (REPORT_REASONS as readonly string[]).includes(v);

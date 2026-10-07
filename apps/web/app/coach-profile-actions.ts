@@ -15,6 +15,10 @@ import {
   destroyCover, signCoverUpload, type AvatarUploadTicket,
 } from "@/lib/cloudinary";
 import type { ActionResult } from "./actions";
+import {
+  withCertification, withLocations, withService, withServiceOrder, withSpecializations, withoutCertification, withoutService,
+  type RevisionPayload,
+} from "@/lib/coach-revision";
 import { getPlan } from "@/lib/plan";
 
 // Coach Discovery writes: the coach's own profile, saved a piece at a time
@@ -38,6 +42,30 @@ function failure(error: { message: string }): ActionResult {
   if (code) return { ok: false, errorCode: code, message: code };
   console.error("coach profile write failed:", error.message);
   return { ok: false, message: error.message };
+}
+
+// ---------- staged revisions (20261108100000) ----------
+// A published or hidden profile is edited as a copy: while one is open, every
+// content write below patches the copy and saves it whole
+// (coach_revision_save, which judges it with the real tables) — the live page
+// does not change until an admin approves. Operational switches (accepting,
+// hide / show, service on/off and order on the live list, booking settings)
+// still act on the live profile.
+
+type Live = NonNullable<Awaited<ReturnType<typeof liveUser>>>;
+
+/** The open copy, or null (a draft, no revision open, or a database without revisions yet). */
+async function openRevision(live: Live): Promise<RevisionPayload | null> {
+  const { data, error } = await live.supabase.rpc("coach_my_revision_payload");
+  if (error) return null;
+  return (data ?? null) as RevisionPayload | null;
+}
+
+async function saveRevision(live: Live, payload: RevisionPayload): Promise<ActionResult> {
+  const { error } = await live.supabase.rpc("coach_revision_save", { p_payload: payload });
+  if (error) return failure(error);
+  revalidateCoach();
+  return { ok: true };
 }
 
 async function myProfile(): Promise<{ live: NonNullable<Awaited<ReturnType<typeof liveUser>>>; profileId: string; slug: string } | ActionResult> {
@@ -107,6 +135,29 @@ export async function saveCoachProfileDraft(input: CoachDraftFields): Promise<Ac
 
   const live = await liveUser();
   if (!live) return notSignedIn;
+  const rev = await openRevision(live);
+  if (rev) {
+    // the public URL is not part of a revision
+    if (patch.slug !== undefined) return { ok: false, errorCode: "PROFILE_LOCKED", message: "PROFILE_LOCKED" };
+    if (patch.accepting_clients !== undefined) {
+      const done = await live.supabase.from("coach_profiles")
+        .update({ accepting_clients: patch.accepting_clients }, { count: "exact" }).eq("user_id", live.userId);
+      if (done.error) return failure(done.error);
+      delete patch.accepting_clients;
+      if (Object.keys(patch).length === 0) {
+        revalidateCoach();
+        return { ok: true };
+      }
+    }
+    return saveRevision(live, {
+      ...rev,
+      ...(patch.headline !== undefined ? { headline: patch.headline as string | null } : {}),
+      ...(patch.about !== undefined ? { about: patch.about as string | null } : {}),
+      ...(patch.coaching_since !== undefined ? { coaching_since: patch.coaching_since as number | null } : {}),
+      ...(patch.online !== undefined ? { online: patch.online as boolean } : {}),
+      ...(patch.in_person !== undefined ? { in_person: patch.in_person as boolean } : {}),
+    });
+  }
   const result = await live.supabase
     .from("coach_profiles").update(patch, { count: "exact" }).eq("user_id", live.userId);
   if (result.error) return failure(result.error);
@@ -127,6 +178,8 @@ export async function setCoachSpecializations(slugs: string[], primary: string |
   if (!parsed.ok) return parsed.result;
   const live = await liveUser();
   if (!live) return notSignedIn;
+  const rev = await openRevision(live);
+  if (rev) return saveRevision(live, withSpecializations(rev, parsed.data[0], parsed.data[1]));
   const { error } = await live.supabase.rpc("coach_set_specializations", {
     p_slugs: parsed.data[0], p_primary: parsed.data[1],
   });
@@ -140,6 +193,8 @@ export async function setCoachLanguages(codes: string[]): Promise<ActionResult> 
   if (!parsed.ok) return parsed.result;
   const live = await liveUser();
   if (!live) return notSignedIn;
+  const rev = await openRevision(live);
+  if (rev) return saveRevision(live, { ...rev, languages: parsed.data });
   const { error } = await live.supabase.rpc("coach_set_languages", { p_codes: parsed.data });
   if (error) return failure(error);
   revalidateCoach();
@@ -157,6 +212,8 @@ export async function setCoachLocations(locations: z.input<typeof LocationsInput
   if (!parsed.ok) return parsed.result;
   const live = await liveUser();
   if (!live) return notSignedIn;
+  const rev = await openRevision(live);
+  if (rev) return saveRevision(live, withLocations(rev, parsed.data));
   const { error } = await live.supabase.rpc("coach_set_locations", {
     p_locations: parsed.data.map((l) => ({ city: l.city, gym_id: l.gymId ?? null, gym_name: l.gymName?.trim() || null })),
   });
@@ -216,6 +273,14 @@ export async function saveCoachService(input: CoachServiceInput): Promise<Action
     sort_order: s.sortOrder,
   };
 
+  const rev = await openRevision(live);
+  if (rev) {
+    // a new service gets its id now: the editor keeps editing it by id, and approval inserts it with that id
+    const sid = s.id ?? crypto.randomUUID();
+    if (s.id && !rev.services.some((x) => x.id === s.id)) return { ok: false, errorCode: "NO_ROWS", message: "NO_ROWS" };
+    const saved = await saveRevision(live, withService(rev, { id: sid, ...row }));
+    return saved.ok ? { ok: true, id: sid } : saved;
+  }
   if (!s.id) {
     const { data, error } = await live.supabase
       .from("coach_services").insert({ ...row, coach_profile_id: profileId }).select("id").single<{ id: string }>();
@@ -237,6 +302,8 @@ export async function deleteCoachService(serviceId: string): Promise<ActionResul
   if (!parsed.ok) return parsed.result;
   const mine = await myProfile();
   if (!("profileId" in mine)) return mine;
+  const rev = await openRevision(mine.live);
+  if (rev) return saveRevision(mine.live, withoutService(rev, parsed.data));
   const result = await mine.live.supabase
     .from("coach_services").delete({ count: "exact" }).eq("id", parsed.data).eq("coach_profile_id", mine.profileId);
   if (result.error) return failure(result.error);
@@ -257,6 +324,12 @@ export async function reorderCoachServices(serviceIds: string[]): Promise<Action
   if (!parsed.ok) return parsed.result;
   const mine = await myProfile();
   if (!("profileId" in mine)) return mine;
+  const rev = await openRevision(mine.live);
+  if (rev) {
+    const ordered = withServiceOrder(rev, parsed.data);
+    if (!ordered) return { ok: false, errorCode: "BAD_ORDER", message: "BAD_ORDER" };
+    return saveRevision(mine.live, ordered);
+  }
   const { error } = await mine.live.supabase.rpc("coach_reorder_services", { p_ids: parsed.data });
   if (error) return failure(error);
   revalidateCoach(mine.slug);
@@ -274,6 +347,12 @@ export async function setCoachServiceActive(serviceId: string, active: boolean):
   if (!parsed.ok) return parsed.result;
   const mine = await myProfile();
   if (!("profileId" in mine)) return mine;
+  const rev = await openRevision(mine.live);
+  if (rev) {
+    const svc = rev.services.find((x) => x.id === parsed.data.serviceId);
+    if (!svc) return { ok: false, errorCode: "NO_ROWS", message: "NO_ROWS" };
+    return saveRevision(mine.live, withService(rev, { ...svc, active: parsed.data.active }));
+  }
   const { error } = await mine.live.supabase.rpc("coach_set_service_active", {
     p_service: parsed.data.serviceId, p_active: parsed.data.active,
   });
@@ -315,6 +394,13 @@ export async function saveCoachCertification(input: CoachCertificationInput): Pr
     credential_number: c.credentialNumber?.trim() || null, expires_on: c.expiresOn || null,
   };
 
+  const rev = await openRevision(live);
+  if (rev) {
+    const cid = c.id ?? crypto.randomUUID();
+    if (c.id && !rev.certifications.some((x) => x.id === c.id)) return { ok: false, errorCode: "NO_ROWS", message: "NO_ROWS" };
+    const saved = await saveRevision(live, withCertification(rev, { id: cid, ...row }));
+    return saved.ok ? { ok: true, id: cid } : saved;
+  }
   if (!c.id) {
     const { data, error } = await live.supabase
       .from("coach_certifications").insert({ ...row, coach_profile_id: profileId }).select("id").single<{ id: string }>();
@@ -336,6 +422,8 @@ export async function deleteCoachCertification(certificationId: string): Promise
   if (!parsed.ok) return parsed.result;
   const mine = await myProfile();
   if (!("profileId" in mine)) return mine;
+  const rev = await openRevision(mine.live);
+  if (rev) return saveRevision(mine.live, withoutCertification(rev, parsed.data));
   const result = await mine.live.supabase
     .from("coach_certifications").delete({ count: "exact" }).eq("id", parsed.data).eq("coach_profile_id", mine.profileId);
   if (result.error) return failure(result.error);
@@ -465,6 +553,16 @@ export async function cancelCoachingRequest(input: { requestId: string; slug: st
 export async function submitCoachForReview(): Promise<ActionResult & { missing?: CoachProfileMissing[] }> {
   const live = await liveUser();
   if (!live) return notSignedIn;
+  // an open revision is submitted as changes; the live page stays up meanwhile
+  if (await openRevision(live)) {
+    const sent = await live.supabase.rpc("coach_revision_submit");
+    if (sent.error) return failure(sent.error);
+    const open = (sent.data ?? []) as CoachProfileMissing[];
+    if (open.length > 0) return { ok: false, errorCode: "PROFILE_INCOMPLETE", message: "PROFILE_INCOMPLETE", missing: open };
+    revalidateCoach();
+    revalidatePath("/marketplace");
+    return { ok: true };
+  }
   const { data, error } = await live.supabase.rpc("submit_coach_for_review");
   if (error) return failure(error);
   const missing = (data ?? []) as CoachProfileMissing[];
@@ -596,6 +694,24 @@ export async function declineCoachingRequest(requestId: string): Promise<ActionR
 }
 
 /**
+ * "Message coach" / "Message client" on an accepted request
+ * (open_request_conversation, 20261104100000): the pair's one conversation —
+ * the existing one if there is any, otherwise created now, empty. Sends
+ * nothing and changes nothing about the request. The caller picks the route
+ * for its side: /coach/messages/[id] for the client, /messages/[id] for the coach.
+ */
+export async function openRequestConversation(requestId: string): Promise<ActionResult & { conversationId?: string }> {
+  const parsed = await parseInput(id, requestId);
+  if (!parsed.ok) return parsed.result;
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { data, error } = await live.supabase.rpc("open_request_conversation", { p_request: parsed.data });
+  if (error) return failure(error);
+  revalidatePath("/messages");
+  return { ok: true, conversationId: data as string };
+}
+
+/**
  * The explicit second step on an accepted request: the person becomes this
  * coach's client (start_coaching_from_request — one active coach per client),
  * within the coach's plan limit, like an invite.
@@ -615,5 +731,30 @@ export async function startCoachingFromRequest(requestId: string): Promise<Actio
   if (error) return failure(error);
   requestsTouched();
   revalidatePath("/messages");
+  return { ok: true };
+}
+
+/**
+ * "Edit profile" on a published or hidden profile (20261108100000): open a
+ * copy of what is live. The public page stays exactly as it is until an
+ * admin approves the copy; reopening returns the copy already started.
+ */
+export async function startCoachRevision(): Promise<ActionResult> {
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { error } = await live.supabase.rpc("coach_revision_start");
+  if (error) return failure(error);
+  revalidateCoach();
+  return { ok: true };
+}
+
+/** Throw the copy away. The live page never changed. */
+export async function discardCoachRevision(): Promise<ActionResult> {
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { error } = await live.supabase.rpc("coach_revision_discard");
+  if (error) return failure(error);
+  revalidateCoach();
+  revalidatePath("/marketplace");
   return { ok: true };
 }

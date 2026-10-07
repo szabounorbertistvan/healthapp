@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getConversations } from "@/lib/data";
 import { Card, EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
+import { Avatar } from "@/components/social";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -11,7 +12,7 @@ export default async function MessagesPage() {
   const { t, locale } = await getI18n();
   const conversations = await getConversations();
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl" data-testid="inbox">
       <header>
         <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{t.common.nav.messages}</h1>
       </header>
@@ -27,17 +28,18 @@ export default async function MessagesPage() {
                     href={`/messages/${c.id}`}
                     className="flex min-h-16 items-center gap-3.5 px-5 py-4 transition hover:bg-accent-soft/40"
                   >
-                    <span
-                      aria-hidden
-                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-[15px] font-bold ${
-                        c.unread > 0 ? "bg-accent text-accent-fg" : "bg-accent-soft text-accent-ink"
-                      }`}
-                    >
-                      {c.full_name.trim().charAt(0).toUpperCase()}
-                    </span>
+                    <Avatar name={c.full_name} url={c.avatar_url} size="h-10 w-10" />
                     <span className="min-w-0 flex-1">
-                      <span className={`block truncate text-[15px] ${c.unread > 0 ? "font-bold" : "font-semibold"}`}>
-                        {c.full_name}
+                      <span className="flex items-center gap-2">
+                        <span className={`truncate text-[15px] ${c.unread > 0 ? "font-bold" : "font-semibold"}`}>
+                          {c.full_name}
+                        </span>
+                        {/* coaching is the default; say so only for the other two (20261104100000) */}
+                        {c.relationship !== "active" ? (
+                          <span className="shrink-0 rounded-full bg-bg px-2 py-0.5 text-[11px] font-semibold text-ink-faint">
+                            {t.coachWidgets.messageThread.relationship[c.relationship]}
+                          </span>
+                        ) : null}
                       </span>
                       <span className={`mt-0.5 block truncate text-[13px] ${c.unread > 0 ? "text-ink-soft" : "text-ink-faint"}`}>
                         {c.last_message}

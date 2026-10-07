@@ -80,6 +80,7 @@ export default async function ClientsPage() {
                       <th className="px-3 pb-2 pt-[18px] text-right font-semibold">{t.coachApp.clients.thAdherence}</th>
                       <th className="px-3 pb-2 pt-[18px] text-right font-semibold">{t.coachApp.clients.thLoad}</th>
                       <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.clients.thLastActivity}</th>
+                      <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.clients.thNext}</th>
                       <th className="px-6 pb-2 pt-[18px] font-semibold">{t.coachApp.clients.thSince}</th>
                     </tr>
                   </thead>
@@ -118,6 +119,9 @@ export default async function ClientsPage() {
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-[13px] tabular-nums text-ink-faint">
                           {timeAgo(c.last_activity, locale)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-[13px] tabular-nums text-ink-soft" data-testid="client-next-booking">
+                          {c.next_booking_at ? new Date(c.next_booking_at).toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
                         </td>
                         <td className="whitespace-nowrap py-4 pl-3 pr-6 text-[13px] tabular-nums text-ink-faint">
                           {c.started_at ? new Date(c.started_at).toLocaleDateString(locale) : "—"}
@@ -183,6 +187,14 @@ export default async function ClientsPage() {
                         </dd>
                       </div>
                     </dl>
+                    {c.next_booking_at ? (
+                      <p className="mt-2.5 text-[12.5px] text-ink-soft">
+                        {t.coachApp.clients.thNext}:{" "}
+                        <span className="font-semibold tabular-nums">
+                          {new Date(c.next_booking_at).toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </p>
+                    ) : null}
                   </li>
                 ))}
               </ul>

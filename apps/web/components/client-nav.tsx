@@ -34,6 +34,8 @@ const items: { href: string; key: NavKey; icon: string }[] = [
   // what. Not in TAB_HREFS — the phone's four tabs are the daily loop.
   { href: "/notifications", key: "notifications", icon: "M12 4a5 5 0 0 0-5 5v3l-1.5 3h13L17 12V9a5 5 0 0 0-5-5M10 18a2 2 0 0 0 4 0" },
   { href: "/coach", key: "coach", icon: "M12 4a4 4 0 1 0 0 8 4 4 0 1 0 0-8M4 21a8 8 0 0 1 16 0" },
+  // the sessions this person booked with coaches (20261105100000)
+  { href: "/coaches/bookings", key: "bookings", icon: "M4 6h16v14H4zM4 10h16M8 4v4M16 4v4" },
   // Trial / Pro hidden for now (2026-09-17) — commented out, not removed; restore when billing goes live.
   // { href: "/billing", key: "billing", icon: "M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 10h18" },
   { href: "/account", key: "account", icon: "M12 4a4 4 0 1 0 0 8 4 4 0 1 0 0-8M4 21a8 8 0 0 1 16 0M19 3v4M17 5h4" },

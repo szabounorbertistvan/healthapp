@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { MarketplaceTabs } from "@/components/marketplace-tabs";
 import { getI18n } from "@/lib/i18n/server";
 import { getCoachRequests } from "@/lib/coach-profile-data";
 import type { CoachingRequestStatus } from "@/lib/coach-profile";
 import { CoachRequestList } from "@/components/coach-requests";
 
-const TABS = ["pending", "accepted", "declined", "all"] as const;
+// "coaching" = accepted and started; "accepted" = accepted, not started yet (20261108100000)
+const TABS = ["pending", "accepted", "coaching", "declined", "cancelled", "all"] as const;
 type Tab = (typeof TABS)[number];
 
 /**
@@ -17,10 +20,12 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
   const [{ t }, { tab: raw }] = await Promise.all([getI18n(), searchParams]);
   const tab: Tab = (TABS as readonly string[]).includes(raw ?? "") ? (raw as Tab) : "pending";
   const r = t.coachProfile.requests;
-  const rows = await getCoachRequests(tab === "all" ? null : (tab as CoachingRequestStatus));
+  const all = await getCoachRequests(tab === "all" ? null : tab === "coaching" ? "accepted" : (tab as CoachingRequestStatus));
+  const rows = tab === "coaching" ? all.filter((r) => r.started) : tab === "accepted" ? all.filter((r) => !r.started) : all;
 
   return (
     <div className="mx-auto max-w-3xl">
+      <Suspense><MarketplaceTabs /></Suspense>
       <header>
         <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{r.title}</h1>
         <p className="mt-1 max-w-[62ch] text-[13.5px] text-ink-soft">{r.hint}</p>

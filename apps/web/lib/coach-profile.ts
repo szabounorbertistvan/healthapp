@@ -107,6 +107,12 @@ export const COACH_PROFILE_ERRORS = [
   "INVALID_FORMAT",
   "REQUEST_NOT_ACCEPTED",
   "CLIENT_LIMIT",
+  // request → conversation (20261104100000)
+  "REQUEST_NOT_FOUND",
+  "CONVERSATION_CLOSED",
+  // staged revisions (20261108100000)
+  "NO_REVISION",
+  "INVALID_REVISION",
 ] as const;
 export type CoachProfileErrorCode = (typeof COACH_PROFILE_ERRORS)[number];
 
@@ -243,6 +249,11 @@ export type MyCoachProfile = {
   certifications: CoachCertificationRow[];
   verifications: CoachVerificationRow[];
   missing: CoachProfileMissing[];
+  /**
+   * An open staged revision of a published / hidden profile (20261108100000):
+   * the lists and content above are then the copy's, the live page unchanged.
+   */
+  revision?: import("./coach-revision").CoachRevisionInfo | null;
 };
 
 // ---------- the public contract: coach_public_profile(slug) ----------

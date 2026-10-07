@@ -3,7 +3,7 @@ import { Exo_2, Inter } from "next/font/google";
 import "./globals.css";
 import { CookieBanner } from "@/components/cookie-banner";
 import { ServiceWorker } from "@/components/service-worker";
-import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { APP_NAME, APP_TAGLINE, SITE_URL } from "@/lib/brand";
 import { getI18n } from "@/lib/i18n/server";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getTheme } from "@/lib/theme-server";
@@ -15,6 +15,8 @@ const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-inter",
 const exo2 = Exo_2({ subsets: ["latin", "latin-ext"], weight: ["600", "700", "800"], variable: "--font-exo2", display: "swap" });
 
 export const metadata: Metadata = {
+  // every relative URL in metadata (Open Graph images, canonicals) resolves on the real domain
+  metadataBase: new URL(SITE_URL),
   title: `${APP_NAME} — ${APP_TAGLINE}`,
   description: "Antrenament, nutriție, check-in-uri și coaching într-o singură aplicație. Training, nutrition, check-ins and coaching in one app.",
 };

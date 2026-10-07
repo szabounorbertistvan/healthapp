@@ -32,3 +32,4 @@ export * from "./progress";
 export * from "./nutrition-progress";
 export * from "./program-quality";
 export * from "./post-media";
+export * from "./booking";

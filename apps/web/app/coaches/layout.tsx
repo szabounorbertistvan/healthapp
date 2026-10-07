@@ -30,6 +30,11 @@ export default async function CoachesLayout({ children }: { children: React.Reac
               {t.coachProfile.requests.mine.title}
             </Link>
           ) : null}
+          {appHref ? (
+            <Link href="/coaches/bookings" className="hidden h-10 items-center rounded-full px-3 text-[13.5px] font-semibold text-ink-soft hover:text-ink sm:inline-flex">
+              {t.coachProfile.bookings.mine.title}
+            </Link>
+          ) : null}
           {/* the private shortlist (20261102100000): only for someone who can have one */}
           {appHref ? (
             <Link href="/coaches/saved" aria-label={t.coachProfile.saved.title}

@@ -11,16 +11,30 @@ import type { Dictionary } from "@/lib/i18n";
 type NavKey = keyof Dictionary["common"]["nav"];
 
 /** The coach sections, in sidebar order. Icons are 24-box stroke paths. */
-const items: { href: string; key: NavKey; icon: string }[] = [
+type NavItem = { href: string; key: NavKey; icon: string; also?: string[]; except?: string[] };
+
+/**
+ * Active for its own path and any it gathers (`also`), never for the ones it
+ * hands to another item (`except`). The Marketplace item (20261108100000)
+ * stands for the coach's marketplace pages, which keep their own URLs.
+ */
+export function navItemActive(item: Pick<NavItem, "href" | "also" | "except">, pathname: string): boolean {
+  if (item.except?.some((p) => pathname.startsWith(p))) return false;
+  return [item.href, ...(item.also ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`) || pathname.startsWith(`${p}?`));
+}
+
+const items: NavItem[] = [
   { href: "/dashboard", key: "dashboard", icon: "M4 5h7v6H4zM13 5h7v4h-7zM13 11h7v8h-7zM4 13h7v6H4z" },
   { href: "/clients", key: "clients", icon: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2 20a7 7 0 0 1 14 0M17 11a3 3 0 0 0 0-6M18 20h4a6 6 0 0 0-3-5.2" },
   { href: "/programs", key: "programs", icon: "M2 10v4M22 10v4M5 8v8M19 8v8M8 6v12M16 6v12M8 12h8" },
   { href: "/library", key: "library", icon: "M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM4 4v18M8 8h6" },
   { href: "/nutrition", key: "nutrition", icon: "M3 12h18a9 9 0 0 1-18 0zM8 12c0-3 2-5 5-6 2 2 3 4 1 6" },
-  { href: "/requests", key: "requests", icon: "M4 6h16v12H4zM4 7l8 6 8-6" },
+  // one entry for the marketplace: overview, profile, availability, requests, bookings, reviews (20261108100000)
+  { href: "/marketplace", key: "marketplace", icon: "M3 9l2-5h14l2 5M3 9h18M3 9v11h18V9M9 20v-6h6v6",
+    also: ["/requests", "/bookings", "/reviews", "/settings/coach-profile"] },
   { href: "/check-ins", key: "checkIns", icon: "M9 4h6v3H9zM7 6H5v14h14V6h-2M9 13h6M9 17h4" },
   { href: "/messages", key: "messages", icon: "M4 5h16v11H9l-5 4z" },
-  { href: "/settings", key: "settings", icon: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.3a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-2.8-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.5 15H3a2 2 0 1 1 0-4h.2A1.6 1.6 0 0 0 4.3 8.2l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1.1V4a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 2.8 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.3a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.3.9z" },
+  { href: "/settings", key: "settings", except: ["/settings/coach-profile"], icon: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.3a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-2.8-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.5 15H3a2 2 0 1 1 0-4h.2A1.6 1.6 0 0 0 4.3 8.2l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1.1V4a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 2.8 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.3a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.3.9z" },
 ];
 
 const adminItem = { href: "/admin", key: "admin" as const, icon: "M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6zM9 12l2 2 4-4" };
@@ -45,7 +59,7 @@ export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
   return (
     <nav className="flex flex-col gap-0.5">
       {visible.map((item) => {
-        const active = pathname.startsWith(item.href);
+        const active = navItemActive(item, pathname);
         return (
           <Link
             key={item.href}
@@ -100,7 +114,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
   const tabs = TAB_ITEMS.map((href) => all.find((i) => i.href === href)!);
   // everything the tab bar cannot show
   const rest = all.filter((i) => !TAB_ITEMS.includes(i.href));
-  const restActive = rest.some((i) => pathname.startsWith(i.href));
+  const restActive = rest.some((i) => navItemActive(i, pathname));
 
   // A route change should not leave the sheet hanging over the new page.
   useEffect(() => {
@@ -147,7 +161,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
             </p>
             <nav className="flex flex-col gap-1">
               {rest.map((item) => {
-                const active = pathname.startsWith(item.href);
+                const active = navItemActive(item, pathname);
                 return (
                   <Link
                     key={item.href}
@@ -184,7 +198,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
 
       <nav className="glass glass--strong fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-[calc(0.75rem+env(safe-area-inset-left))] right-[calc(0.75rem+env(safe-area-inset-right))] z-30 grid grid-cols-5 rounded-[26px] px-1.5 py-1.5 sm:hidden">
         {tabs.map((item) => {
-          const active = pathname.startsWith(item.href);
+          const active = navItemActive(item, pathname);
           return (
             <Link
               key={item.href}

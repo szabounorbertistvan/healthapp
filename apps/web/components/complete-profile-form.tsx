@@ -21,9 +21,12 @@ const inputClass =
 export function CompleteProfileForm({
   initialName,
   initialRole,
+  next = null,
 }: {
   initialName: string;
   initialRole: Role;
+  /** Where to continue once done (already safeNext-checked by the page), e.g. the coach page they came from. */
+  next?: string | null;
 }) {
   const { t } = useI18n();
   const m = t.clientApp.completeProfile;
@@ -75,7 +78,7 @@ export function CompleteProfileForm({
         );
         return;
       }
-      router.push(role === "client" ? "/today" : "/dashboard");
+      router.push(next ?? (role === "client" ? "/today" : "/dashboard"));
       router.refresh();
     });
   }

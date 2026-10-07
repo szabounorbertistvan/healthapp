@@ -15,6 +15,9 @@ import type { CoachVerificationStatus, CredentialStatus } from "@/lib/coach-prof
 import { ConfirmAction } from "@/components/admin/confirm-action";
 import { AdminHeader, Note, Pill, Section, fmtDateTime } from "@/components/admin/ui";
 import { CoachProfilePreview } from "@/components/coach-profile/preview";
+import { getAdminReviews } from "@/lib/review-data";
+import { AdminReviewModeration } from "@/components/admin/review-moderation";
+import { AdminRevisionReview, type AdminRevision } from "@/components/admin/revision-review";
 
 type Review = CoachPublicProfile & {
   status: CoachProfileStatus;
@@ -62,6 +65,13 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
 
   const name = review.display_name;
   const open = summary(review.missing ?? []).filter((x) => !x.done).map((x) => groups[x.group]);
+  // the coach's reviews, any state (20261106100000)
+  const [reviews, { data: revisionData }] = await Promise.all([
+    review.user_id ? getAdminReviews(review.user_id) : Promise.resolve([]),
+    // a published coach's staged changes (20261108100000); a database without them answers an error, read as none
+    supabase.rpc("admin_coach_revision", { p_profile: id }),
+  ]);
+  const revision = (revisionData ?? null) as AdminRevision | null;
   const s = review.status;
 
   return (
@@ -123,8 +133,18 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
         </div>
       </Section>
 
+      {revision ? (
+        <div className="mt-4">
+          <AdminRevisionReview profileId={id} revision={revision} />
+        </div>
+      ) : null}
+
       <div className="mt-4">
         <VerificationPanel review={review} />
+      </div>
+
+      <div className="mt-4">
+        <AdminReviewModeration rows={reviews} />
       </div>
 
       <div className="mt-4">

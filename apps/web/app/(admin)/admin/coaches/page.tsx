@@ -2,6 +2,9 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/guard";
 import { oneOf, type Search } from "@/lib/admin/params";
 import { supabaseServer } from "@/lib/supabase/server";
+import { getAdminReviews } from "@/lib/review-data";
+import { AdminReviewModeration } from "@/components/admin/review-moderation";
+import { AdminRevisionQueue } from "@/components/admin/revision-review";
 import { getI18n } from "@/lib/i18n/server";
 import { COACH_PROFILE_STATUSES, type CoachProfileStatus, type CoachVerificationStatus } from "@/lib/coach-profile";
 import {
@@ -50,9 +53,13 @@ export default async function AdminCoachesPage({ searchParams }: { searchParams:
   const href = (s: string) => `/admin/coaches?status=${s}`;
 
   const supabase = await supabaseServer();
-  const [{ data: rows }, { data: counts }] = await Promise.all([
+  const [{ data: rows }, { data: counts }, reported, { data: revisions }] = await Promise.all([
     supabase.rpc("admin_coach_profiles", { p_status: status, p_verification: verification }),
     supabase.rpc("admin_coach_profile_counts"),
+    // reviews with an open report, across coaches (20261106100000)
+    getAdminReviews(null),
+    // published coaches with changes waiting (20261108100000)
+    supabase.rpc("admin_coach_revisions_pending"),
   ]);
   const list = (rows ?? []) as Row[];
   const n = (counts ?? {}) as Partial<Record<CoachProfileStatus | "verification_pending", number>>;
@@ -107,6 +114,12 @@ export default async function AdminCoachesPage({ searchParams }: { searchParams:
             </Table>
           )}
         </Section>
+      </div>
+      <div className="mt-4">
+        <AdminRevisionQueue rows={(revisions ?? []) as { coach_profile_id: string; slug: string; display_name: string; submitted_at: string | null }[]} />
+      </div>
+      <div className="mt-4">
+        <AdminReviewModeration rows={reported} reported />
       </div>
     </div>
   );

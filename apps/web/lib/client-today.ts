@@ -108,10 +108,17 @@ async function unreadCoachMessages(clientId: string): Promise<number> {
   // themselves they are not — without the join this counted every unread
   // message from every client on the roster and put it on Today under "a word
   // from your coach", pointing at a thread that does not exist.
+  // And scoped to the *active* coach: a coach who accepted a contact request
+  // (20261104100000) has a thread with this person too, but is not "your
+  // coach" yet. activeCoachId is request-cached and already in flight for
+  // getMyProgramDays, so this adds no round trip of its own.
+  const coachId = await activeCoachId(clientId);
+  if (!coachId) return 0;
   const { count } = await live.supabase
     .from("messages")
-    .select("id, conversations!inner(client_id)", { count: "exact", head: true })
+    .select("id, conversations!inner(client_id, coach_id)", { count: "exact", head: true })
     .eq("conversations.client_id", clientId)
+    .eq("conversations.coach_id", coachId)
     .neq("sender_id", clientId)
     .is("read_at", null);
   return count ?? 0;
@@ -197,11 +204,16 @@ export async function getMyCoachThread(): Promise<
   const live = await liveUser();
   if (!live) return null;
   const { supabase, userId } = live;
+  // The active coach's thread. Not "any conversation where I am the client":
+  // since 20261104100000 an accepted contact request has one too, and
+  // limit(1) used to pick between them at random.
+  const coachId = await activeCoachId(userId);
+  if (!coachId) return null;
   const { data } = await supabase
     .from("conversations")
     .select("id, coach:users!conversations_coach_id_fkey(full_name), messages(id, body, created_at, sender_id)")
     .eq("client_id", userId)
-    .limit(1)
+    .eq("coach_id", coachId)
     .maybeSingle();
   if (!data) return null;
   type Msg = { id: string; body: string; created_at: string; sender_id: string };

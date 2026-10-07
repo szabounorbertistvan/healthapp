@@ -20,11 +20,13 @@ const BOOKMARK = "M6 3h12v18l-6-4.5L6 21z";
  *   icon — a 40 px bookmark for a card corner;
  *   pill — the bookmark and its label, beside Follow on the profile.
  */
-export function SaveCoachButton({ profileId, saved, signedIn, variant = "icon" }: {
+export function SaveCoachButton({ profileId, saved, signedIn, variant = "icon", signInNext }: {
   profileId: string | null;
   saved: boolean;
   signedIn: boolean;
   variant?: "icon" | "pill";
+  /** Where to come back after signing in — the coach page passes itself with ?intent=save (20261108100000). */
+  signInNext?: string;
 }) {
   const { t } = useI18n();
   const s = t.coachProfile.saved;
@@ -47,7 +49,7 @@ export function SaveCoachButton({ profileId, saved, signedIn, variant = "icon" }
   const base = `inline-flex shrink-0 items-center justify-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${look}`;
 
   if (!signedIn || !profileId) {
-    const here = `${pathname}${search?.toString() ? `?${search}` : ""}`;
+    const here = signInNext ?? `${pathname}${search?.toString() ? `?${search}` : ""}`;
     return (
       <Link href={`/login?${new URLSearchParams({ next: here })}`} className={base} title={s.signInToSave}
         aria-label={variant === "icon" ? s.signInToSave : undefined} data-testid="save-coach">

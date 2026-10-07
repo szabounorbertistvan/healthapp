@@ -94,3 +94,67 @@ async function adminRpc(name: string, args: Record<string, unknown>): Promise<Ac
   revalidatePath("/settings", "layout");
   return { ok: true };
 }
+
+/**
+ * Review moderation (20261106100000): admin_set_review_status() re-checks
+ * is_admin(), allows published ↔ hidden only (a reviewer's deletion is theirs),
+ * requires a reason to hide, closes the review's open reports and audits.
+ */
+async function setReviewStatus(reviewId: string, status: "hidden" | "published", reason = ""): Promise<ActionResult> {
+  if (!(await adminActor())) return { ok: false, message: "Admins only" };
+  const id = uuidOf(reviewId);
+  if (!id) return { ok: false, message: "Invalid id" };
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc("admin_set_review_status", {
+    p_review: id, p_status: status, p_reason: reason.trim().slice(0, 1000) || null,
+  });
+  if (error) {
+    const { t } = await getI18n();
+    const known = t.admin.coaches.errors;
+    const code = (Object.keys(known) as (keyof typeof known)[]).find((k) => error.message.includes(k));
+    return { ok: false, message: code ? known[code] : error.message };
+  }
+  revalidatePath("/admin/coaches", "layout");
+  revalidatePath("/coaches", "layout");
+  return { ok: true };
+}
+
+export async function hideReview(reviewId: string, reason: string): Promise<ActionResult> {
+  return setReviewStatus(reviewId, "hidden", reason);
+}
+
+export async function restoreReview(reviewId: string): Promise<ActionResult> {
+  return setReviewStatus(reviewId, "published");
+}
+
+/**
+ * A published coach's staged changes (20261108100000): approve (the copy
+ * replaces the live content) or send back with a note. admin_decide_coach_revision()
+ * re-checks is_admin(), refuses an incomplete copy and audits.
+ */
+async function decideRevision(profileId: string, approve: boolean, note = ""): Promise<ActionResult> {
+  if (!(await adminActor())) return { ok: false, message: "Admins only" };
+  const id = uuidOf(profileId);
+  if (!id) return { ok: false, message: "Invalid id" };
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc("admin_decide_coach_revision", {
+    p_profile: id, p_approve: approve, p_note: note.trim().slice(0, 1000) || null,
+  });
+  if (error) {
+    const { t } = await getI18n();
+    const known = t.admin.coaches.errors;
+    const code = (Object.keys(known) as (keyof typeof known)[]).find((k) => error.message.includes(k));
+    return { ok: false, message: code ? known[code] : error.message };
+  }
+  revalidatePath("/admin/coaches", "layout");
+  revalidatePath("/coaches", "layout");
+  return { ok: true };
+}
+
+export async function approveCoachRevision(profileId: string): Promise<ActionResult> {
+  return decideRevision(profileId, true);
+}
+
+export async function rejectCoachRevision(profileId: string, note: string): Promise<ActionResult> {
+  return decideRevision(profileId, false, note);
+}

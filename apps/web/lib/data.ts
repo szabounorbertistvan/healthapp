@@ -6,7 +6,7 @@ import { effectiveTier, isExerciseMeasure, isLengthUnit, isWeightUnit, normalize
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { liveAdherenceFor } from "./live-adherence";
 import type {
-  CheckInRow, ClientRow, ConversationRow, DashboardRow,
+  CheckInRow, ClientRow, ConversationContext, ConversationRow, DashboardRow,
   MessageRow, NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
 } from "./types";
 import type { Role, Tier } from "./entitlements";
@@ -145,7 +145,7 @@ export async function getClients(): Promise<ClientRow[]> {
   // the whole table to an admin, and an admin who opens the coach area is not
   // every coach's coach — unscoped, they saw other coaches' clients and every
   // write for one was refused by `is_active_coach_of()`.
-  const [{ data, error }, dash, load] = await Promise.all([
+  const [{ data, error }, dash, load, upcoming] = await Promise.all([
     supabase
       .from("trainer_clients")
       .select("status, started_at, client:users!trainer_clients_client_id_fkey(id, full_name)")
@@ -153,8 +153,15 @@ export async function getClients(): Promise<ClientRow[]> {
       .in("status", ["invited", "active"]),
     getDashboard(),
     clientLoad7d(supabase),
+    // the next session per client: one query, soonest first (the coach's own bookings; RLS agrees)
+    supabase.from("bookings").select("client_id, start_at").eq("coach_id", userId)
+      .in("status", ["pending", "confirmed"]).gt("start_at", new Date().toISOString()).order("start_at").limit(500),
   ]);
   if (error) throw error;
+  const nextBooking = new Map<string, string>();
+  for (const b of (upcoming.data ?? []) as { client_id: string; start_at: string }[]) {
+    if (!nextBooking.has(b.client_id)) nextBooking.set(b.client_id, b.start_at);
+  }
   const byId = new Map(dash.map((d) => [d.client_id, d]));
   return (data ?? []).map((r) => {
     const client = r.client as unknown as { id: string; full_name: string } | null;
@@ -168,6 +175,7 @@ export async function getClients(): Promise<ClientRow[]> {
       status: r.status,
       started_at: r.started_at,
       load_7d: client ? (load.get(client.id) ?? 0) : 0,
+      next_booking_at: client ? (nextBooking.get(client.id) ?? null) : null,
     };
   });
 }
@@ -299,23 +307,36 @@ export async function getNutritionPlans(): Promise<NutritionPlanRow[]> {
   }));
 }
 
+/**
+ * The coach's inbox (coach_conversations(), 20261104100000): threads where
+ * the caller is the coach — coaching, accepted contact requests and history
+ * — newest activity first, with the client's public name. An RPC rather than
+ * a users join: the users policy shows a person only to their *active*
+ * coach, so a request-only client came back as a null join and crashed this.
+ */
 export async function getConversations(): Promise<ConversationRow[]> {
-  const supabase = await supabaseServer();
-  const { data, error } = await supabase
-    .from("conversations")
-    .select("id, client:users!conversations_client_id_fkey(id, full_name), messages(body, created_at, read_at, sender_id)")
-    .order("created_at", { ascending: false });
+  const live = await liveUser();
+  if (!live) return [];
+  const { data, error } = await live.supabase.rpc("coach_conversations");
   if (error) throw error;
-  return (data ?? []).map((c) => {
-    const client = c.client as unknown as { id: string; full_name: string };
-    const msgs = (c.messages as unknown as { body: string; created_at: string; read_at: string | null; sender_id: string }[]) ?? [];
-    const last = msgs.sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-    return {
-      id: c.id, client_id: client.id, full_name: client.full_name,
-      last_message: last?.body ?? "", last_at: last?.created_at ?? "",
-      unread: msgs.filter((m) => m.sender_id === client.id && !m.read_at).length,
-    };
-  });
+  type Row = {
+    id: string; client_id: string; client_name: string; client_avatar: string | null;
+    last_message: string | null; last_at: string; unread: number; relationship: ConversationRow["relationship"]; open: boolean;
+  };
+  return ((data ?? []) as Row[]).map((c) => ({
+    id: c.id, client_id: c.client_id, full_name: c.client_name, avatar_url: c.client_avatar,
+    last_message: c.last_message ?? "", last_at: c.last_at, unread: c.unread,
+    relationship: c.relationship, open: c.open,
+  }));
+}
+
+/** A thread's header for either side, or null when the caller is not in it. */
+export async function getConversationContext(conversationId: string): Promise<ConversationContext | null> {
+  const live = await liveUser();
+  if (!live) return null;
+  const { data, error } = await live.supabase.rpc("conversation_context", { p_conversation: conversationId });
+  if (error) throw error;
+  return (data ?? null) as ConversationContext | null;
 }
 
 export async function getMessages(conversationId: string): Promise<MessageRow[]> {

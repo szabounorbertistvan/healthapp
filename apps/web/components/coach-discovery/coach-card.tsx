@@ -6,6 +6,7 @@ import type { CoachCardModel } from "@/lib/coach-discovery";
 import { formatPrice } from "@/lib/coach-onboarding";
 import { Avatar, FollowButton } from "../social";
 import { VerifiedBadge } from "./verified-badge";
+import { ratingLabel } from "@/lib/coach-review";
 import { SaveCoachButton } from "./save-coach-button";
 
 /**
@@ -67,6 +68,12 @@ export function CoachCard({ card, signedIn }: { card: CoachCardModel; signedIn: 
             <VerifiedBadge verified={card.verified} />
           </h3>
           {card.headline ? <p className="mt-0.5 line-clamp-2 text-[13.5px] text-ink-soft">{card.headline}</p> : null}
+          {/* published reviews only, from the database (20261106100000); no reviews, no line */}
+          {card.rating ? (
+            <p className="mt-1 text-[12.5px] font-semibold text-ink-soft" data-testid="coach-card-rating">
+              {ratingLabel(card.rating, { one: c.reviewOne, many: c.reviewMany }, locale)}
+            </p>
+          ) : null}
         </div>
       </div>
 

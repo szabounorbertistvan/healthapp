@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CoachPublicProfile, CoachViewerState } from "./coach-profile";
 import {
-  coachFormat, coachJsonLd, coachPageDescription, coachPageTitle, coachWhyPoints, startCoachingState, yearsOfExperience,
+  coachFormat, coachGateHref, coachIndexable, coachJsonLd, coachPageDescription, coachPageJsonLd, coachPageTitle, coachTeaser,
+  coachWhyPoints, startCoachingState, yearsOfExperience, TEASER_ABOUT_CHARS,
 } from "./coach-public";
 
 const profile: CoachPublicProfile = {
@@ -63,6 +64,13 @@ describe("start coaching state", () => {
     // a pending request wins over an older answer
     expect(startCoachingState(profile, { ...last("declined"), pending_request: { id: "p", service_id: null, created_at: "" } }, { signedIn: true }))
       .toBe("pending");
+  });
+  it("an accepted request is Message coach, even once the coach stops taking clients (20261104100000)", () => {
+    const accepted = viewer({ last_request: { id: "r", status: "accepted", service_id: null, created_at: "", started: false } });
+    expect(startCoachingState(profile, accepted, { signedIn: true })).toBe("accepted");
+    expect(startCoachingState({ ...profile, accepting_clients: false }, accepted, { signedIn: true })).toBe("accepted");
+    // no request, or a declined / cancelled one, is never Message coach
+    expect(startCoachingState({ ...profile, accepting_clients: false }, viewer(), { signedIn: true })).toBe("not_accepting");
   });
   it("the preview never goes live", () => {
     expect(startCoachingState(profile, viewer(), { preview: true, signedIn: true })).toBe("preview");
@@ -134,5 +142,54 @@ describe("the page", () => {
   it("a first-year coach shows the year, not \"0 years\"", () => {
     expect(coachWhyPoints({ ...profile, verified: false, coaching_since: 2026 }, new Date("2026-10-05"))[0])
       .toEqual({ kind: "since", year: 2026 });
+  });
+});
+
+describe("the public directory's foundation (20261107100000)", () => {
+  it("a page with the essentials publishing required is indexable; one that lost them is not", () => {
+    expect(coachIndexable(profile)).toBe(true);
+    expect(coachIndexable({ ...profile, avatar_url: null })).toBe(false);
+    expect(coachIndexable({ ...profile, about: "  " })).toBe(false);
+    expect(coachIndexable({ ...profile, services: [] })).toBe(false);
+    expect(coachIndexable({ ...profile, specializations: [] })).toBe(false);
+  });
+
+  it("the anonymous teaser cuts a long about at a word, and keeps the first three services", () => {
+    const long = { ...profile, about: "word ".repeat(200).trim(), services: [...profile.services, ...profile.services] };
+    const teaser = coachTeaser(long);
+    expect(teaser.aboutCut).toBe(true);
+    expect(teaser.profile.about!.length).toBeLessThanOrEqual(TEASER_ABOUT_CHARS + 1);
+    expect(teaser.profile.about!.endsWith("word…")).toBe(true);
+    expect(teaser.profile.services).toHaveLength(3);
+    expect(teaser.moreServices).toBe(1);
+  });
+  it("a short about and few services are left whole", () => {
+    const teaser = coachTeaser(profile);
+    expect(teaser.aboutCut).toBe(false);
+    expect(teaser.profile.about).toBe(profile.about);
+    expect(teaser.moreServices).toBe(0);
+  });
+
+  it("the gate returns to this exact coach, signing in or signing up", () => {
+    expect(coachGateHref("andrei-popescu", "signin")).toBe("/login?next=%2Fcoaches%2Fandrei-popescu");
+    expect(coachGateHref("andrei-popescu", "signup")).toBe("/login?next=%2Fcoaches%2Fandrei-popescu&mode=signup");
+  });
+
+  it("JSON-LD: the profile page and its breadcrumb, from real fields only, no rating", () => {
+    const ld = coachPageJsonLd(profile, "https://www.voinic.fit", "ro", { home: "Voinic", coaches: "Antrenori" });
+    const [page, crumbs] = ld["@graph"] as Record<string, unknown>[];
+    expect(page!["@type"]).toBe("ProfilePage");
+    expect(page!.url).toBe("https://www.voinic.fit/coaches/andrei-popescu");
+    expect(page!.dateCreated).toBe("2026-10-01T00:00:00Z");
+    const person = page!.mainEntity as Record<string, unknown>;
+    expect(person["@type"]).toBe("Person");
+    expect(person.alternateName).toBe("@andrei.popescu");
+    expect(person).not.toHaveProperty("aggregateRating");
+    expect(JSON.stringify(ld)).not.toContain("aggregateRating");
+    expect((crumbs!.itemListElement as { item: string }[]).map((i) => i.item)).toEqual([
+      "https://www.voinic.fit", "https://www.voinic.fit/coaches", "https://www.voinic.fit/coaches/andrei-popescu",
+    ]);
+    // nothing invented: no price for a service whose price is private
+    expect(JSON.stringify(person.makesOffer)).not.toContain('"VIP","price"');
   });
 });

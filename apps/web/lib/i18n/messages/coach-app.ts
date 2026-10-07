@@ -29,6 +29,7 @@ const en = {
     thAdherence: "Adherence",
     thLastActivity: "Last activity",
     thSince: "Since",
+    thNext: "Next session",
     thLoad: "Load (7d)",
     postsTitle: "Shared by {name}",
     postsEmpty: "Nothing shared yet.",
@@ -83,7 +84,7 @@ const en = {
   },
   messages: {
     emptyTitle: "No conversations",
-    emptyHint: "A conversation opens automatically when a client accepts your invite.",
+    emptyHint: "A conversation opens when a client accepts your invite, or when you message someone whose request you accepted.",
     back: "Messages",
     conversation: "Conversation",
   },
@@ -193,6 +194,7 @@ const ro: typeof en = {
     thAdherence: "Aderență",
     thLastActivity: "Ultima activitate",
     thSince: "Din",
+    thNext: "Următoarea ședință",
     thLoad: "Încărcare (7z)",
     postsTitle: "Postat de {name}",
     postsEmpty: "Nimic postat încă.",
@@ -247,7 +249,7 @@ const ro: typeof en = {
   },
   messages: {
     emptyTitle: "Nicio conversație",
-    emptyHint: "O conversație se deschide automat când un client acceptă invitația ta.",
+    emptyHint: "O conversație se deschide când un client acceptă invitația ta sau când îi scrii cuiva căruia i-ai acceptat solicitarea.",
     back: "Mesaje",
     conversation: "Conversație",
   },

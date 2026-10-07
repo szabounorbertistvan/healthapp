@@ -56,7 +56,7 @@ written. Every "client app" screen today is a web route under
 `apps/web/app/(client)/`.
 
 Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
-check-ins, messages, settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
+check-ins, messages, marketplace (the coach's overview; one sidebar entry that also covers requests, bookings (+ `bookings/availability`), reviews and `settings/coach-profile`, with `MarketplaceTabs` over them), settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
 (overview, users, users/[id], activity, auth, invitations, workouts,
 exercises (+ /translate), foods, nutrition, gyms, coaches (+ /[id], the coach-profile review queue), social, challenges, notifications,
 feedback, errors, system, search) — its own layout, gated by `lib/admin/guard.ts` and, in the
@@ -65,11 +65,11 @@ database, by `admin_assert()` inside every `admin_*` RPC
 `app/admin-actions.ts`, strings in `messages/admin.ts`). `(client)` = today, workout (list of every
 published program → `workout/[dayId]` day overview + per-day history →
 `workout/[dayId]/log` set logger), workout/build, food, habits, progress,
-check-in, coach, billing. Ungrouped: landing `page.tsx`, `coaches` (Coach Discovery: bare `/coaches` is the Discovery Home, `?all=1` or any search/filter the listing; state in
-the URL) and `coaches/[slug]` (the public coach page) — own header layout, no session needed, login, complete-profile
+check-in, coach (+ `coach/messages/[id]`, any thread on the client's side — e.g. a coach whose request was accepted), billing. Ungrouped: landing `page.tsx`, `coaches` (Coach Discovery: bare `/coaches` is the Discovery Home, `?all=1` or any search/filter the listing; state in
+the URL) and `coaches/[slug]` (the public coach page; `coaches/[slug]/book` books a service, `coaches/[slug]/review` writes the reader's one review, `coaches/bookings` lists the reader's bookings) — own header layout, no session needed, login, complete-profile
 (username / sex / age / coach-or-client for accounts that signed up without
 them — both layouts redirect there while `users.username` is null), privacy,
-terms, get-the-app. **Send feedback** (`components/feedback.tsx`, in both sidebars and both
+terms, get-the-app, and the crawler files `robots.ts` / `sitemap.ts` (public in middleware; rules in `lib/seo.ts`). **Send feedback** (`components/feedback.tsx`, in both sidebars and both
 phone "More" sheets) writes through `submit_feedback()` (capped 10/hour) and is
 read only by an admin on `/admin/feedback`. Profile editing (photo, city, bio, units, time zone) is the
 shared `ProfileForm` in `components/account.tsx`, mounted on the client's
@@ -133,7 +133,8 @@ policy** — service role writes them only. **`foods` is not listable** (since
 references — a new read of `foods` must use those, not `.from("foods")`. **Nothing is
 readable by `anon`** except through the Coach Discovery doors —
 `coach_public_profile(slug)`, `coach_public_posts(slug)`, `coach_public_programs(slug)`,
-`search_coaches(...)`, `coach_discovery_facets()` (2026-10-01), all gated by the internal `coach_public_visible()` (published, account
+`search_coaches(...)`, `coach_discovery_facets()` (2026-10-01), `coach_booking_services(slug)` and
+`coach_booking_slots(...)` (free start/end times only, 2026-10-07), `coach_public_reviews(slug)`, `coach_slug_redirect(slug)` and `coach_sitemap()` (2026-10-07), all gated by the internal `coach_public_visible()` / `booking_eligibility()` (published, account
 live, no block): `coach_*` tables have owner/admin policies only, and those functions'
 field lists *are* the public contract — adding a key publishes it. `/coaches/*` is the
 one app route middleware lets through without a session.

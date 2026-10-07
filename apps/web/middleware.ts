@@ -73,7 +73,10 @@ export async function middleware(request: NextRequest) {
     // Coach Discovery: a published coach page is public by design (search
     // engines too). The data behind it comes only from anon-granted RPCs that
     // refuse anything unpublished — the page needs no session.
-    path === "/coaches" || path.startsWith("/coaches/")
+    path === "/coaches" || path.startsWith("/coaches/") ||
+    // what crawlers read first (20261107100000): a redirect to /login here
+    // would hide the whole public directory from search engines
+    path === "/robots.txt" || path === "/sitemap.xml"
   ) return response;
   const isLanding = path === "/";
   const isLogin = path.startsWith("/login");

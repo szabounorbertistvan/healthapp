@@ -26,15 +26,17 @@ type Changed = "muted" | "unmuted" | "blocked" | "unblocked";
  * on a phone, a dialog from `sm`. `onChanged` lets the caller update at once
  * (a blocked author's post leaves the screen) before the refresh lands.
  */
-export function ModerationMenuButton({ target, postId, commentId, muted, blocked, place, onChanged, size = "default" }: {
+export function ModerationMenuButton({ target, postId, commentId, reviewId, muted, blocked, place, onChanged, size = "default" }: {
   target: Target;
   /** Set for a post's menu: Report then reports the post, not the person. */
   postId?: string;
   /** Set for a comment's menu: Report then reports the comment. */
   commentId?: string;
+  /** Set for a coach review's menu (20261106100000): Report is the only action. */
+  reviewId?: string;
   muted: boolean;
   blocked: boolean;
-  place: "post" | "profile" | "comment";
+  place: "post" | "profile" | "comment" | "review";
   onChanged?: (what: Changed) => void;
   size?: "default" | "small";
 }) {
@@ -43,7 +45,7 @@ export function ModerationMenuButton({ target, postId, commentId, muted, blocked
   const [open, toggle] = useReducer((v: boolean) => !v, false);
   const actions = place === "post"
     ? postMenuActions({ mine: false, muted, blocked })
-    : place === "comment"
+    : place === "comment" || place === "review"
       ? commentMenuActions({ mine: false })
       : profileMenuActions({ me: false, muted, blocked });
   if (actions.length === 0) return null;
@@ -67,6 +69,7 @@ export function ModerationMenuButton({ target, postId, commentId, muted, blocked
           target={target}
           postId={postId}
           commentId={commentId}
+          reviewId={reviewId}
           actions={actions}
           onChanged={onChanged}
           onClose={toggle}
@@ -85,11 +88,12 @@ export function ModerationMenuButton({ target, postId, commentId, muted, blocked
  * assumed to have happened. After a change the page refreshes on close, and
  * the server decides what is left to see.
  */
-function ModerationSheet({ dialogRef, target, postId, commentId, actions, onChanged, onClose }: {
+function ModerationSheet({ dialogRef, target, postId, commentId, reviewId, actions, onChanged, onClose }: {
   dialogRef: React.RefObject<HTMLDialogElement | null>;
   target: Target;
   postId?: string;
   commentId?: string;
+  reviewId?: string;
   actions: MenuAction[];
   onChanged?: (what: Changed) => void;
   onClose: () => void;
@@ -121,10 +125,10 @@ function ModerationSheet({ dialogRef, target, postId, commentId, actions, onChan
 
   async function sendReport() {
     if (state.step !== "report" || !state.reason) return;
-    const kind: ReportTarget = commentId ? "comment" : postId ? "post" : "user";
+    const kind: ReportTarget = reviewId ? "review" : commentId ? "comment" : postId ? "post" : "user";
     const { reason, details } = state;
     dispatch({ type: "submit" });
-    const r = await reportContent(kind, commentId ?? postId ?? target.userId, reason, reason === "other" ? details : "");
+    const r = await reportContent(kind, reviewId ?? commentId ?? postId ?? target.userId, reason, reason === "other" ? details : "");
     dispatch({ type: "result", ok: r.ok, what: "reported" });
   }
 

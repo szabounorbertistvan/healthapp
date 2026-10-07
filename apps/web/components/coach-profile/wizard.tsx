@@ -223,7 +223,7 @@ export function CoachProfileWizard({
 
         <div className="mt-5">
           {stepId === "identity" ? (
-            <IdentityStep draft={draft} setDraft={setDraft} errors={idErrors} displayName={displayName} />
+            <IdentityStep draft={draft} setDraft={setDraft} errors={idErrors} displayName={displayName} revisionMode={Boolean(data.revision)} />
           ) : stepId === "expertise" ? (
             <ExpertiseStep draft={draft} setDraft={setDraft} catalog={catalog} yearError={yearError} />
           ) : stepId === "where" ? (
@@ -330,8 +330,8 @@ function Counter({ n, max }: { n: number; max: number }) {
 }
 
 function IdentityStep({
-  draft, setDraft, errors, displayName,
-}: StepProps & { errors: ReturnType<typeof identityErrors>; displayName: string }) {
+  draft, setDraft, errors, displayName, revisionMode = false,
+}: StepProps & { errors: ReturnType<typeof identityErrors>; displayName: string; revisionMode?: boolean }) {
   const { t } = useI18n();
   const c = t.coachProfile.identity;
   const w = t.coachProfile.wizard;
@@ -371,10 +371,13 @@ function IdentityStep({
         <input
           id={`${ids}-slug`} className={FIELD} value={draft.slug} maxLength={COACH_LIMITS.slugMax}
           autoCapitalize="none" spellCheck={false} aria-invalid={Boolean(errors.slug)} aria-describedby={`${ids}-slug-hint`}
+          readOnly={revisionMode} aria-readonly={revisionMode}
           onChange={(e) => setDraft((d) => ({ ...d, slug: slugify(e.target.value) }))}
           onBlur={() => setDraft((d) => ({ ...d, slug: d.slug.replace(/^-+|-+$/g, "") }))}
         />
-        <p id={`${ids}-slug-hint`} className={HINT}>{fill(c.slugHint, { slug: draft.slug || "…" })}</p>
+        <p id={`${ids}-slug-hint`} className={HINT}>
+          {revisionMode ? t.coachProfile.status.revision.slugLocked : fill(c.slugHint, { slug: draft.slug || "…" })}
+        </p>
         {errors.slug ? <span className={FIELD_ERROR}>{c.slugError}</span> : null}
         <p className={HINT}>{fill(c.shownAs, { name: displayName })}</p>
       </div>
@@ -668,7 +671,8 @@ function PublishStep({
         <h3 id="coach-photos" className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{c.photos}</h3>
         <div className="mt-3 grid gap-5">
           <AvatarPicker name={displayName} url={avatarUrl} enabled={photoUploads} />
-          <CoverPicker url={data.profile.cover_url} enabled={photoUploads} />
+          <CoverPicker url={data.profile.cover_url} enabled={photoUploads && !data.revision} />
+          {data.revision ? <p className={HINT}>{t.coachProfile.status.revision.coverLocked}</p> : null}
         </div>
       </section>
 
@@ -740,7 +744,7 @@ function PublishStep({
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className={`${SMALL_BUTTON_INSET} h-11 px-5`} onClick={() => onGo(0)}>{c.editProfile}</button>
           <button type="button" className={BUTTON} disabled={!ready || submitting} onClick={submit}>
-            {submitting ? c.submitting : c.submit}
+            {submitting ? c.submitting : data.revision ? t.coachProfile.status.revision.submit : c.submit}
           </button>
         </div>
         {error ? <p role="alert" className="mt-2 text-[13px] text-risk">{error}</p> : null}
