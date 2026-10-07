@@ -6,6 +6,7 @@ import type { RpcErrorCode } from "@healthapp/api";
 import type { CoachProfileErrorCode } from "@/lib/coach-profile";
 import type { BookingErrorCode } from "@/lib/booking";
 import type { ReviewErrorCode } from "@/lib/coach-review";
+import type { CoachingErrorCode } from "@/lib/coaching";
 
 // `errorCode`, not `code`: createInvite below returns the *invite* code in a
 // field of its own, and one name for two meanings is how a screen ends up
@@ -24,7 +25,7 @@ export type ActionResult = {
  * a screen comparing against a misspelt code fails to compile.
  */
 export type ActionErrorCode =
-  | RpcErrorCode | ProfileErrorCode | PlanErrorCode | CoachProfileErrorCode | BookingErrorCode | ReviewErrorCode | "NO_ROWS" | "INVALID_INPUT";
+  | RpcErrorCode | ProfileErrorCode | PlanErrorCode | CoachProfileErrorCode | BookingErrorCode | ReviewErrorCode | CoachingErrorCode | "NO_ROWS" | "INVALID_INPUT";
 export type ProfileErrorCode =
   | "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN" | "ROLE" | "CITY" | "BIO";
 

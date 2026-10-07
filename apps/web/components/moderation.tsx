@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef } from "react";
-import { REPORT_DETAILS_MAX, REPORT_REASONS, type ReportTarget } from "@healthapp/shared";
+import { REPORT_DETAILS_MAX, reportReasonsFor, type ReportTarget } from "@healthapp/shared";
 import { reportContent, setBlocked, setMuted } from "@/app/moderation-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -26,7 +26,7 @@ type Changed = "muted" | "unmuted" | "blocked" | "unblocked";
  * on a phone, a dialog from `sm`. `onChanged` lets the caller update at once
  * (a blocked author's post leaves the screen) before the refresh lands.
  */
-export function ModerationMenuButton({ target, postId, commentId, reviewId, muted, blocked, place, onChanged, size = "default" }: {
+export function ModerationMenuButton({ target, postId, commentId, reviewId, coachProfileId, muted, blocked, place, onChanged, size = "default" }: {
   target: Target;
   /** Set for a post's menu: Report then reports the post, not the person. */
   postId?: string;
@@ -34,9 +34,11 @@ export function ModerationMenuButton({ target, postId, commentId, reviewId, mute
   commentId?: string;
   /** Set for a coach review's menu (20261106100000): Report is the only action. */
   reviewId?: string;
+  /** Set for a coach profile's menu (20261110110000): Report is the only action, with the marketplace reasons. */
+  coachProfileId?: string;
   muted: boolean;
   blocked: boolean;
-  place: "post" | "profile" | "comment" | "review";
+  place: "post" | "profile" | "comment" | "review" | "coach";
   onChanged?: (what: Changed) => void;
   size?: "default" | "small";
 }) {
@@ -45,7 +47,7 @@ export function ModerationMenuButton({ target, postId, commentId, reviewId, mute
   const [open, toggle] = useReducer((v: boolean) => !v, false);
   const actions = place === "post"
     ? postMenuActions({ mine: false, muted, blocked })
-    : place === "comment" || place === "review"
+    : place === "comment" || place === "review" || place === "coach"
       ? commentMenuActions({ mine: false })
       : profileMenuActions({ me: false, muted, blocked });
   if (actions.length === 0) return null;
@@ -70,6 +72,7 @@ export function ModerationMenuButton({ target, postId, commentId, reviewId, mute
           postId={postId}
           commentId={commentId}
           reviewId={reviewId}
+          coachProfileId={coachProfileId}
           actions={actions}
           onChanged={onChanged}
           onClose={toggle}
@@ -88,12 +91,13 @@ export function ModerationMenuButton({ target, postId, commentId, reviewId, mute
  * assumed to have happened. After a change the page refreshes on close, and
  * the server decides what is left to see.
  */
-function ModerationSheet({ dialogRef, target, postId, commentId, reviewId, actions, onChanged, onClose }: {
+function ModerationSheet({ dialogRef, target, postId, commentId, reviewId, coachProfileId, actions, onChanged, onClose }: {
   dialogRef: React.RefObject<HTMLDialogElement | null>;
   target: Target;
   postId?: string;
   commentId?: string;
   reviewId?: string;
+  coachProfileId?: string;
   actions: MenuAction[];
   onChanged?: (what: Changed) => void;
   onClose: () => void;
@@ -123,12 +127,12 @@ function ModerationSheet({ dialogRef, target, postId, commentId, reviewId, actio
     dispatch({ type: "result", ok: r.ok, what });
   }
 
+  const kind: ReportTarget = coachProfileId ? "coach" : reviewId ? "review" : commentId ? "comment" : postId ? "post" : "user";
   async function sendReport() {
     if (state.step !== "report" || !state.reason) return;
-    const kind: ReportTarget = reviewId ? "review" : commentId ? "comment" : postId ? "post" : "user";
     const { reason, details } = state;
     dispatch({ type: "submit" });
-    const r = await reportContent(kind, reviewId ?? commentId ?? postId ?? target.userId, reason, reason === "other" ? details : "");
+    const r = await reportContent(kind, coachProfileId ?? reviewId ?? commentId ?? postId ?? target.userId, reason, reason === "other" ? details : "");
     dispatch({ type: "result", ok: r.ok, what: "reported" });
   }
 
@@ -162,7 +166,7 @@ function ModerationSheet({ dialogRef, target, postId, commentId, reviewId, actio
                 : a === "unmute" ? fill(m.unmute, name)
                 : a === "block" ? fill(m.block, name)
                 : a === "unblock" ? fill(m.unblock, name)
-                : commentId ? m.reportComment : postId ? m.reportPost : fill(m.reportUser, name);
+                : coachProfileId ? m.reportCoach : commentId ? m.reportComment : postId ? m.reportPost : fill(m.reportUser, name);
               const icon = a === "mute" ? MUTE : a === "unmute" ? UNMUTE : a === "report" ? FLAG : BLOCK;
               const risky = a === "block" || a === "report";
               return (
@@ -230,7 +234,7 @@ function ModerationSheet({ dialogRef, target, postId, commentId, reviewId, actio
             <p className="font-display text-lg font-bold tracking-tight">{m.reportTitle}</p>
             <p className="mt-1 text-[12.5px] text-ink-faint">{m.reportHint}</p>
             <div role="radiogroup" aria-label={m.reportTitle} className="mt-3 flex flex-col gap-1">
-              {REPORT_REASONS.map((r) => {
+              {reportReasonsFor(kind).map((r) => {
                 const on = state.step === "report" && state.reason === r;
                 return (
                   <button

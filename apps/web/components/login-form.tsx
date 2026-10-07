@@ -11,6 +11,7 @@ import { reportLoginFailure } from "@/app/admin-actions";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
 import { safeNext } from "@/lib/safe-next";
+import { classifyAttribution, signupReference } from "@healthapp/shared";
 
 export type LoginMode = "signin" | "signup" | "forgot";
 type Role = "coach" | "client";
@@ -121,6 +122,12 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
         setError(t.login.errUsernameTaken);
         return;
       }
+      // where the account came from (20261110120000): the coach page in `next`
+      // and the utm_* the page carried here — read by a database trigger, nothing kept on the device
+      const q = new URLSearchParams(window.location.search);
+      const signupRef = signupReference(next, classifyAttribution({
+        utmSource: q.get("utm_source"), utmMedium: q.get("utm_medium"), utmCampaign: q.get("utm_campaign"),
+      }));
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -133,6 +140,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
             username: username.trim(),
             sex,
             birth_year: String(birthYearFromAge(parseInt(age, 10))),
+            ...(signupRef ? { signup_ref: signupRef } : {}),
           },
           emailRedirectTo: `${origin}/auth/callback?${new URLSearchParams({ next })}`,
         },

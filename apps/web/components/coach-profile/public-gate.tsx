@@ -40,12 +40,12 @@ export async function PublicProfileGate({ kind, coachName, moreServices, signupH
         </p>
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
-        <Link href={signupHref} data-testid="gate-signup"
+        <Link href={signupHref} data-testid="gate-signup" data-mkt={kind === "anonymous" ? "signup_started" : undefined}
           className="inline-flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90">
           {kind === "anonymous" ? g.signup : g.completeCta}
         </Link>
         {signinHref ? (
-          <Link href={signinHref} data-testid="gate-signin"
+          <Link href={signinHref} data-testid="gate-signin" data-mkt="cta_full_profile"
             className="inline-flex h-11 items-center justify-center rounded-2xl bg-bg px-5 text-sm font-semibold text-ink hover:bg-accent-soft/60">
             {g.signin}
           </Link>

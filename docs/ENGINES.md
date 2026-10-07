@@ -785,6 +785,83 @@ the coach page completes it once in the browser (dialog opened / saved) and drop
 the parameter. Starting coaching now notifies the client (coaching_request,
 event `started`).
 
+## Coaching lifecycle
+
+Migrations `20261109100000_coaching_lifecycle_states.sql` (enum values, alone because
+Postgres will not use a new enum value in the transaction that added it) and
+`20261109110000_coaching_lifecycle.sql`; pgTAP `coaching_lifecycle` (61);
+`packages/shared/src/coaching-lifecycle.ts`; e2e `coaching-lifecycle.spec.ts`.
+
+The relationship is `trainer_clients`: invited → active → (paused ⇄ active) → ended,
+ended final. `trainer_clients_lifecycle_guard` enforces the graph and frozen
+identities for every writer; `coaching_transition(id, to, reason)` is the only
+participant write (direct insert/update grants and policies were dropped — they
+let a coach rewrite client_id or reactivate rows). One *current* coach per client:
+`one_current_coach_per_client` covers active + paused. Every status change becomes
+a `coaching_relationship_events` row (from, to, actor, general reason code) via
+trigger; the admin audit logs pause/resume. Reasons are fixed codes, never text.
+
+Effects: paused keeps messages open and bookings untouched, pauses the coach's
+data access (is_active_coach_of stays active-only) and clients-only booking;
+ended makes the thread read-only and keeps everything; review eligibility counts
+paused like active. A new engagement is a new row (request → start). Reads:
+`my_coaching_relationships()`, `coach_client_relationships(scope)`,
+`coaching_relationship_history(id)`, and `coach_viewer_state().relationship` — the
+CTA's one source (states client / paused / start_new). Screens: the client's
+/coach (current coach + past coaches), the coach's /clients (Paused and Past
+sections) and /clients/relationship/[id]. Notices: category `coaching`.
+
+## Marketplace trust, ranking & analytics
+
+Migrations `20261110100000_marketplace_trust_states.sql` (the `marketplace` notification
+category, alone), `20261110110000_marketplace_trust.sql`, `20261110120000_marketplace_analytics.sql`,
+`20261110130000_coach_ranking.sql`; pgTAP `marketplace_trust` (69), `marketplace_analytics` (55),
+`coach_ranking` (40); `packages/shared/src/marketplace.ts` (+ `moderation.ts`); e2e
+`marketplace-trust.spec.ts`.
+
+**Trust.** Nothing new to report through: a coach profile is the fifth target of the one
+`social_report()` path (`reported_coach_profile_id`, reason `fake_credentials` for coach
+reports only; the coach menu offers inappropriate / misleading / impersonation / fake
+credentials / harassment / spam / other). Reports gained `resolved_at`, `resolved_by`,
+`resolution_note`; status stays open / reviewed (= resolved) / dismissed. Still unreadable
+from the app. Admin: `/admin/reports` (`admin_reports`, `admin_report_counts`,
+`admin_resolve_report` — closes every open report of the same target), and on
+`/admin/coaches/[id]` the coach's reports. Suspend / unpublish, verification and review
+hiding were already there; they now close the target's open reports and tell the coach
+(`marketplace_notify`, category `marketplace`, fixed sentences, no moderator, no reporter).
+Every public door already required `status = 'published'` and a live account, so a
+suspended coach leaves /coaches, every city / specialization listing, search, the sitemap
+and the public page at once; relationships, bookings, messages and reviews stay.
+
+**Ranking.** One layer, `coach_ranked(...)` (internal: no grant to anon/authenticated),
+behind `search_coaches()` (same signature and cards) and `admin_coach_ranking()`. The query
+is read as structure first (`coach_query_tokens`: stop words, online / in person / hybrid,
+a specialization or a city from the catalogs, else text), each word scored per coach
+(`coach_token_score`) and every word must be answered. A city word also lists online
+coaches (after the local ones); a two-word query is never carried by one word.
+`score = 0.5·relevance + 0.5·base + cold_start` with context, `base + cold_start` without;
+`base = 0.30 trust + 0.30 quality + 0.15 responsiveness + 0.15 activity + 0.10 engagement`;
+Bayesian rating (5 virtual 3.5★ reviews); cold start ≤ 0.06 fading over 45 days for a
+qualified new profile; `placement` always 0 (the slot for sponsored, later, separate).
+Slow counts live in `coach_rank_signals`, refreshed every 15 minutes by pg_cron
+(`coach-rank-signals`); the formula is mirrored in `packages/shared/src/marketplace.ts`.
+Admin inspector: `/admin/marketplace` and the coach page's Ranking section.
+
+**Analytics.** `marketplace_events`, first-party, no user id: the browser calls
+`marketplace_track()` (closed list: directory_view, profile_view, cta_contact, cta_book,
+cta_save, cta_full_profile, signup_started); the visitor is sha256(daily salt | IP | agent)
+computed in the database from PostgREST's request headers, never stored, salt deleted the
+next day; one per visitor/event/target/day, 60 per visitor per hour, no bots, not your own
+page. Conversions (request sent / accepted, coaching started, booking created / completed,
+review submitted, coach saved) are triggers on the business tables, deduped by row, never
+able to fail the write. Sign-up attribution: the form sends `signup_ref` (coach from `next`,
+utm_* carried in the login links by the coach page) → `on_auth_user_created_marketplace` →
+`marketplace_signups`. Retention (`marketplace-retention` cron): views/clicks 180 days,
+conversions and signups 2 years, salts 1 day. Coach: `/marketplace` Performance card
+(`coach_marketplace_analytics`). Admin: `/admin/marketplace` (`admin_marketplace_analytics`)
+— counts and trends, no conversion rates. Client side: `components/marketplace-tracker.tsx`
+(one view per mount + any click on `[data-mkt]`); nothing on the device.
+
 ## Engagement
 
 `app/(client)/habits`. `addHabit` / `toggleHabit`; `getMyHabits`. Tables `habits`,

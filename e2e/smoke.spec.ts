@@ -13,7 +13,8 @@ const SCREENS: Record<Exclude<Who, "coach2">, [path: string, heading: string | R
     ["/habits", "Habits"],
     ["/progress", "Progress"],
     ["/check-in", "Weekly check-in"],
-    ["/coach", "Andrei Trainer"],
+    // the current-coach card (20261109110000) names the coach as the public pages do
+    ["/coach", /^Andrei/],
     ["/feed", "Feed"],
     ["/account", "Account"],
   ],

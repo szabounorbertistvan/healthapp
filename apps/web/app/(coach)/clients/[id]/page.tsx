@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getCoachClientRelationships } from "@/lib/coaching-data";
 import { getClients } from "@/lib/data";
 import { getClientWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getClientFitnessScore } from "@/lib/fitness-score-data";
@@ -34,7 +35,7 @@ export default async function CoachClientPage({
   // The roster and the summary go out together: the summary is filtered by
   // client id and RLS answers it, so it never needed the roster first. A client
   // the coach cannot see still 404s below — the wasted summary read is empty.
-  const [clients, summary, fitness, posts] = await Promise.all([
+  const [clients, summary, fitness, posts, relationships] = await Promise.all([
     getClients(),
     getClientWeeklySummary(id, choice),
     // Coach Pro. getPlan is request-cached off the layout's profile read.
@@ -43,7 +44,10 @@ export default async function CoachClientPage({
     // active coach passes the 'followers' branch, so this is the coach's view
     // of the same cards the client's followers see — private posts excluded.
     getFeed({ author: id }),
+    // the relationship itself, for its lifecycle actions (20261109110000)
+    getCoachClientRelationships("current"),
   ]);
+  const relationship = relationships.find((r) => r.client_id === id && r.status === "active") ?? null;
   const plan = await getPlan();
   const client = clients.find((c) => c.client_id === id && c.status === "active");
   if (!client) notFound();
@@ -65,6 +69,11 @@ export default async function CoachClientPage({
             {client.full_name}
           </h1>
           {plan.e.advancedAnalytics ? <SignalBadge signal={client.signal} /> : null}
+          {relationship ? (
+            <Link href={`/clients/relationship/${relationship.id}`} className="text-[12.5px] font-semibold text-ink-faint hover:text-ink" data-testid="client-relationship-link">
+              {t.coachProfile.coaching.history} →
+            </Link>
+          ) : null}
         </div>
         {/* The roster page has a generic "new program" button with a client
             picker; from here the client is already known, so it rides on the

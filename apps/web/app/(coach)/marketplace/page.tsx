@@ -5,7 +5,8 @@ import { fill } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/brand";
 import { getProfile } from "@/lib/data";
 import { getMyCoachProfile } from "@/lib/coach-profile-data";
-import { getMarketplaceOverview } from "@/lib/marketplace-data";
+import { getCoachMarketplaceAnalytics, getMarketplaceOverview } from "@/lib/marketplace-data";
+import { MarketplacePerformance } from "@/components/marketplace-performance";
 import { marketplaceState, profileCompleteness } from "@/lib/coach-completeness";
 import { formatBookingTime } from "@/lib/booking";
 import { MarketplaceTabs } from "@/components/marketplace-tabs";
@@ -20,8 +21,9 @@ import { BecomeCoachCard } from "@/components/coach-profile/status";
  * (every count, only the caller's rows). No numbers that do not exist.
  */
 export default async function MarketplacePage() {
-  const [{ t, locale }, me, mine, overview] = await Promise.all([
-    getI18n(), getProfile(), getMyCoachProfile(), getMarketplaceOverview(),
+  // performance (20261110120000) rides the same wave
+  const [{ t, locale }, me, mine, overview, analytics] = await Promise.all([
+    getI18n(), getProfile(), getMyCoachProfile(), getMarketplaceOverview(), getCoachMarketplaceAnalytics(30),
   ]);
   const m = t.coachProfile.marketplace;
   const c = m.cards;
@@ -161,9 +163,10 @@ export default async function MarketplacePage() {
 
         <section className={card} data-testid="marketplace-clients">
           <h2 className={cardTitle}>{c.clients}<Link href="/clients" className={open}>{c.open} →</Link></h2>
-          {o.clients.active + o.clients.invited === 0 ? <p className="mt-2 text-[13.5px] text-ink-soft">{c.clientsNone}</p> : (
+          {o.clients.active + o.clients.invited + (o.clients.paused ?? 0) === 0 ? <p className="mt-2 text-[13.5px] text-ink-soft">{c.clientsNone}</p> : (
             <ul className="mt-2 grid gap-1 text-[13.5px]">
               <li className="font-semibold">{fill(c.clientsActive, { n: o.clients.active })}</li>
+              {o.clients.paused ? <li className="text-warn">{fill(c.clientsPaused, { n: o.clients.paused })}</li> : null}
               {o.clients.invited ? <li className="text-ink-soft">{fill(c.clientsInvited, { n: o.clients.invited })}</li> : null}
             </ul>
           )}
@@ -197,6 +200,10 @@ export default async function MarketplacePage() {
           </p>
         </section>
       </div>
+      {/* measured performance: only for a profile people can find, only numbers that exist */}
+      {analytics && (profile.status === "published" || profile.status === "hidden") ? (
+        <div className="mt-4"><MarketplacePerformance a={analytics} /></div>
+      ) : null}
     </div>
   );
 }

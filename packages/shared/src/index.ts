@@ -33,3 +33,5 @@ export * from "./nutrition-progress";
 export * from "./program-quality";
 export * from "./post-media";
 export * from "./booking";
+export * from "./coaching-lifecycle";
+export * from "./marketplace";

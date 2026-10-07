@@ -141,7 +141,9 @@ select is(pg_temp.slugs(public.search_coaches(p_query => 'Bogdan', p_accepting =
 select is(pg_temp.slugs(public.search_coaches(p_query => 'hipertrofie')), 'ana-search', '7. by specialization, in Romanian');
 select is(pg_temp.slugs(public.search_coaches(p_query => 'powerlift')), 'cristi-pl', '7. by a specialization prefix');
 select is(pg_temp.slugs(public.search_coaches(p_query => 'cluj')), 'ana-search', '8. by city');
-select is(pg_temp.slugs(public.search_coaches(p_query => 'Bucuresti')), 'cristi-pl', '8. by city, without the diacritics');
+-- a city typed in the search reads as a place (20261110130000): the coach located there first,
+-- online coaches who serve everywhere after it, unrelated in-person coaches never
+select is(pg_temp.slugs(public.search_coaches(p_query => 'Bucuresti')), 'cristi-pl,ana-search', '8. by city, without the diacritics: located first, online after');
 select is((public.search_coaches(p_query => 'românia') ->> 'total')::int, 2, 'by country');
 select is(pg_temp.slugs(public.search_coaches(p_query => 'meet prep')), 'cristi-pl', 'by service name');
 select is(pg_temp.slugs(public.search_coaches(p_query => 'iron temple')), 'ana-search', 'by the gym a coach works at (20261026100000)');

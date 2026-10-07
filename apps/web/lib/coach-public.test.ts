@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CoachPublicProfile, CoachViewerState } from "./coach-profile";
 import {
-  coachFormat, coachGateHref, coachIndexable, coachJsonLd, coachPageDescription, coachPageJsonLd, coachPageTitle, coachTeaser,
+  attributionParams, coachFormat, coachGateHref, coachIndexable, coachJsonLd, coachPageDescription, coachPageJsonLd, coachPageTitle, coachTeaser,
   coachWhyPoints, startCoachingState, yearsOfExperience, TEASER_ABOUT_CHARS,
 } from "./coach-public";
 
@@ -71,6 +71,18 @@ describe("start coaching state", () => {
     expect(startCoachingState({ ...profile, accepting_clients: false }, accepted, { signedIn: true })).toBe("accepted");
     // no request, or a declined / cancelled one, is never Message coach
     expect(startCoachingState({ ...profile, accepting_clients: false }, viewer(), { signedIn: true })).toBe("not_accepting");
+  });
+  it("the relationship decides first: active, paused, ended (20261109110000)", () => {
+    const rel = (status: "active" | "paused" | "ended") =>
+      viewer({ relationship: { id: "t", status, started_at: "", paused_at: null, ended_at: null } });
+    expect(startCoachingState(profile, rel("active"), { signedIn: true })).toBe("client");
+    expect(startCoachingState(profile, rel("paused"), { signedIn: true })).toBe("paused");
+    expect(startCoachingState(profile, rel("ended"), { signedIn: true })).toBe("start_new");
+    // an ended coaching with a new request waiting reads as the request, never as coaching
+    expect(startCoachingState(profile, { ...rel("ended"), pending_request: { id: "p", service_id: null, created_at: "" } }, { signedIn: true }))
+      .toBe("pending");
+    // and a full coach cannot be asked again, ended or not
+    expect(startCoachingState({ ...profile, accepting_clients: false }, rel("ended"), { signedIn: true })).toBe("not_accepting");
   });
   it("the preview never goes live", () => {
     expect(startCoachingState(profile, viewer(), { preview: true, signedIn: true })).toBe("preview");
@@ -173,6 +185,12 @@ describe("the public directory's foundation (20261107100000)", () => {
   it("the gate returns to this exact coach, signing in or signing up", () => {
     expect(coachGateHref("andrei-popescu", "signin")).toBe("/login?next=%2Fcoaches%2Fandrei-popescu");
     expect(coachGateHref("andrei-popescu", "signup")).toBe("/login?next=%2Fcoaches%2Fandrei-popescu&mode=signup");
+    // the visit's source rides along, so the new account remembers it (20261110120000)
+    expect(coachGateHref("andrei-popescu", "signup", attributionParams({ source: "instagram", medium: "social", campaign: null })))
+      .toBe("/login?next=%2Fcoaches%2Fandrei-popescu&mode=signup&utm_source=instagram&utm_medium=social");
+    // moving around the app is not a source; no source, no parameters
+    expect(attributionParams({ source: "internal", medium: null, campaign: null })).toEqual({});
+    expect(attributionParams(null)).toEqual({});
   });
 
   it("JSON-LD: the profile page and its breadcrumb, from real fields only, no rating", () => {
