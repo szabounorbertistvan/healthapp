@@ -17,6 +17,7 @@
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
     "db:test:offline": "node scripts/pgtest/run.mjs",
+    "db:test:race": "node scripts/pgtest/race-bookings.mjs",
     "seed:accounts": "node scripts/seed-accounts.mjs",
     "exercises:images": "node scripts/mirror-exercise-images.mjs",
     "exercises:translate": "node scripts/translate-exercises.mjs",

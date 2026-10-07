@@ -82,6 +82,9 @@ function Headline({ notification, className = "" }: { notification: Notification
   );
 }
 
+const CALENDAR = "M4 6h16v14H4zM4 10h16M8 4v4M16 4v4";
+const STAR = "m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z";
+
 /** What the row is about, drawn in the corner of the avatar. */
 function Glyph({ notification }: { notification: NotificationRow }) {
   const kind = notification.sentence;
@@ -93,9 +96,11 @@ function Glyph({ notification }: { notification: NotificationRow }) {
     );
   }
   const icon =
-    kind === "new_comment" || kind === "comment_reply" ? COMMENT
+    kind === "new_comment" || kind === "comment_reply" || kind === "new_message" ? COMMENT
     : kind === "new_mention" || kind === "new_mention_post" ? AT
     : kind === "new_follower" ? PERSON_PLUS
+    : kind?.startsWith("booking_") ? CALENDAR
+    : kind === "review_published" || kind === "review_response" ? STAR
     : kind === "badge_earned" || kind === "challenge_completed" || kind === "challenge_milestone" ? TROPHY
     : null;
   if (!icon) return null;

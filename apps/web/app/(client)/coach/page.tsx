@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getMyCoachThread, hasActiveCoach } from "@/lib/client-data";
 import { Card, EmptyState } from "@/components/ui";
 import { JoinCoach } from "@/components/join-coach";
@@ -30,6 +31,11 @@ export default async function CoachPage() {
           <p className="font-display text-lg font-bold tracking-tight">{t.clientApp.coach.noCoachTitle}</p>
           <p className="text-[13.5px] leading-relaxed text-ink-soft">{t.clientApp.welcome.withCoachBody}</p>
           <JoinCoach autoFocus={false} />
+          {/* no invite code: the way into the directory (20261108100000) */}
+          <Link href="/coaches" data-testid="find-a-coach"
+            className="inline-flex h-11 items-center rounded-2xl bg-bg px-5 text-sm font-semibold text-ink hover:bg-accent-soft/60">
+            {t.coachProfile.saved.emptyCta} →
+          </Link>
         </Card>
         <div className="mt-3.5">
           <GymCoachesCard gym={gyms.home ? { id: gyms.home.id, name: gyms.home.name } : null} coaches={coaches} requests={requests} />

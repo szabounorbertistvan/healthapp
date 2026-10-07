@@ -278,6 +278,8 @@ export type CoachSearchRow = {
   is_saved?: boolean;
   /** The profile id (public already), for the Save button. Absent before 20261102100000. */
   id?: string;
+  /** Published reviews (20261106100000): null when there are none. Absent before that migration. */
+  rating?: { average: number | string; count: number } | null;
 };
 export type CoachSearchResult = { total: number; items: CoachSearchRow[] };
 
@@ -296,6 +298,8 @@ export type CoachCardModel = {
   startingPrice: { cents: number; currency: string; unit: PriceUnit } | null;
   followers: number;
   accepting: boolean;
+  /** From the database's derived review columns — never computed here, never made up. */
+  rating: { average: number; count: number } | null;
   /**
    * What the card's Follow button needs — set only when the search ran for a
    * signed-in reader and the card is not their own. Null otherwise: an
@@ -328,6 +332,7 @@ export function toCoachCard(row: CoachSearchRow, locale: "en" | "ro", now = new 
     startingPrice: row.starting_price,
     followers: row.followers,
     accepting: row.accepting_clients,
+    rating: row.rating && row.rating.count > 0 ? { average: Number(row.rating.average), count: row.rating.count } : null,
     follow: row.user_id && !row.is_self
       ? { userId: row.user_id, following: row.is_following === true, followsMe: row.follows_me === true }
       : null,

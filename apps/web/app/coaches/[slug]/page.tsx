@@ -1,18 +1,28 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { APP_NAME, SITE_URL } from "@/lib/brand";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { currentUserId } from "@/lib/supabase/server";
 import {
-  getCoachViewerState, getPublicCoachPosts, getPublicCoachPrograms, getPublicCoachProfile,
+  getCoachSlugRedirect, getCoachViewerState, getPublicCoachPosts, getPublicCoachPrograms, getPublicCoachProfile,
 } from "@/lib/coach-profile-data";
-import { coachJsonLd, coachPageDescription, coachPageTitle, startCoachingState } from "@/lib/coach-public";
+import {
+  TEASER_PROGRAMS, TEASER_REVIEWS, coachGateHref, coachIndexable, coachPageDescription, coachPageJsonLd, coachPageTitle,
+  coachTeaser, startCoachingState,
+} from "@/lib/coach-public";
+import { ratingLabel } from "@/lib/coach-review";
+import { getProfile } from "@/lib/data";
+import { PublicProfileGate } from "@/components/coach-profile/public-gate";
+import { SaveIntent } from "@/components/coach-profile/intent";
 import { getFeed } from "@/lib/social-data";
 import { getProfileRoutines } from "@/lib/routine-data";
 import { CoachProfileView, CoachSection } from "@/components/coach-profile/preview";
+import { getBookableServices } from "@/lib/booking-data";
+import { getMyReviewState, getPublicReviews } from "@/lib/review-data";
+import { PublicReviewsSection } from "@/components/coach-reviews";
 import { CoachSectionSkeleton } from "@/components/coach-profile/skeleton";
 import { StartCoachingProvider } from "@/components/coach-profile/start-coaching";
 import { PublicPostList } from "@/components/coach-profile/public-posts";
@@ -21,7 +31,7 @@ import { SaveCoachButton } from "@/components/coach-discovery/save-coach-button"
 import { RoutineCardView } from "@/components/routine-card";
 import type { RoutineCard } from "@healthapp/shared";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams?: Promise<{ intent?: string; service?: string }> };
 
 /** Every read here goes through coach_public_profile(); nothing unpublished is ever a page. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -32,10 +42,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = coachPageTitle(profile, locale, APP_NAME);
   const description = coachPageDescription(profile, locale);
   const images = profile.cover_url ?? profile.avatar_url;
+  const imageAlt = profile.headline ? `${profile.display_name} — ${profile.headline}` : profile.display_name;
   return {
     title,
     description,
     alternates: { canonical: url },
+    // a published coach is indexable; one that lost the essentials publishing
+    // required (an avatar removed after approval…) is not (20261107100000)
+    robots: coachIndexable(profile) ? { index: true, follow: true } : { index: false, follow: true },
     openGraph: {
       type: "profile",
       ...(profile.username ? { username: profile.username } : {}),
@@ -44,7 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       siteName: APP_NAME,
       locale: locale === "ro" ? "ro_RO" : "en_GB",
-      ...(images ? { images: [{ url: images }] } : {}),
+      ...(images ? { images: [{ url: images, alt: imageAlt }] } : {}),
     },
     twitter: {
       card: profile.cover_url ? "summary_large_image" : "summary",
@@ -73,20 +87,46 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * and 6), never a history. There is no route loading.tsx: it would start the
  * response before notFound(), and an unknown or private coach must stay a 404.
  */
-export default async function CoachPage({ params }: Props) {
+export default async function CoachPage({ params, searchParams }: Props) {
   const [{ slug }, { locale }, viewerId] = await Promise.all([params, getI18n(), currentUserId()]);
   const signedIn = Boolean(viewerId);
   // the public doors return nothing for a slug that is not a published coach, so they can start with the profile
-  const [profile, publicPosts, publicPrograms] = await Promise.all([
+  const [profile, publicPosts, publicPrograms, bookable, reviews] = await Promise.all([
     getPublicCoachProfile(slug),
     signedIn ? Promise.resolve([]) : getPublicCoachPosts(slug),
-    signedIn ? Promise.resolve([]) : getPublicCoachPrograms(slug),
+    // anonymous: a few, the rest is behind the gate
+    signedIn ? Promise.resolve([]) : getPublicCoachPrograms(slug, TEASER_PROGRAMS),
+    // bookable services take the slug too, so they ride the same wave (20261105100000)
+    getBookableServices(slug),
+    // reviews by slug too (20261106100000): aggregates + the newest page, same wave
+    getPublicReviews(slug, signedIn ? 10 : TEASER_REVIEWS),
   ]);
-  if (!profile) notFound();
-  if (slug !== profile.slug) notFound();
+  if (!profile) {
+    // a link shared before the coach changed their slug keeps working (20261107100000)
+    const moved = await getCoachSlugRedirect(slug);
+    if (moved) permanentRedirect(`/coaches/${moved}`);
+    notFound();
+  }
+  // Book only where this reader may (a clients-only service shows no button to anyone else)
+  const bookHrefs = Object.fromEntries(bookable
+    .filter((b) => b.can_book === "ok" || b.can_book === "CANNOT_BOOK_SELF")
+    .map((b) => [b.service_id, `/coaches/${profile.slug}/book?${new URLSearchParams({ service: b.service_id })}`]));
+  // one URL per coach: any other spelling of the slug goes to the canonical one
+  if (slug !== profile.slug) permanentRedirect(`/coaches/${profile.slug}`);
 
   const coachId = profile.user_id; // set for a signed-in reader only
-  const viewer = signedIn ? await getCoachViewerState(profile.id) : null;
+  // the reader's state and whether they may review this coach: one wave, both need the profile id
+  const [viewer, reviewState, me] = signedIn
+    ? await Promise.all([getCoachViewerState(profile.id), getMyReviewState(profile.id), getProfile()])
+    : [null, null, null];
+  // Anonymous: the teaser — who the coach is in full, the start of the rest,
+  // cut on the server — and the gate back to this very page after sign-up.
+  const teaser = signedIn ? null : coachTeaser(profile);
+  const query = (await searchParams) ?? {};
+  const intent = query.intent === "save" ? { kind: "save" as const, serviceId: null }
+    : query.intent === "contact" ? { kind: "contact" as const, serviceId: typeof query.service === "string" ? query.service : null }
+    : null;
+  const shown = teaser?.profile ?? profile;
   const state = startCoachingState(profile, viewer, { signedIn });
   const loginHref = `/login?${new URLSearchParams({ next: `/coaches/${profile.slug}` })}`;
   const allPostsHref = coachId ? `/people/${coachId}` : loginHref;
@@ -106,7 +146,8 @@ export default async function CoachPage({ params }: Props) {
   const follow = viewer?.is_self ? null : (
     <>
       {followButton}
-      <SaveCoachButton variant="pill" profileId={profile.id} saved={viewer?.is_saved ?? false} signedIn={signedIn} />
+      <SaveCoachButton variant="pill" profileId={profile.id} saved={viewer?.is_saved ?? false} signedIn={signedIn}
+        signInNext={`/coaches/${profile.slug}?intent=save`} />
     </>
   );
 
@@ -129,7 +170,24 @@ export default async function CoachPage({ params }: Props) {
     <CoachSection title={programsTitle} id="programs"><ProgramGrid cards={publicPrograms} showSave={false} /></CoachSection>
   ) : null;
 
-  const jsonLd = coachJsonLd(profile, `${SITE_URL}/coaches/${profile.slug}`, locale);
+  // shown when there is something to read or the reader may write; never an empty "0 reviews" box otherwise
+  const reviewsSection = reviews.count > 0 || reviewState?.eligible || reviewState?.review ? (
+    <CoachSection title={t.coachProfile.reviews.title} id="reviews">
+      <PublicReviewsSection reviews={reviews} coachName={name} slug={profile.slug} state={reviewState} signedIn={signedIn} />
+    </CoachSection>
+  ) : null;
+
+  const gate = !signedIn ? (
+    <PublicProfileGate kind="anonymous" coachName={name} moreServices={teaser?.moreServices ?? 0}
+      signupHref={coachGateHref(profile.slug, "signup")} signinHref={coachGateHref(profile.slug, "signin")} />
+  ) : me && !me.username ? (
+    // signed in through Google, profile not finished: actions need a username
+    <PublicProfileGate kind="incomplete" coachName={name} moreServices={0}
+      signupHref={`/complete-profile?${new URLSearchParams({ next: `/coaches/${profile.slug}` })}`} signinHref={null} />
+  ) : null;
+  const headerRating = ratingLabel(reviews, { one: t.coachProfile.reviews.one, many: t.coachProfile.reviews.many }, locale);
+
+  const jsonLd = coachPageJsonLd(shown, SITE_URL, locale, { home: APP_NAME, coaches: t.coachProfile.discovery.backToDiscover });
 
   return (
     <>
@@ -138,8 +196,14 @@ export default async function CoachPage({ params }: Props) {
         // JSON.stringify of public fields only; "<" escaped so no text can close the tag.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
-      <StartCoachingProvider profile={profile} viewer={viewer} state={state}>
-        <CoachProfileView profile={profile} follow={follow} posts={posts} programs={programs} live />
+      {/* back from signing in with an intent (20261108100000): finish it, once */}
+      {signedIn && intent?.kind === "save" && !viewer?.is_self ? (
+        <SaveIntent profileId={profile.id} saved={viewer?.is_saved ?? false} slug={profile.slug} />
+      ) : null}
+      <StartCoachingProvider profile={shown} viewer={viewer} state={state}
+        intent={signedIn && intent?.kind === "contact" ? { kind: "contact", serviceId: intent.serviceId } : null}>
+        <CoachProfileView profile={shown} follow={follow} posts={posts} programs={programs} live bookHrefs={bookHrefs}
+          reviews={reviewsSection} gate={gate} headerRating={headerRating} />
       </StartCoachingProvider>
     </>
   );

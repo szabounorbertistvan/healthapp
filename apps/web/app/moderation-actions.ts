@@ -48,7 +48,7 @@ export async function setBlocked(userId: string, block: boolean): Promise<Action
 }
 
 /**
- * Report a post, a comment or a person. For a comment only its id travels —
+ * Report a post, a comment, a person or a coach review. For a comment only its id travels —
  * the post it belongs to is read in the database, never sent from here. The reporter is the session's, never sent; the
  * reason must be one of the list. A post that is gone or hidden answers the
  * same as a failure, so the result says nothing about what exists.
@@ -58,7 +58,7 @@ export async function reportContent(kind: ReportTarget, targetId: string, reason
   const m = t.common.moderation;
   const uid = await currentActorId();
   if (!uid) return notSignedIn;
-  if ((kind !== "post" && kind !== "comment" && kind !== "user") || !isPostId(targetId)) return { ok: false, message: m.failed };
+  if ((kind !== "post" && kind !== "comment" && kind !== "user" && kind !== "review") || !isPostId(targetId)) return { ok: false, message: m.failed };
   const valid = validateReport({ reason, details });
   if (!valid.ok) return { ok: false, message: valid.error === "details" ? m.detailsTooLong : m.failed };
   const supabase = await supabaseServer();

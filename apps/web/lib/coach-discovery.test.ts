@@ -160,9 +160,14 @@ describe("card mapping", () => {
       href: "/coaches/ana", name: "Ana", avatarUrl: null, headline: "Strength coach", verified: true,
       city: "București", formats: ["online", "in_person"], years: 10, specializations: ["Forță"],
       moreSpecializations: 3, startingPrice: { cents: 20000, currency: "RON", unit: "month" }, followers: 12, accepting: true,
-      follow: null, isSelf: false, save: null, profileId: null,
+      rating: null, follow: null, isSelf: false, save: null, profileId: null,
     });
     expect(toCoachCard(row, "en").city).toBe("Bucharest");
+  });
+  it("carries the database's rating, and none when there are no reviews (20261106100000)", () => {
+    expect(toCoachCard({ ...row, rating: { average: "4.67", count: 3 } }, "en").rating).toEqual({ average: 4.67, count: 3 });
+    expect(toCoachCard({ ...row, rating: null }, "en").rating).toBeNull();
+    expect(toCoachCard({ ...row, rating: { average: "5.00", count: 0 } }, "en").rating).toBeNull();
   });
   it("an online-only coach shows no city, a first-year coach no years", () => {
     const card = toCoachCard({ ...row, in_person: false, coaching_since: 2026 }, "en", new Date("2026-10-01"));

@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { MarketplaceTabs } from "@/components/marketplace-tabs";
 import { getProfile, displayName } from "@/lib/data";
 import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { getCoachCatalog, getMyCoachProfile } from "@/lib/coach-profile-data";
 import { parseStep } from "@/lib/coach-onboarding";
-import { BecomeCoachCard, CoachProfileStatusPanel } from "@/components/coach-profile/status";
+import { BecomeCoachCard, CoachProfileStatusPanel, CoachRevisionBanner } from "@/components/coach-profile/status";
 import { CoachProfileWizard } from "@/components/coach-profile/wizard";
 import { CoachProfileReadOnly } from "@/components/coach-profile/read-only";
 import { ServicesManager } from "@/components/coach-profile/lists";
@@ -27,6 +29,7 @@ export default async function CoachProfilePage({ searchParams }: { searchParams:
 
   return (
     <div className="mx-auto max-w-3xl">
+      <Suspense><MarketplaceTabs /></Suspense>
       <Link href="/settings" className="text-[13px] font-semibold text-ink-faint hover:text-ink">
         ← {t.common.nav.settings}
       </Link>
@@ -37,11 +40,13 @@ export default async function CoachProfilePage({ searchParams }: { searchParams:
         ) : (
           <>
             {mine.profile.status !== "draft" || mine.profile.review_note ? (
-              <CoachProfileStatusPanel profile={mine.profile} />
+              <CoachProfileStatusPanel profile={mine.profile} editing={Boolean(mine.revision)} />
             ) : null}
+            {/* a live profile being edited as a copy (20261108100000): the page stays up */}
+            {mine.revision ? <CoachRevisionBanner revision={mine.revision} /> : null}
             {/* Voinic Verified is separate from publishing (20261101100000): the coach asks, an admin decides */}
-            <VerificationCard data={mine} />
-            {mine.profile.status === "draft" ? (
+            <div id="verification" className="scroll-mt-24"><VerificationCard data={mine} /></div>
+            {mine.profile.status === "draft" || mine.revision ? (
               <CoachProfileWizard
                 data={mine}
                 catalog={catalog}

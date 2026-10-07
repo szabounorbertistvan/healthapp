@@ -31,7 +31,7 @@ import { useServiceDuration } from "./service-format";
  * one more section here, and they feed "why train with".
  */
 export function CoachProfileView({
-  profile, follow, posts, programs, live = false,
+  profile, follow, posts, programs, live = false, bookHrefs, reviews, gate, headerRating,
 }: {
   profile: CoachPublicProfile;
   follow?: React.ReactNode;
@@ -40,6 +40,14 @@ export function CoachProfileView({
   programs?: React.ReactNode;
   /** The public page: an empty field is left out, never shown as a "not written yet" placeholder. */
   live?: boolean;
+  /** Bookable services (20261105100000): service id → its booking page. Absent: no Book button. */
+  bookHrefs?: Record<string, string>;
+  /** The Reviews section (20261106100000), a whole CoachSection or nothing; after the offer. */
+  reviews?: React.ReactNode;
+  /** The anonymous visitor's way in (20261107100000), after the services. */
+  gate?: React.ReactNode;
+  /** "4.9 ★ · 27 reviews" from the database, linked to the section; null when there are none. */
+  headerRating?: string | null;
 }) {
   const { t, locale } = useI18n();
   const p = t.coachProfile.publicPage;
@@ -100,6 +108,11 @@ export function CoachProfileView({
               ) : null}
               {formats.length ? <li className="flex items-center gap-1.5"><Dot />{formats.join(" · ")}</li> : null}
               {years ? <li className="flex items-center gap-1.5"><Dot />{fill(p.yearsShort, { n: years })}</li> : null}
+              {headerRating ? (
+                <li className="flex items-center gap-1.5" data-testid="coach-header-rating">
+                  <Dot /><a href="#reviews" className="font-semibold text-ink hover:text-accent-ink">{headerRating}</a>
+                </li>
+              ) : null}
               <li className="flex items-center gap-1.5">
                 <Dot /><span className="font-semibold text-ink">{profile.followers}</span> {p.followers.toLowerCase()}
               </li>
@@ -176,7 +189,13 @@ export function CoachProfileView({
                           <span className="text-[15px] font-semibold text-ink-soft">{sv.price_public ? s.onRequest : s.priceHidden}</span>
                         )}
                       </p>
-                      <div className="mt-auto pt-4">
+                      <div className="mt-auto grid gap-2 pt-4">
+                        {bookHrefs?.[sv.id] ? (
+                          <a href={bookHrefs[sv.id]} data-testid="book-service"
+                            className="inline-flex h-10 w-full items-center justify-center rounded-2xl bg-accent px-4 font-display text-[13.5px] font-bold text-accent-fg hover:opacity-90">
+                            {t.coachProfile.bookings.book.cta}
+                          </a>
+                        ) : null}
                         <StartCoachingButton serviceId={sv.id} compact soft className="w-full" />
                       </div>
                     </li>
@@ -185,6 +204,10 @@ export function CoachProfileView({
               </ul>
             </Section>
           ) : null}
+
+          {gate}
+
+          {reviews}
 
           {/* one column: where and how after the offer; wide: the facts live in the sidebar */}
           <div className="@4xl:hidden">

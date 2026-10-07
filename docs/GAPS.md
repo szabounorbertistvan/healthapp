@@ -256,6 +256,36 @@ last_request. UI: the profile CTA is "Contact coach" / Request sent / Request ac
 for a message (required), an optional service, goal and format; /requests (coach, nav item) and /coaches/requests
 (client). The gyms inbox card stays, with corrected copy and a link to /requests. "requests" is a reserved slug.
 
+Marketplace operations (2026-10-07, migration `20261108100000_coach_marketplace_ops.sql`, **not pushed live** —
+/marketplace and the revision editor need it; the unpushed chain is 20261104 → 20261108, all before the code). Not built:
+profile-view analytics, response rate, a notice to the coach when an admin decides a revision or a profile, a
+reviewed cover change for live profiles, booking intent for a client-only service through sign-in (the booking page
+itself already returns there), payments (last).
+
+Public directory & SEO (2026-10-07, migration `20261107100000_coach_public_seo.sql`, **not pushed live** —
+everything degrades without it: no slug redirects, a sitemap of the two static pages). See docs/ENGINES.md. Not built:
+city / specialization landing pages, a generated Open Graph card (the cover or avatar is used), a short bio on
+Discovery cards, image resizing for avatars (plain Cloudinary URLs), hreflang (locale is a cookie, one URL per page).
+
+Reviews (2026-10-07, migration `20261106100000_coach_reviews.sql`, **not pushed live** at the time of writing —
+the coach's /reviews and /coaches/[slug]/review need it; the public page, the Discovery cards and the admin queue
+degrade to "no reviews" while it is missing). See docs/ENGINES.md §Reviews. Not built: ranking by rating (the stats are
+on the search rows, unused in the order), a gentle "Review your coach" prompt on /coach for long-running clients,
+response rate / booking activity metrics, a general admin reports inbox (only review reports have a reader).
+
+Bookings (2026-10-07, migration `20261105100000_coach_bookings.sql`, **not pushed live** at the time of writing —
+/bookings, /bookings/availability, /coaches/bookings and the book page call its RPCs and tables, so it must be applied
+before the code deploys; the public coach page alone degrades to no Book buttons). See docs/ENGINES.md §Bookings.
+Not built: payments, calendar sync (Google / Apple / Outlook), recurring appointments, group classes, an expiry for
+pending bookings (one holds its slot until the coach answers), per-service availability (every bookable service of a
+coach shares their one week), cross-coach time-zone conversion for the viewer (times are shown in the coach's zone).
+
+Request → conversation (2026-10-07, migration `20261104100000_request_conversations.sql`, **not pushed live** at the
+time of writing — the inbox and thread pages call its RPCs, so it must be applied **before** the code deploys). An
+accepted request opens the pair's existing conversation (Message coach / Message client); see docs/ENGINES.md
+§Coaching. Not built: withdrawing an *accepted* request (cancel stays pending-only, as decided 2026-10-05 — a client
+who wants out blocks), realtime delivery, attachments.
+
 Not built: sitemap / robots, city / specialization landing pages, notifications for coach-profile
 decisions and for requests (the coach has no inbox for them yet — requests are only in
 the table), certification document upload

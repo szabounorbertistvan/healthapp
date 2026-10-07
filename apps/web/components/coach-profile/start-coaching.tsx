@@ -1,5 +1,5 @@
 "use client";
-import { useContext, useEffect, useId, useState, useTransition } from "react";
+import { useContext, useEffect, useId, useRef, useState, useTransition } from "react";
 import { sharedContext } from "@/lib/shared-context";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -11,7 +11,7 @@ import { COACH_LIMITS, type CoachPublicProfile, type CoachViewerState } from "@/
 import { formatPrice } from "@/lib/coach-onboarding";
 import type { StartCoachingState } from "@/lib/coach-public";
 import { BUTTON, FIELD, HINT, LABEL, SMALL_BUTTON } from "@/lib/form-classes";
-import { cancelCoachingRequest, requestCoaching } from "@/app/coach-profile-actions";
+import { cancelCoachingRequest, openRequestConversation, requestCoaching } from "@/app/coach-profile-actions";
 
 /**
  * "Contact coach": every button on the page (hero, each service, the phone's
@@ -19,7 +19,7 @@ import { cancelCoachingRequest, requestCoaching } from "@/app/coach-profile-acti
  * optional goal and format, send. A request to talk, never a booking or a
  * payment (20261103100000). The request goes through request_coaching(),
  * which is the authority on every rule; the states below only decide what to
- * draw: Contact / Request sent (cancel) / Request accepted / Contact again.
+ * draw: Contact / Request sent (cancel) / Message coach (accepted, 20261104100000) / Contact again.
  * Without the provider (the onboarding preview) the buttons are inert.
  */
 type Ctx = {
@@ -27,16 +27,24 @@ type Ctx = {
   open: (serviceId?: string | null) => void;
   slug: string;
   pendingId: string | null;
+  /** The accepted request "Message coach" opens the conversation from. */
+  acceptedId: string | null;
 };
 const StartCoachingContext = sharedContext<Ctx | null>("start-coaching", null);
 
 export function StartCoachingProvider({
-  profile, viewer, state, children,
+  profile, viewer, state, children, intent = null,
 }: {
   profile: CoachPublicProfile;
   viewer: CoachViewerState | null;
   state: StartCoachingState;
   children: React.ReactNode;
+  /**
+   * Back from signing in with "Contact" in mind (20261108100000): open the
+   * dialog once (with the service they had picked), if a request can still
+   * be sent; then drop the intent from the URL either way.
+   */
+  intent?: { kind: "contact"; serviceId: string | null } | null;
 }) {
   const { t, locale } = useI18n();
   const p = t.coachProfile.publicPage;
@@ -60,6 +68,17 @@ export function StartCoachingProvider({
     setService(serviceId ?? (profile.services.length === 1 ? profile.services[0]!.id : null));
     setOpen(true);
   }
+
+  const intentDone = useRef(false);
+  useEffect(() => {
+    if (!intent || intentDone.current) return;
+    intentDone.current = true;
+    if (state === "available" || state === "contact_again") {
+      show(intent.serviceId && profile.services.some((sv) => sv.id === intent.serviceId) ? intent.serviceId : null);
+    }
+    router.replace(`/coaches/${profile.slug}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intent, state]);
 
   const messageMissing = !message.trim();
   // formats the coach offers; hybrid only when they do both
@@ -102,7 +121,8 @@ export function StartCoachingProvider({
   };
 
   return (
-    <StartCoachingContext.Provider value={{ state, open: show, slug: profile.slug, pendingId: viewer?.pending_request?.id ?? null }}>
+    <StartCoachingContext.Provider value={{ state, open: show, slug: profile.slug, pendingId: viewer?.pending_request?.id ?? null,
+      acceptedId: viewer?.last_request?.status === "accepted" ? viewer.last_request.id : null }}>
       {children}
       <StickyCta />
       <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -253,14 +273,12 @@ export function StartCoachingButton({
         </button>
       );
     case "accepted":
-      return (
-        <Link href="/coaches/requests" className={`${QUIET} ${size} ${className}`} data-testid="coaching-request-accepted">
-          ✓ {p.requestAccepted}
-        </Link>
-      );
+      return <MessageCoach ctx={ctx!} className={`${primary} ${size} ${className}`} />;
     case "sign_in":
       return (
-        <Link href={`/login?${new URLSearchParams({ next: `/coaches/${ctx!.slug}` })}`} className={`${primary} ${size} ${className}`}>
+        // sign in, then back here with the dialog open (and the service picked) — not on a dashboard
+        <Link href={`/login?${new URLSearchParams({ next: `/coaches/${ctx!.slug}?${new URLSearchParams({ intent: "contact", ...(serviceId ? { service: serviceId } : {}) })}` })}`}
+          className={`${primary} ${size} ${className}`} data-testid="contact-coach-signin">
           {p.startCoaching}
         </Link>
       );
@@ -290,7 +308,7 @@ function StickyCta() {
   const ctx = useContext(StartCoachingContext);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted || !ctx || (ctx.state !== "available" && ctx.state !== "sign_in" && ctx.state !== "contact_again")) return null;
+  if (!mounted || !ctx || !["available", "sign_in", "contact_again", "accepted"].includes(ctx.state)) return null;
   return createPortal(
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:hidden">
       <StartCoachingButtonInContext ctx={ctx} />
@@ -306,6 +324,37 @@ function StartCoachingButtonInContext({ ctx }: { ctx: Ctx }) {
     <StartCoachingContext.Provider value={ctx}>
       <StartCoachingButton className="w-full" />
     </StartCoachingContext.Provider>
+  );
+}
+
+/**
+ * The coach accepted: the way on is the conversation (open_request_conversation
+ * — the pair's existing one, or a new empty one), never a second request.
+ */
+function MessageCoach({ ctx, className }: { ctx: Ctx; className: string }) {
+  const { t } = useI18n();
+  const p = t.coachProfile.publicPage;
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState(false);
+  if (!ctx.acceptedId) {
+    return <Link href="/coaches/requests" className={className} data-testid="coaching-request-accepted">✓ {p.requestAccepted}</Link>;
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <button type="button" className={className} disabled={pending} data-testid="message-coach"
+        onClick={() => {
+          setError(false);
+          start(async () => {
+            const result = await openRequestConversation(ctx.acceptedId!);
+            if (result.ok && result.conversationId) router.push(`/coach/messages/${result.conversationId}`);
+            else { setError(true); router.refresh(); }
+          });
+        }}>
+        {p.messageCoach}
+      </button>
+      {error ? <span role="alert" className="text-[12.5px] text-risk">{t.coachProfile.requests.errors.generic}</span> : null}
+    </span>
   );
 }
 

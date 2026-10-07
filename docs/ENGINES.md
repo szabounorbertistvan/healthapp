@@ -624,7 +624,166 @@ actions.ts; `getConversations` / `getMessages` / `getMyCoachThread`. Tables
 `conversations`, `messages`, `coach_feedback`. Component `message-thread.tsx`.
 Plain threaded messaging — no realtime subscription yet, reads are server-rendered.
 
+**Who may write** (migration `20261104100000_request_conversations.sql`): one
+conversation per (coach, client), and `msg_insert` asks `conversation_open()` —
+both accounts live (not suspended, no deletion pending), no block either way,
+and an active relationship **or** an accepted contact request not yet started.
+A blocked, ended or no-longer-accepted pair keeps its history readable and takes
+no new message (`sendMessage` → `CONVERSATION_CLOSED`, the thread shows it closed).
+**Where a request's thread comes from**: "Message coach" (`/coaches/requests`, the
+public profile) and "Message client" (`/requests`) call `open_request_conversation()`,
+which returns the pair's existing conversation or creates an empty one — on click,
+nothing sent, the request untouched. `start_coaching_from_request()` reuses it.
+The client reads any thread at `/coach/messages/[id]`; `/coach` stays the active
+coach's thread (`getMyCoachThread` is scoped to that coach). The coach's inbox is
+`coach_conversations()` (the users policy hides a request-only client) and a thread's
+header `conversation_context()` (who, open or not, the request it came from).
+**Notice and read state**: a trigger writes `new_message` — one unread per
+conversation, no message text, `payload.screen` coach_thread / client_thread — and
+`mark_conversation_read()` (called by the thread once shown) stamps `read_at` and
+reads that notice. `UPDATE` on messages is granted on `read_at` only.
+
 ---
+
+## Bookings
+
+Migration `20261105100000_coach_bookings.sql`; pgTAP `coach_bookings` (100), race
+test `npm run db:test:race` (`scripts/pgtest/race-bookings.mjs`: two connections,
+one slot). Rules shared with SQL in `packages/shared/src/booking.ts`.
+
+**Time zone.** The coach's `users.timezone` (IANA; validated against
+`pg_timezone_names` in SQL by `booking_timezone_valid()`). Weekly hours and time
+off are wall-clock times in it, turned into instants only when slots are
+computed, so 09:00 stays 09:00 across DST. A booking stores absolute
+`start_at`/`end_at` plus the zone it was made in and is always shown in that
+zone, labelled.
+
+**Model.** `coach_services` gains booking settings (bookable, duration, buffers,
+min notice, max advance, access public | clients, confirmation instant |
+approval), set only through `coach_set_service_booking()` — operational like
+active/order, allowed on any non-suspended profile; a `digital` service is never
+bookable. `coach_availability` (ISO weekday, start, end, active; an exclusion
+constraint on a `time_range` refuses overlapping active blocks) and
+`coach_availability_exceptions` (a date range all day, or one date between two
+times) are owner-only tables written directly by `app/booking-actions.ts`.
+`bookings` has no write policy: `book_service`, `respond_booking`,
+`cancel_booking`, `mark_booking` are the only moves; it snapshots the service's
+name and price (informational — nothing is charged).
+
+**Slots** are never stored: `booking_slots_internal()` = weekly blocks − time off
+− pending/confirmed bookings (buffers included, and the coach's own bookings as
+somebody's client) − notice − advance, one set-based query, 30-minute steps
+(15 under 30-minute sessions). `coach_booking_slots()` is the public door (anon
+included) and returns only start/end; `book_service()` re-runs it for the one
+start it is given.
+
+**Double booking.** Two exclusion constraints over pending + confirmed rows —
+the coach's buffered time, the client's own time — plus per-person advisory
+locks in `book_service()`. A pending booking holds its slot until answered.
+
+**Notices / reminders.** Category `booking`, payload.event requested / booked /
+confirmed / declined / cancelled / reminder, through `social_notify_ok`.
+`detect_booking_reminders()` runs every 15 minutes on the existing pg_cron and
+reminds both sides once, about a day ahead.
+
+**Screens.** Coach: `/bookings` (tabs) and `/bookings/availability` (week, time
+off, bookable services). Client: `/coaches/bookings`; booking at
+`/coaches/[slug]/book?service=…` (anyone can look; confirming needs a sign-in);
+"Book" on the public page's service cards (`coach_booking_services(slug)`, which
+degrades to "no Book buttons" while the function is missing on a database).
+A booking never creates a conversation; the rows link the pair's existing one.
+
+## Reviews
+
+Migration `20261106100000_coach_reviews.sql`; pgTAP `coach_reviews` (84).
+
+**Eligibility** (`coach_review_eligibility()`): coaching with the coach that is
+active and started 7+ days ago, or that ended; else a `completed` booking. A
+request, a conversation, a cancelled or no-show booking is not enough.
+**One review per reviewer and coach** (unique), edited in place; no payment.
+
+**Writes are RPCs only** (`coach_reviews` has no write grant): `submit_coach_review`
+(create / edit / revive after a delete), `delete_my_coach_review` (soft: status
+`deleted`, text and answer cleared), `respond_to_coach_review` (the coach's one
+answer — a field on the review, not a comment system), `admin_set_review_status`
+(published ↔ hidden, reason required, audited, closes the review's reports). A
+trigger refuses any change to reviewer_id / coach_id. A hidden review is neither
+editable nor deletable by its author.
+
+**Aggregates** `coach_profiles.review_count / review_avg / review_distribution`
+are recomputed from published reviews by a trigger — derived, not grantable to
+the coach. `search_coaches()` reads them as columns and returns `rating` on each
+card (not used in the order); `coach_public_reviews(slug)` serves the public
+section (anon included; reviewers suspended, deleting or behind a block with the
+reader are left out of the list).
+
+**Reports** reuse `social_reports` / `social_report('review', …)` and the existing
+report sheet (`ModerationMenuButton place="review"`). **Notices**: category
+`review` — `published` to the coach, `response` to the reviewer.
+
+**Screens.** Public page Reviews section (`#reviews`) + `/coaches/[slug]/review`
+(write / edit / delete); "Review coach" on a completed booking; the coach's
+`/reviews` (answer, report); admin: reported reviews on `/admin/coaches`, a
+coach's reviews on `/admin/coaches/[id]`.
+
+## Public directory & SEO
+
+Migration `20261107100000_coach_public_seo.sql`; pgTAP `coach_public_seo` (32);
+`lib/seo.ts` + `lib/coach-public.ts` (unit-tested); e2e `public-directory.spec.ts`.
+
+**Indexable** = published (pre-moderated, complete per `coach_profile_missing()`)
+and still carrying a headline, an about, an avatar, a specialization and a
+service — `coachIndexable()` on the page (else `noindex, follow`),
+`coach_sitemap()` in SQL. Everything else is a real 404 (no `loading.tsx` under
+`/coaches/[slug]`).
+
+**Crawlers**: `app/robots.ts` (app routes disallowed; `/coach/` and `/coach$`, never a
+bare `/coach`, which would also match `/coaches`) and `app/sitemap.ts` (dynamic,
+falls back to the two static pages). Both are in middleware's public list —
+before, a signed-out crawler was redirected to /login. `metadataBase` is `SITE_URL`.
+
+**Permanent links**: `coach_slug_redirects` keeps every published slug a profile
+had; the page 308s an old slug (or another spelling) to the canonical one; an
+old slug cannot be taken by another coach (SLUG_TAKEN).
+
+**Anonymous vs signed in**: the same URL. Anonymous readers get
+`coachTeaser()` (about cut at 280 chars, 3 services, 3 reviews, 3 programs — cut
+on the server) and `PublicProfileGate` ("See the full profile": sign up / sign in
+with `next=/coaches/<slug>`, `/login?mode=signup`). A Google account without a
+username is sent through `/complete-profile?next=` and back.
+
+**Structured data**: `coachPageJsonLd()` — ProfilePage → Person (+ alternateName,
+dateCreated, follower count) and a BreadcrumbList. No `aggregateRating`: Google
+does not support review snippets for a Person, and an online coach is not a
+LocalBusiness; the rating is shown on the page (header and Reviews).
+
+## Coach marketplace (operations)
+
+Migration `20261108100000_coach_marketplace_ops.sql`; pgTAP `coach_marketplace_ops` (55);
+`lib/coach-revision.ts`, `lib/coach-completeness.ts` (unit-tested); e2e `marketplace.spec.ts`.
+
+**Staged revisions** (decided 2026-10-07): a published / hidden profile is edited as
+a copy (`coach_profile_revisions`, one per profile, jsonb in the editor's shape); the
+public page never changes until an admin approves (`admin_decide_coach_revision`,
+audited). The wizard is the same component: every content action in
+`coach-profile-actions.ts` checks `openRevision()` and patches the copy instead.
+Each save is judged by the real tables — `coach_revision_check()` applies the copy
+in a savepoint, runs `coach_profile_missing()` and rolls back. Not in a revision:
+slug, cover, and the operational switches (accepting, hide/show, booking settings).
+The three set RPCs are now wrappers over `coach_apply_*(profile, …)`. Removed
+services a booking or request points at are switched off, not deleted.
+
+**Marketplace** `/marketplace` (one sidebar entry, `navItemActive()` also lights it on
+/requests, /bookings, /reviews, /settings/coach-profile; `MarketplaceTabs` over those
+pages): `coach_marketplace_overview()` in one round trip + the editor's own read for
+`profileCompleteness()` (11 weighted items, the 6 required = publishing's). No
+profile-view analytics exist, so none are shown. /requests gained Coaching and
+Cancelled tabs; /clients a next-session column (one bookings query).
+
+**Funnel**: signed-out Contact / Save carry `?intent=contact|save` through sign-in;
+the coach page completes it once in the browser (dialog opened / saved) and drops
+the parameter. Starting coaching now notifies the client (coaching_request,
+event `started`).
 
 ## Engagement
 

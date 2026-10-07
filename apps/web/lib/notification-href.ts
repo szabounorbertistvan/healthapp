@@ -17,6 +17,8 @@
 import { isBadgeSlug } from "@healthapp/shared";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** A coach slug as coach_profiles allows it: lower-case words and hyphens. */
+const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,58}[a-z0-9])$/;
 
 function id(payload: Record<string, unknown> | null, key: string): string | null {
   const v = payload?.[key];
@@ -42,6 +44,11 @@ const SCREEN_HREF: Record<string, string> = {
   // contact requests (20261103100000)
   coach_requests: "/requests",
   my_requests: "/coaches/requests",
+  // bookings (20261105100000)
+  coach_bookings: "/bookings",
+  my_bookings: "/coaches/bookings",
+  // reviews (20261106100000): the coach's list; a reviewer's answer is on the coach's page
+  coach_reviews: "/reviews",
 };
 
 export function notificationHref(category: string, payload: Record<string, unknown> | null): string | null {
@@ -63,6 +70,18 @@ export function notificationHref(category: string, payload: Record<string, unkno
     if (isBadgeSlug(slug)) return `/achievements/${slug}`;
     const profile = id(payload, "profile_id");
     return profile ? `/people/${profile}?tab=achievements` : null;
+  }
+  // A message (20261104100000) opens its own thread, on the recipient's side
+  // of it: a coach's inbox lives under (coach), a client's under /coach.
+  if (category === "new_message") {
+    const conversation = id(payload, "conversation_id");
+    if (conversation && payload?.screen === "coach_thread") return `/messages/${conversation}`;
+    if (conversation && payload?.screen === "client_thread") return `/coach/messages/${conversation}`;
+  }
+  // An answer to the reader's review (20261106100000) is read under it, on the coach's page.
+  if (category === "review" && payload?.screen === "coach_profile") {
+    const slug = typeof payload?.slug === "string" && SLUG.test(payload.slug) ? payload.slug : null;
+    return slug ? `/coaches/${slug}#reviews` : null;
   }
   if (category === "challenge_milestone") {
     const challenge = id(payload, "challenge_id");
@@ -88,7 +107,17 @@ export type NotificationSentence =
   | "request_sent"
   | "request_accepted"
   | "request_declined"
-  | "request_cancelled";
+  | "request_cancelled"
+  | "request_started"
+  | "new_message"
+  | "booking_requested"
+  | "booking_booked"
+  | "booking_confirmed"
+  | "booking_declined"
+  | "booking_cancelled"
+  | "booking_reminder"
+  | "review_published"
+  | "review_response";
 
 /**
  * Which sentence a row reads as. A mention in a caption and a mention in a
@@ -103,6 +132,7 @@ export function notificationSentence(category: string, payload: Record<string, u
     case "new_comment":
     case "comment_reply":
     case "badge_earned":
+    case "new_message":
       return category;
     case "new_mention":
       return id(payload, "comment_id") ? "new_mention" : "new_mention_post";
@@ -117,6 +147,22 @@ export function notificationSentence(category: string, payload: Record<string, u
         case "accepted": return "request_accepted";
         case "declined": return "request_declined";
         case "cancelled": return "request_cancelled";
+        // start_coaching_from_request (20261108100000): the client is told coaching began
+        case "started": return "request_started";
+        default: return null;
+      }
+    // one category for a review's two notices (20261106100000)
+    case "review":
+      return payload?.event === "published" ? "review_published" : payload?.event === "response" ? "review_response" : null;
+    // one category for a booking's moves (20261105100000); the payload says which
+    case "booking":
+      switch (payload?.event) {
+        case "requested": return "booking_requested";
+        case "booked": return "booking_booked";
+        case "confirmed": return "booking_confirmed";
+        case "declined": return "booking_declined";
+        case "cancelled": return "booking_cancelled";
+        case "reminder": return "booking_reminder";
         default: return null;
       }
     default:

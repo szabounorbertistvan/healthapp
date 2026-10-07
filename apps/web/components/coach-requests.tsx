@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n/client";
 import type { CoachRequestRow, MyCoachingRequestRow } from "@/lib/coach-profile-data";
 import type { ActionResult } from "@/app/actions";
 import {
-  acceptCoachingRequest, cancelCoachingRequest, declineCoachingRequest, startCoachingFromRequest,
+  acceptCoachingRequest, cancelCoachingRequest, declineCoachingRequest, openRequestConversation, startCoachingFromRequest,
 } from "@/app/coach-profile-actions";
 import { Avatar } from "./social";
 import { Card } from "./ui";
@@ -52,6 +52,42 @@ function useRequestAction() {
     });
   };
   return { run, busy, error };
+}
+
+/**
+ * "Message client" / "Message coach" (20261104100000): the pair's one
+ * conversation, opened (or created, empty) from the accepted request, then
+ * the thread on the reader's side. Sends nothing; the request stays accepted.
+ */
+function MessageButton({ requestId, side, label, className }: {
+  requestId: string; side: "coach" | "client"; label: string; className: string;
+}) {
+  const { t } = useI18n();
+  const e = t.coachProfile.requests.errors;
+  const router = useRouter();
+  const [busy, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <button type="button" className={className} disabled={busy} data-testid="request-message"
+        onClick={() => {
+          setError(null);
+          start(async () => {
+            const result = await openRequestConversation(requestId);
+            if (result.ok && result.conversationId) {
+              router.push(side === "coach" ? `/messages/${result.conversationId}` : `/coach/messages/${result.conversationId}`);
+              return;
+            }
+            const code = result.errorCode as keyof typeof e | undefined;
+            setError((code && code in e ? e[code] : null) ?? e.generic);
+            router.refresh();
+          });
+        }}>
+        {label}
+      </button>
+      {error ? <span role="alert" className="text-[12.5px] text-risk">{error}</span> : null}
+    </>
+  );
 }
 
 export function CoachRequestList({ rows }: { rows: CoachRequestRow[] }) {
@@ -106,7 +142,8 @@ export function CoachRequestList({ rows }: { rows: CoachRequestRow[] }) {
             ) : null}
             {q.status === "accepted" && !q.started ? (
               <>
-                <button type="button" className={ACCENT_BTN} disabled={busy} onClick={() => run(() => startCoachingFromRequest(q.id))}
+                <MessageButton requestId={q.id} side="coach" label={r.messageClient} className={ACCENT_BTN} />
+                <button type="button" className={QUIET_BTN} disabled={busy} onClick={() => run(() => startCoachingFromRequest(q.id))}
                   title={r.startHint} data-testid="request-start">{r.startCoaching}</button>
                 <span className="text-[12.5px] text-ink-faint">{r.startHint}</span>
               </>
@@ -177,7 +214,10 @@ export function MyRequestList({ rows }: { rows: MyCoachingRequestRow[] }) {
             {q.status === "accepted" && q.started ? (
               <><span className="font-semibold text-accent-ink">{m.startedNext}</span><Link href="/coach" className={QUIET_BTN}>{m.openCoach}</Link></>
             ) : q.status === "accepted" ? (
-              <span className="font-semibold text-accent-ink">{m.acceptedNext}</span>
+              <>
+                <MessageButton requestId={q.id} side="client" label={m.messageCoach} className={ACCENT_BTN} />
+                <span className="font-semibold text-accent-ink">{m.acceptedNext}</span>
+              </>
             ) : null}
             {["declined", "cancelled", "closed"].includes(q.status) && q.coach_slug ? (
               <Link href={`/coaches/${q.coach_slug}`} className={QUIET_BTN}>{m.contactAgain}</Link>

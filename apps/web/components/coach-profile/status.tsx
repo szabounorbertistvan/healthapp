@@ -9,7 +9,7 @@ import type { CoachProfileRow } from "@/lib/coach-profile";
 import { statusView, summary, type StatusView } from "@/lib/coach-onboarding";
 import { BUTTON, SMALL_BUTTON } from "@/lib/form-classes";
 import {
-  becomeCoach, hideCoachProfile, saveCoachProfileDraft, showCoachProfile, withdrawCoachProfile,
+  becomeCoach, discardCoachRevision, hideCoachProfile, saveCoachProfileDraft, showCoachProfile, startCoachRevision, withdrawCoachProfile,
 } from "@/app/coach-profile-actions";
 import type { ActionResult } from "@/app/actions";
 import { Card, Switch } from "../ui";
@@ -114,7 +114,11 @@ export function CoachProfileSettingsCard({ status }: { status: CoachProfileRow["
  * Published ↔ hidden is the coach's own switch (20261029100000): instant, and
  * no review, because a hidden profile cannot be edited either.
  */
-export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow }) {
+export function CoachProfileStatusPanel({ profile, editing = false }: {
+  profile: CoachProfileRow;
+  /** A staged revision is open (20261108100000): the editor is below, no Edit button. */
+  editing?: boolean;
+}) {
   const { t } = useI18n();
   const s = t.coachProfile.status;
   const router = useRouter();
@@ -175,10 +179,13 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
     });
   }
 
+  // a live profile (published / hidden) is edited as a copy and stays up;
+  // one in review is withdrawn to draft, as before
+  const live = profile.status === "published" || profile.status === "hidden";
   function withdraw() {
     setError(null);
     start(async () => {
-      const result = await withdrawCoachProfile();
+      const result = live ? await startCoachRevision() : await withdrawCoachProfile();
       setConfirming(false);
       if (!result.ok) {
         setError(coachError(result));
@@ -207,7 +214,7 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
               {s.show}
             </button>
           ) : null}
-          {view.action === "edit" || view.action === "view" ? (
+          {(view.action === "edit" || view.action === "view") && !editing ? (
             <button type="button" className={SMALL_BUTTON} disabled={pending} onClick={() => setConfirming(true)}>
               {s.edit}
             </button>
@@ -240,8 +247,7 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
             <Dialog.Popup className="w-full max-w-md rounded-t-2xl border border-line bg-surface p-5 outline-none sm:rounded-2xl">
               <Dialog.Title className="text-base font-bold">{s.editConfirmTitle}</Dialog.Title>
               <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">
-                {profile.status === "published" ? s.editPublishedConfirm
-                  : profile.status === "hidden" ? s.editHiddenConfirm : s.editPendingConfirm}
+                {live ? s.editLiveConfirm : s.editPendingConfirm}
               </Dialog.Description>
               <div className="mt-5 flex flex-wrap justify-end gap-2">
                 <Dialog.Close className={SMALL_BUTTON}>{s.cancel}</Dialog.Close>
@@ -271,6 +277,53 @@ export function CoachProfileStatusPanel({ profile }: { profile: CoachProfileRow 
           </Dialog.Viewport>
         </Dialog.Portal>
       </Dialog.Root>
+    </Card>
+  );
+}
+
+/**
+ * Above the editor while a staged revision is open (20261108100000): the
+ * public page is untouched; this says where the copy stands — being edited,
+ * waiting for an admin, or sent back with a note — and offers to discard it.
+ */
+export function CoachRevisionBanner({ revision }: { revision: NonNullable<import("@/lib/coach-profile").MyCoachProfile["revision"]> }) {
+  const { t } = useI18n();
+  const r = t.coachProfile.status.revision;
+  const router = useRouter();
+  const coachError = useCoachError();
+  const [confirm, setConfirm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const body = revision.status === "pending_review" ? r.pending : revision.status === "rejected" ? r.rejected : r.editing;
+  return (
+    <Card plain>
+      <div data-testid="coach-revision" data-status={revision.status}>
+        <p className="font-display text-lg font-bold tracking-tight">{r.title}</p>
+        <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{body}</p>
+        {revision.status === "rejected" && revision.review_note ? (
+          <p className="mt-2 rounded-2xl bg-warn-soft px-3.5 py-2.5 text-[13.5px] leading-relaxed text-warn">
+            {fill(r.note, { note: revision.review_note })}
+          </p>
+        ) : null}
+        {error ? <p role="alert" className="mt-2 text-[13px] text-risk">{error}</p> : null}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {confirm ? (
+            <>
+              <span className="text-[13px] text-ink-soft">{r.discardConfirm}</span>
+              <button type="button" className={SMALL_BUTTON} disabled={pending} data-testid="coach-revision-discard-confirm"
+                onClick={() => start(async () => {
+                  const result = await discardCoachRevision();
+                  if (!result.ok) setError(coachError(result));
+                  setConfirm(false);
+                  router.refresh();
+                })}>{r.discard}</button>
+              <button type="button" className="px-2 text-[13px] font-semibold text-ink-faint hover:text-ink" onClick={() => setConfirm(false)}>✕</button>
+            </>
+          ) : (
+            <button type="button" className={SMALL_BUTTON} onClick={() => setConfirm(true)} data-testid="coach-revision-discard">{r.discard}</button>
+          )}
+        </div>
+      </div>
     </Card>
   );
 }

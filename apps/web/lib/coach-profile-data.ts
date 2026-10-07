@@ -1,4 +1,5 @@
 import "server-only";
+import { overlayRevision, type CoachRevisionInfo, type RevisionPayload } from "./coach-revision";
 import { cache } from "react";
 import type { RoutineCard } from "@healthapp/shared";
 import { currentUserId, liveUser, supabasePublic, supabaseServer } from "@/lib/supabase/server";
@@ -42,7 +43,9 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile | null> {
   if (error) throw new Error(`coach profile: ${error.message}`);
   if (!profile) return null;
 
-  const [specs, langs, locs, services, certs, verifications, missing] = await Promise.all([
+  // a published or hidden profile may have a staged revision open (20261108100000)
+  const isLive = profile.status === "published" || profile.status === "hidden";
+  const [specs, langs, locs, services, certs, verifications, missing, revision] = await Promise.all([
     supabase.from("coach_specializations").select("is_primary, specializations(slug)").eq("coach_profile_id", profile.id),
     supabase.from("coach_languages").select("language_code").eq("coach_profile_id", profile.id),
     supabase.from("coach_locations").select("gym_name, gym_id, cities(slug)").eq("coach_profile_id", profile.id),
@@ -50,16 +53,19 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile | null> {
     supabase.from("coach_certifications").select(CERTIFICATION_COLUMNS).eq("coach_profile_id", profile.id).order("sort_order"),
     supabase.from("coach_verifications").select(VERIFICATION_COLUMNS).eq("coach_profile_id", profile.id),
     supabase.rpc("coach_profile_missing"),
+    isLive ? supabase.rpc("coach_my_revision") : Promise.resolve({ data: null, error: null }),
   ]);
   for (const r of [specs, langs, locs, services, certs, verifications, missing]) {
     if (r.error) throw new Error(`coach profile: ${r.error.message}`);
   }
+  // a database without revisions yet (PGRST202) simply has none open
+  if (revision.error && revision.error.code !== "PGRST202") throw new Error(`coach revision: ${revision.error.message}`);
 
   // PostgREST types an embedded to-one as an object; no generated types here.
   type Embedded = { slug: string } | { slug: string }[] | null;
   const slugOf = (e: Embedded) => (Array.isArray(e) ? e[0]?.slug : e?.slug) ?? "";
 
-  return {
+  const mine: MyCoachProfile = {
     profile,
     specializations: ((specs.data ?? []) as { is_primary: boolean; specializations: Embedded }[])
       .map((s) => ({ slug: slugOf(s.specializations), is_primary: s.is_primary })),
@@ -70,6 +76,16 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile | null> {
     certifications: (certs.data ?? []) as CoachCertificationRow[],
     verifications: (verifications.data ?? []) as CoachVerificationRow[],
     missing: (missing.data ?? []) as CoachProfileMissing[],
+    revision: null,
+  };
+  const rev = revision.data as { status: CoachRevisionInfo["status"]; review_note: string | null; submitted_at: string | null;
+                                 payload: RevisionPayload; missing: CoachProfileMissing[] } | null;
+  if (!rev) return mine;
+  // the editor works on the copy; the live page is untouched until an admin approves it
+  return {
+    ...overlayRevision(mine, rev.payload),
+    missing: rev.missing,
+    revision: { status: rev.status, review_note: rev.review_note, submitted_at: rev.submitted_at },
   };
 }
 
@@ -224,4 +240,16 @@ export async function getMyCoachingRequests(): Promise<MyCoachingRequestRow[]> {
   const { data, error } = await live.supabase.rpc("my_coaching_requests");
   if (error) throw new Error(`my requests: ${error.message}`);
   return (data ?? []) as MyCoachingRequestRow[];
+}
+
+/**
+ * The current slug for an old one (coach_slug_redirect(), 20261107100000),
+ * only while that coach is public; null otherwise. A shared link outlives a
+ * slug change. A database without the function yet answers null.
+ */
+export async function getCoachSlugRedirect(slug: string): Promise<string | null> {
+  const { data, error } = await supabasePublic().rpc("coach_slug_redirect", { p_slug: slug });
+  if (error?.code === "PGRST202") return null;
+  if (error) throw new Error(`coach slug redirect: ${error.message}`);
+  return (data as string | null) ?? null;
 }

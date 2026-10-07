@@ -17,7 +17,7 @@ export type StartCoachingState =
   | "self"           // the coach's own page
   | "client"         // already this coach's client
   | "pending"        // a request is waiting for the coach
-  | "accepted"       // the coach accepted: they'll get in touch (no relationship yet)
+  | "accepted"       // the coach accepted: Message coach (no relationship yet, 20261104100000)
   | "contact_again"  // the last request was declined, cancelled or closed: a new one is welcome
   | "not_accepting"  // the coach is full
   | "available";
@@ -31,10 +31,11 @@ export function startCoachingState(
   if (viewer?.is_self) return "self";
   if (viewer?.is_client) return "client";
   if (viewer?.pending_request) return "pending";
-  if (!profile.accepting_clients) return "not_accepting";
-  if (!opts.signedIn) return "sign_in";
+  // An accepted conversation stays open when the coach later stops taking clients.
   const last = viewer?.last_request;
   if (last?.status === "accepted" && !last.started) return "accepted";
+  if (!profile.accepting_clients) return "not_accepting";
+  if (!opts.signedIn) return "sign_in";
   if (last && ["declined", "cancelled", "closed"].includes(last.status)) return "contact_again";
   return "available";
 }
@@ -161,4 +162,86 @@ export function coachWhyPoints(
   if (p.stats?.programs) points.push({ kind: "programs", n: p.stats.programs });
   if (p.stats?.posts) points.push({ kind: "posts", n: p.stats.posts });
   return points;
+}
+
+// ---------- the public directory's foundation (20261107100000) ----------
+
+/**
+ * May search engines index this page? What publishing required, still there:
+ * a headline, an about, an avatar, a specialization and a service. An avatar
+ * can be removed after approval — a page that lost its essentials says
+ * noindex and leaves the sitemap (coach_sitemap() holds the same rule).
+ */
+export function coachIndexable(
+  p: Pick<CoachPublicProfile, "headline" | "about" | "avatar_url" | "specializations" | "services">,
+): boolean {
+  return Boolean(p.headline?.trim() && p.about?.trim() && p.avatar_url?.trim()
+    && p.specializations.length > 0 && p.services.length > 0);
+}
+
+export const TEASER_ABOUT_CHARS = 280;
+export const TEASER_SERVICES = 3;
+export const TEASER_REVIEWS = 3;
+export const TEASER_PROGRAMS = 3;
+
+/**
+ * What an anonymous visitor's page is built from: enough to know who the
+ * coach is (everything in the header, the specializations, the facts), the
+ * start of the about, the first services. Cut on the server, so the page's
+ * payload carries no more than it shows. Not a security boundary — all of it
+ * is public through coach_public_profile() — a conversion one.
+ */
+export function coachTeaser(p: CoachPublicProfile): { profile: CoachPublicProfile; aboutCut: boolean; moreServices: number } {
+  const about = p.about?.trim() ?? null;
+  let cut = about;
+  if (about && about.length > TEASER_ABOUT_CHARS) {
+    cut = `${about.slice(0, TEASER_ABOUT_CHARS).replace(/\s+\S*$/, "").trimEnd()}…`;
+  }
+  return {
+    profile: { ...p, about: cut, services: p.services.slice(0, TEASER_SERVICES) },
+    aboutCut: cut !== about,
+    moreServices: Math.max(0, p.services.length - TEASER_SERVICES),
+  };
+}
+
+/** Where "See the full profile" / "Create a free account" go: sign-in or sign-up, and back to this exact page. */
+export function coachGateHref(slug: string, mode: "signin" | "signup"): string {
+  const params = new URLSearchParams({ next: `/coaches/${slug}` });
+  if (mode === "signup") params.set("mode", "signup");
+  return `/login?${params}`;
+}
+
+/**
+ * The page's JSON-LD: the ProfilePage (coachJsonLd) and its breadcrumb, as
+ * one @graph. No aggregateRating: Google's review snippets do not support a
+ * Person as the thing reviewed, and calling an online coach a LocalBusiness
+ * would be untrue — the rating is shown on the page, not marked up.
+ */
+export function coachPageJsonLd(p: CoachPublicProfile, siteUrl: string, locale: Locale, labels: { home: string; coaches: string }) {
+  const url = `${siteUrl}/coaches/${p.slug}`;
+  const page = coachJsonLd(p, url, locale);
+  const person = page.mainEntity as Record<string, unknown>;
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        ...page,
+        "@context": undefined,
+        ...(p.published_at ? { dateCreated: p.published_at } : {}),
+        mainEntity: {
+          ...person,
+          ...(p.username ? { alternateName: `@${p.username}` } : {}),
+          interactionStatistic: { "@type": "InteractionCounter", interactionType: "https://schema.org/FollowAction", userInteractionCount: p.followers },
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: labels.home, item: siteUrl },
+          { "@type": "ListItem", position: 2, name: labels.coaches, item: `${siteUrl}/coaches` },
+          { "@type": "ListItem", position: 3, name: p.display_name, item: url },
+        ],
+      },
+    ],
+  };
 }

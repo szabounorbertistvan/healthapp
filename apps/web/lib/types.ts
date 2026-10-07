@@ -64,6 +64,8 @@ export type DashboardRow = {
 };
 
 export type ClientRow = {
+  /** The next pending or confirmed booking with this client (20261108100000), if any. */
+  next_booking_at?: string | null;
   client_id: string;
   full_name: string;
   signal: Signal;
@@ -197,13 +199,42 @@ export type NutritionPlanDetail = {
   totals: { kcal: number; protein: number; carbs: number; fat: number };
 };
 
+/** Where a thread stands (20261104100000): coaching, an accepted request, or history only. */
+export type ConversationRelationship = "active" | "request" | "ended";
+
 export type ConversationRow = {
   id: string;
   client_id: string;
   full_name: string;
+  avatar_url: string | null;
   last_message: string;
   last_at: string;
   unread: number;
+  relationship: ConversationRelationship;
+  /** The pair may still write: no block, both accounts live, coaching or an accepted request. */
+  open: boolean;
+};
+
+/** A thread's header (conversation_context()): who is on the other side, and why the thread exists. */
+export type ConversationContext = {
+  id: string;
+  side: "coach" | "client";
+  other_id: string;
+  other_name: string;
+  other_avatar: string | null;
+  coach_slug: string | null;
+  open: boolean;
+  relationship: ConversationRelationship;
+  request: {
+    id: string;
+    service_name: string | null;
+    message: string | null;
+    goal: string | null;
+    preferred_format: "online" | "in_person" | "hybrid" | null;
+    created_at: string;
+    resolved_at: string | null;
+    started: boolean;
+  } | null;
 };
 
 export type MessageRow = {
