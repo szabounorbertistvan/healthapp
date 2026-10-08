@@ -27,7 +27,7 @@ import { ModerationMenuButton } from "@/components/moderation";
 import { ratingLabel } from "@/lib/coach-review";
 import { getProfile } from "@/lib/data";
 import { PublicProfileGate } from "@/components/coach-profile/public-gate";
-import { SaveIntent } from "@/components/coach-profile/intent";
+import { FollowIntent, SaveIntent } from "@/components/coach-profile/intent";
 import { getFeed } from "@/lib/social-data";
 import { getProfileRoutines } from "@/lib/routine-data";
 import { CoachProfileView, CoachSection } from "@/components/coach-profile/preview";
@@ -106,9 +106,11 @@ export default async function CoachPage({ params, searchParams }: Props) {
     if (moved) permanentRedirect(`/coaches/${moved}`);
     notFound();
   }
-  // Book only where this reader may (a clients-only service shows no button to anyone else)
+  // Book only where this reader may (a clients-only service shows no button to anyone else), and
+  // only when the coach has weekly hours — a Book button onto an empty week is a broken promise (20261112100000)
+  const noHours = profile?.availability?.has_hours === false;
   const bookHrefs = Object.fromEntries(bookable
-    .filter((b) => b.can_book === "ok" || b.can_book === "CANNOT_BOOK_SELF")
+    .filter((b) => !noHours && (b.can_book === "ok" || b.can_book === "CANNOT_BOOK_SELF"))
     .map((b) => [b.service_id, `/coaches/${profile.slug}/book?${new URLSearchParams({ service: b.service_id })}`]));
   // one URL per coach: any other spelling of the slug goes to the canonical one
   if (slug !== profile.slug) permanentRedirect(`/coaches/${profile.slug}`);
@@ -129,6 +131,7 @@ export default async function CoachPage({ params, searchParams }: Props) {
     referrer: (await headers()).get("referer"), siteHost: new URL(SITE_URL).hostname,
   }));
   const intent = query.intent === "save" ? { kind: "save" as const, serviceId: null }
+    : query.intent === "follow" ? { kind: "follow" as const, serviceId: null }
     : query.intent === "contact" ? { kind: "contact" as const, serviceId: typeof query.service === "string" ? query.service : null }
     : null;
   const shown = teaser?.profile ?? profile;
@@ -142,7 +145,8 @@ export default async function CoachPage({ params, searchParams }: Props) {
   const followButton = signedIn && coachId ? (
     <FollowButton userId={coachId} following={viewer?.is_following ?? false} followsMe={viewer?.follows_me ?? false} />
   ) : (
-    <Link href={loginHref} title={p.signInToFollow} data-mkt-wall="follow"
+    <Link href={`/login?${new URLSearchParams({ next: `/coaches/${profile.slug}?intent=follow`, ...loginParams })}`}
+      title={p.signInToFollow} data-mkt-wall="follow"
       className="inline-flex h-12 items-center justify-center rounded-2xl bg-surface px-5 text-[14px] font-semibold text-ink hover:bg-accent-soft/60">
       {p.follow}
     </Link>
@@ -229,6 +233,9 @@ export default async function CoachPage({ params, searchParams }: Props) {
       {signedIn && intent?.kind === "save" && !viewer?.is_self ? (
         <SaveIntent profileId={profile.id} saved={viewer?.is_saved ?? false} slug={profile.slug} />
       ) : null}
+      {signedIn && intent?.kind === "follow" && !viewer?.is_self && coachId ? (
+        <FollowIntent userId={coachId} following={viewer?.is_following ?? false} slug={profile.slug} />
+      ) : null}
       {viewer?.is_self ? null : <MarketplaceTracker view="profile_view" slug={profile.slug} />}
       <StartCoachingProvider profile={shown} viewer={viewer} state={state} loginParams={loginParams}
         intent={signedIn && intent?.kind === "contact" ? { kind: "contact", serviceId: intent.serviceId } : null}>
@@ -288,7 +295,7 @@ async function Landing({ landing, signedIn }: { landing: DiscoveryLanding; signe
       <MarketplaceTracker view="directory_view" city={landing.kind === "city" ? landing.slug : null}
         specialization={landing.kind === "specialization" ? landing.slug : null} />
       <section className="mx-auto max-w-3xl pb-5 pt-2 text-center sm:pb-10 sm:pt-8">
-        <nav aria-label="breadcrumb" className="text-[13px] font-semibold text-ink-faint">
+        <nav aria-label={d.landing.breadcrumb} className="text-[13px] font-semibold text-ink-faint">
           <Link href="/coaches" className="hover:text-ink">{d.backToDiscover}</Link> <span aria-hidden>/</span> <span>{landing.name}</span>
         </nav>
         <h1 className="mt-2 font-display text-[24px] font-extrabold leading-tight tracking-tight sm:text-[40px]">{title}</h1>

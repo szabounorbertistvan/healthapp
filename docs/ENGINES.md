@@ -961,6 +961,45 @@ stay authoritative: an event created after a booking does not cancel it.
 (clip, merge) and applies; failures become one stored code, never the provider's text. Minimum scopes:
 Google `calendar.freebusy` + `calendar.calendarlist.readonly`; Microsoft `Calendars.ReadBasic` + `offline_access`.
 
+## Marketplace launch readiness (pre-monetization)
+
+Migration `20261112100000_marketplace_launch_readiness.sql`; pgTAP `marketplace_launch` (49);
+`components/admin/coach-ops.tsx`; e2e `marketplace-discovery.spec.ts` (launch readiness, admin operations).
+
+**Trustworthy numbers.** Ratings (count, average, distribution — and so the ranking's Bayesian rating) leave out
+reviews by reviewers who are suspended or being deleted, as `coach_public_reviews()` already did: the count on the
+page equals the reviews listed. Recomputed by triggers on `users.suspended_at` and `account_deletion_requests`.
+Hidden reviews never count. Ranking engagement counts coaching requests once per live client (re-sending does not
+pump it) and saves from live accounts only; views are one per visitor per day and never the coach's own; a coach
+cannot save, review or book themselves. Weights unchanged; still one layer (`coach_ranked()`).
+
+**Notices added**: `revision_approved` / `revision_returned` (category `marketplace`, from
+`admin_decide_coach_revision`); `completed` (category `booking`, from `mark_booking`) asks the client for a review
+once per coach and only while they have none. **Book** is shown only when the coach has weekly hours
+(`coach_public_availability().has_hours`).
+
+**Operations.** `/admin/coaches` gains *Needs attention* (`admin_coach_attention()`: open reports, reported reviews,
+rejected verification, expired credentials, rating < 3 from 3+ reviews, a live profile missing its essentials, a
+live profile on a suspended account, accepting clients but no sign-in for 60 days) and a rejected-verification
+filter. `/admin/coaches/[id]` gains *Marketplace activity* and *Moderation history*
+(`admin_coach_marketplace_summary()`: counts only, services in every state, every audited admin action on the
+profile, its credentials, its reviews and the reports about it — who, from, to, reason). Credential decisions are
+audited with what they replaced. Everything else (approve / send back / unpublish / suspend / restore,
+verification, credentials, review hide / restore, report resolve / dismiss, revisions) already existed and is
+unchanged: each an `admin_*` RPC behind `admin_assert()`, audited.
+
+**SEO.** Landing listings are indexable and in the sitemap only with `LANDING_MIN_COACHES` (3) published coaches;
+below that they work, `noindex, follow`. `/coaches/specialization/<slug>` and `/coaches/city/<slug>` 308 to
+`/coaches/<slug>`. A removed coach answers 404 (not 410: Next's `notFound()` is the only status a page can set).
+
+**Intent through sign-in**: Follow now carries `?intent=follow` like Save and Contact (`FollowIntent`).
+
+**Journeys → where they are tested.** A anonymous discovery: `marketplace-discovery.spec.ts`. B client funnel and
+C coach (request → accept → start → message → book → complete → review): `marketplace.spec.ts` part two
+(`E2E_FUNNEL_FLOW=1`, writes) + pgTAP `coach_contact_requests`, `coach_bookings`, `coach_reviews`. D moderation:
+pgTAP `marketplace_launch` (+ the admin e2e with `E2E_ADMIN_EMAIL`). E lifecycle: `coaching-lifecycle.spec.ts` +
+pgTAP `coaching_lifecycle`. F double booking: `npm run db:test:race`.
+
 ## Engagement
 
 `app/(client)/habits`. `addHabit` / `toggleHabit`; `getMyHabits`. Tables `habits`,

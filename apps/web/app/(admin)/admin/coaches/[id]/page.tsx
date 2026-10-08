@@ -18,7 +18,8 @@ import { CoachProfilePreview } from "@/components/coach-profile/preview";
 import { getAdminReviews } from "@/lib/review-data";
 import { AdminReviewModeration } from "@/components/admin/review-moderation";
 import { AdminRevisionReview, type AdminRevision } from "@/components/admin/revision-review";
-import { getAdminRanking, getAdminReports } from "@/lib/admin/marketplace-data";
+import { getAdminCoachSummary, getAdminRanking, getAdminReports } from "@/lib/admin/marketplace-data";
+import { AdminCoachOps } from "@/components/admin/coach-ops";
 import { ReportsTable } from "@/components/admin/reports-table";
 import { RankingTable } from "@/components/admin/ranking-table";
 
@@ -69,7 +70,7 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
   const name = review.display_name;
   const open = summary(review.missing ?? []).filter((x) => !x.done).map((x) => groups[x.group]);
   // the coach's reviews, any state (20261106100000)
-  const [reviews, { data: revisionData }, reports, ranking] = await Promise.all([
+  const [reviews, { data: revisionData }, reports, ranking, ops] = await Promise.all([
     review.user_id ? getAdminReviews(review.user_id) : Promise.resolve([]),
     // a published coach's staged changes (20261108100000); a database without them answers an error, read as none
     supabase.rpc("admin_coach_revision", { p_profile: id }),
@@ -77,6 +78,8 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
     getAdminReports({ coachProfile: id, status: null, limit: 50 }),
     // where the coach stands in the default listing, and why (20261110130000)
     getAdminRanking({ profile: id, limit: 1 }),
+    // marketplace numbers, services and the moderation history (20261112100000)
+    getAdminCoachSummary(id),
   ]);
   const revision = (revisionData ?? null) as AdminRevision | null;
   const s = review.status;
@@ -143,6 +146,12 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
       {revision ? (
         <div className="mt-4">
           <AdminRevisionReview profileId={id} revision={revision} />
+        </div>
+      ) : null}
+
+      {ops ? (
+        <div className="mt-4">
+          <AdminCoachOps summary={ops} />
         </div>
       ) : null}
 

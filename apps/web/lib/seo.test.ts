@@ -72,15 +72,17 @@ describe("landing listings (20261111110000)", () => {
       "https://www.voinic.fit/coaches/cluj-napoca", "https://www.voinic.fit/coaches/weight-loss"]);
     expect(urls.some((u) => u.includes("?"))).toBe(false);
   });
-  it("a landing page has its own canonical, and is indexable only while it lists someone", () => {
+  it("a landing page has its own canonical, and is indexable only with enough coaches", () => {
     const m = landingMetadata({ kind: "city", slug: "cluj-napoca", name: "Cluj-Napoca", coaches: 4 },
       { siteUrl: "https://www.voinic.fit", appName: "Voinic", locale: "en", copy });
     expect(m.title).toBe("Personal trainers in Cluj-Napoca | Voinic");
     expect(m.description).toBe("4 coaches in Cluj-Napoca.");
     expect(m.alternates.canonical).toBe("https://www.voinic.fit/coaches/cluj-napoca");
     expect(m.robots).toEqual({ index: true, follow: true });
-    expect(landingMetadata({ kind: "specialization", slug: "kettlebell", name: "Kettlebell", coaches: 0 },
-      { siteUrl: "https://s", appName: "Voinic", locale: "en", copy }).robots).toEqual({ index: false, follow: true });
+    for (const coaches of [0, 2]) {
+      expect(landingMetadata({ kind: "specialization", slug: "kettlebell", name: "Kettlebell", coaches },
+        { siteUrl: "https://s", appName: "Voinic", locale: "en", copy }).robots).toEqual({ index: false, follow: true });
+    }
   });
   it("copy per kind", () => {
     expect(landingCopy({ kind: "specialization", name: "Weight Loss" }, copy)).toEqual({ title: "Weight Loss coaches", intro: "Focus: Weight Loss." });

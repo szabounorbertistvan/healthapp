@@ -537,6 +537,7 @@ const en = {
       empty: "No published coach here yet",
       emptyHint: "New coaches join every week. Online coaches can train you from anywhere.",
       refine: "Refine this search",
+      breadcrumb: "Breadcrumb",
     },
     card: {
       reviewOne: "review",
@@ -1563,6 +1564,7 @@ const ro: typeof en = {
       empty: "Încă niciun antrenor publicat aici",
       emptyHint: "Antrenori noi se alătură în fiecare săptămână. Antrenorii online te pot antrena de oriunde.",
       refine: "Rafinează căutarea",
+      breadcrumb: "Navigare",
     },
     card: {
       reviewOne: "recenzie",

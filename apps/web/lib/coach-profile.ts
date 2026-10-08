@@ -318,7 +318,7 @@ export type CoachPublicProfile = {
    * slots the booking page shows anyone. Absent in a preview and before
    * 20261111100000.
    */
-  availability?: { bookable: boolean; next_slot_at: string | null; timezone: string | null };
+  availability?: { bookable: boolean; next_slot_at: string | null; timezone: string | null; has_hours?: boolean };
 };
 
 /** One row of coach_public_posts(): a public post, text and counts, no pictures. */

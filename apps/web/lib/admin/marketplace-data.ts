@@ -88,3 +88,43 @@ export async function getAdminRanking(opts: { query?: string | null; city?: stri
   }
   return (data ?? []) as RankRow[];
 }
+
+// ---------- one coach, and the attention queue (20261112100000) ----------
+
+export type AdminCoachSummary = {
+  views_30d: number; saves: number; review_count: number; review_avg: number | string | null; open_reports: number;
+  requests: Record<string, number> | null; bookings: Record<string, number> | null;
+  relationships: Record<string, number> | null; reviews: Record<string, number> | null;
+  services: { id: string; name: string; kind: string; active: boolean; bookable: boolean; price_public: boolean;
+              price_cents: number | null; currency: string; price_unit: string }[] | null;
+  last_sign_in_at: string | null;
+  history: { at: string; entity: string; entity_id: string; op: string | null; from: string | null; to: string | null;
+             reason: string | null; actor: string | null }[];
+};
+
+export async function getAdminCoachSummary(profileId: string): Promise<AdminCoachSummary | null> {
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("admin_coach_marketplace_summary", { p_profile: profileId });
+  if (error) {
+    if (!missing(error.code)) console.error("admin_coach_marketplace_summary:", error.message);
+    return null;
+  }
+  return (data ?? null) as AdminCoachSummary | null;
+}
+
+export const ATTENTION_REASONS = [
+  "open_reports", "reported_reviews", "verification_rejected", "expired_credentials", "low_rating", "missing_essentials",
+  "account_suspended", "inactive",
+] as const;
+export type AttentionReason = (typeof ATTENTION_REASONS)[number];
+export type AttentionRow = { profile_id: string; slug: string; display_name: string; status: string; reasons: AttentionReason[]; open_reports: number };
+
+export async function getCoachAttention(limit = 100): Promise<AttentionRow[]> {
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("admin_coach_attention", { p_limit: limit });
+  if (error) {
+    if (!missing(error.code)) console.error("admin_coach_attention:", error.message);
+    return [];
+  }
+  return (data ?? []) as AttentionRow[];
+}

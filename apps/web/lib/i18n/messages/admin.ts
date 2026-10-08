@@ -504,6 +504,30 @@ const en = {
     position: "Position {n}",
   },
   coaches: {
+    ops: {
+      title: "Marketplace activity",
+      hint: "This coach's numbers. Clients are never named here.",
+      views: "Profile views (30 days)", saves: "Saved by", rating: "Public rating", openReports: "Open reports",
+      lastSignIn: "Last sign-in", never: "never",
+      requests: "Requests", bookings: "Bookings", relationships: "Coaching", reviews: "Reviews",
+      services: "Services", serviceActive: "active", serviceInactive: "off", serviceBookable: "bookable",
+      history: "Moderation history",
+      historyHint: "Every audited admin action on this profile, its credentials, its reviews and the reports about it.",
+      historyNone: "No moderation actions yet.",
+      by: "by {name}",
+      when: "When", what: "What",
+    },
+    attention: {
+      title: "Needs attention",
+      hint: "Profiles with a signal worth a look. Nothing is decided automatically.",
+      none: "Nothing needs attention.",
+      reasons: {
+        open_reports: "Reported", reported_reviews: "Reported reviews", verification_rejected: "Verification rejected",
+        expired_credentials: "Expired credentials", low_rating: "Low rating", missing_essentials: "Live but incomplete",
+        account_suspended: "Account suspended, profile live", inactive: "Accepting clients, inactive 60+ days",
+      },
+      rejectedKpi: "Verification rejected",
+    },
     revision: {
       title: "Changes waiting for review",
       hint: "A published coach edited their profile. The live page is unchanged until you approve; rejecting sends it back with your note.",
@@ -1138,6 +1162,30 @@ const ro: typeof en = {
     position: "Poziția {n}",
   },
   coaches: {
+    ops: {
+      title: "Activitate în marketplace",
+      hint: "Cifrele acestui antrenor. Clienții nu sunt niciodată numiți aici.",
+      views: "Vizite pe profil (30 de zile)", saves: "Salvat de", rating: "Rating public", openReports: "Raportări deschise",
+      lastSignIn: "Ultima autentificare", never: "niciodată",
+      requests: "Solicitări", bookings: "Programări", relationships: "Coaching", reviews: "Recenzii",
+      services: "Servicii", serviceActive: "activ", serviceInactive: "oprit", serviceBookable: "rezervabil",
+      history: "Istoric de moderare",
+      historyHint: "Fiecare acțiune de admin auditată pe acest profil, certificările, recenziile și raportările despre el.",
+      historyNone: "Nicio acțiune de moderare încă.",
+      by: "de {name}",
+      when: "Când", what: "Ce",
+    },
+    attention: {
+      title: "Necesită atenție",
+      hint: "Profiluri cu un semnal care merită verificat. Nimic nu se decide automat.",
+      none: "Nimic nu necesită atenție.",
+      reasons: {
+        open_reports: "Raportat", reported_reviews: "Recenzii raportate", verification_rejected: "Verificare respinsă",
+        expired_credentials: "Certificări expirate", low_rating: "Rating scăzut", missing_essentials: "Public, dar incomplet",
+        account_suspended: "Cont suspendat, profil public", inactive: "Acceptă clienți, inactiv de 60+ zile",
+      },
+      rejectedKpi: "Verificare respinsă",
+    },
     revision: {
       title: "Modificări de verificat",
       hint: "Un antrenor publicat și-a editat profilul. Pagina publică rămâne neschimbată până aprobi; respingerea o trimite înapoi cu nota ta.",

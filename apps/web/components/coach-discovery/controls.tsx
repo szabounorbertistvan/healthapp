@@ -452,7 +452,7 @@ export function ActiveFilters({ query, facets }: { query: DiscoveryQuery; facets
   });
   if (chips.length === 0) return null;
   return (
-    <ul className="flex flex-wrap items-center gap-1.5" aria-label={d.filters} data-testid="active-filters">
+    <ul className="flex flex-wrap items-center gap-1.5" aria-label={d.activeFilters} data-testid="active-filters">
       {chips.map((chip) => (
         <li key={chip.key}>
           <Link href={`${PATH}${discoverySearch(chip.remove)}`} scroll={false}

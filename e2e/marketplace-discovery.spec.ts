@@ -254,3 +254,61 @@ test("another coach's calendar is not reachable through the API", async ({ brows
   await expect(page.getByTestId("calendar-status")).toHaveCount(0);
   await context.close();
 });
+
+// ---------- launch readiness (20261112100000) ----------
+
+test.describe("launch readiness", () => {
+  test("the longer landing spellings redirect to the one canonical page", async ({ request }) => {
+    for (const path of ["/coaches/specialization/weight-loss", "/coaches/city/Cluj-Napoca"]) {
+      const res = await request.get(path, { maxRedirects: 0 });
+      expect(res.status(), path).toBe(308);
+      expect(res.headers().location).toMatch(/\/coaches\/(weight-loss|cluj-napoca)$/);
+    }
+  });
+
+  test("anonymous Follow carries the intent through sign-in", async ({ browser }) => {
+    test.skip(!PUBLISHED, "set E2E_PUBLISHED_COACH to a published coach's slug");
+    const { context, page } = await anonymousPage(browser);
+    await page.goto(`/coaches/${PUBLISHED}`);
+    const follow = page.locator('[data-mkt-wall="follow"]').first();
+    expect(decodeURIComponent((await follow.getAttribute("href")) ?? "")).toContain(`/coaches/${PUBLISHED}?intent=follow`);
+    await context.close();
+  });
+
+  test("a published coach without weekly hours shows no Book button", async ({ browser }) => {
+    test.skip(!PUBLISHED, "set E2E_PUBLISHED_COACH to a published coach's slug");
+    const { context, page } = await anonymousPage(browser);
+    await page.goto(`/coaches/${PUBLISHED}`);
+    const availability = page.getByTestId("coach-availability");
+    if (await availability.count() && (await availability.getAttribute("data-bookable")) === "false") {
+      await expect(page.getByTestId("book-service")).toHaveCount(0);
+    }
+    await context.close();
+  });
+});
+
+// Journey D (moderation) in the browser needs an admin account: E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD.
+// The database half — report → suspend → gone from search, page, sitemap and landing counts — is
+// pgTAP marketplace_launch, which runs everywhere.
+test.describe("admin operations", () => {
+  const email = process.env.E2E_ADMIN_EMAIL ?? "";
+  test.skip(!email, "set E2E_ADMIN_EMAIL (and E2E_ADMIN_PASSWORD) to an admin account");
+
+  test("the coach queue shows what needs attention; a coach page shows activity and history", async ({ browser }) => {
+    const context = await browser.newContext();
+    await prepare(context);
+    const page = await context.newPage();
+    await page.goto("/login");
+    await page.getByPlaceholder("Email").fill(email);
+    await page.getByPlaceholder("Password", { exact: true }).fill(process.env.E2E_ADMIN_PASSWORD ?? "");
+    await page.locator("form button[type=submit]").click();
+    await page.goto("/admin/coaches?status=published");
+    test.skip(!(await rendered(page, page.getByRole("heading", { name: "Needs attention" }))), MISSING);
+    const first = page.getByTestId("admin-coach-row").first();
+    test.skip(!(await first.count()), "no published coach");
+    await first.getByRole("link").click();
+    await expect(page.getByTestId("admin-coach-ops")).toBeVisible();
+    await expect(page.getByText("Moderation history")).toBeVisible();
+    await context.close();
+  });
+});

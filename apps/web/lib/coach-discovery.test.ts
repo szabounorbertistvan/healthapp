@@ -334,6 +334,7 @@ describe("landing pages (20261111110000)", () => {
     ...facets,
     specializations: [{ slug: "hypertrophy", name_en: "Hypertrophy", name_ro: "Hipertrofie", coaches: 3 },
                       { slug: "weight-loss", name_en: "Weight Loss", name_ro: "Slăbire", coaches: 0 }],
+    countries: [{ code: "RO", slug: "romania", name_en: "Romania", name_ro: "România", coaches: 5 }],
   };
   it("a slug is a city, a specialization or a country — or nothing", () => {
     expect(landingFor("cluj-napoca", withCounts, "en")).toMatchObject({ kind: "city", name: "Cluj-Napoca", coaches: 1, query: { city: "cluj-napoca", browse: true } });
@@ -341,9 +342,10 @@ describe("landing pages (20261111110000)", () => {
     expect(landingFor("romania", withCounts, "ro")).toMatchObject({ kind: "country", name: "România", query: { country: "romania" } });
     expect(landingFor("andrei-popescu", withCounts, "en")).toBeNull();
   });
-  it("indexable only while it lists someone", () => {
+  it("indexable only with enough coaches to be more than a thin page", () => {
     expect(landingIndexable(landingFor("weight-loss", withCounts, "en")!)).toBe(false);
-    expect(landingIndexable(landingFor("hypertrophy", withCounts, "en")!)).toBe(true);
+    expect(landingIndexable(landingFor("cluj-napoca", withCounts, "en")!)).toBe(false); // 1 coach
+    expect(landingIndexable(landingFor("hypertrophy", withCounts, "en")!)).toBe(true); // 3
   });
   it("a listing that is exactly one city or specialization links to its landing page", () => {
     expect(listingHref({ ...EMPTY_QUERY, city: "cluj-napoca" })).toBe("/coaches/cluj-napoca");
@@ -354,7 +356,7 @@ describe("landing pages (20261111110000)", () => {
     expect(listingHref({ ...EMPTY_QUERY, city: "cluj-napoca", sort: "rating" })).toBe("/coaches?city=cluj-napoca&sort=rating");
     expect(listingHref({ ...EMPTY_QUERY, browse: true })).toBe("/coaches?all=1");
   });
-  it("the sitemap's landing slugs: only places and specializations with a coach", () => {
-    expect(landingSlugs(withCounts)).toEqual(["cluj-napoca", "hypertrophy", "romania"]);
+  it("the sitemap's landing slugs: only places and specializations with enough coaches", () => {
+    expect(landingSlugs(withCounts)).toEqual(["hypertrophy", "romania"]);
   });
 });

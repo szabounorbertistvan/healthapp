@@ -275,6 +275,14 @@ anonymous readers still see post text only). A noindex for a landing page whose 
 clients (it stays indexable while it has a published coach). Landing pages for city × specialization pairs.
 The e2e spec `marketplace-discovery.spec.ts` has not been run against a live project yet.
 
+Launch readiness (2026-10-08, migration `20261112100000`, **not pushed live**; apply after `20261111100000` →
+`20261111130000`). Not built, on purpose until monetization or later: payments of any kind, paid placement
+(`placement` stays 0), an expiry for pending bookings (one still holds its slot until the coach answers), a 410 for
+removed coaches (404 today), a review prompt for coaching relationships (only completed sessions prompt), filtering the in-app
+notification list by preference (push already honours `users.notification_prefs` per category in `push-dispatch`,
+and the new notices use the existing `marketplace` / `booking` categories), an admin test account for the admin e2e. The marketplace has not been driven in a browser against a live
+project in this pass (no credentials in the session that built it): every e2e spec compiles and lists, none ran.
+
 Coaching lifecycle (2026-10-07, migrations `20261109100000` + `20261109110000`, live since 2026-10-07). Not built: a coach-side
 "End coaching" from the active client page itself (it links to the relationship page), invite-path start notice,
 per-relationship review (one review per client and coach, by design).

@@ -1,3 +1,5 @@
+import { landingIndexable } from "./coach-discovery";
+
 /**
  * robots.txt and sitemap.xml for the public surface (20261107100000). Pure,
  * so the rules are unit-tested; app/robots.ts and app/sitemap.ts only feed
@@ -75,7 +77,7 @@ export function landingCopy(l: { kind: "city" | "specialization" | "country"; na
 
 /**
  * A landing listing's metadata: its own canonical address (never the
- * /coaches?… equivalent), indexable only while it lists someone, a
+ * /coaches?… equivalent), indexable only with LANDING_MIN_COACHES or more, a
  * description with the real count, Open Graph / Twitter for link previews.
  */
 export function landingMetadata(
@@ -92,7 +94,7 @@ export function landingMetadata(
     title,
     description,
     alternates: { canonical: url },
-    robots: l.coaches > 0 ? { index: true, follow: true } : { index: false, follow: true },
+    robots: landingIndexable(l) ? { index: true, follow: true } : { index: false, follow: true },
     openGraph: { type: "website" as const, url, title, description, siteName: opts.appName, locale: opts.locale === "ro" ? "ro_RO" : "en_GB" },
     twitter: { card: "summary" as const, title, description },
   };

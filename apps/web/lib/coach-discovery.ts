@@ -528,9 +528,16 @@ export function landingFor(slug: string, facets: DiscoveryFacets, locale: "en" |
   return null;
 }
 
-/** A landing page is offered to search engines only while it lists someone: an empty one is thin content. */
-export function landingIndexable(landing: DiscoveryLanding): boolean {
-  return landing.coaches > 0;
+/**
+ * How many published coaches a landing page needs before search engines are
+ * offered it: one or two cards is a thin page that competes with the coach's
+ * own profile. Below it the page still works (noindex, follow) and stays out
+ * of the sitemap.
+ */
+export const LANDING_MIN_COACHES = 3;
+
+export function landingIndexable(landing: Pick<DiscoveryLanding, "coaches">): boolean {
+  return landing.coaches >= LANDING_MIN_COACHES;
 }
 
 /**
@@ -553,11 +560,12 @@ export function listingHref(query: DiscoveryQuery): string {
   return landing ? `/coaches/${landing}` : `/coaches${discoverySearch(query)}`;
 }
 
-/** Every landing page that lists someone, for the sitemap. */
+/** Every indexable landing page (LANDING_MIN_COACHES or more), for the sitemap. */
 export function landingSlugs(facets: DiscoveryFacets): string[] {
+  const ok = (n: number | undefined) => landingIndexable({ coaches: n ?? 0 });
   return [
-    ...facets.cities.filter((c) => c.coaches > 0).map((c) => c.slug),
-    ...facets.specializations.filter((s) => (s.coaches ?? 0) > 0).map((s) => s.slug),
-    ...facets.countries.filter((c) => c.coaches > 0).map((c) => c.slug),
+    ...facets.cities.filter((c) => ok(c.coaches)).map((c) => c.slug),
+    ...facets.specializations.filter((s) => ok(s.coaches)).map((s) => s.slug),
+    ...facets.countries.filter((c) => ok(c.coaches)).map((c) => c.slug),
   ];
 }

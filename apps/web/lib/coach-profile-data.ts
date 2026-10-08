@@ -15,11 +15,12 @@ import type {
 
 // Coach Discovery reads. Writes live in app/coach-profile-actions.ts.
 
-const PROFILE_COLUMNS =
+const BASE_PROFILE_COLUMNS =
   "id, user_id, slug, headline, about, cover_url, coaching_since, accepting_clients, online, in_person, " +
   "status, submitted_at, reviewed_at, review_note, published_at, suspended_at, suspension_reason, created_at, updated_at, " +
-  "verification_status, verification_requested_at, verification_message, verification_decided_at, verification_note, " +
-  "approach, experience_summary, client_goals, social_links";
+  "verification_status, verification_requested_at, verification_message, verification_decided_at, verification_note";
+// own-words content (20261111100000); read only where the database has it — see getMyCoachProfile
+const PROFILE_COLUMNS = `${BASE_PROFILE_COLUMNS}, approach, experience_summary, client_goals, social_links`;
 const SERVICE_COLUMNS =
   "id, coach_profile_id, name, description, kind, delivery, duration_value, duration_unit, price_cents, currency, price_unit, price_public, active, sort_order";
 // Exactly the granted columns: document_ref and admin_note are not readable.
@@ -36,11 +37,16 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile | null> {
   if (!live) return null;
   const { supabase, userId } = live;
 
-  const { data: profile, error } = await supabase
+  let { data: profile, error } = await supabase
     .from("coach_profiles")
     .select(PROFILE_COLUMNS)
     .eq("user_id", userId)
     .maybeSingle<CoachProfileRow>();
+  // a database without 20261111100000 (42703: no such column): the editor still works, without the new fields
+  if (error?.code === "42703") {
+    ({ data: profile, error } = await supabase
+      .from("coach_profiles").select(BASE_PROFILE_COLUMNS).eq("user_id", userId).maybeSingle<CoachProfileRow>());
+  }
   if (error) throw new Error(`coach profile: ${error.message}`);
   if (!profile) return null;
 
