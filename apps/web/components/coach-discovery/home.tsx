@@ -2,7 +2,7 @@ import Link from "next/link";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import {
-  EMPTY_QUERY, QUICK_SPECIALIZATIONS, discoverySearch, type CoachCardModel, type DiscoveryFacets, type DiscoveryQuery,
+  EMPTY_QUERY, QUICK_SPECIALIZATIONS, discoverySearch, listingHref, type CoachCardModel, type DiscoveryFacets, type DiscoveryQuery,
 } from "@/lib/coach-discovery";
 import { CoachCard } from "./coach-card";
 import { CitySelect, CoachSearchBox } from "./controls";
@@ -29,7 +29,8 @@ export type DiscoveryHomeProps = {
   coachCtaHref: string;
 };
 
-const href = (q: Partial<DiscoveryQuery>) => `/coaches${discoverySearch({ ...EMPTY_QUERY, ...q })}`;
+// one city or one specialization is its landing page (/coaches/<slug>, indexable); anything else /coaches?…
+const href = (q: Partial<DiscoveryQuery>) => listingHref({ ...EMPTY_QUERY, ...q });
 
 /**
  * /coaches with nothing searched: the Discovery Home. Every number and card

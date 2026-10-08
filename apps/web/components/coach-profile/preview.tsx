@@ -9,6 +9,7 @@ import { Avatar } from "../social";
 import { StartCoachingButton } from "./start-coaching";
 import { VerifiedBadge } from "../coach-discovery/verified-badge";
 import { useServiceDuration } from "./service-format";
+import { socialEntries } from "@/lib/coach-content";
 
 /**
  * A coach's page, drawn from exactly the shape coach_public_profile() returns.
@@ -24,14 +25,15 @@ import { useServiceDuration } from "./service-format";
  * the wizard's narrow card it is one column, on the public page main column
  * plus a sticky sidebar. Sections with nothing in them are not drawn.
  *
- * One column (phones) is ordered for someone deciding: who → Follow / Start
- * coaching → what they focus on → about → the key facts → services →
- * certifications → programs → posts → why train with them. Wide, the facts
- * move to the sticky sidebar. Reviews do not exist yet; when they do they are
- * one more section here, and they feed "why train with".
+ * Ordered for someone deciding (20261111100000): who (header: rating, place,
+ * format, next free slot, the actions) → about → specializations and who
+ * they work with → coaching approach and experience (the coach's own words,
+ * labelled so) → services → credentials and verification (Voinic's word
+ * kept apart from the coach's) → availability → reviews → programs → posts
+ * → why train with them. Wide, the key facts sit in a sticky sidebar.
  */
 export function CoachProfileView({
-  profile, follow, posts, programs, live = false, bookHrefs, reviews, gate, headerRating,
+  profile, follow, posts, programs, live = false, bookHrefs, reviews, gate, headerRating, share, availability,
 }: {
   profile: CoachPublicProfile;
   follow?: React.ReactNode;
@@ -48,6 +50,14 @@ export function CoachProfileView({
   gate?: React.ReactNode;
   /** "4.9 ★ · 27 reviews" from the database, linked to the section; null when there are none. */
   headerRating?: string | null;
+  /** The Share button (the public page only). */
+  share?: React.ReactNode;
+  /**
+   * The next free slot, already formatted on the server in the coach's zone
+   * (so server and browser render the same text), and where to see every
+   * time. Null: no Availability section (a preview, or a database without it).
+   */
+  availability?: { bookable: boolean; nextSlot: string | null; zone: string | null; href: string | null } | null;
 }) {
   const { t, locale } = useI18n();
   const p = t.coachProfile.publicPage;
@@ -83,6 +93,7 @@ export function CoachProfileView({
             </div>
             <div className="hidden flex-wrap items-center gap-2 @2xl:flex">
               {follow}
+              {share}
               <StartCoachingButton />
             </div>
           </div>
@@ -108,6 +119,11 @@ export function CoachProfileView({
               ) : null}
               {formats.length ? <li className="flex items-center gap-1.5"><Dot />{formats.join(" · ")}</li> : null}
               {years ? <li className="flex items-center gap-1.5"><Dot />{fill(p.yearsShort, { n: years })}</li> : null}
+              {availability?.nextSlot ? (
+                <li className="flex items-center gap-1.5" data-testid="coach-header-next-slot">
+                  <Dot /><a href="#availability" className="font-semibold text-ink hover:text-accent-ink">{fill(p.nextSlot, { when: availability.nextSlot })}</a>
+                </li>
+              ) : null}
               {headerRating ? (
                 <li className="flex items-center gap-1.5" data-testid="coach-header-rating">
                   <Dot /><a href="#reviews" className="font-semibold text-ink hover:text-accent-ink">{headerRating}</a>
@@ -131,6 +147,7 @@ export function CoachProfileView({
             <div className="mt-5 flex flex-wrap gap-2 @2xl:hidden">
               <StartCoachingButton className="flex-1" />
               {follow}
+              {share}
             </div>
           </div>
         </div>
@@ -139,8 +156,10 @@ export function CoachProfileView({
       {/* ---------- body: main + sidebar ---------- */}
       <div className="mt-10 grid gap-10 @4xl:grid-cols-[minmax(0,1fr)_320px] @4xl:gap-12">
         <div className="min-w-0 space-y-12">
-          {profile.specializations.length > 0 ? (
-            <Section title={p.specializations}>
+          <About profile={profile} live={live} />
+
+          {profile.specializations.length > 0 || (profile.client_goals?.length ?? 0) > 0 ? (
+            <Section title={p.specializations} id="specializations">
               <ul className="flex flex-wrap gap-2">
                 {profile.specializations.map((sp) => (
                   <li
@@ -151,9 +170,22 @@ export function CoachProfileView({
                   </li>
                 ))}
               </ul>
+              {profile.client_goals?.length ? (
+                <div className="mt-5" data-testid="coach-client-goals-public">
+                  <h3 className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{p.goalsTitle}</h3>
+                  <ul className="mt-2 flex flex-wrap gap-1.5">
+                    {profile.client_goals.map((g) => (
+                      <li key={g} className="rounded-full bg-bg px-3 py-1 text-[13px] font-semibold text-ink-soft">
+                        {t.coachProfile.expertise.goals[g]}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </Section>
           ) : null}
-          <About profile={profile} live={live} />
+
+          <Approach profile={profile} />
 
           {profile.services.length > 0 ? (
             <Section title={p.services} id="services">
@@ -207,39 +239,51 @@ export function CoachProfileView({
 
           {gate}
 
+          {profile.certifications.length > 0 || profile.verified ? (
+            <Section title={p.credentialsTitle} id="credentials">
+              {profile.verified ? (
+                <p className="mb-4 flex flex-wrap items-center gap-2 text-[14px]" data-testid="credentials-verified">
+                  <VerifiedBadge verified size="md" />
+                  <span className="text-ink-soft"><VerifiedDetailText profile={profile} /></span>
+                </p>
+              ) : null}
+              {profile.certifications.length > 0 ? (
+                <>
+                  <p className="-mt-1 mb-3 text-[13px] text-ink-faint">{v.credentialsNote}</p>
+                  <ul className="divide-y divide-line">
+                    {profile.certifications.map((c, i) => (
+                      <li key={`${c.name}-${i}`} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0">
+                        <div>
+                          <p className="font-semibold">{c.name}</p>
+                          <p className="text-[13px] text-ink-faint">{[c.issuer, c.year].filter(Boolean).join(" · ")}</p>
+                        </div>
+                        {/* Voinic's word only when an admin verified this credential; otherwise it is the coach's */}
+                        <span className="flex flex-wrap items-center gap-1.5" data-testid="public-credential" data-verified={c.verified}>
+                          {c.expires_on && c.expires_on < today ? (
+                            <span className="rounded-full bg-risk-soft px-2.5 py-1 text-[11.5px] font-semibold text-risk">{v.credentialExpired}</span>
+                          ) : null}
+                          {c.verified ? (
+                            <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink">✓ {v.credentialVerified}</span>
+                          ) : (
+                            <span className="rounded-full bg-bg px-2.5 py-1 text-[11.5px] font-semibold text-ink-faint">{v.credentialProvided}</span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+            </Section>
+          ) : null}
+
+          {live && availability ? <Availability profile={profile} availability={availability} /> : null}
+
           {reviews}
 
           {/* one column: where and how after the offer; wide: the facts live in the sidebar */}
           <div className="@4xl:hidden">
             <Facts profile={profile} formats={formats} years={years} />
           </div>
-
-          {profile.certifications.length > 0 ? (
-            <Section title={p.certifications}>
-              <p className="-mt-2 mb-3 text-[13px] text-ink-faint">{v.credentialsNote}</p>
-              <ul className="divide-y divide-line">
-                {profile.certifications.map((c, i) => (
-                  <li key={`${c.name}-${i}`} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0">
-                    <div>
-                      <p className="font-semibold">{c.name}</p>
-                      <p className="text-[13px] text-ink-faint">{[c.issuer, c.year].filter(Boolean).join(" · ")}</p>
-                    </div>
-                    {/* Voinic's word only when an admin verified this credential; otherwise it is the coach's */}
-                    <span className="flex flex-wrap items-center gap-1.5" data-testid="public-credential" data-verified={c.verified}>
-                      {c.expires_on && c.expires_on < today ? (
-                        <span className="rounded-full bg-risk-soft px-2.5 py-1 text-[11.5px] font-semibold text-risk">{v.credentialExpired}</span>
-                      ) : null}
-                      {c.verified ? (
-                        <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink">✓ {v.credentialVerified}</span>
-                      ) : (
-                        <span className="rounded-full bg-bg px-2.5 py-1 text-[11.5px] font-semibold text-ink-faint">{v.credentialProvided}</span>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          ) : null}
 
           {/* whole sections from the page (CoachSection), streamed for a signed-in reader */}
           {programs}
@@ -288,19 +332,84 @@ function Section({ title, id, children }: { title: string; id?: string; children
  * badges. Nothing for anyone else.
  */
 function VerifiedDetail({ profile }: { profile: CoachPublicProfile }) {
+  if (!profile.verified) return null;
+  return (
+    <p className="mt-1.5 text-[12.5px] text-ink-faint" data-testid="voinic-verified-detail">
+      <VerifiedDetailText profile={profile} />
+    </p>
+  );
+}
+
+/** What Voinic checked, as one line of text (the header shows it under the name; the credentials section beside the badge). */
+function VerifiedDetailText({ profile }: { profile: CoachPublicProfile }) {
   const { t } = useI18n();
   const p = t.coachProfile.publicPage;
   const v = t.coachProfile.verification;
-  if (!profile.verified) return null;
   const label: Record<VerificationBadge, string> = {
     identity_verified: p.verifiedIdentity,
     certification_verified: p.verifiedCertification,
     business_verified: p.verifiedBusiness,
   };
+  return <>{profile.badges.length ? `${v.checked} ${profile.badges.map((b) => label[b].toLowerCase()).join(" · ")}` : v.badgeHint}</>;
+}
+
+/**
+ * How they coach and what they have done — the coach's own words, said so:
+ * nothing here is checked by Voinic (credentials and the badge are, above).
+ */
+function Approach({ profile }: { profile: CoachPublicProfile }) {
+  const { t } = useI18n();
+  const p = t.coachProfile.publicPage;
+  const approach = profile.approach?.trim();
+  const experience = profile.experience_summary?.trim();
+  if (!approach && !experience) return null;
   return (
-    <p className="mt-1.5 text-[12.5px] text-ink-faint" data-testid="voinic-verified-detail">
-      {profile.badges.length ? `${v.checked} ${profile.badges.map((b) => label[b].toLowerCase()).join(" · ")}` : v.badgeHint}
-    </p>
+    <Section title={p.approachTitle} id="approach">
+      <div className="grid gap-5" data-testid="coach-approach">
+        {approach ? <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">{approach}</p> : null}
+        {experience ? (
+          <div>
+            <h3 className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{p.experienceTitle}</h3>
+            <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">{experience}</p>
+          </div>
+        ) : null}
+        <p className="text-[12.5px] text-ink-faint">{fill(p.ownWords, { name: profile.display_name })}</p>
+      </div>
+    </Section>
+  );
+}
+
+/** When the coach can be booked: the next free slot (in their zone, named) and the way to every time, or how sessions are arranged. */
+function Availability({ profile, availability }: {
+  profile: CoachPublicProfile;
+  availability: { bookable: boolean; nextSlot: string | null; zone: string | null; href: string | null };
+}) {
+  const { t } = useI18n();
+  const p = t.coachProfile.publicPage;
+  return (
+    <Section title={p.availabilityTitle} id="availability">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-surface p-5" data-testid="coach-availability"
+        data-bookable={availability.bookable}>
+        <div>
+          {availability.bookable ? (
+            <>
+              <p className="font-display text-lg font-bold">
+                {availability.nextSlot ? fill(p.nextSlot, { when: availability.nextSlot }) : p.noSlotsSoon}
+              </p>
+              {availability.zone ? <p className="mt-0.5 text-[13px] text-ink-faint">{fill(p.timesIn, { zone: availability.zone })}</p> : null}
+            </>
+          ) : (
+            <p className="text-[14.5px] text-ink-soft">{fill(p.notBookable, { name: profile.display_name })}</p>
+          )}
+        </div>
+        {availability.bookable && availability.href ? (
+          <a href={availability.href} data-mkt="cta_book" data-testid="availability-book"
+            className="inline-flex h-11 items-center rounded-2xl bg-accent px-5 font-display text-[14px] font-bold text-accent-fg hover:opacity-90">
+            {p.seeTimes}
+          </a>
+        ) : !availability.bookable && profile.accepting_clients ? <StartCoachingButton /> : null}
+      </div>
+    </Section>
   );
 }
 
@@ -354,6 +463,24 @@ function Facts({ profile, formats, years }: { profile: CoachPublicProfile; forma
       label: t.coachProfile.verification.credentialsRow,
       value: [fill(t.coachProfile.verification.credentialsAdded, { n: profile.certifications.length }),
               checked ? fill(t.coachProfile.verification.credentialsChecked, { n: checked }) : null].filter(Boolean).join(" · "),
+    });
+  }
+  const links = socialEntries(profile.social_links);
+  if (links.length) {
+    rows.push({
+      label: fill(p.findMe, { name: profile.display_name }),
+      value: (
+        <ul className="flex flex-wrap gap-x-3 gap-y-1" data-testid="coach-social-links-public">
+          {links.map((l) => (
+            <li key={l.network}>
+              {/* the coach's own pages: rel=me for identity, nofollow because Voinic does not vouch for them */}
+              <a href={l.url} target="_blank" rel="me nofollow noopener noreferrer" className="font-semibold text-accent-ink hover:underline">
+                {t.coachProfile.identity.socialNetworks[l.network]}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ),
     });
   }
   if (profile.in_person && profile.locations.length) {

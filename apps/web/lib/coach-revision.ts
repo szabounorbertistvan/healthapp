@@ -7,6 +7,7 @@
  * the real tables (coach_revision_check), so nothing here is the authority.
  */
 import type { CoachCertificationRow, CoachServiceRow, MyCoachProfile } from "./coach-profile";
+import type { ClientGoal, SocialLinks } from "./coach-content";
 
 export type RevisionService = {
   id: string; name: string; description: string | null; kind: CoachServiceRow["kind"]; delivery: CoachServiceRow["delivery"];
@@ -28,6 +29,11 @@ export type RevisionPayload = {
   locations: { city_slug: string; gym_name: string | null; gym_id: string | null }[];
   services: RevisionService[];
   certifications: RevisionCertification[];
+  /** 20261111100000; absent in a copy opened before it (the live value then stays). */
+  approach?: string | null;
+  experience_summary?: string | null;
+  client_goals?: ClientGoal[];
+  social_links?: SocialLinks;
 };
 
 export type RevisionStatus = "editing" | "pending_review" | "rejected";
@@ -87,7 +93,13 @@ export function overlayRevision(mine: MyCoachProfile, p: RevisionPayload): MyCoa
   const liveCerts = new Map(mine.certifications.map((c) => [c.id, c]));
   return {
     ...mine,
-    profile: { ...mine.profile, headline: p.headline, about: p.about, coaching_since: p.coaching_since, online: p.online, in_person: p.in_person },
+    profile: {
+      ...mine.profile, headline: p.headline, about: p.about, coaching_since: p.coaching_since, online: p.online, in_person: p.in_person,
+      ...("approach" in p ? { approach: p.approach ?? null } : {}),
+      ...("experience_summary" in p ? { experience_summary: p.experience_summary ?? null } : {}),
+      ...("client_goals" in p ? { client_goals: p.client_goals ?? [] } : {}),
+      ...("social_links" in p ? { social_links: p.social_links ?? {} } : {}),
+    },
     specializations: p.specializations,
     languages: p.languages,
     locations: p.locations,
@@ -102,7 +114,8 @@ export function overlayRevision(mine: MyCoachProfile, p: RevisionPayload): MyCoa
 // ---------- what changed, for the admin ----------
 
 export type RevisionChange =
-  | { field: "headline" | "about" | "coaching_since" | "delivery"; before: string; after: string }
+  | { field: "headline" | "about" | "coaching_since" | "delivery" | "approach" | "experience_summary"; before: string; after: string }
+  | { field: "client_goals" | "social_links"; before: string; after: string }
   | { field: "specializations" | "languages" | "locations"; before: string; after: string }
   | { field: "service" | "certification"; change: "added" | "removed" | "changed"; name: string; before?: string; after?: string };
 
@@ -119,9 +132,13 @@ function certLine(c: RevisionCertification): string {
 /** Every difference between what is live and what the coach proposes, in reading order. */
 export function revisionDiff(live: RevisionPayload, next: RevisionPayload): RevisionChange[] {
   const out: RevisionChange[] = [];
-  for (const field of ["headline", "about", "coaching_since"] as const) {
+  for (const field of ["headline", "about", "coaching_since", "approach", "experience_summary"] as const) {
     if (text(live[field]) !== text(next[field])) out.push({ field, before: text(live[field]), after: text(next[field]) });
   }
+  const goals = (p: RevisionPayload) => (p.client_goals ?? []).join(", ") || "—";
+  if (goals(live) !== goals(next)) out.push({ field: "client_goals", before: goals(live), after: goals(next) });
+  const links = (p: RevisionPayload) => Object.entries(p.social_links ?? {}).sort().map(([k, v]) => `${k}: ${v}`).join(", ") || "—";
+  if (links(live) !== links(next)) out.push({ field: "social_links", before: links(live), after: links(next) });
   const delivery = (p: RevisionPayload) => [p.online ? "online" : null, p.in_person ? "in person" : null].filter(Boolean).join(" + ") || "—";
   if (delivery(live) !== delivery(next)) out.push({ field: "delivery", before: delivery(live), after: delivery(next) });
   const list = <T,>(xs: T[], f: (x: T) => string) => xs.map(f).sort().join(", ") || "—";

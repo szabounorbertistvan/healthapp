@@ -284,7 +284,7 @@ export function StartCoachingButton({
       return (
         // sign in, then back here with the dialog open (and the service picked) — not on a dashboard
         <Link href={`/login?${new URLSearchParams({ next: `/coaches/${ctx!.slug}?${new URLSearchParams({ intent: "contact", ...(serviceId ? { service: serviceId } : {}) })}`, ...ctx!.loginParams })}`}
-          className={`${primary} ${size} ${className}`} data-testid="contact-coach-signin" data-mkt="cta_contact">
+          className={`${primary} ${size} ${className}`} data-testid="contact-coach-signin" data-mkt="cta_contact" data-mkt-wall="contact">
           {p.startCoaching}
         </Link>
       );

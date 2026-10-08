@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { classifyAttribution, type Attribution, type ClientMarketplaceEvent } from "@healthapp/shared";
+import { classifyAttribution, isLoginWall, type Attribution, type ClientMarketplaceEvent } from "@healthapp/shared";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 /**
@@ -12,6 +12,8 @@ import { supabaseBrowser } from "@/lib/supabase/client";
  */
 export function trackMarketplace(event: ClientMarketplaceEvent, opts: {
   slug?: string | null; attribution?: Attribution | null; city?: string | null; specialization?: string | null;
+  /** One word from the event's closed list (a filter's name, native | copy, what a sign-in wall stopped) — never a value. */
+  detail?: string | null;
 } = {}): void {
   try {
     void supabaseBrowser().rpc("marketplace_track", {
@@ -22,6 +24,7 @@ export function trackMarketplace(event: ClientMarketplaceEvent, opts: {
       p_campaign: opts.attribution?.campaign ?? null,
       p_city: opts.city ?? null,
       p_specialization: opts.specialization ?? null,
+      ...(opts.detail ? { p_detail: opts.detail } : {}),
     }).then(() => undefined, () => undefined);
   } catch {
     // not configured, or offline: nothing to measure
@@ -45,7 +48,8 @@ export function currentAttribution(): Attribution {
  * Once per mount; the database also counts a visitor once a day per target.
  */
 export function MarketplaceTracker({ view, slug = null, city = null, specialization = null }: {
-  view: "profile_view" | "directory_view";
+  /** service_view: a service's booking page (20261111120000). */
+  view: "profile_view" | "directory_view" | "service_view";
   slug?: string | null;
   city?: string | null;
   specialization?: string | null;
@@ -62,11 +66,15 @@ export function MarketplaceTracker({ view, slug = null, city = null, specializat
     if (!slug) return;
     const attribution = currentAttribution();
     const onClick = (e: MouseEvent) => {
-      const el = (e.target as Element | null)?.closest?.("[data-mkt]");
+      const target = e.target as Element | null;
+      const el = target?.closest?.("[data-mkt]");
       const event = el?.getAttribute("data-mkt");
       if (event === "cta_contact" || event === "cta_book" || event === "cta_save" || event === "cta_full_profile" || event === "signup_started") {
         trackMarketplace(event, { slug, attribution });
       }
+      // an anonymous reader's action that leads to sign-in (data-mkt-wall="contact" | "book" | …)
+      const wall = target?.closest?.("[data-mkt-wall]")?.getAttribute("data-mkt-wall");
+      if (isLoginWall(wall)) trackMarketplace("login_required", { slug, attribution, detail: wall });
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);

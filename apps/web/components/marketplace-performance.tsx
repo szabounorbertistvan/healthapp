@@ -71,6 +71,22 @@ export async function MarketplacePerformance({ a }: { a: CoachMarketplaceAnalyti
             <p className={label}>{p.signups}</p><p className={value}>{nf.format(a.signups)}</p>
           </div>
         ) : null}
+        {/* 20261111120000 — shown once there is something to show */}
+        {since && (a.service_views ?? 0) > 0 ? (
+          <div className={tile} data-testid="perf-service-views">
+            <p className={label}>{p.serviceViews}</p><p className={value}>{nf.format(a.service_views ?? 0)}</p>
+          </div>
+        ) : null}
+        {since && (a.shares ?? 0) > 0 ? (
+          <div className={tile} data-testid="perf-shares">
+            <p className={label}>{p.shares}</p><p className={value}>{nf.format(a.shares ?? 0)}</p>
+          </div>
+        ) : null}
+        {since && (a.login_walls ?? 0) > 0 ? (
+          <div className={tile} data-testid="perf-login-walls">
+            <p className={label}>{p.loginWalls}</p><p className={value}>{nf.format(a.login_walls ?? 0)}</p>
+          </div>
+        ) : null}
       </div>
 
       {!since ? <p className="mt-3 text-[13px] text-ink-soft">{p.notYet}</p> : null}

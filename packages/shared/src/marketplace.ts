@@ -74,8 +74,17 @@ export function classifyAttribution(input: {
 /** The events a browser may send (marketplace_track's closed list). */
 export const CLIENT_MARKETPLACE_EVENTS = [
   "directory_view", "profile_view", "cta_contact", "cta_book", "cta_save", "cta_full_profile", "signup_started",
+  // 20261111120000
+  "search", "filter_applied", "service_view", "share", "login_required",
 ] as const;
 export type ClientMarketplaceEvent = (typeof CLIENT_MARKETPLACE_EVENTS)[number];
+
+/** What an anonymous reader wanted when a sign-in wall stopped them (login_required's closed detail list). */
+export const LOGIN_WALLS = ["contact", "book", "save", "follow", "review", "message", "full_profile"] as const;
+export type LoginWall = (typeof LOGIN_WALLS)[number];
+export function isLoginWall(v: string | null | undefined): v is LoginWall {
+  return (LOGIN_WALLS as readonly string[]).includes(v ?? "");
+}
 
 /**
  * The sign-up reference the form sends as user metadata (read by the

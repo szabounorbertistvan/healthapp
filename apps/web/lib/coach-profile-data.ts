@@ -18,7 +18,8 @@ import type {
 const PROFILE_COLUMNS =
   "id, user_id, slug, headline, about, cover_url, coaching_since, accepting_clients, online, in_person, " +
   "status, submitted_at, reviewed_at, review_note, published_at, suspended_at, suspension_reason, created_at, updated_at, " +
-  "verification_status, verification_requested_at, verification_message, verification_decided_at, verification_note";
+  "verification_status, verification_requested_at, verification_message, verification_decided_at, verification_note, " +
+  "approach, experience_summary, client_goals, social_links";
 const SERVICE_COLUMNS =
   "id, coach_profile_id, name, description, kind, delivery, duration_value, duration_unit, price_cents, currency, price_unit, price_public, active, sort_order";
 // Exactly the granted columns: document_ref and admin_note are not readable.
@@ -184,7 +185,6 @@ export async function searchCoaches(query: DiscoveryQuery, limit?: number): Prom
   return { total: result?.total ?? 0, items: result?.items ?? [] };
 }
 
-/** What the filters offer: specializations, and the countries / cities that have a published coach. */
 /**
  * The signed-in reader's saved coaches (/coaches/saved): search_coaches() with
  * p_saved — the same cards, the same visibility (a coach who went hidden or
@@ -202,12 +202,21 @@ export async function getSavedCoaches(limit = 100): Promise<CoachSearchResult> {
   return { total: result?.total ?? 0, items: result?.items ?? [] };
 }
 
-export async function getDiscoveryFacets(): Promise<DiscoveryFacets> {
+/**
+ * What the filters offer: specializations (with counts), the countries /
+ * cities / gyms that have a published coach, the languages they speak and
+ * the kinds of service they offer. Cached per request: a landing page's
+ * metadata and body share one call.
+ */
+export const getDiscoveryFacets = cache(async (): Promise<DiscoveryFacets> => {
   const { data, error } = await supabasePublic().rpc("coach_discovery_facets");
   if (error) throw new Error(`coach facets: ${error.message}`);
   const f = data as Partial<DiscoveryFacets> | null;
-  return { specializations: f?.specializations ?? [], countries: f?.countries ?? [], cities: f?.cities ?? [], gyms: f?.gyms ?? [] };
-}
+  return {
+    specializations: f?.specializations ?? [], countries: f?.countries ?? [], cities: f?.cities ?? [], gyms: f?.gyms ?? [],
+    languages: f?.languages ?? [], service_kinds: f?.service_kinds ?? [],
+  };
+});
 
 // ---------- contact requests (20261103100000) ----------
 

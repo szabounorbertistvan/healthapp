@@ -7,9 +7,10 @@
  * reachable by typing one character everywhere (a bio scores in full only
  * from 150 characters; hours count only with a bookable service).
  *
- *   photo 10 · title 10 · bio 15 (5 under 150 chars) · specializations 10
- *   experience 5 · where you coach 10 · languages 5 · services 15
- *   bookable service + weekly hours 10 · a certification 5 · Voinic Verified 5
+ *   photo 10 · title 10 · bio 12 (4 under 150 chars) · specializations 10
+ *   experience 4 · where you coach 10 · languages 4 · services 10
+ *   a public price 5 · bookable service + weekly hours 10 · a certification 5
+ *   coaching approach 5 (20261111100000) · Voinic Verified 5
  *
  * Pure; tested in lib/coach-completeness.test.ts.
  */
@@ -17,7 +18,7 @@ import type { CoachProfileMissing, CoachProfileStatus, MyCoachProfile } from "./
 
 export type CompletenessKey =
   | "photo" | "title" | "bio" | "specializations" | "experience" | "location" | "languages"
-  | "services" | "availability" | "credentials" | "verified";
+  | "services" | "pricing" | "availability" | "credentials" | "approach" | "verified";
 
 export type CompletenessItem = {
   key: CompletenessKey;
@@ -32,6 +33,8 @@ export type CompletenessItem = {
 };
 
 export const BIO_FULL_CHARS = 150;
+/** An approach says something from about one full sentence. */
+export const APPROACH_FULL_CHARS = 80;
 const STEP = (n: number) => `/settings/coach-profile?step=${n}`;
 
 export function profileCompleteness(
@@ -46,16 +49,20 @@ export function profileCompleteness(
   const add = (key: CompletenessKey, weight: number, done: boolean, required: boolean, href: string, earned = done ? weight : 0) =>
     items.push({ key, weight, done, required, href, earned });
 
+  // a price people can see (or a free offer): "price on request" is a reason not to click
+  const priced = activeServices.some((s) => s.price_public && (s.price_cents !== null || s.price_unit === "free"));
   add("photo", 10, extras.hasAvatar, true, STEP(6));
   add("title", 10, Boolean(p.headline?.trim()), true, STEP(1));
-  add("bio", 15, about.length >= BIO_FULL_CHARS, true, STEP(1), about.length >= BIO_FULL_CHARS ? 15 : about.length > 0 ? 5 : 0);
+  add("bio", 12, about.length >= BIO_FULL_CHARS, true, STEP(1), about.length >= BIO_FULL_CHARS ? 12 : about.length > 0 ? 4 : 0);
   add("specializations", 10, mine.specializations.length > 0, true, STEP(2));
-  add("experience", 5, p.coaching_since !== null, false, STEP(2));
+  add("experience", 4, p.coaching_since !== null, false, STEP(2));
   add("location", 10, located, true, STEP(3));
-  add("languages", 5, mine.languages.length > 0, false, STEP(3));
-  add("services", 15, activeServices.length > 0, true, STEP(5));
+  add("languages", 4, mine.languages.length > 0, false, STEP(3));
+  add("services", 10, activeServices.length > 0, true, STEP(5));
+  add("pricing", 5, priced, false, STEP(5));
   add("availability", 10, extras.bookableServices > 0 && extras.availabilityBlocks > 0, false, "/bookings/availability");
   add("credentials", 5, mine.certifications.length > 0, false, STEP(4));
+  add("approach", 5, (p.approach?.trim().length ?? 0) >= APPROACH_FULL_CHARS, false, STEP(2));
   add("verified", 5, p.verification_status === "verified", false, "/settings/coach-profile#verification");
 
   const pct = Math.min(100, items.reduce((n, i) => n + i.earned, 0));

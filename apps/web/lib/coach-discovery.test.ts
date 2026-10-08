@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EMPTY_QUERY, clearFilters, discoverySearch, emptyKind, filterChips, hasFilters, hasMore, isDiscoveryHome, matchViewerCity,
+  EMPTY_QUERY, changedFilter, clearFilters, filterCount, landingFor, landingIndexable, landingSlugs, listingHref, discoverySearch, emptyKind, filterChips, hasFilters, hasMore, isDiscoveryHome, matchViewerCity,
   normalizePlace, parseDiscoveryQuery, searchArgs, toCoachCard, withChange, type CoachSearchRow, type DiscoveryFacets,
 } from "./coach-discovery";
 
@@ -12,6 +12,8 @@ const facets: DiscoveryFacets = {
   countries: [{ code: "RO", slug: "romania", name_en: "Romania", name_ro: "România", coaches: 2 }],
   cities: [{ slug: "cluj-napoca", name: "Cluj-Napoca", name_en: "Cluj-Napoca", country_code: "RO", coaches: 1 }],
   gyms: [{ id: "0f0f0f0f-1111-4222-8333-444444444444", name: "Iron Temple", city: "cluj-napoca", coaches: 1 }],
+  languages: [{ code: "ro", name_en: "Romanian", name_ro: "Română", native_name: "Română", coaches: 2 }],
+  service_kinds: [{ kind: "personal_training", coaches: 1 }],
 };
 const labels = {
   online: "Online", inPerson: "In person", hybrid: "Hybrid", verified: "Verified", experience: "{n}+ years", priceFrom: "from {price}",
@@ -138,7 +140,19 @@ describe("empty states and pages", () => {
     expect(emptyKind(0, EMPTY_QUERY)).toBe("no_coaches");
     expect(emptyKind(0, { ...EMPTY_QUERY, q: "zzz" })).toBe("no_match_search");
     expect(emptyKind(0, { ...EMPTY_QUERY, q: "zzz", online: true })).toBe("no_match_filters");
-    expect(emptyKind(0, { ...EMPTY_QUERY, city: "cluj-napoca" })).toBe("no_match_filters");
+    expect(emptyKind(0, { ...EMPTY_QUERY, city: "cluj-napoca", online: true })).toBe("no_match_filters");
+  });
+  it("names the one thing narrowing: a place, a specialization (20261111110000)", () => {
+    expect(emptyKind(0, { ...EMPTY_QUERY, city: "cluj-napoca" })).toBe("no_match_location");
+    expect(emptyKind(0, { ...EMPTY_QUERY, country: "romania", city: "cluj-napoca", gym: null })).toBe("no_match_location");
+    expect(emptyKind(0, { ...EMPTY_QUERY, specializations: ["hypertrophy"] })).toBe("no_match_specialization");
+    expect(emptyKind(0, { ...EMPTY_QUERY, specializations: ["hypertrophy"], q: "ana" })).toBe("no_match_filters");
+  });
+  it("says when filters are too many to match anything", () => {
+    const many = { ...EMPTY_QUERY, online: true, verified: true, minRating: 4.5, available: true, languages: ["ro"] };
+    expect(filterCount(many)).toBe(5);
+    expect(emptyKind(0, many)).toBe("too_restrictive");
+    expect(emptyKind(0, { ...many, languages: [] })).toBe("no_match_filters");
   });
   it("offers Load more only while there is more", () => {
     expect(hasMore(30, EMPTY_QUERY)).toBe(true);
@@ -160,8 +174,9 @@ describe("card mapping", () => {
       href: "/coaches/ana", name: "Ana", avatarUrl: null, headline: "Strength coach", verified: true,
       city: "București", formats: ["online", "in_person"], years: 10, specializations: ["Forță"],
       moreSpecializations: 3, startingPrice: { cents: 20000, currency: "RON", unit: "month" }, followers: 12, accepting: true,
-      rating: null, follow: null, isSelf: false, save: null, profileId: null,
+      rating: null, follow: null, isSelf: false, save: null, profileId: null, availableSoon: false,
     });
+    expect(toCoachCard({ ...row, available_soon: true }, "en").availableSoon).toBe(true);
     expect(toCoachCard(row, "en").city).toBe("Bucharest");
   });
   it("carries the database's rating, and none when there are no reviews (20261106100000)", () => {
@@ -262,5 +277,84 @@ describe("save on a card (20261102100000)", () => {
   });
   it("never on your own card", () => {
     expect(toCoachCard({ ...row, user_id: "me", is_self: true, is_saved: false }, "en").save).toBeNull();
+  });
+});
+
+describe("service kind, language, rating, availability, new sorts (20261111110000)", () => {
+  const url = "?service=personal_training&service=online_coaching&language=ro&rating=4.5&available=true&sort=rating";
+  it("round-trip through the URL", () => {
+    const q = parseDiscoveryQuery(new URLSearchParams(url));
+    expect(q).toMatchObject({ serviceKinds: ["personal_training", "online_coaching"], languages: ["ro"], minRating: 4.5, available: true, sort: "rating" });
+    expect(discoverySearch(q)).toBe(url);
+  });
+  it("drops what is not offered: unknown kinds, odd ratings, malformed languages", () => {
+    const q = parseDiscoveryQuery({ service: "massage,personal_training", rating: "4.2", language: "romanian,ro", sort: "price" });
+    expect(q.serviceKinds).toEqual(["personal_training"]);
+    expect(q.minRating).toBeNull();
+    expect(q.languages).toEqual(["ro"]);
+    expect(q.sort).toBe("recommended");
+  });
+  it("become RPC arguments only when set", () => {
+    const keys = Object.keys(searchArgs(EMPTY_QUERY));
+    for (const k of ["p_service_kinds", "p_languages", "p_min_rating", "p_available"]) expect(keys).not.toContain(k);
+    expect(searchArgs(parseDiscoveryQuery(new URLSearchParams(url)))).toMatchObject({
+      p_service_kinds: ["personal_training", "online_coaching"], p_languages: ["ro"], p_min_rating: 4.5, p_available: true, p_sort: "rating",
+    });
+  });
+  it("each is a filter with its own chip that removes only itself", () => {
+    const q = parseDiscoveryQuery(new URLSearchParams(url));
+    expect(hasFilters(q)).toBe(true);
+    const chips = filterChips(q, facets, "ro", { ...labels, rating: "{n}+ ★", available: "Disponibil", serviceKinds: { personal_training: "PT" } });
+    expect(chips.map((c) => c.label)).toEqual(["PT", "online_coaching", "Română", "4.5+ ★", "Disponibil"]);
+    expect(chips.find((c) => c.key === "lang:ro")!.remove.languages).toEqual([]);
+    expect(chips.find((c) => c.key === "available")!.remove).toMatchObject({ available: false, minRating: 4.5 });
+  });
+  it("a sort alone is not a filter", () => {
+    expect(hasFilters({ ...EMPTY_QUERY, sort: "availability" })).toBe(false);
+  });
+});
+
+describe("which filter changed (analytics, 20261111120000)", () => {
+  it("names the filter, never its value", () => {
+    expect(changedFilter(EMPTY_QUERY, { ...EMPTY_QUERY, city: "cluj-napoca" })).toBe("city");
+    expect(changedFilter(EMPTY_QUERY, { ...EMPTY_QUERY, hybrid: true })).toBe("format");
+    expect(changedFilter(EMPTY_QUERY, { ...EMPTY_QUERY, minRating: 4 })).toBe("rating");
+    expect(changedFilter(EMPTY_QUERY, { ...EMPTY_QUERY, available: true })).toBe("availability");
+    expect(changedFilter(EMPTY_QUERY, { ...EMPTY_QUERY, serviceKinds: ["consultation"] })).toBe("service_kind");
+    expect(changedFilter(EMPTY_QUERY, { ...EMPTY_QUERY, sort: "rating" })).toBe("sort");
+  });
+  it("the text and the page are not filters", () => {
+    expect(changedFilter(EMPTY_QUERY, { ...EMPTY_QUERY, q: "ana" })).toBeNull();
+    expect(changedFilter(EMPTY_QUERY, { ...EMPTY_QUERY, page: 2 })).toBeNull();
+  });
+});
+
+describe("landing pages (20261111110000)", () => {
+  const withCounts: DiscoveryFacets = {
+    ...facets,
+    specializations: [{ slug: "hypertrophy", name_en: "Hypertrophy", name_ro: "Hipertrofie", coaches: 3 },
+                      { slug: "weight-loss", name_en: "Weight Loss", name_ro: "Slăbire", coaches: 0 }],
+  };
+  it("a slug is a city, a specialization or a country — or nothing", () => {
+    expect(landingFor("cluj-napoca", withCounts, "en")).toMatchObject({ kind: "city", name: "Cluj-Napoca", coaches: 1, query: { city: "cluj-napoca", browse: true } });
+    expect(landingFor("hypertrophy", withCounts, "ro")).toMatchObject({ kind: "specialization", name: "Hipertrofie", coaches: 3, query: { specializations: ["hypertrophy"] } });
+    expect(landingFor("romania", withCounts, "ro")).toMatchObject({ kind: "country", name: "România", query: { country: "romania" } });
+    expect(landingFor("andrei-popescu", withCounts, "en")).toBeNull();
+  });
+  it("indexable only while it lists someone", () => {
+    expect(landingIndexable(landingFor("weight-loss", withCounts, "en")!)).toBe(false);
+    expect(landingIndexable(landingFor("hypertrophy", withCounts, "en")!)).toBe(true);
+  });
+  it("a listing that is exactly one city or specialization links to its landing page", () => {
+    expect(listingHref({ ...EMPTY_QUERY, city: "cluj-napoca" })).toBe("/coaches/cluj-napoca");
+    expect(listingHref({ ...EMPTY_QUERY, country: "romania", city: "cluj-napoca" })).toBe("/coaches/cluj-napoca");
+    expect(listingHref({ ...EMPTY_QUERY, specializations: ["hypertrophy"] })).toBe("/coaches/hypertrophy");
+    expect(listingHref({ ...EMPTY_QUERY, city: "cluj-napoca", online: true })).toBe("/coaches?city=cluj-napoca&online=true");
+    expect(listingHref({ ...EMPTY_QUERY, city: "cluj-napoca", page: 2 })).toBe("/coaches?city=cluj-napoca&page=2");
+    expect(listingHref({ ...EMPTY_QUERY, city: "cluj-napoca", sort: "rating" })).toBe("/coaches?city=cluj-napoca&sort=rating");
+    expect(listingHref({ ...EMPTY_QUERY, browse: true })).toBe("/coaches?all=1");
+  });
+  it("the sitemap's landing slugs: only places and specializations with a coach", () => {
+    expect(landingSlugs(withCounts)).toEqual(["cluj-napoca", "hypertrophy", "romania"]);
   });
 });

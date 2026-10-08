@@ -54,7 +54,7 @@ export function SaveCoachButton({ profileId, saved, signedIn, variant = "icon", 
     const here = signInNext ?? `${pathname}${search?.toString() ? `?${search}` : ""}`;
     return (
       <Link href={`/login?${new URLSearchParams({ next: here, ...signInParams })}`} className={base} title={s.signInToSave}
-        aria-label={variant === "icon" ? s.signInToSave : undefined} data-testid="save-coach" data-mkt="cta_save">
+        aria-label={variant === "icon" ? s.signInToSave : undefined} data-testid="save-coach" data-mkt="cta_save" data-mkt-wall="save">
         {icon}
         {variant === "pill" ? <span>{s.save}</span> : null}
       </Link>

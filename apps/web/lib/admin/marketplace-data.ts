@@ -55,6 +55,9 @@ export type AdminMarketplaceAnalytics = {
   weekly: { week: string; profile_views: number; signups: number; requests: number; bookings: number; coaching_started: number; reviews: number }[];
   funnel: Record<string, number>;
   sources: { source: string; views: number; signups: number; requests: number }[];
+  /** 20261111120000: which filters, and which sign-in walls, by name. Absent before it. */
+  filters?: { filter: string; n: number }[];
+  login_walls?: { wanted: string; n: number }[];
 };
 
 export async function getAdminMarketplaceAnalytics(weeks = 12): Promise<AdminMarketplaceAnalytics | null> {

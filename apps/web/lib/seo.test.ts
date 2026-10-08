@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ROBOTS_DISALLOW, robotsRules, sitemapEntries } from "./seo";
+import { ROBOTS_DISALLOW, landingCopy, landingJsonLd, landingMetadata, robotsRules, sitemapEntries } from "./seo";
 
 /**
  * How Google reads robots.txt: the longest matching rule wins, Allow wins a
@@ -57,5 +57,42 @@ describe("sitemap.xml", () => {
     ]);
     expect(entries[2]!.lastModified?.toISOString()).toBe("2026-10-05T10:00:00.000Z");
     expect(entries[3]).not.toHaveProperty("lastModified");
+  });
+});
+
+describe("landing listings (20261111110000)", () => {
+  const copy = {
+    cityTitle: "Personal trainers in {place}", cityIntro: "Coaches in {place}.", specializationTitle: "{name} coaches",
+    specializationIntro: "Focus: {name}.", countryTitle: "Coaches in {place}", countryIntro: "In {place}.",
+    metaCity: "{n} coaches in {place}.", metaSpecialization: "{n} {name} coaches.", metaCountry: "{n} coaches in {place}.",
+  };
+  it("the sitemap lists landing pages once, never a filtered URL", () => {
+    const urls = sitemapEntries("https://www.voinic.fit", [], ["cluj-napoca", "weight-loss", "cluj-napoca"]).map((e) => e.url);
+    expect(urls).toEqual(["https://www.voinic.fit", "https://www.voinic.fit/coaches",
+      "https://www.voinic.fit/coaches/cluj-napoca", "https://www.voinic.fit/coaches/weight-loss"]);
+    expect(urls.some((u) => u.includes("?"))).toBe(false);
+  });
+  it("a landing page has its own canonical, and is indexable only while it lists someone", () => {
+    const m = landingMetadata({ kind: "city", slug: "cluj-napoca", name: "Cluj-Napoca", coaches: 4 },
+      { siteUrl: "https://www.voinic.fit", appName: "Voinic", locale: "en", copy });
+    expect(m.title).toBe("Personal trainers in Cluj-Napoca | Voinic");
+    expect(m.description).toBe("4 coaches in Cluj-Napoca.");
+    expect(m.alternates.canonical).toBe("https://www.voinic.fit/coaches/cluj-napoca");
+    expect(m.robots).toEqual({ index: true, follow: true });
+    expect(landingMetadata({ kind: "specialization", slug: "kettlebell", name: "Kettlebell", coaches: 0 },
+      { siteUrl: "https://s", appName: "Voinic", locale: "en", copy }).robots).toEqual({ index: false, follow: true });
+  });
+  it("copy per kind", () => {
+    expect(landingCopy({ kind: "specialization", name: "Weight Loss" }, copy)).toEqual({ title: "Weight Loss coaches", intro: "Focus: Weight Loss." });
+    expect(landingCopy({ kind: "country", name: "Romania" }, copy).title).toBe("Coaches in Romania");
+  });
+  it("structured data: a CollectionPage of the coaches shown, and a breadcrumb", () => {
+    const ld = landingJsonLd({ slug: "cluj-napoca", title: "Trainers in Cluj" }, [{ slug: "ana", name: "Ana" }], "https://s",
+      { home: "Voinic", coaches: "Coaches" });
+    const [page, crumbs] = ld["@graph"];
+    expect(page).toMatchObject({ "@type": "CollectionPage", url: "https://s/coaches/cluj-napoca" });
+    expect((page as { mainEntity: { itemListElement: unknown[] } }).mainEntity.itemListElement)
+      .toEqual([{ "@type": "ListItem", position: 1, url: "https://s/coaches/ana", name: "Ana" }]);
+    expect((crumbs as { itemListElement: unknown[] }).itemListElement).toHaveLength(3);
   });
 });

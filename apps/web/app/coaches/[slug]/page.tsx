@@ -9,12 +9,19 @@ import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { currentUserId } from "@/lib/supabase/server";
 import {
-  getCoachSlugRedirect, getCoachViewerState, getPublicCoachPosts, getPublicCoachPrograms, getPublicCoachProfile,
+  getCoachSlugRedirect, getCoachViewerState, getDiscoveryFacets, getPublicCoachPosts, getPublicCoachPrograms, getPublicCoachProfile,
+  searchCoaches,
 } from "@/lib/coach-profile-data";
 import {
-  TEASER_PROGRAMS, TEASER_REVIEWS, attributionParams, coachGateHref, coachIndexable, coachPageDescription, coachPageJsonLd,
-  coachPageTitle, coachTeaser, startCoachingState,
+  TEASER_PROGRAMS, TEASER_REVIEWS, attributionParams, coachGateHref, coachPageJsonLd, coachPageMetadata, coachTeaser,
+  startCoachingState,
 } from "@/lib/coach-public";
+import { landingFor, landingIndexable, type DiscoveryLanding } from "@/lib/coach-discovery";
+import { landingCopy, landingJsonLd, landingMetadata } from "@/lib/seo";
+import { zoneLabel } from "@/lib/booking";
+import { DiscoveryListing } from "@/components/coach-discovery/listing";
+import { CoachSearchBox } from "@/components/coach-discovery/controls";
+import { ShareCoachButton } from "@/components/coach-profile/share-button";
 import { MarketplaceTracker } from "@/components/marketplace-tracker";
 import { ModerationMenuButton } from "@/components/moderation";
 import { ratingLabel } from "@/lib/coach-review";
@@ -40,40 +47,22 @@ type Props = {
   searchParams?: Promise<{ intent?: string; service?: string; utm_source?: string; utm_medium?: string; utm_campaign?: string }>;
 };
 
-/** Every read here goes through coach_public_profile(); nothing unpublished is ever a page. */
+/**
+ * Every read here goes through coach_public_profile(); nothing unpublished is
+ * ever a page. A slug that is not a coach may be a landing listing — a city,
+ * a specialization or a country (they share the namespace, 20261020100000).
+ */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const [{ slug }, { t, locale }] = await Promise.all([params, getI18n()]);
   const profile = await getPublicCoachProfile(slug);
-  if (!profile) return { title: `${t.coachProfile.publicPage.notFoundTitle} | ${APP_NAME}`, robots: { index: false, follow: false } };
-  const url = `${SITE_URL}/coaches/${profile.slug}`;
-  const title = coachPageTitle(profile, locale, APP_NAME);
-  const description = coachPageDescription(profile, locale);
-  const images = profile.cover_url ?? profile.avatar_url;
-  const imageAlt = profile.headline ? `${profile.display_name} — ${profile.headline}` : profile.display_name;
-  return {
-    title,
-    description,
-    alternates: { canonical: url },
+  if (profile) {
     // a published coach is indexable; one that lost the essentials publishing
     // required (an avatar removed after approval…) is not (20261107100000)
-    robots: coachIndexable(profile) ? { index: true, follow: true } : { index: false, follow: true },
-    openGraph: {
-      type: "profile",
-      ...(profile.username ? { username: profile.username } : {}),
-      url,
-      title,
-      description,
-      siteName: APP_NAME,
-      locale: locale === "ro" ? "ro_RO" : "en_GB",
-      ...(images ? { images: [{ url: images, alt: imageAlt }] } : {}),
-    },
-    twitter: {
-      card: profile.cover_url ? "summary_large_image" : "summary",
-      title,
-      description,
-      ...(images ? { images: [images] } : {}),
-    },
-  };
+    return coachPageMetadata(profile, { siteUrl: SITE_URL, appName: APP_NAME, locale });
+  }
+  const landing = landingFor(slug, await getDiscoveryFacets(), locale);
+  if (landing) return landingMetadata(landing, { siteUrl: SITE_URL, appName: APP_NAME, locale, copy: t.coachProfile.discovery.landing });
+  return { title: `${t.coachProfile.publicPage.notFoundTitle} | ${APP_NAME}`, robots: { index: false, follow: false } };
 }
 
 /**
@@ -109,6 +98,9 @@ export default async function CoachPage({ params, searchParams }: Props) {
     getPublicReviews(slug, signedIn ? 10 : TEASER_REVIEWS),
   ]);
   if (!profile) {
+    // a city, a specialization or a country: the indexable landing listing (20261111110000)
+    const landing = landingFor(slug, await getDiscoveryFacets(), locale);
+    if (landing) return <Landing landing={landing} signedIn={signedIn} />;
     // a link shared before the coach changed their slug keeps working (20261107100000)
     const moved = await getCoachSlugRedirect(slug);
     if (moved) permanentRedirect(`/coaches/${moved}`);
@@ -150,7 +142,7 @@ export default async function CoachPage({ params, searchParams }: Props) {
   const followButton = signedIn && coachId ? (
     <FollowButton userId={coachId} following={viewer?.is_following ?? false} followsMe={viewer?.follows_me ?? false} />
   ) : (
-    <Link href={loginHref} title={p.signInToFollow}
+    <Link href={loginHref} title={p.signInToFollow} data-mkt-wall="follow"
       className="inline-flex h-12 items-center justify-center rounded-2xl bg-surface px-5 text-[14px] font-semibold text-ink hover:bg-accent-soft/60">
       {p.follow}
     </Link>
@@ -207,6 +199,23 @@ export default async function CoachPage({ params, searchParams }: Props) {
   ) : null;
   const headerRating = ratingLabel(reviews, { one: t.coachProfile.reviews.one, many: t.coachProfile.reviews.many }, locale);
 
+  // when the coach can be booked: formatted here, in the coach's zone, so server and browser draw the same text
+  const avail = profile.availability;
+  const firstBook = Object.values(bookHrefs)[0] ?? null;
+  const availability = avail ? {
+    bookable: avail.bookable && firstBook !== null,
+    nextSlot: avail.next_slot_at && avail.timezone
+      ? new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", {
+          timeZone: avail.timezone, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+        }).format(new Date(avail.next_slot_at))
+      : null,
+    zone: avail.timezone ? zoneLabel(avail.timezone) : null,
+    href: firstBook,
+  } : null;
+  const share = viewer?.is_self ? null : (
+    <ShareCoachButton url={`${SITE_URL}/coaches/${profile.slug}`} name={name} slug={profile.slug} />
+  );
+
   const jsonLd = coachPageJsonLd(shown, SITE_URL, locale, { home: APP_NAME, coaches: t.coachProfile.discovery.backToDiscover });
 
   return (
@@ -224,7 +233,7 @@ export default async function CoachPage({ params, searchParams }: Props) {
       <StartCoachingProvider profile={shown} viewer={viewer} state={state} loginParams={loginParams}
         intent={signedIn && intent?.kind === "contact" ? { kind: "contact", serviceId: intent.serviceId } : null}>
         <CoachProfileView profile={shown} follow={follow} posts={posts} programs={programs} live bookHrefs={bookHrefs}
-          reviews={reviewsSection} gate={gate} headerRating={headerRating} />
+          reviews={reviewsSection} gate={gate} headerRating={headerRating} share={share} availability={availability} />
       </StartCoachingProvider>
     </>
   );
@@ -257,4 +266,36 @@ async function SignedInPrograms({ coachId, title }: { coachId: string; title: st
   const cards = await getProfileRoutines(coachId);
   if (cards.length === 0) return null;
   return <CoachSection title={title} id="programs"><ProgramGrid cards={cards} showSave /></CoachSection>;
+}
+
+/**
+ * /coaches/<city | specialization | country> — a landing listing: the same
+ * listing as /coaches?city=… (the one ranking, the same filters), at an
+ * address of its own with an H1, an intro and a canonical URL, indexable
+ * while it lists someone. The filters on it lead into /coaches?… — those
+ * combinations stay noindex.
+ */
+async function Landing({ landing, signedIn }: { landing: DiscoveryLanding; signedIn: boolean }) {
+  const { t } = await getI18n();
+  const d = t.coachProfile.discovery;
+  const [result, facets] = await Promise.all([searchCoaches(landing.query), getDiscoveryFacets()]);
+  const { title, intro } = landingCopy(landing, d.landing);
+  const jsonLd = landingJsonLd({ slug: landing.slug, title }, result.items.map((c) => ({ slug: c.slug, name: c.display_name })), SITE_URL,
+    { home: APP_NAME, coaches: d.backToDiscover });
+  return (
+    <div data-testid="coach-landing" data-kind={landing.kind} data-indexable={landingIndexable(landing)}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <MarketplaceTracker view="directory_view" city={landing.kind === "city" ? landing.slug : null}
+        specialization={landing.kind === "specialization" ? landing.slug : null} />
+      <section className="mx-auto max-w-3xl pb-5 pt-2 text-center sm:pb-10 sm:pt-8">
+        <nav aria-label="breadcrumb" className="text-[13px] font-semibold text-ink-faint">
+          <Link href="/coaches" className="hover:text-ink">{d.backToDiscover}</Link> <span aria-hidden>/</span> <span>{landing.name}</span>
+        </nav>
+        <h1 className="mt-2 font-display text-[24px] font-extrabold leading-tight tracking-tight sm:text-[40px]">{title}</h1>
+        <p className="mx-auto mt-3 max-w-[60ch] text-[15px] text-ink-soft sm:text-[16px]">{intro}</p>
+        <div className="mt-4 text-left sm:mt-8"><CoachSearchBox query={landing.query} /></div>
+      </section>
+      <DiscoveryListing query={landing.query} result={result} facets={facets} signedIn={signedIn} label={landing.name} />
+    </div>
+  );
 }

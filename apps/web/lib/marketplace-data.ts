@@ -44,6 +44,8 @@ export type CoachMarketplaceAnalytics = {
   bookings: number; bookings_completed: number;
   review_count: number; review_avg: number | string | null;
   sources: { source: string; n: number }[];
+  /** 20261111120000; absent before it. */
+  service_views?: number; shares?: number; login_walls?: number;
 };
 
 /** A database without the function (PGRST202) answers null — the card is simply not drawn. */

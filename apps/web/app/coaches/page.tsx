@@ -1,27 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { APP_NAME, SITE_URL } from "@/lib/brand";
-import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { getProfile } from "@/lib/data";
 import { getDiscoveryFacets, searchCoaches } from "@/lib/coach-profile-data";
 import {
-  EMPTY_QUERY, clearFilters, discoverySearch, emptyKind, filterChips, hasFilters, hasMore, isDiscoveryHome, matchViewerCity,
-  parseDiscoveryQuery, toCoachCard, withChange, type DiscoveryFacets, type DiscoveryQuery,
+  EMPTY_QUERY, hasFilters, isDiscoveryHome, matchViewerCity, parseDiscoveryQuery, toCoachCard,
+  type DiscoveryFacets, type DiscoveryQuery,
 } from "@/lib/coach-discovery";
-import { CoachCard } from "@/components/coach-discovery/coach-card";
 import { DiscoveryHome, type NearState } from "@/components/coach-discovery/home";
-import {
-  ActiveFilters, CoachSearchBox, ExampleQueries, FiltersSidebar, MobileFilterBar, SortSelect,
-} from "@/components/coach-discovery/controls";
+import { CoachSearchBox, ExampleQueries } from "@/components/coach-discovery/controls";
+import { DiscoveryListing } from "@/components/coach-discovery/listing";
 import { MarketplaceTracker } from "@/components/marketplace-tracker";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 /**
  * The listing has one canonical address. A filtered or searched URL is a
- * working, shareable page, but not indexed (yet): the indexable combinations
- * (/coaches/cluj, …) are a later, deliberate step.
+ * working, shareable page, but never indexed: the designated indexable
+ * listings are the landing pages /coaches/<city | specialization | country>
+ * (app/coaches/[slug]), so no filter combination can mint crawlable
+ * near-duplicates.
  */
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const [{ t, locale }, params] = await Promise.all([getI18n(), searchParams]);
@@ -63,11 +62,6 @@ export default async function CoachesPage({ searchParams }: Props) {
 
   const d = t.coachProfile.discovery;
   const [result, facets] = await Promise.all([searchCoaches(query), getDiscoveryFacets()]);
-  const cards = result.items.map((row) => toCoachCard(row, locale));
-  const empty = emptyKind(result.total, query);
-  const activeCount = filterChips(query, facets, locale, {
-    online: "", inPerson: "", hybrid: "", verified: "", experience: "", priceFrom: "", priceTo: "", priceRange: "", includeFull: "",
-  }).length;
 
   return (
     <div>
@@ -84,55 +78,7 @@ export default async function CoachesPage({ searchParams }: Props) {
       </section>
 
       {/* ---------- filters + results ---------- */}
-      <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
-        <FiltersSidebar query={query} facets={facets} />
-
-        <section aria-labelledby="coach-results" aria-live="polite">
-          <MobileFilterBar query={query} facets={facets} active={activeCount} total={result.total} />
-
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 lg:mt-0">
-            <h2 id="coach-results" className="text-[14px] font-semibold text-ink-soft" data-testid="coach-results-count">
-              {query.q ? `${fill(d.resultsFor, { q: query.q })} · ` : !hasFilters(query) ? `${d.explore} · ` : ""}
-              {result.total === 1 ? d.countOne : fill(d.count, { n: result.total })}
-            </h2>
-            <div className="hidden lg:block"><SortSelect query={query} /></div>
-          </div>
-          <div className="mt-3"><ActiveFilters query={query} facets={facets} /></div>
-
-          {empty === "none" ? (
-            <>
-              <ul className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(min(100%,270px),1fr))] gap-4" data-testid="coach-results">
-                {cards.map((card) => <li key={card.href}><CoachCard card={card} signedIn={signedIn} /></li>)}
-              </ul>
-              {hasMore(result.total, query) ? (
-                <div className="mt-8 flex justify-center">
-                  {/* a real link: crawlers and no-JS readers can follow it too */}
-                  <Link href={`/coaches${discoverySearch(withChange(query, { page: query.page + 1 }))}`} scroll={false}
-                    className="inline-flex h-11 items-center rounded-2xl bg-surface px-6 font-display text-sm font-bold hover:bg-accent-soft">
-                    {d.loadMore}
-                  </Link>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <div className="mt-6 rounded-3xl bg-surface px-6 py-12 text-center" data-testid="coach-results-empty" data-kind={empty}>
-              <p className="font-display text-lg font-bold">{empty === "no_coaches" ? d.noCoaches : d.noMatch}</p>
-              <p className="mx-auto mt-2 max-w-[48ch] text-[14px] text-ink-soft">
-                {empty === "no_coaches" ? d.noCoachesHint : empty === "no_match_search" ? fill(d.noSearchHint, { q: query.q }) : d.noMatchHint}
-              </p>
-              {empty !== "no_coaches" ? (
-                <Link
-                  href={`/coaches${discoverySearch(empty === "no_match_search" ? clearFilters(query, false) : clearFilters(query))}`}
-                  scroll={false}
-                  className="mt-5 inline-flex h-11 items-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90"
-                >
-                  {empty === "no_match_search" ? d.explore : d.clearFilters}
-                </Link>
-              ) : null}
-            </div>
-          )}
-        </section>
-      </div>
+      <DiscoveryListing query={query} result={result} facets={facets} signedIn={signedIn} />
     </div>
   );
 }

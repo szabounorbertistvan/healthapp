@@ -1,3 +1,4 @@
+import type { ClientGoal, SocialLinks } from "./coach-content";
 /**
  * Coach Discovery: the shapes of the coach profile and the codes its RPCs
  * raise. Pure — no server or client runtime — so screens on either side and
@@ -163,6 +164,11 @@ export type CoachProfileRow = {
   verification_decided_at: string | null;
   /** The admin's reason after a rejection — shown to the coach only. */
   verification_note: string | null;
+  /** Own-words content (20261111100000). Absent on a database before it. */
+  approach?: string | null;
+  experience_summary?: string | null;
+  client_goals?: ClientGoal[];
+  social_links?: SocialLinks;
 };
 
 export type CoachServiceRow = {
@@ -302,6 +308,17 @@ export type CoachPublicProfile = {
     price_cents: number | null;
     currency: string | null;
   }[];
+  /** The coach's own words (20261111100000) — shown labelled as such; absent before that migration. */
+  approach?: string | null;
+  experience_summary?: string | null;
+  client_goals?: ClientGoal[];
+  social_links?: SocialLinks;
+  /**
+   * Bookable at all, and the soonest free public slot in 14 days — the same
+   * slots the booking page shows anyone. Absent in a preview and before
+   * 20261111100000.
+   */
+  availability?: { bookable: boolean; next_slot_at: string | null; timezone: string | null };
 };
 
 /** One row of coach_public_posts(): a public post, text and counts, no pictures. */

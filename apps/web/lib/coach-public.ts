@@ -5,6 +5,7 @@
  * onboarding preview.
  */
 import type { CoachPublicProfile, CoachViewerState } from "./coach-profile";
+import { socialEntries } from "./coach-content";
 
 /**
  * The one state the Start coaching control is in for this reader. The
@@ -113,6 +114,8 @@ export function coachJsonLd(p: CoachPublicProfile, url: string, locale: Locale):
     ...(p.about ? { description: p.about.slice(0, 500) } : {}),
     ...(p.specializations.length ? { knowsAbout: p.specializations.map((s) => (locale === "ro" ? s.name_ro : s.name_en)) } : {}),
     ...(p.languages.length ? { knowsLanguage: p.languages.map((l) => l.code) } : {}),
+    // the coach's own profiles elsewhere (handles validated, URLs built by Voinic — 20261111100000)
+    ...(socialEntries(p.social_links).length ? { sameAs: socialEntries(p.social_links).map((l) => l.url) } : {}),
     ...(p.locations.length
       ? { workLocation: p.locations.map((l) => ({ "@type": "Place", name: l.gym_name ?? (locale === "ro" ? l.city : l.city_en),
           address: { "@type": "PostalAddress", addressLocality: locale === "ro" ? l.city : l.city_en, addressCountry: l.country_code } })) }
@@ -185,6 +188,8 @@ export function coachIndexable(
 }
 
 export const TEASER_ABOUT_CHARS = 280;
+/** The approach and experience are cut shorter: who the coach is stays whole, how they work is a start. */
+export const TEASER_CONTENT_CHARS = 180;
 export const TEASER_SERVICES = 3;
 export const TEASER_REVIEWS = 3;
 export const TEASER_PROGRAMS = 3;
@@ -198,15 +203,21 @@ export const TEASER_PROGRAMS = 3;
  */
 export function coachTeaser(p: CoachPublicProfile): { profile: CoachPublicProfile; aboutCut: boolean; moreServices: number } {
   const about = p.about?.trim() ?? null;
-  let cut = about;
-  if (about && about.length > TEASER_ABOUT_CHARS) {
-    cut = `${about.slice(0, TEASER_ABOUT_CHARS).replace(/\s+\S*$/, "").trimEnd()}…`;
-  }
+  const cut = cutText(about, TEASER_ABOUT_CHARS);
   return {
-    profile: { ...p, about: cut, services: p.services.slice(0, TEASER_SERVICES) },
+    profile: {
+      ...p, about: cut, services: p.services.slice(0, TEASER_SERVICES),
+      ...(p.approach !== undefined ? { approach: cutText(p.approach?.trim() ?? null, TEASER_CONTENT_CHARS) } : {}),
+      ...(p.experience_summary !== undefined ? { experience_summary: cutText(p.experience_summary?.trim() ?? null, TEASER_CONTENT_CHARS) } : {}),
+    },
     aboutCut: cut !== about,
     moreServices: Math.max(0, p.services.length - TEASER_SERVICES),
   };
+}
+
+function cutText(text: string | null, max: number): string | null {
+  if (!text || text.length <= max) return text;
+  return `${text.slice(0, max).replace(/\s+\S*$/, "").trimEnd()}…`;
 }
 
 /** Where "See the full profile" / "Create a free account" go: sign-in or sign-up, and back to this exact page. */
@@ -263,5 +274,59 @@ export function coachPageJsonLd(p: CoachPublicProfile, siteUrl: string, locale: 
         ],
       },
     ],
+  };
+}
+
+// ---------- social previews (20261111100000) ----------
+
+/**
+ * A Cloudinary delivery URL re-cut for link previews: the cover as a
+ * 1200×630 card (what Facebook, WhatsApp, LinkedIn and X crop to), the avatar
+ * as a 600×600 square, both JPEG (some preview bots do not read WebP/AVIF).
+ * Any other URL is returned as it is. Pure string work on the transformation
+ * segment Voinic itself wrote (lib/cloudinary.ts coverUrl / avatarUrl).
+ */
+export function socialImage(url: string, kind: "cover" | "avatar"): string {
+  const m = url.match(/^(https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)((?:[a-z]{1,3}_[^/]+)\/)?(.*)$/);
+  if (!m) return url;
+  const t = kind === "cover" ? "c_fill,g_auto,w_1200,h_630,q_auto,f_jpg" : "c_fill,g_face,w_600,h_600,q_auto,f_jpg";
+  return `${m[1]}${t}/${m[3]}`;
+}
+
+/**
+ * Everything a coach page tells search engines and link previews, from public
+ * fields only: title, description, the canonical URL (one per coach), robots
+ * (noindex once the essentials are gone), Open Graph `profile` and a Twitter
+ * card — large with a cover, a summary with only an avatar.
+ */
+export function coachPageMetadata(p: CoachPublicProfile, opts: { siteUrl: string; appName: string; locale: Locale }) {
+  const url = `${opts.siteUrl}/coaches/${p.slug}`;
+  const title = coachPageTitle(p, opts.locale, opts.appName);
+  const description = coachPageDescription(p, opts.locale);
+  const image = p.cover_url ? socialImage(p.cover_url, "cover") : p.avatar_url ? socialImage(p.avatar_url, "avatar") : null;
+  const alt = p.headline ? `${p.display_name} — ${p.headline}` : p.display_name;
+  const size = p.cover_url ? { width: 1200, height: 630 } : { width: 600, height: 600 };
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    robots: coachIndexable(p) ? { index: true, follow: true } : { index: false, follow: true },
+    openGraph: {
+      type: "profile" as const,
+      ...(p.username ? { username: p.username } : {}),
+      url,
+      title,
+      description,
+      siteName: opts.appName,
+      locale: opts.locale === "ro" ? "ro_RO" : "en_GB",
+      alternateLocale: [opts.locale === "ro" ? "en_GB" : "ro_RO"],
+      ...(image ? { images: [{ url: image, alt, ...size }] } : {}),
+    },
+    twitter: {
+      card: p.cover_url ? ("summary_large_image" as const) : ("summary" as const),
+      title,
+      description,
+      ...(image ? { images: [{ url: image, alt }] } : {}),
+    },
   };
 }

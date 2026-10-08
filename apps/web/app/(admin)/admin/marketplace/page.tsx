@@ -9,8 +9,9 @@ import { AdminHeader, FilterButtons, Kpi, KpiGrid, Note, Section, Table, Td, Th,
 export const dynamic = "force-dynamic";
 
 const FUNNEL = [
-  "directory_view", "profile_view", "cta_contact", "cta_book", "cta_save", "cta_full_profile", "signup_started", "signup_completed",
-  "request_sent", "request_accepted", "coaching_started", "booking_created", "booking_completed", "review_submitted", "coach_saved",
+  "directory_view", "search", "filter_applied", "profile_view", "service_view", "share", "cta_contact", "cta_book", "cta_save",
+  "cta_full_profile", "login_required", "signup_started", "signup_completed", "request_sent", "request_accepted", "coaching_started",
+  "booking_created", "booking_completed", "review_submitted", "coach_saved",
 ] as const;
 
 /**
@@ -77,6 +78,29 @@ export default async function AdminMarketplacePage({ searchParams }: { searchPar
                   </li>
                 ))}
               </ol>
+            </Section>
+            <Section title={m.filtersUsed}>
+              {(a.filters ?? []).length === 0 ? <Note>{m.notTracked}</Note> : (
+                <ol className="grid gap-1" data-testid="admin-marketplace-filters">
+                  {(a.filters ?? []).map((f) => (
+                    <li key={f.filter} className="flex items-center justify-between rounded-xl bg-bg px-3 py-2 text-[13px]">
+                      <span>{m.filterNames[f.filter as keyof typeof m.filterNames] ?? f.filter}</span>
+                      <span className="font-semibold tabular-nums">{fmtNum(f.n, locale)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <h3 className="mt-4 text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{m.loginWalls}</h3>
+              {(a.login_walls ?? []).length === 0 ? <Note>{m.notTracked}</Note> : (
+                <ol className="mt-2 grid gap-1">
+                  {(a.login_walls ?? []).map((w) => (
+                    <li key={w.wanted} className="flex items-center justify-between rounded-xl bg-bg px-3 py-2 text-[13px]">
+                      <span>{m.wanted[w.wanted as keyof typeof m.wanted] ?? w.wanted}</span>
+                      <span className="font-semibold tabular-nums">{fmtNum(w.n, locale)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </Section>
             <Section title={m.sources}>
               {a.sources.length === 0 ? <Note>{m.notTracked}</Note> : (

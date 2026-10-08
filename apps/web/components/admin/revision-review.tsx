@@ -4,6 +4,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { summary } from "@/lib/coach-onboarding";
 import type { CoachProfileMissing } from "@/lib/coach-profile";
 import { revisionDiff, type RevisionPayload, type RevisionStatus } from "@/lib/coach-revision";
+import { hasRiskyClaim } from "@/lib/coach-content";
 import { approveCoachRevision, rejectCoachRevision } from "@/app/admin-coach-actions";
 import { ConfirmAction } from "./confirm-action";
 import { Note, Pill, Section, fmtDateTime } from "./ui";
@@ -24,6 +25,9 @@ export async function AdminRevisionReview({ profileId, revision }: { profileId: 
   const groups = t.coachProfile.publish.groups;
   const diff = revisionDiff(revision.live, revision.payload);
   const missing = summary(revision.missing).filter((x) => !x.done).map((x) => groups[x.group]);
+  // a nudge for the reviewer, not a verdict: pre-moderation decides
+  const p = revision.payload;
+  const claim = [p.headline, p.about, p.approach, p.experience_summary, ...p.services.map((s) => s.description)].some(hasRiskyClaim);
   return (
     <Section title={r.title} hint={r.hint}>
       <div className="grid gap-3 text-[13.5px]" data-testid="admin-revision" data-status={revision.status}>
@@ -32,6 +36,7 @@ export async function AdminRevisionReview({ profileId, revision }: { profileId: 
           {revision.submitted_at ? <span className="text-ink-faint">{fill(r.submitted, { date: fmtDateTime(revision.submitted_at, locale) })}</span> : null}
         </div>
         {missing.length ? <p className="text-warn">{fill(r.missing, { list: missing.join(", ") })}</p> : null}
+        {claim ? <p className="text-warn" data-testid="admin-revision-claim">{r.claimFlag}</p> : null}
         {diff.length === 0 ? <Note>{r.noChanges}</Note> : (
           <ul className="grid gap-2">
             {diff.map((d, i) => (

@@ -25,6 +25,10 @@ import { CertificationsStep, ServicesStep } from "./lists";
 import { searchGyms } from "@/app/gym-actions";
 import type { GymHit } from "@/lib/gym-data";
 import { CoachProfilePreview } from "./preview";
+import {
+  CLIENT_GOALS, CONTENT_LIMITS, MAX_CLIENT_GOALS, SOCIAL_NETWORKS, cleanSocialLinks, hasRiskyClaim,
+  type ClientGoal, type SocialLinks,
+} from "@/lib/coach-content";
 import { COACH_PROFILE_PATH, useCoachError } from "./status";
 
 /** How long the text steps wait after the last keystroke before saving. */
@@ -35,7 +39,13 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 /** The three groups of draft fields, each written by its own action. */
 export type Saved = Pick<DraftState,
   "slug" | "headline" | "about" | "coachingSince" | "online" | "inPerson" |
-  "specializations" | "primarySpecialization" | "languages" | "locations">;
+  "specializations" | "primarySpecialization" | "languages" | "locations"> & {
+  // own-words content (20261111100000): approach / experience / goals on Expertise, links on Identity
+  approach: string;
+  experienceSummary: string;
+  clientGoals: ClientGoal[];
+  socialLinks: SocialLinks;
+};
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -52,6 +62,10 @@ export function initialDraft(data: MyCoachProfile): Saved {
     primarySpecialization: data.specializations.find((s) => s.is_primary)?.slug ?? data.specializations[0]?.slug ?? null,
     languages: data.languages,
     locations: data.locations.map((l) => ({ city: l.city_slug, gymName: l.gym_name ?? "", gymId: l.gym_id })),
+    approach: p.approach ?? "",
+    experienceSummary: p.experience_summary ?? "",
+    clientGoals: p.client_goals ?? [],
+    socialLinks: p.social_links ?? {},
   };
 }
 
@@ -91,8 +105,12 @@ export function CoachProfileWizard({
 
   const stepId = STEPS[step];
   const dirtyIdentity = !same(
-    [draft.slug, draft.headline, draft.about], [saved.current.slug, saved.current.headline, saved.current.about]);
-  const dirtyExpertise = !same(
+    [draft.slug, draft.headline, draft.about, draft.socialLinks],
+    [saved.current.slug, saved.current.headline, saved.current.about, saved.current.socialLinks]);
+  const dirtyContent = !same(
+    [draft.approach, draft.experienceSummary, draft.clientGoals],
+    [saved.current.approach, saved.current.experienceSummary, saved.current.clientGoals]);
+  const dirtyExpertise = dirtyContent || !same(
     [draft.specializations, draft.primarySpecialization, draft.coachingSince],
     [saved.current.specializations, saved.current.primarySpecialization, saved.current.coachingSince]);
   const dirtyWhere = !same(
@@ -101,9 +119,13 @@ export function CoachProfileWizard({
   const dirty = dirtyIdentity || dirtyExpertise || dirtyWhere;
 
   const idErrors = identityErrors(draft);
+  const socialInvalid = cleanSocialLinks(draft.socialLinks).invalid;
   const yearError = coachingSinceError(draft.coachingSince);
+  const contentTooLong = draft.approach.trim().length > CONTENT_LIMITS.approach
+    || draft.experienceSummary.trim().length > CONTENT_LIMITS.experienceSummary;
   const stepBlocked =
-    (stepId === "identity" && Object.keys(idErrors).length > 0) || (stepId === "expertise" && yearError !== null);
+    (stepId === "identity" && (Object.keys(idErrors).length > 0 || socialInvalid !== null))
+    || (stepId === "expertise" && (yearError !== null || contentTooLong));
 
   /** Write whatever this step changed. True when nothing is left unsaved. */
   const saveStep = useCallback(async (index: number): Promise<boolean> => {
@@ -117,12 +139,16 @@ export function CoachProfileWizard({
       if (d.slug !== s.slug) patch.slug = d.slug;
       if (d.headline !== s.headline) patch.headline = d.headline;
       if (d.about !== s.about) patch.about = d.about;
+      if (!same(d.socialLinks, s.socialLinks)) patch.socialLinks = cleanSocialLinks(d.socialLinks).links;
       if (Object.keys(patch).length) calls.push(() => saveCoachProfileDraft(patch));
     } else if (id === "expertise") {
       if (!same([d.specializations, d.primarySpecialization], [s.specializations, s.primarySpecialization])) {
         calls.push(() => setCoachSpecializations(d.specializations, d.primarySpecialization));
       }
       if (d.coachingSince !== s.coachingSince) calls.push(() => saveCoachProfileDraft({ coachingSince: d.coachingSince }));
+      if (!same([d.approach, d.experienceSummary, d.clientGoals], [s.approach, s.experienceSummary, s.clientGoals])) {
+        calls.push(() => saveCoachProfileDraft({ approach: d.approach, experienceSummary: d.experienceSummary, clientGoals: d.clientGoals }));
+      }
     } else if (id === "where") {
       if (d.online !== s.online || d.inPerson !== s.inPerson) {
         calls.push(() => saveCoachProfileDraft({ online: d.online, inPerson: d.inPerson }));
@@ -146,9 +172,12 @@ export function CoachProfileWizard({
         }
       }
       // What was sent is what is stored now; later keystrokes stay dirty.
-      if (id === "identity") saved.current = { ...saved.current, slug: d.slug, headline: d.headline, about: d.about };
+      if (id === "identity") saved.current = { ...saved.current, slug: d.slug, headline: d.headline, about: d.about, socialLinks: d.socialLinks };
       if (id === "expertise") {
-        saved.current = { ...saved.current, specializations: d.specializations, primarySpecialization: d.primarySpecialization, coachingSince: d.coachingSince };
+        saved.current = {
+          ...saved.current, specializations: d.specializations, primarySpecialization: d.primarySpecialization, coachingSince: d.coachingSince,
+          approach: d.approach, experienceSummary: d.experienceSummary, clientGoals: d.clientGoals,
+        };
       }
       if (id === "where") {
         saved.current = { ...saved.current, online: d.online, inPerson: d.inPerson, languages: d.languages, locations: d.locations };
@@ -223,7 +252,8 @@ export function CoachProfileWizard({
 
         <div className="mt-5">
           {stepId === "identity" ? (
-            <IdentityStep draft={draft} setDraft={setDraft} errors={idErrors} displayName={displayName} revisionMode={Boolean(data.revision)} />
+            <IdentityStep draft={draft} setDraft={setDraft} errors={idErrors} displayName={displayName} revisionMode={Boolean(data.revision)}
+              socialInvalid={socialInvalid} />
           ) : stepId === "expertise" ? (
             <ExpertiseStep draft={draft} setDraft={setDraft} catalog={catalog} yearError={yearError} />
           ) : stepId === "where" ? (
@@ -330,8 +360,11 @@ function Counter({ n, max }: { n: number; max: number }) {
 }
 
 function IdentityStep({
-  draft, setDraft, errors, displayName, revisionMode = false,
-}: StepProps & { errors: ReturnType<typeof identityErrors>; displayName: string; revisionMode?: boolean }) {
+  draft, setDraft, errors, displayName, revisionMode = false, socialInvalid = null,
+}: StepProps & {
+  errors: ReturnType<typeof identityErrors>; displayName: string; revisionMode?: boolean;
+  socialInvalid?: (typeof SOCIAL_NETWORKS)[number] | null;
+}) {
   const { t } = useI18n();
   const c = t.coachProfile.identity;
   const w = t.coachProfile.wizard;
@@ -364,6 +397,7 @@ function IdentityStep({
         />
         <p id={`${ids}-about-hint`} className={HINT}>{c.aboutHint}</p>
         {errors.about ? <span className={FIELD_ERROR}>{fill(w.tooLong, { max: COACH_LIMITS.about })}</span> : null}
+        <ClaimNudge text={draft.about} />
       </div>
 
       <div>
@@ -381,8 +415,36 @@ function IdentityStep({
         {errors.slug ? <span className={FIELD_ERROR}>{c.slugError}</span> : null}
         <p className={HINT}>{fill(c.shownAs, { name: displayName })}</p>
       </div>
+
+      <fieldset data-testid="coach-social-links">
+        <legend className={LABEL}>{c.socialTitle}</legend>
+        <p className={HINT}>{c.socialHint}</p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {SOCIAL_NETWORKS.map((network) => (
+            <label key={network} className="grid gap-1 text-[12.5px] font-semibold text-ink-soft">
+              {c.socialNetworks[network]}
+              <input
+                className={FIELD} value={draft.socialLinks[network] ?? ""} placeholder={c.socialPlaceholders[network]}
+                autoCapitalize="none" spellCheck={false} inputMode={network === "website" ? "url" : "text"}
+                aria-invalid={socialInvalid === network} maxLength={network === "website" ? 200 : 120}
+                onChange={(e) => setDraft((d) => ({ ...d, socialLinks: { ...d.socialLinks, [network]: e.target.value } }))}
+              />
+            </label>
+          ))}
+        </div>
+        {socialInvalid ? (
+          <span role="alert" className={FIELD_ERROR}>{fill(c.socialError, { network: c.socialNetworks[socialInvalid] })}</span>
+        ) : null}
+      </fieldset>
     </div>
   );
+}
+
+/** A quiet warning under a text that promises what nobody can (lib/coach-content.ts hasRiskyClaim). */
+function ClaimNudge({ text }: { text: string }) {
+  const { t } = useI18n();
+  if (!hasRiskyClaim(text)) return null;
+  return <p role="status" className="mt-1.5 text-[12.5px] font-semibold text-warn" data-testid="claim-nudge">{t.coachProfile.expertise.claimWarning}</p>;
 }
 
 function ExpertiseStep({
@@ -455,6 +517,52 @@ function ExpertiseStep({
         <p id={`${ids}-since-hint`} className={HINT}>{c.coachingSinceHint}</p>
         {yearError ? <span className={FIELD_ERROR}>{c.yearError}</span> : null}
       </div>
+
+      <ContentArea id={`${ids}-experience`} label={c.experienceSummary} hint={c.experienceSummaryHint} max={CONTENT_LIMITS.experienceSummary}
+        value={draft.experienceSummary} onChange={(v) => setDraft((d) => ({ ...d, experienceSummary: v }))} />
+      <ContentArea id={`${ids}-approach`} label={c.approach} hint={c.approachHint} max={CONTENT_LIMITS.approach}
+        value={draft.approach} onChange={(v) => setDraft((d) => ({ ...d, approach: v }))} />
+
+      <fieldset>
+        <legend className={LABEL}>{c.clientGoals}</legend>
+        <p className={HINT}>{fill(c.clientGoalsHint, { max: MAX_CLIENT_GOALS })}</p>
+        <div className="mt-3 flex flex-wrap gap-1.5" data-testid="coach-client-goals">
+          {CLIENT_GOALS.map((goal) => {
+            const on = draft.clientGoals.includes(goal);
+            const full = !on && draft.clientGoals.length >= MAX_CLIENT_GOALS;
+            return (
+              <Chip key={goal} on={on} onToggle={() => {
+                if (full) return;
+                setDraft((d) => ({ ...d, clientGoals: on ? d.clientGoals.filter((g) => g !== goal) : [...d.clientGoals, goal] }));
+              }}>
+                {c.goals[goal]}
+              </Chip>
+            );
+          })}
+        </div>
+        {draft.clientGoals.length >= MAX_CLIENT_GOALS ? <p className={HINT}>{fill(c.clientGoalsMax, { max: MAX_CLIENT_GOALS })}</p> : null}
+      </fieldset>
+    </div>
+  );
+}
+
+function ContentArea({ id, label, hint, max, value, onChange }: {
+  id: string; label: string; hint: string; max: number; value: string; onChange: (v: string) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div>
+      <div className="flex items-end justify-between gap-3">
+        <label className={LABEL} htmlFor={id}>{label}</label>
+        <Counter n={value.trim().length} max={max} />
+      </div>
+      <textarea
+        id={id} className={`${FIELD} h-auto min-h-28 resize-y py-2.5 leading-relaxed`} rows={4} value={value}
+        aria-describedby={`${id}-hint`} aria-invalid={value.trim().length > max} onChange={(e) => onChange(e.target.value)}
+      />
+      <p id={`${id}-hint`} className={HINT}>{hint}</p>
+      {value.trim().length > max ? <span className={FIELD_ERROR}>{fill(t.coachProfile.wizard.tooLong, { max })}</span> : null}
+      <ClaimNudge text={value} />
     </div>
   );
 }
@@ -818,6 +926,10 @@ export function buildPreview({
       price_public: s.price_public, price_cents: s.price_public ? s.price_cents : null,
       currency: s.price_public ? s.currency : null,
     })),
+    approach: draft.approach.trim() || null,
+    experience_summary: draft.experienceSummary.trim() || null,
+    client_goals: draft.clientGoals,
+    social_links: cleanSocialLinks(draft.socialLinks).links,
   };
 }
 

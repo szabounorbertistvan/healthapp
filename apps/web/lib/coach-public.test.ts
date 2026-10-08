@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CoachPublicProfile, CoachViewerState } from "./coach-profile";
 import {
   attributionParams, coachFormat, coachGateHref, coachIndexable, coachJsonLd, coachPageDescription, coachPageJsonLd, coachPageTitle, coachTeaser,
-  coachWhyPoints, startCoachingState, yearsOfExperience, TEASER_ABOUT_CHARS,
+  coachPageMetadata, coachWhyPoints, socialImage, startCoachingState, yearsOfExperience, TEASER_ABOUT_CHARS, TEASER_CONTENT_CHARS,
 } from "./coach-public";
 
 const profile: CoachPublicProfile = {
@@ -209,5 +209,62 @@ describe("the public directory's foundation (20261107100000)", () => {
     ]);
     // nothing invented: no price for a service whose price is private
     expect(JSON.stringify(person.makesOffer)).not.toContain('"VIP","price"');
+  });
+});
+
+describe("own-words content in the teaser and the structured data (20261111100000)", () => {
+  const withContent: CoachPublicProfile = {
+    ...profile,
+    approach: `${"Weekly check-ins and progressive programs. ".repeat(10)}`.trim(),
+    experience_summary: "Eight years in a gym in Cluj.",
+    client_goals: ["strength", "beginners"],
+    social_links: { instagram: "andrei.fit", website: "https://andrei.ro", tiktok: "not valid!" },
+  };
+  it("an anonymous reader gets the start of a long approach, a short experience whole", () => {
+    const { profile: t } = coachTeaser(withContent);
+    expect(t.approach!.length).toBeLessThanOrEqual(TEASER_CONTENT_CHARS + 1);
+    expect(t.approach!.endsWith("…")).toBe(true);
+    expect(t.experience_summary).toBe("Eight years in a gym in Cluj.");
+    expect(t.client_goals).toEqual(["strength", "beginners"]);
+  });
+  it("a profile from before the migration stays as it was", () => {
+    expect(coachTeaser(profile).profile).not.toHaveProperty("approach");
+  });
+  it("sameAs lists only the links Voinic built from valid handles", () => {
+    const person = coachJsonLd(withContent, "https://www.voinic.fit/coaches/andrei-popescu", "en").mainEntity as Record<string, unknown>;
+    expect(person.sameAs).toEqual(["https://www.instagram.com/andrei.fit/", "https://andrei.ro"]);
+    expect(coachJsonLd(profile, "u", "en").mainEntity).not.toHaveProperty("sameAs");
+  });
+});
+
+describe("social previews and metadata", () => {
+  it("re-cuts Voinic's own Cloudinary URLs for previews, leaves anything else alone", () => {
+    expect(socialImage("https://res.cloudinary.com/demo/image/upload/c_fill,f_auto,g_auto,h_600,q_auto,w_1600/v17/coaches/u/cover", "cover"))
+      .toBe("https://res.cloudinary.com/demo/image/upload/c_fill,g_auto,w_1200,h_630,q_auto,f_jpg/v17/coaches/u/cover");
+    expect(socialImage("https://res.cloudinary.com/demo/image/upload/v17/avatars/u/avatar", "avatar"))
+      .toBe("https://res.cloudinary.com/demo/image/upload/c_fill,g_face,w_600,h_600,q_auto,f_jpg/v17/avatars/u/avatar");
+    expect(socialImage("https://example.com/a.jpg", "cover")).toBe("https://example.com/a.jpg");
+  });
+  it("title, description, canonical, robots, Open Graph and Twitter from public fields", () => {
+    const m = coachPageMetadata({ ...profile, about: "x".repeat(200) }, { siteUrl: "https://www.voinic.fit", appName: "Voinic", locale: "ro" });
+    expect(m.title).toBe("Andrei Popescu — Personal Trainer în Cluj-Napoca | Voinic");
+    expect(m.alternates.canonical).toBe("https://www.voinic.fit/coaches/andrei-popescu");
+    expect(m.robots).toEqual({ index: true, follow: true });
+    expect(m.openGraph).toMatchObject({ type: "profile", username: "andrei.popescu", locale: "ro_RO", alternateLocale: ["en_GB"], siteName: "Voinic" });
+    expect(m.openGraph.images![0]).toMatchObject({ width: 600, height: 600, alt: "Andrei Popescu — Personal Trainer" });
+    expect(m.twitter.card).toBe("summary");
+    expect(m.description.length).toBeLessThanOrEqual(160);
+  });
+  it("a cover makes a large card; a page that lost its essentials is noindex", () => {
+    const cover = coachPageMetadata({ ...profile, cover_url: "https://res.cloudinary.com/d/image/upload/v1/c" },
+      { siteUrl: "https://s", appName: "Voinic", locale: "en" });
+    expect(cover.twitter.card).toBe("summary_large_image");
+    expect(cover.openGraph.images![0]).toMatchObject({ width: 1200, height: 630 });
+    expect(coachPageMetadata({ ...profile, avatar_url: null }, { siteUrl: "https://s", appName: "Voinic", locale: "en" }).robots)
+      .toEqual({ index: false, follow: true });
+  });
+  it("never puts a private field in the metadata", () => {
+    const m = JSON.stringify(coachPageMetadata({ ...profile, user_id: "secret-user-id" }, { siteUrl: "https://s", appName: "V", locale: "en" }));
+    expect(m).not.toContain("secret-user-id");
   });
 });

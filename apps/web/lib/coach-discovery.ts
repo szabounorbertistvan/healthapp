@@ -8,14 +8,16 @@
  * forward walk it. Defaults are left out of the URL so one search has one
  * address.
  */
-import type { PriceUnit } from "./coach-profile";
+import { SERVICE_KINDS, type PriceUnit, type ServiceKind } from "./coach-profile";
 
 export const DISCOVERY_PAGE_SIZE = 24;
 /** "Load more" grows the page this far (the RPC refuses offsets past 1000). */
 export const DISCOVERY_MAX_PAGES = 10;
 export const EXPERIENCE_STEPS = [1, 3, 5, 10] as const;
-export const DISCOVERY_SORTS = ["recommended", "relevance", "experience", "followers", "newest"] as const;
+export const DISCOVERY_SORTS = ["recommended", "relevance", "rating", "availability", "experience", "followers", "newest"] as const;
 export type DiscoverySort = (typeof DISCOVERY_SORTS)[number];
+/** The minimum-rating steps the filter offers (published reviews; the database ignores anything outside 1..5). */
+export const RATING_STEPS = [3, 3.5, 4, 4.5] as const;
 /** Prices are filtered in one currency; the market is Romania. */
 export const DISCOVERY_CURRENCY = "RON";
 
@@ -38,6 +40,14 @@ export type DiscoveryQuery = {
   priceMax: number | null;
   /** True (the default): only coaches taking clients. False: everyone published. */
   accepting: boolean;
+  /** Any active service of one of these kinds (20261111110000). */
+  serviceKinds: ServiceKind[];
+  /** Speaks any of these (language codes, coach_languages). */
+  languages: string[];
+  /** Published reviews averaging at least this (one of RATING_STEPS). */
+  minRating: number | null;
+  /** A free public booking slot within the next 14 days. */
+  available: boolean;
   sort: DiscoverySort;
   /** 1-based; page N shows the first N × 24 (Load more). */
   page: number;
@@ -51,7 +61,8 @@ export type DiscoveryQuery = {
 
 export const EMPTY_QUERY: DiscoveryQuery = {
   q: "", country: null, city: null, gym: null, online: false, inPerson: false, hybrid: false, specializations: [],
-  experience: null, verified: false, priceMin: null, priceMax: null, accepting: true, sort: "recommended", page: 1, browse: false,
+  experience: null, verified: false, priceMin: null, priceMax: null, accepting: true, serviceKinds: [], languages: [],
+  minRating: null, available: false, sort: "recommended", page: 1, browse: false,
 };
 
 type Params = Record<string, string | string[] | undefined> | URLSearchParams;
@@ -64,6 +75,12 @@ function all(params: Params, key: string): string[] {
 const one = (params: Params, key: string) => all(params, key)[0];
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const LANGUAGE = /^[a-z]{2,3}$/;
+/** Repeated or comma-separated values of one key, each kept only when `ok`, deduplicated, capped. */
+function many(params: Params, key: string, ok: (v: string) => boolean, max: number): string[] {
+  const values = all(params, key).flatMap((v) => v.split(",")).map((v) => v.trim().toLowerCase()).filter(ok);
+  return [...new Set(values)].slice(0, max);
+}
 const slugOrNull = (v: string | undefined) => {
   const s = v?.trim().toLowerCase();
   return s && SLUG.test(s) && s.length <= 60 ? s : null;
@@ -94,6 +111,10 @@ export function parseDiscoveryQuery(params: Params): DiscoveryQuery {
     priceMin: positiveInt(one(params, "price_min"), 1_000_000),
     priceMax: positiveInt(one(params, "price_max"), 1_000_000),
     accepting: one(params, "accepting") !== "any",
+    serviceKinds: many(params, "service", (v) => (SERVICE_KINDS as readonly string[]).includes(v), SERVICE_KINDS.length) as ServiceKind[],
+    languages: many(params, "language", (v) => LANGUAGE.test(v), 10),
+    minRating: (RATING_STEPS as readonly number[]).includes(Number(one(params, "rating"))) ? Number(one(params, "rating")) : null,
+    available: one(params, "available") === "true",
     sort: (DISCOVERY_SORTS as readonly string[]).includes(sort ?? "") ? (sort as DiscoverySort) : "recommended",
     page: Math.min(positiveInt(one(params, "page"), DISCOVERY_MAX_PAGES) ?? 1, DISCOVERY_MAX_PAGES),
     browse: one(params, "all") === "1",
@@ -116,6 +137,10 @@ export function discoverySearch(query: DiscoveryQuery): string {
   if (query.priceMin) p.set("price_min", String(query.priceMin));
   if (query.priceMax) p.set("price_max", String(query.priceMax));
   if (!query.accepting) p.set("accepting", "any");
+  for (const k of query.serviceKinds) p.append("service", k);
+  for (const l of query.languages) p.append("language", l);
+  if (query.minRating !== null) p.set("rating", String(query.minRating));
+  if (query.available) p.set("available", "true");
   // a search or a filter already means the listing; `all` only marks the bare one
   if (query.browse && !hasFilters(query)) p.set("all", "1");
   if (query.sort !== "recommended") p.set("sort", query.sort);
@@ -131,9 +156,7 @@ export function withChange(query: DiscoveryQuery, change: Partial<DiscoveryQuery
 
 /** Is anything narrowing the list (search text or a filter)? Sort, page and browse are not filters. */
 export function hasFilters(query: DiscoveryQuery): boolean {
-  const { sort: _s, page: _p, browse: _b, ...rest } = query;
-  const { sort: _ds, page: _dp, browse: _db, ...base } = EMPTY_QUERY;
-  return JSON.stringify(rest) !== JSON.stringify(base);
+  return query.q.trim() !== "" || filterCount(query) > 0;
 }
 
 /**
@@ -169,17 +192,65 @@ export function searchArgs(query: DiscoveryQuery) {
     ...(query.verified ? { p_verified: true } : {}),
     ...(query.hybrid ? { p_hybrid: true } : {}),
     ...(query.gym ? { p_gym: query.gym } : {}),
+    // 20261111110000, same rule: only when set
+    ...(query.serviceKinds.length ? { p_service_kinds: query.serviceKinds } : {}),
+    ...(query.languages.length ? { p_languages: query.languages } : {}),
+    ...(query.minRating !== null ? { p_min_rating: query.minRating } : {}),
+    ...(query.available ? { p_available: true } : {}),
   };
 }
+
+/**
+ * Which filter a change set, by the closed names marketplace_track() takes
+ * (filter_applied, 20261111120000) — never its value. Null when nothing a
+ * reader would call a filter changed (the text, the page).
+ */
+export type FilterName =
+  | "city" | "country" | "gym" | "format" | "specialization" | "service_kind" | "language" | "experience" | "rating"
+  | "availability" | "price" | "verified" | "accepting" | "sort";
+export function changedFilter(before: DiscoveryQuery, after: DiscoveryQuery): FilterName | null {
+  const diff = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
+  if (diff(before.city, after.city)) return "city";
+  if (diff(before.country, after.country)) return "country";
+  if (diff(before.gym, after.gym)) return "gym";
+  if (before.online !== after.online || before.inPerson !== after.inPerson || before.hybrid !== after.hybrid) return "format";
+  if (diff(before.specializations, after.specializations)) return "specialization";
+  if (diff(before.serviceKinds, after.serviceKinds)) return "service_kind";
+  if (diff(before.languages, after.languages)) return "language";
+  if (before.experience !== after.experience) return "experience";
+  if (before.minRating !== after.minRating) return "rating";
+  if (before.available !== after.available) return "availability";
+  if (before.priceMin !== after.priceMin || before.priceMax !== after.priceMax) return "price";
+  if (before.verified !== after.verified) return "verified";
+  if (before.accepting !== after.accepting) return "accepting";
+  if (before.sort !== after.sort) return "sort";
+  return null;
+}
+
+/** How many filters narrow the list (the text and the sort are not filters). Five or more reads as "too restrictive". */
+export function filterCount(query: DiscoveryQuery): number {
+  return [
+    query.country, query.city, query.gym, query.online || null, query.inPerson || null, query.hybrid || null,
+    query.experience, query.verified || null, query.priceMin ?? query.priceMax, query.accepting ? null : true,
+    query.minRating, query.available || null,
+  ].filter((v) => v !== null && v !== undefined).length
+    + query.specializations.length + query.serviceKinds.length + query.languages.length;
+}
+export const RESTRICTIVE_FILTERS = 5;
 
 // ---------- facets and chips ----------
 
 export type DiscoveryFacets = {
-  specializations: { slug: string; name_en: string; name_ro: string }[];
+  /** Every active specialization; `coaches` = published coaches with it (20261111110000). */
+  specializations: { slug: string; name_en: string; name_ro: string; coaches?: number }[];
   countries: { code: string; slug: string; name_en: string; name_ro: string; coaches: number }[];
   cities: { slug: string; name: string; name_en: string; country_code: string; coaches: number }[];
   /** Active gyms with a published coach (20261027100000); `city` is a city slug. */
   gyms: { id: string; name: string; city: string; coaches: number }[];
+  /** Languages some published coach speaks (20261111110000). */
+  languages: { code: string; name_en: string; name_ro: string; native_name: string; coaches: number }[];
+  /** Service kinds some published coach offers. */
+  service_kinds: { kind: ServiceKind; coaches: number }[];
 };
 
 export type FilterChip = { key: string; label: string; remove: DiscoveryQuery };
@@ -194,6 +265,11 @@ export type ChipLabels = {
   priceTo: string;    // "up to {price}"
   priceRange: string; // "{min}–{max}"
   includeFull: string;
+  /** "{n}+ ★" */
+  rating?: string;
+  available?: string;
+  /** Service kind → its label (the services' own names in messages). */
+  serviceKinds?: Partial<Record<ServiceKind, string>>;
 };
 
 const fillN = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m));
@@ -238,6 +314,17 @@ export function filterChips(current: DiscoveryQuery, facets: DiscoveryFacets, lo
       : query.priceMin !== null ? fillN(labels.priceFrom, { price: query.priceMin }) : fillN(labels.priceTo, { price: query.priceMax! });
     chips.push({ key: "price", label: `${label} ${DISCOVERY_CURRENCY}`, remove: withChange(query, { priceMin: null, priceMax: null }) });
   }
+  for (const kind of query.serviceKinds) {
+    chips.push({ key: `service:${kind}`, label: labels.serviceKinds?.[kind] ?? kind, remove: withChange(query, { serviceKinds: query.serviceKinds.filter((x) => x !== kind) }) });
+  }
+  for (const code of query.languages) {
+    const l = facets.languages.find((x) => x.code === code);
+    chips.push({ key: `lang:${code}`, label: l ? l.native_name : code, remove: withChange(query, { languages: query.languages.filter((x) => x !== code) }) });
+  }
+  if (query.minRating !== null) {
+    chips.push({ key: "rating", label: fillN(labels.rating ?? "{n}+ ★", { n: query.minRating }), remove: withChange(query, { minRating: null }) });
+  }
+  if (query.available) chips.push({ key: "available", label: labels.available ?? "available", remove: withChange(query, { available: false }) });
   if (!query.accepting) chips.push({ key: "accepting", label: labels.includeFull, remove: withChange(query, { accepting: true }) });
   return chips;
 }
@@ -280,6 +367,8 @@ export type CoachSearchRow = {
   id?: string;
   /** Published reviews (20261106100000): null when there are none. Absent before that migration. */
   rating?: { average: number | string; count: number } | null;
+  /** A free public booking slot within 7 days (20261111110000). Absent before that migration. */
+  available_soon?: boolean;
 };
 export type CoachSearchResult = { total: number; items: CoachSearchRow[] };
 
@@ -313,6 +402,8 @@ export type CoachCardModel = {
   save: { profileId: string; saved: boolean } | null;
   profileId: string | null;
   isSelf: boolean;
+  /** Bookable within the week — from the database, never a score. */
+  availableSoon: boolean;
 };
 
 export function toCoachCard(row: CoachSearchRow, locale: "en" | "ro", now = new Date()): CoachCardModel {
@@ -339,22 +430,29 @@ export function toCoachCard(row: CoachSearchRow, locale: "en" | "ro", now = new 
     isSelf: row.is_self === true,
     save: row.id && row.user_id && !row.is_self ? { profileId: row.id, saved: row.is_saved === true } : null,
     profileId: row.id ?? null,
+    availableSoon: row.available_soon === true,
   };
 }
 
+export type EmptyKind =
+  | "none" | "no_coaches" | "no_match_filters" | "no_match_search" | "no_match_location" | "no_match_specialization"
+  | "too_restrictive";
+
 /**
- * Which empty state to show: nobody published at all, nothing for these
- * filters (offer Clear filters), or nothing for the typed text (suggest
- * other words).
+ * Which empty state to show: nobody published at all; nothing for the typed
+ * text (suggest other words); nothing in the chosen place or specialization
+ * when that is the only thing narrowing (offer to drop just it); many filters
+ * at once (say they are too many, offer Clear filters); else nothing for
+ * these filters.
  */
-export function emptyKind(total: number, query: DiscoveryQuery): "none" | "no_coaches" | "no_match_filters" | "no_match_search" {
+export function emptyKind(total: number, query: DiscoveryQuery): EmptyKind {
   if (total > 0) return "none";
   if (!hasFilters(query)) return "no_coaches";
-  const { q: _q, ...withoutText } = query;
-  const { q: _eq, ...emptyWithoutText } = EMPTY_QUERY;
-  const norm = { sort: "recommended", page: 1, browse: false };
-  const onlyText = JSON.stringify({ ...withoutText, ...norm }) === JSON.stringify({ ...emptyWithoutText, ...norm });
-  return onlyText ? "no_match_search" : "no_match_filters";
+  if (filterCount(query) >= RESTRICTIVE_FILTERS) return "too_restrictive";
+  const rest = (change: Partial<DiscoveryQuery>) => filterCount({ ...query, ...change }) === 0;
+  if (!query.q && (query.city || query.country || query.gym) && rest({ city: null, country: null, gym: null })) return "no_match_location";
+  if (!query.q && query.specializations.length > 0 && rest({ specializations: [] })) return "no_match_specialization";
+  return filterCount(query) === 0 ? "no_match_search" : "no_match_filters";
 }
 
 /** Load more: is there another page to grow into? */
@@ -388,4 +486,78 @@ export function matchViewerCity<C extends DiscoveryFacets["cities"][number]>(cit
   if (exact.length > 1) return null;
   const prefix = cities.filter((c) => names(c).some((n) => n.startsWith(`${want} `)));
   return prefix.length === 1 ? prefix[0] : null;
+}
+
+// ---------- SEO landing pages (/coaches/<city | specialization | country>) ----------
+//
+// Slugs of cities, countries and specializations share one namespace with
+// coach slugs (coach_slug_reserved(), 20261020100000), so /coaches/<slug> can
+// be a landing page without a collision. These — and only these — are the
+// designated indexable listings: an arbitrary filter combination stays
+// noindex, so the directory cannot mint thousands of near-duplicate pages.
+
+export type DiscoveryLanding = {
+  kind: "city" | "specialization" | "country";
+  slug: string;
+  /** In the reader's language. */
+  name: string;
+  /** Published coaches there, from the facets — 0 makes the page noindex. */
+  coaches: number;
+  /** The listing the page shows: the one dimension, every other filter at its default. */
+  query: DiscoveryQuery;
+};
+
+/** The landing page a slug names, or null when it is not a city, specialization or country that the directory knows. */
+export function landingFor(slug: string, facets: DiscoveryFacets, locale: "en" | "ro"): DiscoveryLanding | null {
+  const base = { ...EMPTY_QUERY, browse: true };
+  const city = facets.cities.find((c) => c.slug === slug);
+  if (city) {
+    return { kind: "city", slug, name: locale === "ro" ? city.name : city.name_en, coaches: city.coaches, query: { ...base, city: slug } };
+  }
+  const spec = facets.specializations.find((s) => s.slug === slug);
+  if (spec) {
+    return {
+      kind: "specialization", slug, name: locale === "ro" ? spec.name_ro : spec.name_en, coaches: spec.coaches ?? 0,
+      query: { ...base, specializations: [slug] },
+    };
+  }
+  const country = facets.countries.find((c) => c.slug === slug);
+  if (country) {
+    return { kind: "country", slug, name: locale === "ro" ? country.name_ro : country.name_en, coaches: country.coaches, query: { ...base, country: slug } };
+  }
+  return null;
+}
+
+/** A landing page is offered to search engines only while it lists someone: an empty one is thin content. */
+export function landingIndexable(landing: DiscoveryLanding): boolean {
+  return landing.coaches > 0;
+}
+
+/**
+ * The landing page a listing query is exactly (one city, one specialization
+ * or one country, nothing else but the default sort and page), or null. Used
+ * to link to the indexable address instead of the parameterised one.
+ */
+export function landingSlugOf(query: DiscoveryQuery): string | null {
+  const only = (change: Partial<DiscoveryQuery>) =>
+    !query.q && query.sort === "recommended" && query.page === 1 && filterCount({ ...query, ...change }) === 0;
+  if (query.city && only({ city: null, country: null })) return query.city;
+  if (query.specializations.length === 1 && only({ specializations: [] })) return query.specializations[0]!;
+  if (query.country && only({ country: null })) return query.country;
+  return null;
+}
+
+/** The address of a listing: its landing page when it is one, else /coaches?…. */
+export function listingHref(query: DiscoveryQuery): string {
+  const landing = landingSlugOf(query);
+  return landing ? `/coaches/${landing}` : `/coaches${discoverySearch(query)}`;
+}
+
+/** Every landing page that lists someone, for the sitemap. */
+export function landingSlugs(facets: DiscoveryFacets): string[] {
+  return [
+    ...facets.cities.filter((c) => c.coaches > 0).map((c) => c.slug),
+    ...facets.specializations.filter((s) => (s.coaches ?? 0) > 0).map((s) => s.slug),
+    ...facets.countries.filter((c) => c.coaches > 0).map((c) => c.slug),
+  ];
 }

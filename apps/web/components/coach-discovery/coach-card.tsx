@@ -115,6 +115,12 @@ export function CoachCard({ card, signedIn }: { card: CoachCardModel; signedIn: 
           <span aria-hidden>·</span>
           {fill(c.followers, { n: card.followers })}
         </p>
+        {/* a free public slot within a week — from the database, never a score */}
+        {card.availableSoon ? (
+          <p className="mt-2 inline-flex rounded-full bg-accent-soft px-2.5 py-1 text-[11.5px] font-semibold text-accent-ink" data-testid="card-available-soon">
+            {c.availableSoon}
+          </p>
+        ) : null}
 
         <div className="mt-4 flex items-center justify-between gap-2 border-t border-line pt-4">
           {/* above the stretched link, so a tap here follows instead of opening the profile */}

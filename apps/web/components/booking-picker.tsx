@@ -18,7 +18,7 @@ import { bookService } from "@/app/booking-actions";
  */
 export function BookingPicker({
   serviceId, serviceName, durationMinutes, confirmation, timezone, price, coachName,
-  days, slots, canBook, signedIn, loginHref, prevHref, nextHref,
+  days, slots, canBook, signedIn, loginNext, initialAt = null, prevHref, nextHref,
 }: {
   serviceId: string;
   serviceName: string;
@@ -31,7 +31,10 @@ export function BookingPicker({
   slots: Slot[];
   canBook: "ok" | BookingErrorCode;
   signedIn: boolean;
-  loginHref: string;
+  /** This page's own address: signing in comes back here, with the chosen time (`at`) kept. */
+  loginNext: string;
+  /** A time chosen before signing in (?at=), picked again when it is still free. */
+  initialAt?: string | null;
   prevHref: string | null;
   nextHref: string | null;
 }) {
@@ -51,8 +54,10 @@ export function BookingPicker({
     return map;
   }, [slots, timezone]);
 
-  const [day, setDay] = useState<string>(() => days.find((d) => byDay.has(d)) ?? days[0]!);
-  const [chosen, setChosen] = useState<Slot | null>(null);
+  const resumed = initialAt ? slots.find((s) => new Date(s.start_at).getTime() === new Date(initialAt).getTime()) ?? null : null;
+  const [day, setDay] = useState<string>(() =>
+    resumed ? zonedDate(new Date(resumed.start_at), timezone) : days.find((d) => byDay.has(d)) ?? days[0]!);
+  const [chosen, setChosen] = useState<Slot | null>(resumed);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<"booked" | "requested" | null>(null);
@@ -177,7 +182,8 @@ export function BookingPicker({
                   </button>
                 </>
               ) : !signedIn ? (
-                <Link href={loginHref} className={`${BUTTON} mt-4`} data-testid="booking-sign-in">{b.signIn}</Link>
+                <Link href={`/login?${new URLSearchParams({ next: `${loginNext}&${new URLSearchParams({ at: chosen.start_at })}` })}`}
+                  className={`${BUTTON} mt-4`} data-testid="booking-sign-in" data-mkt-wall="book">{b.signIn}</Link>
               ) : null}
             </section>
           ) : null}

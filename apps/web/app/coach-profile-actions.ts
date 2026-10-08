@@ -10,6 +10,7 @@ import {
   type CoachProfileMissing,
 } from "@/lib/coach-profile";
 import { CURRENCIES, takesPrice } from "@/lib/coach-onboarding";
+import { CLIENT_GOALS, CONTENT_LIMITS, MAX_CLIENT_GOALS, SOCIAL_NETWORKS, cleanClientGoals, cleanSocialLinks } from "@/lib/coach-content";
 import {
   COVER_PUBLIC_ID, CloudinaryNotConfiguredError, cloudinaryConfigured, coverFolder, coverUrl,
   destroyCover, signCoverUpload, type AvatarUploadTicket,
@@ -101,6 +102,11 @@ const DraftInput = z.object({
   acceptingClients: z.boolean().optional(),
   online: z.boolean().optional(),
   inPerson: z.boolean().optional(),
+  // own-words content (20261111100000)
+  approach: z.string().max(CONTENT_LIMITS.approach).optional(),
+  experienceSummary: z.string().max(CONTENT_LIMITS.experienceSummary).optional(),
+  clientGoals: z.array(z.enum(CLIENT_GOALS)).max(MAX_CLIENT_GOALS).optional(),
+  socialLinks: z.partialRecord(z.enum(SOCIAL_NETWORKS), z.string().max(300)).optional(),
 }).strict();
 export type CoachDraftFields = z.input<typeof DraftInput>;
 
@@ -131,6 +137,15 @@ export async function saveCoachProfileDraft(input: CoachDraftFields): Promise<Ac
   if (f.acceptingClients !== undefined) patch.accepting_clients = f.acceptingClients;
   if (f.online !== undefined) patch.online = f.online;
   if (f.inPerson !== undefined) patch.in_person = f.inPerson;
+  if (f.approach !== undefined) patch.approach = f.approach.trim() || null;
+  if (f.experienceSummary !== undefined) patch.experience_summary = f.experienceSummary.trim() || null;
+  if (f.clientGoals !== undefined) patch.client_goals = cleanClientGoals(f.clientGoals);
+  if (f.socialLinks !== undefined) {
+    // handles only: a pasted profile URL is reduced to its handle; anything still invalid names its network
+    const { links, invalid } = cleanSocialLinks(f.socialLinks);
+    if (invalid) return { ok: false, errorCode: "INVALID_INPUT", message: `SOCIAL:${invalid}` };
+    patch.social_links = links;
+  }
   if (Object.keys(patch).length === 0) return { ok: true };
 
   const live = await liveUser();
@@ -156,6 +171,10 @@ export async function saveCoachProfileDraft(input: CoachDraftFields): Promise<Ac
       ...(patch.coaching_since !== undefined ? { coaching_since: patch.coaching_since as number | null } : {}),
       ...(patch.online !== undefined ? { online: patch.online as boolean } : {}),
       ...(patch.in_person !== undefined ? { in_person: patch.in_person as boolean } : {}),
+      ...(patch.approach !== undefined ? { approach: patch.approach as string | null } : {}),
+      ...(patch.experience_summary !== undefined ? { experience_summary: patch.experience_summary as string | null } : {}),
+      ...(patch.client_goals !== undefined ? { client_goals: patch.client_goals as RevisionPayload["client_goals"] } : {}),
+      ...(patch.social_links !== undefined ? { social_links: patch.social_links as RevisionPayload["social_links"] } : {}),
     });
   }
   const result = await live.supabase
