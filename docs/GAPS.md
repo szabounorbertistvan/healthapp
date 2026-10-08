@@ -263,9 +263,11 @@ on that path), response *time* as a signal (only "answered within 48 h"), per-st
 rates (counts only, by design until the log is old enough), an admin test account to drive the admin pages.
 
 Discovery 2.0, profile content, landing pages, calendar foundation (2026-10-08, migrations `20261111100000` →
-`20261111130000`, **not pushed live**; apply all four, in order, before the code — `search_coaches()` and
-`marketplace_track()` are dropped and recreated with new arguments, and `/bookings/availability`, the profile
-editor and the public page read the new functions). See docs/ENGINES.md §Discovery 2.0 and §Calendars.
+`20261111130000`, **applied live** — checked 2026-10-08 in the SQL Editor: all four are in
+`supabase_migrations.schema_migrations` and their objects exist (`coach_profiles.approach` / `search_wdoc`,
+`marketplace_events.detail`, `calendar_connections`). `search_coaches()` and `marketplace_track()` were dropped and
+recreated with new arguments, and `/bookings/availability`, the profile editor and the public page read the new
+functions). See docs/ENGINES.md §Discovery 2.0 and §Calendars.
 Not built: **any calendar provider** — no Google / Microsoft adapter, OAuth callback route, token key
 (`CALENDAR_TOKEN_KEY`) or sync worker exists, so "Connect" is "coming soon" and no coach can connect; the
 database, the slot blocking, the encryption, the sync logic and the status card are ready for them. Provider
@@ -275,8 +277,8 @@ anonymous readers still see post text only). A noindex for a landing page whose 
 clients (it stays indexable while it has a published coach). Landing pages for city × specialization pairs.
 The e2e spec `marketplace-discovery.spec.ts` has not been run against a live project yet.
 
-Launch readiness (2026-10-08, migration `20261112100000`, **not pushed live**; apply after `20261111100000` →
-`20261111130000`). Not built, on purpose until monetization or later: payments of any kind, paid placement
+Launch readiness (2026-10-08, migration `20261112100000`, **applied live** — checked 2026-10-08 with the four
+above: in the migration history, `admin_coach_attention()` exists). Not built, on purpose until monetization or later: payments of any kind, paid placement
 (`placement` stays 0), an expiry for pending bookings (one still holds its slot until the coach answers), a 410 for
 removed coaches (404 today), a review prompt for coaching relationships (only completed sessions prompt), filtering the in-app
 notification list by preference (push already honours `users.notification_prefs` per category in `push-dispatch`,
