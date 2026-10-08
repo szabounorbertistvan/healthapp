@@ -35,8 +35,11 @@ function extensionDir() {
     throw new Error("Dependencies are missing. Run `npm install` inside scripts/pgtest first.");
   }
   for (const pkg of readdirSync(scope)) {
-    const dir = path.join(scope, pkg, "native/share/extension");
-    if (existsSync(dir)) return dir;
+    // Windows builds keep extensions in share/extension, Linux and macOS in share/postgresql/extension
+    for (const sub of ["native/share/extension", "native/share/postgresql/extension"]) {
+      const dir = path.join(scope, pkg, sub);
+      if (existsSync(dir)) return dir;
+    }
   }
   throw new Error("No embedded-postgres binaries found under scripts/pgtest/node_modules.");
 }
@@ -57,6 +60,8 @@ const pg = new EmbeddedPostgres({
   password: "postgres",
   port: Number(process.env.PGTEST_PORT ?? 54399),
   persistent: false,
+  // Postgres refuses to run as root (a Linux container): run it as a postgres user, created if missing
+  createPostgresUser: process.getuid?.() === 0,
   // Without this, initdb picks the system codepage (WIN1252 on a Romanian
   // Windows box) and the first migration carrying a diacritic fails to load.
   initdbFlags: ["--encoding=UTF8", "--locale=C"],

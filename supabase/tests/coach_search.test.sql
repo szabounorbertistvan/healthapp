@@ -117,7 +117,7 @@ values ('ce000000-0000-0000-0000-000000000011', 'ce000000-0000-0000-0000-0000000
 -- 1. anonymous: who comes out
 -- ============================================================================
 select pg_temp.anonymous();
-select ok(has_function_privilege('anon', 'public.search_coaches(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, int, int, boolean, boolean, uuid, boolean)', 'execute'),
+select ok(has_function_privilege('anon', 'public.search_coaches(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, int, int, boolean, boolean, uuid, boolean, text[], text[], numeric, boolean)', 'execute'),
   '15. anonymous callers may search');
 select is((public.search_coaches() ->> 'total')::int, 2, '1. by default: the published coaches that accept clients');
 select is((public.search_coaches(p_accepting => false) ->> 'total')::int, 3, 'accepting=false lists every published coach');

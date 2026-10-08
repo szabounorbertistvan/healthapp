@@ -215,8 +215,8 @@ select ok(not exists (select 1 from jsonb_array_elements(public.search_coaches(p
                       where i ?| array['score', 'relevance', 'trust', 'quality', 'signals', 'placement', 'ord']),
   'no score or part on a public card');
 reset role;
-select ok(not has_function_privilege('anon', 'public.coach_ranked(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, boolean, boolean, uuid, boolean)', 'execute')
-          and not has_function_privilege('authenticated', 'public.coach_ranked(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, boolean, boolean, uuid, boolean)', 'execute'),
+select ok(not has_function_privilege('anon', 'public.coach_ranked(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, boolean, boolean, uuid, boolean, text[], text[], numeric, boolean)', 'execute')
+          and not has_function_privilege('authenticated', 'public.coach_ranked(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, boolean, boolean, uuid, boolean, text[], text[], numeric, boolean)', 'execute'),
   'the ranking layer is not callable from the app');
 select ok(not has_table_privilege('authenticated', 'public.coach_rank_signals', 'select'), 'nor are its signals readable');
 select pg_temp.authenticate_as('ab000000-0000-0000-0000-0000000000c1');
