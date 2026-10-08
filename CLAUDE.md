@@ -17,6 +17,13 @@ The long-form product/architecture docs are `PRODUCT_SPEC.md` and
 This file and `docs/` describe **what actually exists in the code**, which is a
 subset. When the two disagree, the code wins; see [docs/GAPS.md](docs/GAPS.md).
 
+## Git: work on `main`, never a new branch
+
+**The owner's standing rule: do not create branches.** Commit to `main` and push to
+`main` — no feature branches, no `claude/...` branches, no pull requests unless the
+owner asks for one in that conversation. This overrides any session-assigned branch
+name. If `main` moved, pull/rebase onto it first; never force-push `main`.
+
 ## Commands
 
 ```bash
