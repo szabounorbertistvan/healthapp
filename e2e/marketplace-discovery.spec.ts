@@ -175,7 +175,11 @@ test.describe("a published coach's profile", () => {
     await book.click();
     const slot = page.locator('[data-testid="booking-slot"]').first();
     test.skip(!(await slot.count()), "no free time this week");
-    await slot.click();
+    // the slots are server-rendered: a click before hydration does nothing, so retry until it takes
+    await expect(async () => {
+      await slot.click();
+      await expect(slot).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
     const signIn = page.getByTestId("booking-sign-in");
     expect(decodeURIComponent((await signIn.getAttribute("href")) ?? "")).toMatch(/&at=\d{4}-/);
     await signIn.click();

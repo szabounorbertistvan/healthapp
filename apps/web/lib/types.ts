@@ -19,6 +19,8 @@ export type Profile = {
    * carry sign-up metadata; both are sent to /complete-profile.
    */
   username: string | null;
+  /** The Terms + health-data consent this account agreed to (lib/legal.ts); null = never asked. */
+  consent_version: string | null;
   avatar_url: string | null;
   /** Free-text locality and short self-description, both optional; see /account. */
   city: string | null;

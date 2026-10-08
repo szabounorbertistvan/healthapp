@@ -376,6 +376,35 @@ to enable notifications on `/account` from a normal browser will be that
 test. `push-dispatch` (Expo) remains unused — the web push is a separate,
 smaller path.
 
+**Launch-audit follow-ups (2026-10-08).** Three gaps from the audit closed in code:
+- **Consent at sign-up** — migration `20261113110000_signup_consent.sql`: `users.terms_accepted_at`,
+  `health_data_consent_at`, `consent_version`. The sign-up form has two separate boxes (Terms + Privacy;
+  explicit GDPR Art. 9 health-data consent, `components/consent-checks.tsx`) and sends
+  `consent_version` as metadata, stamped by the `on_auth_user_created_consent` trigger. Every other
+  account (Google, everyone from before) is sent to `/complete-profile` by both layouts while
+  `consent_version` ≠ `CONSENT_VERSION` (`lib/legal.ts`), which records it via `accept_consent()`.
+  Bumping `CONSENT_VERSION` asks everyone again. The /terms and /privacy *texts* are still the
+  26 Aug drafts with placeholders — that is the lawyer's half of the audit item, not done.
+- **Custom exercises private** — migration `20261113100000_custom_exercises_private.sql`:
+  `exercises_select` was `using (true)`; now the library, your own, and any custom exercise that a
+  program, logged set or challenge you can already see points at.
+- **GDPR export complete** — `lib/data-export.ts` now also carries bookings, coaching requests and
+  relationship events (either side), reviews (written and received), saves, the coach profile with
+  its services / certifications / languages / locations / revisions, availability, calendar
+  connections (never tokens), social stories / blocks / mutes / reports / saves, and coach-authored
+  programs and plans. Ten of those tables have no select grant, so they come from
+  `export_my_restricted_data()` (migration `20261113120000`, without admin notes, admin ids or
+  whom a report was about). The coach's `/settings` now carries the export and delete cards too.
+- **Sign-in from a coach page lost `next`** (found by the first full e2e run): `LoginForm` read
+  `window.location` while rendering, which after a client-side `<Link>` is still the previous URL,
+  so Contact / Save / Book / Follow → sign in landed on `/dashboard`. Now read in an effect.
+- **All three migrations above are applied live** (2026-10-08, relu approved).
+- **Slow coach page** — `coach_public_profile()` took ~1.5 s (anon timeout is ~3 s, so the page
+  500'd under load). Cause: `booking_timezone_valid()` read `pg_timezone_names`, which walks the
+  whole tz database on disk (~390 ms) and ran once per page plus once per bookable service, in
+  every booking path. Migration `20261113130000_timezone_lookup_fast.sql` (live) caches the names
+  in `timezone_names` with the catalog as fallback on a miss: the RPC is ~21 ms now.
+
 **~~No GDPR export or account deletion~~ — closed 2026-09-16.** `/account` carries
 both: `downloadMyData` (lib/data-export.ts) hands the browser one JSON file with
 every row the account owns, and `requestAccountDeletion` calls the
@@ -383,8 +412,8 @@ every row the account owns, and `requestAccountDeletion` calls the
 `20260823001200`. The purge job is migration `20260916110000_account_purge.sql`:
 `purge_deleted_accounts()` on a daily cron, plus a tightened
 `request_account_deletion()` that also replaces the searchable username.
-**That migration has not been applied to the live project yet** — until it is,
-a deleted account is still only hidden. Covered by
+It is live (checked 2026-10-08: `purge_deleted_accounts()` and the
+`purge-deleted-accounts` cron job both exist). Covered by
 `supabase/tests/account_purge.test.sql`, which also pins the case that made a
 naive delete impossible: a coach's custom exercise sitting inside a client's
 program (`program_exercises.exercise_id` has no cascade), so the job reassigns

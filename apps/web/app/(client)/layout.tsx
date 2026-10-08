@@ -17,6 +17,7 @@ import { OfflineSetsProvider } from "@/lib/offline/sync";
 import { OfflineSetsNotice } from "@/components/offline-sets-notice";
 import { FeedbackButton } from "@/components/feedback";
 import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
+import { CONSENT_VERSION } from "@/lib/legal";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -30,8 +31,9 @@ export default async function ClientLayout({ children }: { children: React.React
   // door back — see BackToCoaching in components/client-nav.tsx.
   const coach = profile.role !== "client";
   // An account without a username (Google sign-up, or older than the field)
-  // finishes its profile before it sees anything else.
-  if (!profile.username) redirect("/complete-profile");
+  // finishes its profile before it sees anything else, and nobody sees their
+  // health data here without the current consent on record (20261113110000).
+  if (!profile.username || profile.consent_version !== CONSENT_VERSION) redirect("/complete-profile");
   const name = displayName(profile);
   // One wave: the shell's reads go out together.
   const [notifications, unread, plan] = await Promise.all([

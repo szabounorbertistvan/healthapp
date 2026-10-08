@@ -198,6 +198,8 @@ test.describe("wizard", () => {
       await expect(row).toContainText("30 minutes");
       await row.getByTestId("coach-service-toggle").click();
       await expect(row).toHaveAttribute("data-active", "false");
+      // the flip is optimistic; the buttons stay disabled until the save lands
+      await expect(row.getByTestId("coach-service-toggle")).toBeEnabled();
       await page.reload();
       const again = page.getByTestId("coach-services").locator("li").filter({ hasText: name });
       await expect(again).toHaveAttribute("data-active", "false");

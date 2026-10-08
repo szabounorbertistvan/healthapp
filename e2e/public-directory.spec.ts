@@ -82,7 +82,13 @@ test.describe("a published coach, logged out → signed in → logged out", () =
     expect(html).toContain("application/ld+json");
     await expect(anon.page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(anon.page.getByTestId("profile-gate")).toHaveAttribute("data-kind", "anonymous");
-    expect(await robotsMeta(anon.page)).not.toMatch(/noindex/);
+    // indexable only with the essentials (coachIndexable: headline, about, avatar,
+    // a specialization, a service). A coach without them — the seeded demo coach
+    // has no avatar — is noindex, and then must be out of the sitemap as well.
+    if (/noindex/.test((await robotsMeta(anon.page)) ?? "")) {
+      const sitemap = await (await anon.page.request.get("/sitemap.xml")).text();
+      expect(sitemap).not.toContain(`/coaches/${PUBLISHED}<`);
+    }
     await expect(anon.page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/coaches/${PUBLISHED}$`));
     await expect(anon.page.locator('meta[property="og:title"]')).toHaveAttribute("content", /\| Voinic$/);
     await expect(anon.page.locator('meta[property="og:url"]')).toHaveAttribute("content", new RegExp(`/coaches/${PUBLISHED}$`));

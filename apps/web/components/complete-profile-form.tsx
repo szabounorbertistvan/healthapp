@@ -1,12 +1,13 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { completeProfile } from "@/app/profile-actions";
+import { acceptConsent, completeProfile } from "@/app/profile-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { isValidAge, isValidUsername, SEXES } from "@/lib/profile";
 import type { Sex } from "@/lib/types";
 import type { Role } from "@/lib/entitlements";
 import { RoleCard } from "./role-card";
+import { ConsentChecks, consentGiven, type Consent } from "./consent-checks";
 
 const inputClass =
   "h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent";
@@ -17,14 +18,21 @@ const inputClass =
  * round-trip could not ask. Reached from either layout when `users.username`
  * is null (Google accounts, accounts from before the field existed). Where to
  * go afterwards follows the role picked here.
+ *
+ * Every pass through here also records the Terms + health-data consent. An
+ * account whose profile is already complete but has no consent on record (it
+ * predates 20261113110000, or the consent text changed) sees only that part.
  */
 export function CompleteProfileForm({
   initialName,
   initialRole,
   next = null,
+  consentOnly = false,
 }: {
   initialName: string;
   initialRole: Role;
+  /** The profile is complete; only the consent is missing. */
+  consentOnly?: boolean;
   /** Where to continue once done (already safeNext-checked by the page), e.g. the coach page they came from. */
   next?: string | null;
 }) {
@@ -39,6 +47,7 @@ export function CompleteProfileForm({
   // cards are hidden rather than shown as a choice that does nothing.
   const askRole = initialRole !== "admin";
   const [role, setRole] = useState<Role>(initialRole);
+  const [consent, setConsent] = useState<Consent>({ terms: false, health: false });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -47,10 +56,12 @@ export function CompleteProfileForm({
   };
 
   function validate(): string | null {
+    if (consentOnly) return consentGiven(consent) ? null : t.login.errConsent;
     if (!fullName.trim()) return m.errName;
     if (!isValidUsername(username)) return m.errUsernameFormat;
     if (!sex) return m.errSex;
     if (!isValidAge(parseInt(age, 10))) return m.errAge;
+    if (!consentGiven(consent)) return t.login.errConsent;
     return null;
   }
 
@@ -63,10 +74,12 @@ export function CompleteProfileForm({
     }
     startTransition(async () => {
       setError(null);
-      const result = await completeProfile({
-        fullName, username, sex: sex as Sex, age: parseInt(age, 10),
-        role: askRole ? role : "client",
-      });
+      const result = consentOnly
+        ? await acceptConsent()
+        : await completeProfile({
+            fullName, username, sex: sex as Sex, age: parseInt(age, 10),
+            role: askRole ? role : "client",
+          });
       if (!result.ok) {
         setError(
           result.errorCode === "USERNAME_TAKEN" ? m.errUsernameTaken
@@ -85,7 +98,8 @@ export function CompleteProfileForm({
 
   return (
     <form onSubmit={submit} className="space-y-3.5 rounded-3xl bg-surface p-6">
-      <p className="text-sm text-ink-soft">{m.body}</p>
+      <p className="text-sm text-ink-soft">{consentOnly ? t.login.consentBody : m.body}</p>
+      {consentOnly ? null : <>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-ink-soft">{m.fullName}</span>
         <input type="text" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
@@ -136,6 +150,8 @@ export function CompleteProfileForm({
           </div>
         </fieldset>
       ) : null}
+      </>}
+      <ConsentChecks value={consent} onChange={setConsent} />
       {error ? <p className="text-sm text-risk" role="alert">{error}</p> : null}
       <button
         type="submit" disabled={pending}

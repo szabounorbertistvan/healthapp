@@ -78,7 +78,9 @@ test.describe("published", () => {
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/coaches/${PUBLISHED}$`));
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", /Voinic/);
     const ld = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent()) ?? "{}");
-    expect(ld["@type"]).toBe("ProfilePage");
+    // one @graph since the breadcrumb joined it: ProfilePage is one of its nodes
+    const types = (ld["@graph"] ?? [ld]).map((node: { "@type"?: string }) => node["@type"]);
+    expect(types).toContain("ProfilePage");
     // Start coaching and Follow lead to sign-in
     await expect(page.getByRole("link", { name: "Contact coach" }).first()).toHaveAttribute("href", /\/login\?next=/);
     await expect(page.getByRole("link", { name: "Follow" }).first()).toHaveAttribute("href", /\/login\?next=/);
@@ -114,8 +116,12 @@ test.describe("published", () => {
   test.describe("signed in as this coach's client", () => {
     test.use({ storageState: authFile("client") });
 
+    // The seeded client's coach (Andrei) is a draft; this needs a published
+    // coach who is the client's current coach — its slug in E2E_CLIENTS_COACH.
+    const CLIENTS_COACH = process.env.E2E_CLIENTS_COACH ?? "";
     test("an existing client sees that they train with the coach, not Start coaching", async ({ page }) => {
-      await page.goto(`/coaches/${PUBLISHED}`);
+      test.skip(!CLIENTS_COACH, "set E2E_CLIENTS_COACH to the published slug of the client's current coach");
+      await page.goto(`/coaches/${CLIENTS_COACH}`);
       await expect(page.getByRole("link", { name: "You train with this coach" }).first()).toBeVisible();
       await expect(page.getByRole("button", { name: "Contact coach" })).toHaveCount(0);
     });

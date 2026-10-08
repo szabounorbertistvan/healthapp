@@ -6,6 +6,7 @@ import { LanguageSelector } from "@/components/language-selector";
 import { CompleteProfileForm } from "@/components/complete-profile-form";
 import { getI18n } from "@/lib/i18n/server";
 import { safeNext } from "@/lib/safe-next";
+import { CONSENT_VERSION } from "@/lib/legal";
 
 // Where an account without a username lands (both layouts redirect here). A
 // Google sign-up cannot carry the sign-up form's fields, and accounts created
@@ -17,7 +18,8 @@ export default async function CompleteProfilePage({ searchParams }: { searchPara
   const raw = (await searchParams).next;
   const next = raw ? safeNext(raw, "") || null : null;
   if (!profile) redirect("/");
-  if (profile.username) redirect(next ?? (profile.role === "client" ? "/today" : "/dashboard"));
+  const consented = profile.consent_version === CONSENT_VERSION;
+  if (profile.username && consented) redirect(next ?? (profile.role === "client" ? "/today" : "/dashboard"));
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
@@ -29,9 +31,12 @@ export default async function CompleteProfilePage({ searchParams }: { searchPara
           <Logo size="md" />
         </Link>
         <h1 className="mb-3 text-center font-display text-2xl font-extrabold tracking-tight">
-          {t.clientApp.completeProfile.title}
+          {profile.username ? t.login.consentTitle : t.clientApp.completeProfile.title}
         </h1>
-        <CompleteProfileForm initialName={profile.full_name} initialRole={profile.role} next={next} />
+        <CompleteProfileForm
+          initialName={profile.full_name} initialRole={profile.role} next={next}
+          consentOnly={Boolean(profile.username)}
+        />
       </div>
     </main>
   );

@@ -6,7 +6,7 @@ import { TIER_LABEL } from "@/lib/entitlements";
 import { PlanFeatureList, SubscribePanel, TrialBanner } from "@/components/billing";
 import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
-import { ProfileForm } from "@/components/account";
+import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/account";
 import { RestTimerCard } from "@/components/rest-settings";
 import { SocialPrivacyCard } from "@/components/social-v2";
 import { getMySocialPrivacy } from "@/lib/social-data";
@@ -93,6 +93,11 @@ export default async function SettingsPage() {
         </Card>
         </>
         ) : null}
+
+        {/* GDPR art. 15/20 and 17, as on the client's /account: a coach should
+            not have to find "My training" to download or delete their account. */}
+        <DataExportCard />
+        <DeleteAccountCard />
       </div>
     </div>
   );

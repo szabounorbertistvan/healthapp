@@ -164,7 +164,10 @@ test.describe("anonymous", () => {
     const { context, page } = await anonymousPage(browser, { width: 390, height: 844 });
     await page.goto("/coaches?q=strength");
     await page.getByRole("button", { name: /^Filters/ }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "In person" }).click();
+    const sheet = page.getByRole("dialog");
+    await sheet.getByRole("button", { name: "In person" }).click();
+    // the sheet edits a draft (20261111110000): the URL moves on Apply
+    await sheet.getByTestId("filters-apply").click();
     await expect(page).toHaveURL(/q=strength/);
     await expect(page).toHaveURL(/in_person=true/);
     await context.close();
@@ -203,7 +206,7 @@ test.describe("anonymous", () => {
     const sheet = page.getByRole("dialog");
     await expect(sheet).toBeVisible();
     // the sheet edits a draft (20261111110000): nothing runs until Apply
-    await sheet.getByRole("button", { name: "Online" }).click();
+    await sheet.getByRole("button", { name: "Online", exact: true }).click();
     await expect(page).toHaveURL(/\/coaches\?all=1$/);
     await sheet.getByTestId("filters-apply").click();
     await expect(sheet).toHaveCount(0);
@@ -268,7 +271,8 @@ test.describe("with a published coach", () => {
       await page.goto("/coaches?q=strength&online=true");
       const card = page.getByTestId("coach-card").filter({ has: page.locator(`a[href="/coaches/${PUBLISHED}"]`) });
       // Follow sits on the card (20261026100000): a tap there follows, it does not open the profile
-      const cardFollow = card.locator("button[aria-pressed]");
+      // the card's Save is a toggle too (save-coach), so pick Follow by its text
+      const cardFollow = card.locator("button[aria-pressed]").filter({ hasText: /^(Follow|Following|Follow back|Unfollow)$/ });
       if (await cardFollow.count()) {
         const was = await cardFollow.getAttribute("aria-pressed");
         await cardFollow.click();

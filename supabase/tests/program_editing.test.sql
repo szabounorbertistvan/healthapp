@@ -6,7 +6,13 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(44);
+select plan(45);
+
+-- reads a name past RLS: since 20261113100000 a stranger cannot see someone
+-- else's custom exercise at all, so their own select would say nothing
+create or replace function pg_temp.exercise_name(p uuid) returns text language sql security definer as $fn$
+  select name_en from public.exercises where id = p
+$fn$;
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -170,7 +176,9 @@ update public.exercises set name_en = 'Chest Press' where id = 'e0000000-0000-00
 select is((select name_en from public.exercises where id = 'e0000000-0000-0000-0000-0000000000e3'), 'Bench Press', 'a system exercise cannot be renamed by a client');
 select pg_temp.authenticate_as('d0000000-0000-0000-0000-0000000000b3');
 update public.exercises set name_en = 'Mine now' where id = 'e0000000-0000-0000-0000-0000000000e5';
-select is((select name_en from public.exercises where id = 'e0000000-0000-0000-0000-0000000000e5'), 'Low cable fly', 'someone else''s custom exercise cannot be renamed');
+select is(pg_temp.exercise_name('e0000000-0000-0000-0000-0000000000e5'), 'Low cable fly', 'someone else''s custom exercise cannot be renamed');
+select is((select count(*)::int from public.exercises where id = 'e0000000-0000-0000-0000-0000000000e5'), 0,
+  'nor even seen (20261113100000)');
 
 -- ============================================================
 -- 6. following: lists, one notification, no forgery

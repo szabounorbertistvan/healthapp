@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser, enabledOAuthProviders } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/client";
@@ -12,6 +12,8 @@ import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/prof
 import type { Sex } from "@/lib/types";
 import { safeNext } from "@/lib/safe-next";
 import { classifyAttribution, signupReference } from "@healthapp/shared";
+import { ConsentChecks, consentGiven, type Consent } from "./consent-checks";
+import { CONSENT_VERSION } from "@/lib/legal";
 
 export type LoginMode = "signin" | "signup" | "forgot";
 type Role = "coach" | "client";
@@ -40,15 +42,22 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
+  const [consent, setConsent] = useState<Consent>({ terms: false, health: false });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done>(null);
   // Where the person was headed when the middleware sent them here (a deep
-  // link opened while signed out). Read once: the error handling below wipes
-  // the query string. Only ever used in handlers, so SSR never renders it.
-  const [next] = useState(() =>
-    typeof window === "undefined" ? "/dashboard" : safeNext(new URLSearchParams(window.location.search).get("next")),
-  );
+  // link opened while signed out, or a coach page's Contact / Save / Book /
+  // Follow). Read in an effect, not during render: arriving by a client-side
+  // <Link>, this renders before the router has written the new URL, so a
+  // render-time read saw the coach page's query string — no `next` — and every
+  // sign-in from a coach page landed on /dashboard (found by e2e, 2026-10-08).
+  // Read once, before the error handling below wipes the query string; only
+  // ever used in handlers, so SSR never renders it.
+  const nextRef = useRef("/dashboard");
+  useEffect(() => {
+    nextRef.current = safeNext(new URLSearchParams(window.location.search).get("next"));
+  }, []);
   // shown only once the Supabase project has the provider switched on
   const [googleEnabled, setGoogleEnabled] = useState(false);
 
@@ -87,6 +96,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
     if (mode === "signup" && !isValidAge(parseInt(age, 10))) return t.login.errAgeRange;
     if (mode === "signup" && password.length < MIN_PASSWORD) return t.login.errPasswordShort;
     if (mode === "signup" && password !== repeat) return t.login.errPasswordMismatch;
+    if (mode === "signup" && !consentGiven(consent)) return t.login.errConsent;
     return null;
   }
 
@@ -99,6 +109,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
     }
     setBusy(true);
     setError(null);
+    const next = nextRef.current;
     const supabase = supabaseBrowser();
     const origin = window.location.origin;
 
@@ -140,6 +151,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
             username: username.trim(),
             sex,
             birth_year: String(birthYearFromAge(parseInt(age, 10))),
+            // stamps terms_accepted_at / health_data_consent_at (20261113110000);
+            // validate() has already refused a sign-up without both boxes
+            consent_version: CONSENT_VERSION,
             ...(signupRef ? { signup_ref: signupRef } : {}),
           },
           emailRedirectTo: `${origin}/auth/callback?${new URLSearchParams({ next })}`,
@@ -175,6 +189,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   // first consent. The coach/client choice cannot travel as user metadata on an
   // OAuth request, so it rides on the callback URL and is claimed there.
   async function google() {
+    const next = nextRef.current;
     setBusy(true);
     setError(null);
     const params = new URLSearchParams({ next, flow: "oauth" });
@@ -299,6 +314,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
             className={inputClass}
           />
           <p className="text-xs text-ink-faint">{t.login.passwordHint}</p>
+          <ConsentChecks value={consent} onChange={setConsent} />
         </>
       ) : null}
 

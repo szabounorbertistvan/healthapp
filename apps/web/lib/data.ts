@@ -16,7 +16,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   if (!live) return null;
   const { supabase, userId } = live;
   const [{ data: user }, { data: sub, error: planError }] = await Promise.all([
-    supabase.from("users").select("id, full_name, username, avatar_url, city, bio, sex, birth_year, timezone, check_in_weekday, leaderboard_visibility, weight_unit, length_unit, rest_prefs, role, suspended_at").eq("id", userId).single(),
+    supabase.from("users").select("id, full_name, username, consent_version, avatar_url, city, bio, sex, birth_year, timezone, check_in_weekday, leaderboard_visibility, weight_unit, length_unit, rest_prefs, role, suspended_at").eq("id", userId).single(),
     // my_plan (migration 20260923120000): the effective tier including one
     // inherited from a Coach Pro, and whether the paywall applies — a
     // definer view, because the coach's subscription is a row this person
@@ -33,6 +33,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     id: user.id,
     full_name: user.full_name ?? "Coach",
     username: (user.username as string | null) ?? null,
+    consent_version: (user.consent_version as string | null) ?? null,
     avatar_url: (user.avatar_url as string | null) ?? null,
     city: (user.city as string | null) ?? null,
     bio: (user.bio as string | null) ?? null,

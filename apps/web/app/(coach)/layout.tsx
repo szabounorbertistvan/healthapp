@@ -12,6 +12,7 @@ import { FeedbackButton } from "@/components/feedback";
 import { Avatar } from "@/components/social";
 import { PlanProvider } from "@/lib/plan-client";
 import { getPlan } from "@/lib/plan";
+import { CONSENT_VERSION } from "@/lib/legal";
 
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -20,7 +21,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   if (profile.suspended_at) redirect("/suspended");
   // the coach web area is for coaches and admins; clients have their own surface
   if (profile.role === "client") redirect("/today");
-  if (!profile.username) redirect("/complete-profile");
+  if (!profile.username || profile.consent_version !== CONSENT_VERSION) redirect("/complete-profile");
   const plan = await getPlan();
 
   return (

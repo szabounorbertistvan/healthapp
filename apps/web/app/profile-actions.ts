@@ -9,6 +9,7 @@ import type { Role } from "@/lib/entitlements";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 import { exportMyData } from "@/lib/data-export";
+import { CONSENT_VERSION } from "@/lib/legal";
 import {
   AVATAR_PUBLIC_ID, avatarFolder, avatarUrl, cloudinaryConfigured, CloudinaryNotConfiguredError,
   destroyAvatar, destroyUserPhotos, signAvatarUpload, type AvatarUploadTicket,
@@ -80,6 +81,24 @@ export async function completeProfile(input: {
     }
     return failed;
   }
+  // The form does not submit without both consent boxes ticked.
+  const { error: consentError } = await supabase.rpc("accept_consent", { p_version: CONSENT_VERSION });
+  if (consentError) return { ok: false, message: consentError.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Records the Terms + health-data consent (20261113110000) for an account
+ * whose profile is already complete — one from before consent was asked, or
+ * one asked again because CONSENT_VERSION moved. Called only from the
+ * /complete-profile form once both boxes are ticked.
+ */
+export async function acceptConsent(): Promise<ActionResult> {
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { error } = await live.supabase.rpc("accept_consent", { p_version: CONSENT_VERSION });
+  if (error) return { ok: false, message: error.message };
   revalidatePath("/", "layout");
   return { ok: true };
 }

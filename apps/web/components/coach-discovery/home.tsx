@@ -57,7 +57,10 @@ export async function DiscoveryHome({ query, facets, recommended, near, signedIn
   ];
 
   return (
-    <div className="grid gap-12 sm:gap-16">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-12 sm:gap-16">
+      {/* minmax(0,1fr), not the implicit auto column: an auto track grows to the
+          min-content of the widest sideways-scrolling row and pushes the page
+          past the viewport on a phone. */}
       {/* ---------- hero: what this is, and the search ---------- */}
       <section className="relative pt-4 sm:pt-10">
         <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-56 w-[min(640px,100%)] -translate-x-1/2 rounded-full bg-accent-soft opacity-70 blur-3xl" />
