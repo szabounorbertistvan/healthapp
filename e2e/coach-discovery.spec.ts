@@ -193,7 +193,7 @@ test.describe("anonymous", () => {
     await context.close();
   });
 
-  test("on a phone: one column, Filters opens a sheet", async ({ browser }) => {
+  test("on a phone: one column, Filters opens a sheet that applies on Apply", async ({ browser }) => {
     const { context, page } = await anonymousPage(browser, { width: 390, height: 844 });
     await page.goto("/coaches");
     // the home: rows swipe sideways inside themselves, the page never does
@@ -202,12 +202,12 @@ test.describe("anonymous", () => {
     await page.getByRole("button", { name: "Filters" }).click();
     const sheet = page.getByRole("dialog");
     await expect(sheet).toBeVisible();
+    // the sheet edits a draft (20261111110000): nothing runs until Apply
     await sheet.getByRole("button", { name: "Online" }).click();
-    await expect(page).toHaveURL(/online=true/);
-    // the close button carries the live count of what the taps above found
-    await expect(sheet.getByTestId("filters-show")).toHaveText(/^(Show \d+ coaches?|Show 1 coach|No coaches — adjust filters)$/);
-    await sheet.getByTestId("filters-show").click();
+    await expect(page).toHaveURL(/\/coaches\?all=1$/);
+    await sheet.getByTestId("filters-apply").click();
     await expect(sheet).toHaveCount(0);
+    await expect(page).toHaveURL(/online=true/);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await context.close();
   });

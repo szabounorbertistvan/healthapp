@@ -19,7 +19,10 @@ const MIGRATIONS = path.resolve(HERE, "../../supabase/migrations");
 
 const scope = path.join(HERE, "node_modules/@embedded-postgres");
 if (!existsSync(scope)) throw new Error("Run `npm install` inside scripts/pgtest first.");
-const share = readdirSync(scope).map((p) => path.join(scope, p, "native/share/extension")).find(existsSync);
+// Windows builds keep extensions in share/extension, Linux and macOS in share/postgresql/extension
+const share = readdirSync(scope)
+  .flatMap((p) => ["native/share/extension", "native/share/postgresql/extension"].map((sub) => path.join(scope, p, sub)))
+  .find(existsSync);
 writeFileSync(path.join(share, "pgtap.control"), "default_version = '0.1'\nrelocatable = true\n");
 writeFileSync(path.join(share, "pgtap--0.1.sql"), readFileSync(path.join(HERE, "pgtap--0.1.sql"), "utf8"));
 
@@ -28,6 +31,8 @@ const pg = new EmbeddedPostgres({
   user: "postgres", password: "postgres",
   port: Number(process.env.PGTEST_PORT ?? 54398),
   persistent: false,
+  // Postgres refuses to run as root (a Linux container): run it as a postgres user, created if missing
+  createPostgresUser: process.getuid?.() === 0,
   initdbFlags: ["--encoding=UTF8", "--locale=C"],
 });
 await pg.initialise();

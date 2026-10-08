@@ -259,9 +259,21 @@ for a message (required), an optional service, goal and format; /requests (coach
 Marketplace trust, ranking & analytics (2026-10-07, migrations `20261110100000` → `20261110130000`, **not pushed live**;
 apply all four, in order, before the code — search_coaches is redefined, and the admin pages, the beacon and the
 Performance card answer empty without them). Not built: sign-up attribution for Google OAuth sign-ups (no metadata
-on that path), dedicated city / specialization landing pages (they are /coaches?city= and ?specialization=, which
-already rank and are measured), response *time* as a signal (only "answered within 48 h"), per-step conversion
+on that path), response *time* as a signal (only "answered within 48 h"), per-step conversion
 rates (counts only, by design until the log is old enough), an admin test account to drive the admin pages.
+
+Discovery 2.0, profile content, landing pages, calendar foundation (2026-10-08, migrations `20261111100000` →
+`20261111130000`, **not pushed live**; apply all four, in order, before the code — `search_coaches()` and
+`marketplace_track()` are dropped and recreated with new arguments, and `/bookings/availability`, the profile
+editor and the public page read the new functions). See docs/ENGINES.md §Discovery 2.0 and §Calendars.
+Not built: **any calendar provider** — no Google / Microsoft adapter, OAuth callback route, token key
+(`CALENDAR_TOKEN_KEY`) or sync worker exists, so "Connect" is "coming soon" and no coach can connect; the
+database, the slot blocking, the encryption, the sync logic and the status card are ready for them. Provider
+push channels (watch / subscriptions) and their renewal. Distance search (coaches have no coordinates).
+Portfolio media beyond the existing public posts (no new media system: posts with pictures are the portfolio;
+anonymous readers still see post text only). A noindex for a landing page whose only coaches stopped taking
+clients (it stays indexable while it has a published coach). Landing pages for city × specialization pairs.
+The e2e spec `marketplace-discovery.spec.ts` has not been run against a live project yet.
 
 Coaching lifecycle (2026-10-07, migrations `20261109100000` + `20261109110000`, live since 2026-10-07). Not built: a coach-side
 "End coaching" from the active client page itself (it links to the relationship page), invite-path start notice,

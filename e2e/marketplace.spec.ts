@@ -40,7 +40,8 @@ test.describe("coach", () => {
       const pct = Number(await page.getByTestId("marketplace-profile").getAttribute("data-completeness"));
       expect(pct).toBeGreaterThanOrEqual(0);
       expect(pct).toBeLessThanOrEqual(100);
-      await expect(page.getByTestId("marketplace-checklist").locator("li")).toHaveCount(11);
+      // 13 items since 20261111100000 (a public price, the coaching approach)
+      await expect(page.getByTestId("marketplace-checklist").locator("li")).toHaveCount(13);
     }
     // the tabs are the pages that already exist, and the sidebar keeps Marketplace lit on them
     await page.getByTestId("marketplace-tabs").getByRole("link", { name: "Requests" }).click();

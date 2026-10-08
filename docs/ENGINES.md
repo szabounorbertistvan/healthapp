@@ -862,6 +862,105 @@ conversions and signups 2 years, salts 1 day. Coach: `/marketplace` Performance 
 — counts and trends, no conversion rates. Client side: `components/marketplace-tracker.tsx`
 (one view per mount + any click on `[data-mkt]`); nothing on the device.
 
+## Discovery 2.0, profile content & landing pages
+
+Migrations `20261111100000_coach_profile_content.sql`, `20261111110000_coach_discovery_v2.sql`,
+`20261111120000_marketplace_analytics_v2.sql`; pgTAP `coach_discovery_v2` (60), `marketplace_analytics_v2` (22);
+`lib/coach-discovery.ts`, `lib/coach-content.ts`, `lib/coach-public.ts`, `lib/seo.ts` (unit-tested); e2e
+`marketplace-discovery.spec.ts`.
+
+**Still one ranking layer.** `coach_ranked()` is redefined, its formula and weights untouched. What changed:
+a free-text word now scores by *where* it matched — the profile's text is kept as a weighted tsvector
+(`search_wdoc`, built by the same trigger as `search_text`): A public name / username 1.0, B headline +
+specializations + city / country / gym 0.85, C service names + descriptions 0.7, D about + approach +
+experience 0.5, a near miss 0.4. Catalog words (specialization, city, format) keep their structured scores.
+An exact public name or username (`@` and case ignored) is a navigational tier: first under Recommended and
+Most relevant, never forced in a pure sort. Sorts: `relevance` is now the match alone, `rating` the Bayesian
+rating the quality part already uses, `availability` the soonest free public slot. Filters: service kind,
+language (any of), minimum rating (3 / 3.5 / 4 / 4.5, published reviews), available (a free public slot in 14
+days — `coach_rank_signals.next_available_at`, refreshed every 15 minutes from `booking_slots_internal()`).
+Cards gain `available_soon` (a fact, never the timestamp); `coach_discovery_facets()` gains `languages`,
+`service_kinds` and a coach count per specialization. `search_coaches()` and `coach_ranked()` were dropped and
+recreated (new arguments): the app sends the new ones only when set.
+
+**URL and UI.** Every filter and sort is in the URL (`?service=&language=&rating=&available=&sort=`); refresh,
+share and back / forward work. Desktop: the sidebar runs each change, shows the active count and Reset. Phone:
+the sheet edits a *draft* — nothing runs until Apply, Reset clears the draft, Cancel forgets it. One
+`DiscoveryListing` (`components/coach-discovery/listing.tsx`) for /coaches and the landing pages, with empty
+states that say why: no coaches in a place (offer online / anywhere), none for a specialization, too many
+filters (5+, offer Clear filters), nothing for these filters / this text.
+
+**Landing pages.** `/coaches/<city | specialization | country>` (the slugs share the coach namespace, reserved
+since 20261020100000): the same listing at an address of its own, an H1 and intro, canonical to itself,
+`CollectionPage` + breadcrumb JSON-LD, indexable only while it lists someone, and in the sitemap (`landingSlugs`).
+Cities and countries resolve only while they have a published coach (else 404); every active specialization
+resolves. Every `/coaches?…` combination stays `noindex, follow`. The Discovery Home's city and specialty links
+point at the landing pages (`listingHref`).
+
+**Profile content.** `coach_profiles` gains `approach`, `experience_summary`, `client_goals` (closed codes, ≤ 6)
+and `social_links` (handles for instagram / tiktok / youtube / facebook / linkedin and one https website —
+`coach_social_links_valid()`; the app builds every URL, `lib/coach-content.ts`). Content like the rest: editable
+directly only in draft (edit lock), through the staged revision otherwise (snapshot / apply carry them; an old
+copy without a key keeps the live value), in the search text at weight D. `coach_public_profile()` and
+`admin_coach_review()` are layered: the previous bodies are `*_base` (internal), the public names return base ||
+`coach_profile_content()` (+ `availability`: bookable, next free public slot in 14 days, the coach's zone).
+The page labels approach / experience "in the coach's own words — not checked by Voinic"; credentials and the
+badge stay Voinic's word. Editor: `ClaimNudge` warns on guarantees, set weight loss in a set time, medical
+claims (`hasRiskyClaim`), and the admin revision review flags them — a nudge, pre-moderation decides.
+
+**Page order**: header (rating, place, format, next free slot, Follow / Save / Share / Contact) → About →
+Specializations + Works with → Coaching approach + Experience → Services → (gate) → Credentials & verification →
+Availability → Reviews → facts → Programs → Posts → Why train with. Share uses the native sheet or copies the
+canonical URL. Metadata: `coachPageMetadata()` (canonical, robots, OG `profile` with `alternateLocale`, Twitter;
+images re-cut by `socialImage()` to 1200×630 / 600×600 JPEG), JSON-LD gains `sameAs`.
+
+**Intent through sign-in**: Contact / Save as before (`?intent=`); Book keeps the chosen time (`?at=`, only ever
+pre-selected). **Completeness** gains "a public price" (5) and "coaching approach" (5); 13 items, still 100.
+
+**Analytics** (same log, same rules): `search` (never the text), `filter_applied` (detail = the filter's name),
+`service_view` (a booking page), `share` (native | copy), `login_required` (contact / book / save / follow /
+review / message / full_profile — `data-mkt-wall` on the anonymous CTAs). The coach's card counts booking pages,
+shares and sign-in walls; the admin's funnel has the new steps, the filters used and the walls hit.
+
+## Calendars (foundation)
+
+Migration `20261111130000_calendar_integrations.sql`; pgTAP `calendar_integrations` (44);
+`packages/shared/src/calendar.ts`, `lib/calendar/{token-crypto,provider,sync}.ts` (unit-tested);
+`lib/calendar-data.ts`, `app/calendar-actions.ts`, `components/calendar-integrations.tsx`.
+
+**What exists**: the data model and its security boundary, the slot integration, the provider-agnostic
+contract and sync logic, the coach's status card. **What does not**: any provider adapter, the OAuth callback,
+the worker. So no coach can connect yet; the card says "coming soon" and booking behaves as before.
+
+- `calendar_connections` (one live per coach and provider; status pending / connected / syncing / error /
+  reauth_required / disconnected; account label, last sync, a fixed error code) — owner reads the status columns.
+- `calendar_credentials` — tokens as AES-256-GCM ciphertext bound to the connection id
+  (`lib/calendar/token-crypto.ts`, key `CALENDAR_TOKEN_KEY` outside the database, versioned) + the provider's
+  opaque sync state. **No grant, no policy**: service_role only, not even the owner.
+- `calendar_sources` — the calendars (name, primary) and `affects_availability` (the coach's switch; a new
+  primary calendar on, the rest opt-in). Owner-readable.
+- `calendar_busy_blocks` — `tstzrange` intervals only, only for calendars that affect availability. No grant.
+
+Coach RPCs: `my_calendar_integrations()`, `calendar_set_source_availability()` (off drops the busy time at once,
+on asks for a sync), `calendar_disconnect()` (calendars and busy time deleted at once; the token waits for the
+worker to revoke it, purged after 7 days by `calendar-credentials-purge`). Server RPCs (service_role only):
+`calendar_connection_open()`, `calendar_connections_due()` (marks them syncing, `skip locked`),
+`calendar_sync_apply()` (atomic replace of the window), `calendar_sync_failed()` (refused credentials →
+reauth_required, no retry; anything else → error, retried), `calendar_credentials_revoked()`.
+
+**Slots**: `booking_slots_internal()` subtracts busy blocks (with the service's buffers, like a booking) of
+calendars that affect availability on connections not disconnected; `book_service()` re-runs it for the start
+it is given, so a synced busy block refuses that start. Busy time is absolute instants, so a time-zone change or
+DST cannot shift it; all-day events become instants in the calendar's zone (`allDayToInterval`, 23/25-hour days
+tested). An outage keeps the busy time already synced (never opens a slot the coach is busy in). Voinic bookings
+stay authoritative: an event created after a booking does not cancel it.
+
+**Sync model for the worker**: push (Google watch channels / Graph subscriptions) or a coach action sets
+`next_sync_at`; a safety-net sync every 6 h with push, 30 min without (`nextSafetySync`) — not a polling loop.
+`syncConnection()` refreshes an expiring token, reads the calendar list and free/busy for 90 days, normalises
+(clip, merge) and applies; failures become one stored code, never the provider's text. Minimum scopes:
+Google `calendar.freebusy` + `calendar.calendarlist.readonly`; Microsoft `Calendars.ReadBasic` + `offline_access`.
+
 ## Engagement
 
 `app/(client)/habits`. `addHabit` / `toggleHabit`; `getMyHabits`. Tables `habits`,

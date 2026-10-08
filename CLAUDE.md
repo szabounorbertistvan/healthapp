@@ -66,7 +66,7 @@ database, by `admin_assert()` inside every `admin_*` RPC
 published program → `workout/[dayId]` day overview + per-day history →
 `workout/[dayId]/log` set logger), workout/build, food, habits, progress,
 check-in, coach (+ `coach/messages/[id]`, any thread on the client's side — e.g. a coach whose request was accepted; the current coach with pause/resume/end and past coaches), billing. Ungrouped: landing `page.tsx`, `coaches` (Coach Discovery: bare `/coaches` is the Discovery Home, `?all=1` or any search/filter the listing; state in
-the URL) and `coaches/[slug]` (the public coach page; `coaches/[slug]/book` books a service, `coaches/[slug]/review` writes the reader's one review, `coaches/bookings` lists the reader's bookings) — own header layout, no session needed, login, complete-profile
+the URL, always noindex) and `coaches/[slug]` (the public coach page — or, when the slug is a city / specialization / country, its indexable landing listing; `coaches/[slug]/book` books a service, `coaches/[slug]/review` writes the reader's one review, `coaches/bookings` lists the reader's bookings) — own header layout, no session needed, login, complete-profile
 (username / sex / age / coach-or-client for accounts that signed up without
 them — both layouts redirect there while `users.username` is null), privacy,
 terms, get-the-app, and the crawler files `robots.ts` / `sitemap.ts` (public in middleware; rules in `lib/seo.ts`). **Send feedback** (`components/feedback.tsx`, in both sidebars and both
@@ -143,6 +143,9 @@ invited → active → (paused ⇄ active) → ended is a trigger, participant m
 `coaching_transition()`, and one *current* (active or paused) coach per client is a unique index.
 **The directory's order is `coach_ranked()`** (20261110130000) — one internal ranking layer behind
 `search_coaches()`; never re-sort coaches in app code, and never return its scores from a public RPC.
+**Calendar tokens and busy time are service-role only** (since 2026-10-08): `calendar_credentials` and
+`calendar_busy_blocks` have no grant and no policy — the coach reads status through `my_calendar_integrations()`;
+no provider adapter exists yet (`lib/calendar/provider.ts`).
 Don't work around a policy in app code;
 change the policy and add a pgTAP test.
 
