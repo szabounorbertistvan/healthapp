@@ -64,10 +64,12 @@ from (values
 ) v(id, slug, name, price, unit, delivery)
 join public.coach_profiles cp on cp.slug = v.slug;
 
--- D: three days ahead in the coach's zone; WD its ISO weekday
+-- D: three days ahead in the coach's zone (four when that is a Sunday — the suite keeps Sunday
+-- for its own block and its DST case); WD its ISO weekday
 create temp table ctx as
-  select ((now() at time zone 'Europe/Bucharest')::date + 3) as d,
-         extract(isodow from ((now() at time zone 'Europe/Bucharest')::date + 3))::int as wd;
+  select x.d, extract(isodow from x.d)::int as wd
+  from (select (now() at time zone 'Europe/Bucharest')::date + 3
+               + case when extract(isodow from (now() at time zone 'Europe/Bucharest')::date + 3) = 7 then 1 else 0 end as d) x;
 create temp table b (name text primary key, id uuid);
 grant select on ctx to authenticated, anon;
 grant select, insert on b to authenticated;
