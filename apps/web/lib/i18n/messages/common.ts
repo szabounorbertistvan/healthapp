@@ -64,12 +64,15 @@ const en = {
     pending: "Signing out…",
   },
   cookieBanner: {
-    ariaLabel: "Cookie notice",
-    beforeBold: "uses only",
+    ariaLabel: "Cookie consent",
+    beforeBold: "uses",
     bold: "essential cookies",
-    afterBold: "— they keep you signed in and make the app work. No analytics cookies, no ads, no tracking.",
+    afterBold:
+      "to keep you signed in. With your permission, we also use Google Analytics on public pages only — never inside your account — to see how visitors find us. No ads.",
     privacyPolicy: "Privacy policy",
-    gotIt: "Got it",
+    essentialOnly: "Essential only",
+    accept: "Accept analytics",
+    changeSettings: "Change cookie settings",
   },
   signal: {
     on_track: "On Track",
@@ -1160,12 +1163,15 @@ const ro: typeof en = {
     pending: "Se deconectează…",
   },
   cookieBanner: {
-    ariaLabel: "Notificare cookie-uri",
-    beforeBold: "folosește doar",
+    ariaLabel: "Consimțământ cookie-uri",
+    beforeBold: "folosește",
     bold: "cookie-uri esențiale",
-    afterBold: "— ele te mențin autentificat și fac aplicația să funcționeze. Fără cookie-uri de analiză, fără reclame, fără urmărire.",
+    afterBold:
+      "ca să te mențină autentificat. Cu acordul tău, folosim și Google Analytics doar pe paginile publice — niciodată în contul tău — ca să vedem cum ne găsesc vizitatorii. Fără reclame.",
     privacyPolicy: "Politica de confidențialitate",
-    gotIt: "Am înțeles",
+    essentialOnly: "Doar esențiale",
+    accept: "Accept analiza",
+    changeSettings: "Schimbă setările cookie-urilor",
   },
   signal: {
     on_track: "Pe drumul bun",

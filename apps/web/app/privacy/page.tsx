@@ -1,3 +1,4 @@
+import { CookieSettingsButton } from "@/components/cookie-banner";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { APP_NAME, CONTACT_EMAIL } from "@/lib/brand";
@@ -79,10 +80,20 @@ function EnglishContent() {
         <section>
           <h2 className="mb-2 text-lg font-bold text-ink">Cookies</h2>
           <p>
-            We use only strictly-necessary cookies: the session cookies that keep you
-            signed in. There are no analytics, advertising or tracking cookies. Because
-            these cookies are essential, no consent is required — we just tell you.
+            We use strictly-necessary cookies: the session cookies that keep you signed in.
+            Because they are essential, they need no consent.
           </p>
+          <p className="mt-2">
+            Only if you choose &quot;Accept analytics&quot; do we also use Google Analytics
+            (Google Ireland Ltd.), which sets the <code>_ga</code> cookies, to count visits to
+            our public pages — the home page, the coach directory and coach pages, sign-in,
+            and these legal pages. It never runs inside your account, so no training,
+            nutrition, body or message data ever reaches it. Advertising features are off.
+            Google may process the data in the United States under the EU–US Data Privacy
+            Framework. Nothing is loaded until you accept, and you can change your choice at
+            any time; withdrawing deletes the <code>_ga</code> cookies from this browser.
+          </p>
+          <CookieSettingsButton />
         </section>
 
         <section>
@@ -192,11 +203,21 @@ function RomanianContent() {
         <section>
           <h2 className="mb-2 text-lg font-bold text-ink">Cookie-uri</h2>
           <p>
-            Folosim numai cookie-uri strict necesare: cookie-urile de sesiune care vă mențin
-            autentificat. Nu există cookie-uri de analiză, de publicitate sau de urmărire.
-            Deoarece aceste cookie-uri sunt esențiale, consimțământul nu este necesar — doar
-            vă informăm.
+            Folosim cookie-uri strict necesare: cookie-urile de sesiune care vă mențin
+            autentificat. Fiind esențiale, nu necesită consimțământ.
           </p>
+          <p className="mt-2">
+            Doar dacă alegeți „Accept analiza” folosim și Google Analytics (Google Ireland
+            Ltd.), care setează cookie-urile <code>_ga</code>, pentru a număra vizitele pe
+            paginile noastre publice — prima pagină, directorul și paginile antrenorilor,
+            autentificarea și aceste pagini legale. Nu rulează niciodată în contul
+            dumneavoastră, deci nicio dată despre antrenamente, nutriție, corp sau mesaje nu
+            ajunge la Google. Funcțiile de publicitate sunt oprite. Google poate prelucra
+            datele în Statele Unite, în baza Cadrului UE–SUA privind protecția datelor. Nimic
+            nu se încarcă înainte de acordul dumneavoastră, iar alegerea poate fi schimbată
+            oricând; retragerea șterge cookie-urile <code>_ga</code> din acest browser.
+          </p>
+          <CookieSettingsButton />
         </section>
 
         <section>

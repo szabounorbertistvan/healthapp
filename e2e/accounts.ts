@@ -22,7 +22,7 @@ export async function prepare(context: BrowserContext) {
   await context.addCookies([{ name: "bg-locale", value: "en", url: process.env.E2E_BASE_URL ?? "http://localhost:3000" }]);
   await context.addInitScript(() => {
     try {
-      localStorage.setItem("bg-cookie-notice-v1", new Date().toISOString());
+      localStorage.setItem("bg-analytics-consent-v1", "denied"); // banner answered; no analytics in tests
     } catch {}
   });
 }

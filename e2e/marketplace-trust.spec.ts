@@ -57,11 +57,11 @@ test.describe("anonymous measurement", () => {
     await page.goto("/coaches?city=cluj-napoca");
     const body = trackCall(await sent)!;
     expect(body.p_city).toBe("cluj-napoca");
-    // only what prepare() set: the locale cookie and the cookie-notice acknowledgement
+    // only what prepare() set: the locale cookie and the cookie choice (essential only)
     const cookies = (await context.cookies()).map((c) => c.name).filter((n) => !n.startsWith("sb-"));
     expect(cookies).toEqual(["bg-locale"]);
     const storage = await ownStorage(page);
-    expect(storage.local).toEqual(["bg-cookie-notice-v1"]);
+    expect(storage.local).toEqual(["bg-analytics-consent-v1"]);
     expect(storage.session).toBe(0);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });

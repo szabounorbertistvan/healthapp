@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Exo_2, Inter } from "next/font/google";
 import "./globals.css";
 import { CookieBanner } from "@/components/cookie-banner";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import { ServiceWorker } from "@/components/service-worker";
 import { APP_NAME, APP_TAGLINE, SITE_URL } from "@/lib/brand";
 import { getI18n } from "@/lib/i18n/server";
@@ -39,6 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <I18nProvider locale={locale} dict={t}>
           {children}
           <CookieBanner />
+          <GoogleAnalytics />
           <ServiceWorker />
         </I18nProvider>
       </body>
