@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 // (no React, no Next runtime); anything that needs a database is out of scope.
 export default defineConfig({
   test: {
-    include: ["packages/**/src/**/*.test.ts", "apps/web/lib/**/*.test.ts"],
+    include: ["packages/**/src/**/*.test.ts", "apps/web/lib/**/*.test.ts", "supabase/functions/_shared/**/*.test.ts"],
     environment: "node",
   },
 });

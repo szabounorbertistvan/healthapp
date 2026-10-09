@@ -492,6 +492,11 @@ verify_jwt = true
 [functions.rest-push]
 verify_jwt = true
 
+# Marketplace email (not active — docs/MARKETPLACE_EMAIL.md). Service role only:
+# the function also compares the bearer to SUPABASE_SERVICE_ROLE_KEY.
+[functions.marketplace-email-dispatch]
+verify_jwt = true
+
 # Called by Stripe, not by users — authenticity comes from the Stripe
 # signature, verified inside the function.
 [functions.stripe-webhook]

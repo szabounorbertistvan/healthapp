@@ -1,14 +1,21 @@
 # Marketplace email — design (nothing sends yet)
 
-Status 2026-10-09: **design + policy module only.** No email leaves the system
-for marketplace events. Auth email (confirm sign-up, reset password) is a
-separate path, owned by Supabase Auth — see docs/ENGINES.md §Accounts.
+Status 2026-10-09: **implemented locally, not active, nothing sends.** Auth email
+(confirm sign-up, reset password) is a separate path, owned by Supabase Auth —
+see docs/ENGINES.md §Accounts.
 
-The tested part that exists: `packages/shared/src/marketplace-email.ts`
-(which rows may become an email, when, to which link, how a provider answer is
-retried) with `marketplace-email.test.ts` and
-`apps/web/lib/marketplace-email-parity.test.ts`. Everything below marked
-**proposed** does not exist and needs approval (§9).
+| Piece | Where | State |
+|---|---|---|
+| Policy: rules, preferences, send/skip/wait, links, retry | `packages/shared/src/marketplace-email.ts` | done, unit-tested; link parity with the in-app notice tested |
+| Provider (Resend HTTP API, swappable interface, config validation) | `supabase/functions/_shared/email/provider.ts` | done, tested with a mocked fetch |
+| RO/EN templates, Voinic branding | `supabase/functions/_shared/email/templates.ts` | done, tested (escaping, no message text or sender, both languages for every rule) |
+| Dispatcher core + HTTP handler | `supabase/functions/_shared/email/dispatch.ts` | done, tested with a mock store and provider |
+| Edge function | `supabase/functions/marketplace-email-dispatch/index.ts`, `verify_jwt = true` in `config.toml` | wired, **not deployed**; without the outbox it answers 500, without secrets 503 |
+| Outbox table, enqueue trigger, claim/peek/mark RPCs | `supabase/proposals/20261114100000_email_outbox.sql` + `email_outbox.test.sql` | **proposal, not a migration**; validated on a throwaway Postgres (all migrations + proposal, 19/19 pgTAP); SQL rule list held equal to the TS rules by `apps/web/lib/email-outbox-proposal.test.ts` |
+| pg_cron tick, preferences UI, unsubscribe links | — | not built |
+
+The Vitest suite includes `supabase/functions/_shared/**/*.test.ts`; `deno check`
+covers the function and its tests.
 
 ## 1. What exists today
 
@@ -123,7 +130,7 @@ policies** and no grants (service role only), plus a pgTAP suite.
 | Must not be resent | anything `sent`; anything older than the rule's `maxAgeMinutes` (a reminder after the session, a stale booking change after an outage) → `skipped/stale`. |
 | In-app exists, email failed | the notification stays in the app (it is the source of truth); the outbox row ends `failed` with the status; nothing retries a `failed` row automatically. Admin visibility: a count of `failed` in `/admin/system` (proposed). |
 
-Nothing above is implemented, so **no reliability property holds yet.**
+The code for these exists, but the outbox is a proposal, so **no reliability property holds in any environment yet.**
 
 ## 6. Preferences and GDPR
 
@@ -153,6 +160,7 @@ Nothing above is implemented, so **no reliability property holds yet.**
 | `RESEND_API_KEY` | Supabase Secrets | provider key, sending-only scope |
 | `EMAIL_FROM` | Supabase Secrets | e.g. `Voinic <notificari@voinic.fit>` |
 | `SITE_URL` | Supabase Secrets | `https://www.voinic.fit`, prefixed to `marketplaceEmailPath()` |
+| `EMAIL_DISPATCH_ENABLED` | Supabase Secrets | `true` to send; anything else allows only `{"dry_run": true}` |
 | `EMAIL_UNSUBSCRIBE_SECRET` | Supabase Secrets | HMAC for unsubscribe links |
 | `marketplace_email_url`, `marketplace_email_key` | Vault | function URL + service key for the cron tick (as `rest_push_*`) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | provided by Supabase | function → database |
@@ -161,12 +169,15 @@ None of these go in the repo, Vercel or the browser.
 
 ## 8. Before switching it on
 
-Manual steps, in order:
+Manual steps, in order (the function imports `packages/shared/src/marketplace-email.ts`
+from outside `supabase/functions/`: confirm the CLI bundles it with
+`supabase functions deploy marketplace-email-dispatch --dry-run` or a staging
+deploy before relying on it; if not, vendor that one file into `_shared/`):
 1. Resend account; verify a sending domain (`voinic.fit` or a subdomain) with SPF, DKIM, DMARC.
 2. Approve §9; write the migration (outbox + enqueue trigger + claim/mark RPCs + cron, cron **disabled**) with a pgTAP suite.
-3. Write `marketplace-email-dispatch` + RO/EN templates; `deno check`; `[functions.marketplace-email-dispatch] verify_jwt = true` in `config.toml`.
+3. ~~Write `marketplace-email-dispatch` + RO/EN templates~~ — done (2026-10-09); `deno check` passes; `verify_jwt = true` is in `config.toml`.
 4. `supabase secrets set …` (§7); `supabase functions deploy marketplace-email-dispatch`; Vault secrets.
-5. Dry run: the function with `DRY_RUN=1` marks decisions without calling Resend; inspect the outbox.
+5. Dry run: POST `{"dry_run": true}` with the service key — the function reports each decision (`would_send`, `skipped`…) without calling Resend or changing a row (`email_outbox_peek`).
 6. Enable the cron; watch `sent`/`failed` counts.
 
 Tests required before production:
