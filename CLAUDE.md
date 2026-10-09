@@ -24,6 +24,15 @@ subset. When the two disagree, the code wins; see [docs/GAPS.md](docs/GAPS.md).
 owner asks for one in that conversation. This overrides any session-assigned branch
 name. If `main` moved, pull/rebase onto it first; never force-push `main`.
 
+## Reporting: the owner's standing rule (2026-10-09)
+
+**After every task, list the changes you made** (each file, one line on what changed).
+**At the end of every audit or task, add a plain-language explanation in Romanian** —
+what was done and why, written for someone who is not a programmer: no jargon, no file
+names or code terms in that part, short everyday sentences (e.g. "am închis o ușă prin
+care cineva ar fi putut intra în contul de antrenor demo"). The technical report stays;
+the simple explanation comes after it.
+
 ## Commands
 
 ```bash
