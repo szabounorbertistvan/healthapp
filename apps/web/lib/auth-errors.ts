@@ -61,3 +61,31 @@ export function authErrorMessage(
   if (key !== "errEmailRateLimitedIn") return strings[key];
   return strings[key].replace("{seconds}", String(retryAfterSeconds(error) ?? 0));
 }
+
+/** Seconds the resend button stays disabled after a send, so a click cannot loop. */
+export const RESEND_COOLDOWN_SECONDS = 60;
+
+export type ResendOutcome = { kind: "sent" } | { kind: "error"; key: AuthErrorKey };
+
+/**
+ * What the "resend confirmation email" button shows after `auth.resend()`.
+ * Only two things are worth telling the person: a rate limit (they should
+ * wait, and how long when GoTrue says) and a request that never reached the
+ * server (they should retry). Every other answer, success included, reads the
+ * same neutral "if there is an unconfirmed account…" — an error about this
+ * particular address would say whether it has an account.
+ */
+export function resendOutcome(
+  error: (Pick<AuthError, "message" | "code"> & { name?: string; status?: number }) | null,
+): ResendOutcome {
+  if (!error) return { kind: "sent" };
+  const key = authErrorKey(error);
+  if (key === "errRateLimited" || key === "errEmailRateLimited" || key === "errEmailRateLimitedIn") {
+    return { kind: "error", key };
+  }
+  // supabase-js reports a failed fetch as AuthRetryableFetchError, status 0
+  if (error.name === "AuthRetryableFetchError" || error.status === 0 || /failed to fetch|network/i.test(error.message)) {
+    return { kind: "error", key: "errGeneric" };
+  }
+  return { kind: "sent" };
+}

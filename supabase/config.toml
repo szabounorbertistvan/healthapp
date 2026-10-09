@@ -276,11 +276,11 @@ otp_expiry = 3600
 # which the route verifies server-side. The hosted project does not read this
 # file: paste the same HTML into Dashboard → Authentication → Email Templates.
 [auth.email.template.confirmation]
-subject = "Confirmă-ți contul HealthApp · Confirm your HealthApp account"
+subject = "Confirmă-ți contul Voinic · Confirm your Voinic account"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Resetează parola HealthApp · Reset your HealthApp password"
+subject = "Resetează parola Voinic · Reset your Voinic password"
 content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize email template

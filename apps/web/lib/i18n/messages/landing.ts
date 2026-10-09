@@ -183,6 +183,7 @@ const en = {
     // Supabase auth errors, mapped from the English messages the API returns
     errInvalidCredentials: "Wrong email or password.",
     errEmailNotConfirmed: "Confirm your email first — check your inbox.",
+    errEmailRequired: "Enter your email address first.",
     errEmailTaken: "An account with this email already exists.",
     errRateLimited: "Too many attempts. Wait a few minutes and try again.",
     errEmailRateLimited: "Too many emails requested for this address. Try again later.",
@@ -192,6 +193,9 @@ const en = {
     // post-action states
     checkInboxTitle: "Check your inbox",
     checkInboxBody: "We sent a confirmation link to {email}. Open it to activate your account.",
+    resendConfirmation: "Resend confirmation email",
+    resendConfirmationSent:
+      "If {email} has an account waiting for confirmation, a new link is on its way. Check your spam folder too.",
     resetSentTitle: "Reset link sent",
     resetSentBody: "If an account exists for {email}, a link to set a new password is on its way.",
     resetLinkInvalidTitle: "This link has expired",
@@ -377,6 +381,7 @@ const ro: typeof en = {
     errPasswordMismatch: "Cele două parole nu coincid.",
     errInvalidCredentials: "Email sau parolă greșită.",
     errEmailNotConfirmed: "Confirmă-ți mai întâi emailul — verifică inbox-ul.",
+    errEmailRequired: "Introdu mai întâi adresa de email.",
     errEmailTaken: "Există deja un cont cu acest email.",
     errRateLimited: "Prea multe încercări. Așteaptă câteva minute și încearcă din nou.",
     errEmailRateLimited: "S-au cerut prea multe emailuri pentru această adresă. Încearcă mai târziu.",
@@ -385,6 +390,9 @@ const ro: typeof en = {
     errGeneric: "Ceva n-a mers. Te rugăm să încerci din nou.",
     checkInboxTitle: "Verifică-ți inbox-ul",
     checkInboxBody: "Am trimis un link de confirmare la {email}. Deschide-l ca să-ți activezi contul.",
+    resendConfirmation: "Retrimite emailul de confirmare",
+    resendConfirmationSent:
+      "Dacă {email} are un cont care așteaptă confirmarea, un link nou este pe drum. Verifică și folderul Spam.",
     resetSentTitle: "Link de resetare trimis",
     resetSentBody: "Dacă există un cont pentru {email}, un link pentru setarea unei parole noi e pe drum.",
     resetLinkInvalidTitle: "Linkul a expirat",

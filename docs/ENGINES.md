@@ -1048,7 +1048,7 @@ Today's "Last workout".
 | Tables | `users`, `trainer_clients`, `subscriptions` |
 | Migrations | `..._subscriptions.sql`, `..._admin_role.sql`, `..._stripe_billing.sql`, `..._signup_role.sql` |
 | Edge function | `stripe-webhook` |
-| Email templates | `supabase/templates/{confirmation,recovery}.html` — bilingual; wired in `config.toml` locally, pasted by hand into the hosted dashboard |
+| Email templates | `supabase/templates/{confirmation,recovery}.html` — bilingual; wired in `config.toml` locally, pasted by hand into the hosted dashboard (the hosted project can edit templates only once custom SMTP is on). The confirmation link carries no `next`: sign-up saves it as user metadata `signup_next` and `/auth/callback` reads it back after `verifyOtp` (`lib/auth-redirect.ts`, through `safeNext`). A sign-in refused as "email not confirmed" offers **Resend confirmation email** (`auth.resend`, neutral answer, 60 s cooldown — `resendOutcome()` in `lib/auth-errors.ts`) |
 
 **Auth is email + password, or Google.** The login page has three modes: sign
 in, create account (full name, username, sex, age, coach/client choice,

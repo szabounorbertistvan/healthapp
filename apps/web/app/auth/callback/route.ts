@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-next";
+import { callbackDestination } from "@/lib/auth-redirect";
 
 /**
  * Where every emailed auth link lands: confirmation after sign-up, password
@@ -43,9 +44,16 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
 
   if (tokenHash && (type === "signup" || type === "email" || type === "recovery" || type === "invite" || type === "email_change")) {
-    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-    if (error) console.error("auth callback verifyOtp failed", error.message);
-    return NextResponse.redirect(new URL(error ? failure : next, origin));
+    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+    if (error) {
+      console.error("auth callback verifyOtp failed", error.message);
+      return NextResponse.redirect(new URL(failure, origin));
+    }
+    // the confirmation template carries no `next`; the sign-up saved it (lib/auth-redirect.ts)
+    const destination = callbackDestination({
+      next: searchParams.get("next"), type, metadata: data.user?.user_metadata,
+    });
+    return NextResponse.redirect(new URL(destination, origin));
   }
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);

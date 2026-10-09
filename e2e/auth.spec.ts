@@ -49,3 +49,59 @@ test("sign-up asks for the Terms and the health-data consent before anything is 
   await expect(page.locator("form").getByRole("alert")).toHaveText("Tick both boxes to continue.");
   expect(signups).toBe(0);
 });
+
+// Resend confirmation (Email Auth Hardening). Supabase is mocked at the
+// network: the password grant answers "email not confirmed" and the resend
+// endpoint is counted — no account is touched and no email is sent.
+async function refuseAsUnconfirmed(page: import("@playwright/test").Page) {
+  await page.route("**/auth/v1/token?grant_type=password", (route) =>
+    route.fulfill({
+      status: 400, contentType: "application/json",
+      body: JSON.stringify({ code: "email_not_confirmed", error_code: "email_not_confirmed", msg: "Email not confirmed" }),
+    }),
+  );
+  await page.goto("/login");
+  await page.getByPlaceholder("Email").fill("e2e-unconfirmed@healthapp.test");
+  await page.getByPlaceholder("Password", { exact: true }).fill("not-a-real-password");
+  await page.locator("form button[type=submit]").click();
+  await expect(page.locator("form").getByRole("alert")).toHaveText("Confirm your email first — check your inbox.");
+}
+
+test("an unconfirmed sign-in offers one resend, then a neutral note", async ({ page }) => {
+  let resends = 0;
+  await page.route("**/auth/v1/resend*", (route) => {
+    resends++;
+    return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+  await refuseAsUnconfirmed(page);
+
+  const resend = page.getByRole("button", { name: "Resend confirmation email" });
+  await resend.click();
+  await expect(page.getByRole("status")).toContainText("If e2e-unconfirmed@healthapp.test has an account waiting for confirmation");
+  await expect(resend).toBeDisabled();
+  await resend.click({ force: true });
+  expect(resends).toBe(1);
+});
+
+test("a rate-limited resend says so instead of claiming a send", async ({ page }) => {
+  await page.route("**/auth/v1/resend*", (route) =>
+    route.fulfill({
+      status: 429, contentType: "application/json",
+      body: JSON.stringify({
+        code: "over_email_send_rate_limit", error_code: "over_email_send_rate_limit",
+        msg: "For security purposes, you can only request this after 42 seconds.",
+      }),
+    }),
+  );
+  await refuseAsUnconfirmed(page);
+  await page.getByRole("button", { name: "Resend confirmation email" }).click();
+  await expect(page.getByTestId("resend-confirmation").locator("xpath=..").getByRole("alert"))
+    .toHaveText("Too many emails requested. Try again in 42s.");
+});
+
+test("the resend control goes away once the email is edited", async ({ page }) => {
+  await refuseAsUnconfirmed(page);
+  await expect(page.getByRole("button", { name: "Resend confirmation email" })).toBeVisible();
+  await page.getByPlaceholder("Email").fill("someone-else@healthapp.test");
+  await expect(page.getByRole("button", { name: "Resend confirmation email" })).toHaveCount(0);
+});

@@ -5,7 +5,8 @@ import { supabaseBrowser, enabledOAuthProviders } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/client";
 import { RoleCard } from "./role-card";
 import { PasswordInput } from "./password-input";
-import { authErrorMessage } from "@/lib/auth-errors";
+import { authErrorKey, authErrorMessage, resendOutcome, RESEND_COOLDOWN_SECONDS } from "@/lib/auth-errors";
+import { SIGNUP_NEXT_KEY } from "@/lib/auth-redirect";
 import { usernameAvailable } from "@/app/profile-actions";
 import { reportLoginFailure } from "@/app/admin-actions";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@/lib/profile";
@@ -46,6 +47,8 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done>(null);
+  // a sign-in refused as "email not confirmed" offers to resend the link
+  const [unconfirmed, setUnconfirmed] = useState(false);
   // Where the person was headed when the middleware sent them here (a deep
   // link opened while signed out, or a coach page's Contact / Save / Book /
   // Follow). Read in an effect, not during render: arriving by a client-side
@@ -83,6 +86,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
     setMode(next);
     setError(null);
     setDone(null);
+    setUnconfirmed(false);
     setPassword("");
     setRepeat("");
   }
@@ -109,6 +113,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
     }
     setBusy(true);
     setError(null);
+    setUnconfirmed(false);
     const next = nextRef.current;
     const supabase = supabaseBrowser();
     const origin = window.location.origin;
@@ -118,6 +123,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
       setBusy(false);
       if (error) {
         setError(authErrorMessage(error, t.login));
+        setUnconfirmed(authErrorKey(error) === "errEmailNotConfirmed");
         // The admin auth page counts these; GoTrue itself keeps no trace of a
         // refused password. Fire and forget — never the password.
         void reportLoginFailure(email);
@@ -155,6 +161,9 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
             // validate() has already refused a sign-up without both boxes
             consent_version: CONSENT_VERSION,
             ...(signupRef ? { signup_ref: signupRef } : {}),
+            // where to land once the emailed link is opened, on any device —
+            // the confirmation template has no `next` of its own (lib/auth-redirect.ts)
+            [SIGNUP_NEXT_KEY]: next,
           },
           emailRedirectTo: `${origin}/auth/callback?${new URLSearchParams({ next })}`,
         },
@@ -220,6 +229,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
             done.email,
           )}
         </p>
+        {done.kind === "confirm" ? <ResendConfirmation email={done.email} getNext={() => nextRef.current} /> : null}
         <button
           type="button"
           onClick={() => switchMode("signin")}
@@ -292,7 +302,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
 
       <input
         type="email" autoComplete="email" required value={email}
-        onChange={(e) => setEmail(e.target.value)} placeholder={t.login.email}
+        onChange={(e) => { setEmail(e.target.value); setUnconfirmed(false); }} placeholder={t.login.email}
         className={inputClass}
       />
 
@@ -319,6 +329,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
       ) : null}
 
       {error ? <p className="text-sm text-risk" role="alert">{error}</p> : null}
+      {mode === "signin" && unconfirmed ? <ResendConfirmation email={email} getNext={() => nextRef.current} /> : null}
 
       <button
         type="submit" disabled={busy}
@@ -353,6 +364,71 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
         </button>
       )}
     </form>
+  );
+}
+
+/**
+ * "Resend confirmation email" — `auth.resend({ type: "signup" })`, the same
+ * Supabase mail the sign-up sent, with the same `emailRedirectTo`. One click,
+ * one request: the button is off while it runs and for a cooldown after, so a
+ * double click or an impatient tap never queues a second email. What follows
+ * is the neutral note (or a rate-limit / network error) from resendOutcome().
+ */
+function ResendConfirmation({ email, getNext }: { email: string; getNext: () => string }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [coolingDown, setCoolingDown] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  async function resend() {
+    if (busy || coolingDown) return;
+    const address = email.trim();
+    if (!address) {
+      setNote({ ok: false, text: t.login.errEmailRequired });
+      return;
+    }
+    setBusy(true);
+    setNote(null);
+    let error: Parameters<typeof resendOutcome>[0] = null;
+    try {
+      ({ error } = await supabaseBrowser().auth.resend({
+        type: "signup",
+        email: address,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?${new URLSearchParams({ next: getNext() })}` },
+      }));
+    } catch (e) {
+      error = { name: "AuthRetryableFetchError", status: 0, code: undefined, message: e instanceof Error ? e.message : "network" };
+    }
+    setBusy(false);
+    const outcome = resendOutcome(error);
+    setNote(outcome.kind === "sent"
+      ? { ok: true, text: t.login.resendConfirmationSent.replace("{email}", address) }
+      : { ok: false, text: authErrorMessage(error, t.login) });
+    // a network failure may retry at once; a send or a rate limit waits
+    if (outcome.kind === "sent" || outcome.key !== "errGeneric") {
+      setCoolingDown(true);
+      timer.current = setTimeout(() => setCoolingDown(false), RESEND_COOLDOWN_SECONDS * 1000);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button" onClick={resend} disabled={busy || coolingDown} data-testid="resend-confirmation"
+        className="w-full rounded-lg border border-line bg-bg py-2 text-sm font-semibold hover:border-ink-faint disabled:opacity-50"
+      >
+        {busy ? "…" : t.login.resendConfirmation}
+      </button>
+      {note ? (
+        <p className={`text-xs ${note.ok ? "text-ink-soft" : "text-risk"}`} role={note.ok ? "status" : "alert"}>
+          {note.text}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
