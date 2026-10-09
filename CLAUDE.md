@@ -274,6 +274,7 @@ third-party text writes it.
 
 - [docs/ENGINES.md](docs/ENGINES.md) — per-feature map: what each engine does, which files, what state it's in.
 - [docs/GAPS.md](docs/GAPS.md) — what the spec promises that the code does not do yet.
+- [docs/MARKETPLACE_EMAIL.md](docs/MARKETPLACE_EMAIL.md) — marketplace email: designed, not built (event map, outbox, GDPR, rollout).
 - [docs/DISHFINDER.md](docs/DISHFINDER.md) — the sibling project at `D:\react\dishfinder`. Since
   2026-10-01 it is a **data source, not a dependency**: its Romanian ingredient names and ids
   land on our USDA `foods` rows via `supabase/seed/dishfinder-names.sql` (join key = the USDA

@@ -36,3 +36,4 @@ export * from "./booking";
 export * from "./coaching-lifecycle";
 export * from "./marketplace";
 export * from "./calendar";
+export * from "./marketplace-email";

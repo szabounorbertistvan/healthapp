@@ -378,6 +378,12 @@ to enable notifications on `/account` from a normal browser will be that
 test. `push-dispatch` (Expo) remains unused — the web push is a separate,
 smaller path.
 
+**No marketplace email (2026-10-09: designed, not built).** Requests, bookings, reminders, messages,
+reviews and listing decisions reach people in-app only. The design, event map, outbox proposal, GDPR split
+and the steps before switching it on are in [MARKETPLACE_EMAIL.md](MARKETPLACE_EMAIL.md); the send/skip/wait
+policy is code and tested (`packages/shared/src/marketplace-email.ts`). Missing: the outbox table, the
+dispatcher function, templates, a preferences UI and unsubscribe links — and a provider.
+
 **Launch-audit follow-ups (2026-10-08).** Three gaps from the audit closed in code:
 - **Consent at sign-up** — migration `20261113110000_signup_consent.sql`: `users.terms_accepted_at`,
   `health_data_consent_at`, `consent_version`. The sign-up form has two separate boxes (Terms + Privacy;
