@@ -7,10 +7,10 @@
 // ../_shared/email/ and is tested there; this file only wires the database and
 // the provider.
 //
-// NOT ACTIVE. It needs, in order: the outbox migration (the proposal is in
-// supabase/proposals/), these secrets, and EMAIL_DISPATCH_ENABLED=true. Until
-// then it answers 503 (not configured / disabled) or 500 (no outbox RPCs) and
-// sends nothing.
+// NOT ACTIVE. It needs, in order: the outbox migration
+// (20261114100000_email_outbox.sql), these secrets, EMAIL_DISPATCH_ENABLED=true
+// and the 'marketplace-email-tick' cron job switched on. Until then it answers
+// 503 (not configured / disabled) and sends nothing.
 //
 // Secrets (supabase secrets set …):
 //   BREVO_API_KEY           — the Brevo API key (transactional email)

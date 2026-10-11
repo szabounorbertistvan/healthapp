@@ -1,8 +1,4 @@
--- pgTAP · email outbox PROPOSAL (supabase/proposals/20261114100000_email_outbox.sql)
---
--- Runs only once the proposal is a migration. Until then, validate it on a
--- throwaway Postgres: copy both files into supabase/migrations and
--- supabase/tests, `node scripts/pgtest/run.mjs email_outbox`, remove them.
+-- pgTAP · email outbox (20261114100000_email_outbox.sql)
 --
 -- 1. the existing notify functions enqueue exactly the eligible rows, once
 -- 2. a message waits 15 minutes; an ineligible event is never queued
@@ -11,9 +7,10 @@
 -- 5. a crashed run's lock expires and the row comes back
 -- 6. nobody but the service role reads the outbox or calls its functions
 -- 7. deleting the account deletes its outbox rows
+-- 8. the cron tick is a no-op without Vault and is not callable by users
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(21);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -81,7 +78,12 @@ select is((select count(*)::int from public.email_outbox_claim(10)), 1, 'a row w
 select pg_temp.authenticate_as('e0000000-0000-0000-0000-000000000001');
 select throws_ok($$ select count(*) from public.email_outbox $$, '42501', null, 'a signed-in user cannot read the outbox');
 select throws_ok($$ select * from public.email_outbox_claim(10) $$, '42501', null, 'nor claim from it');
+select throws_ok($$ select public.tick_marketplace_email() $$, '42501', null, 'nor fire the email tick');
 reset role;
+
+-- 8. the tick with due rows but no Vault (this stack) returns quietly
+update public.email_outbox set status = 'pending', not_before = now() - interval '1 minute', locked_until = null;
+select lives_ok($$ select public.tick_marketplace_email() $$, 'the tick is a no-op until Vault holds the dispatcher URL and key');
 
 -- 7. account deletion
 delete from auth.users where id = 'e0000000-0000-0000-0000-000000000002';

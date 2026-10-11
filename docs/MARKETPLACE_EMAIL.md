@@ -11,7 +11,7 @@ see docs/ENGINES.md §Accounts.
 | RO/EN templates, Voinic branding | `supabase/functions/_shared/email/templates.ts` | done, tested (escaping, no message text or sender, both languages for every rule) |
 | Dispatcher core + HTTP handler | `supabase/functions/_shared/email/dispatch.ts` | done, tested with a mock store and provider |
 | Edge function | `supabase/functions/marketplace-email-dispatch/index.ts`, `verify_jwt = true` in `config.toml` | wired, **not deployed**; without the outbox it answers 500, without secrets 503 |
-| Outbox table, enqueue trigger, claim/peek/mark RPCs | `supabase/proposals/20261114100000_email_outbox.sql` + `email_outbox.test.sql` | **proposal, not a migration**; validated on a throwaway Postgres (all migrations + proposal, 19/19 pgTAP); SQL rule list held equal to the TS rules by `apps/web/lib/email-outbox-proposal.test.ts` |
+| Outbox table, enqueue trigger, claim/peek/mark RPCs, cron tick | `supabase/migrations/20261114100000_email_outbox.sql` + `supabase/tests/email_outbox.test.sql` | **migration** (approved 2026-10-11); the `marketplace-email-tick` cron job is created **inactive**; the enqueue trigger never blocks a notification (an error becomes a warning); SQL rule list held equal to the TS rules by `apps/web/lib/email-outbox-rules.test.ts` |
 | pg_cron tick, preferences UI, unsubscribe links | — | not built |
 
 The Vitest suite includes `supabase/functions/_shared/**/*.test.ts`; `deno check`
@@ -115,7 +115,7 @@ new security model:
 - deleting a notification (account purge cascades) must not lose the audit of
   what was sent — and an outbox row must go with the account too (cascade).
 
-Proposed (not created): `email_outbox(id, notification_id uuid unique references
+Created by `20261114100000_email_outbox.sql`: `email_outbox(id, notification_id uuid unique references
 notifications on delete cascade, user_id, status check in ('pending','sending',
 'sent','retry','failed','skipped'), reason, attempts int, not_before, locked_until,
 provider_message_id, last_status int, created_at, updated_at)`, RLS on with **no
@@ -130,7 +130,7 @@ policies** and no grants (service role only), plus a pgTAP suite.
 | Must not be resent | anything `sent`; anything older than the rule's `maxAgeMinutes` (a reminder after the session, a stale booking change after an outage) → `skipped/stale`. |
 | In-app exists, email failed | the notification stays in the app (it is the source of truth); the outbox row ends `failed` with the status; nothing retries a `failed` row automatically. Admin visibility: a count of `failed` in `/admin/system` (proposed). |
 
-The code for these exists, but the outbox is a proposal, so **no reliability property holds in any environment yet.**
+The outbox is a migration since 2026-10-11, so these hold wherever it is applied; nothing sends until the switches in §8 are on.
 
 ## 6. Preferences and GDPR
 
@@ -174,11 +174,11 @@ from outside `supabase/functions/`: confirm the CLI bundles it with
 `supabase functions deploy marketplace-email-dispatch --dry-run` or a staging
 deploy before relying on it; if not, vendor that one file into `_shared/`):
 1. ~~Brevo account; authenticate the sending domain `voinic.fit`; Supabase Auth custom SMTP through Brevo (`smtp-relay.brevo.com`, port 587, SMTP key)~~ — done by the owner in the dashboards, 2026-10-10. Still open here: create a Brevo **API key** (separate from the SMTP key) for `BREVO_API_KEY`, confirm the sender address the dispatcher will use in `EMAIL_FROM`, and paste `supabase/templates/{confirmation,recovery}.html` into Dashboard → Authentication → Email Templates if not done yet. Never `supabase config push` for this.
-2. Approve §9; write the migration (outbox + enqueue trigger + claim/mark RPCs + cron, cron **disabled**) with a pgTAP suite.
+2. ~~Approve §9; write the migration (outbox + enqueue trigger + claim/mark RPCs + cron, cron **disabled**) with a pgTAP suite~~ — done 2026-10-11 (`20261114100000_email_outbox.sql`, 21 pgTAP assertions).
 3. ~~Write `marketplace-email-dispatch` + RO/EN templates~~ — done (2026-10-09); `deno check` passes; `verify_jwt = true` is in `config.toml`.
 4. `supabase secrets set …` (§7); `supabase functions deploy marketplace-email-dispatch`; Vault secrets.
 5. Dry run: POST `{"dry_run": true}` with the service key — the function reports each decision (`would_send`, `skipped`…) without calling Brevo or changing a row (`email_outbox_peek`).
-6. Enable the cron; watch `sent`/`failed` counts.
+6. Switch the cron on — `select cron.alter_job((select jobid from cron.job where jobname = 'marketplace-email-tick'), active := true);` — and watch `sent`/`failed` counts.
 
 Tests required before production:
 - pgTAP: trigger enqueues exactly the mapped rows, once; claim is exclusive under two concurrent sessions; RLS — no role but service can read the outbox; cascade on account purge.
@@ -186,10 +186,10 @@ Tests required before production:
 - Function (Deno, mocked fetch): forbidden without the service key; idempotency key sent; 429 → retry, 422 → failed, network error → retry; no address in logs.
 - One real end-to-end per event to a test inbox outside the team, RO and EN, Gmail + Outlook, spam folder checked; unsubscribe link works.
 
-## 9. Needs approval before implementation
+## 9. Approvals (granted by the owner 2026-10-11)
 
-1. Adding the `email_outbox` table + trigger (schema change).
-2. The kind of each event (operational vs optional) and the defaults in §6.
+1. ~~Adding the `email_outbox` table + trigger (schema change)~~ — approved, migrated.
+2. ~~The kind of each event (operational vs optional) and the defaults in §6~~ — approved as designed.
 3. ~~Provider~~ — Brevo, decided 2026-10-11; still open: the plan (free 300/day vs paid), the DPA, the sending address.
-4. Hold time for messages (15 min) and the stale limits.
-5. Who sees failures (admin page) and who is alerted on a bad key.
+4. ~~Hold time for messages (15 min) and the stale limits~~ — approved as designed.
+5. Failures are seen by an admin (a `failed` count on `/admin/system` — approved, not built yet); alerting on a bad key is not built.

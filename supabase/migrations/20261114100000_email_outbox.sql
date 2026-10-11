@@ -1,8 +1,12 @@
--- PROPOSAL — NOT A MIGRATION. Lives in supabase/proposals/ so neither
--- `supabase db push` nor CI applies it. To adopt it, move it to
--- supabase/migrations/ (keep or bump the timestamp) together with
--- supabase/proposals/email_outbox.test.sql → supabase/tests/. See
--- docs/MARKETPLACE_EMAIL.md §5 and §8.
+-- Approved by the owner 2026-10-11 (docs/MARKETPLACE_EMAIL.md §5, §8, §9);
+-- tests in supabase/tests/email_outbox.test.sql.
+--
+-- Nothing sends after this migration. Three switches stay off until set by
+-- hand: the cron job is created *inactive*, the tick needs the Vault secrets
+-- 'marketplace_email_url' / 'marketplace_email_key', and the function needs
+-- BREVO_API_KEY + EMAIL_DISPATCH_ENABLED=true. Rows queue meanwhile; the
+-- dispatcher skips anything older than its rule's maxAgeMinutes, so a backlog
+-- never turns into a burst of stale email when it is switched on.
 --
 -- Marketplace email outbox: the persistent state the dispatcher
 -- (supabase/functions/marketplace-email-dispatch) needs to send each eligible
@@ -65,16 +69,25 @@ revoke execute on function public.email_rule_delay_minutes(text, text) from publ
 -- notification. This only queues the eligible ones. Whether an email is
 -- actually sent is decided at send time (preferences, confirmed address,
 -- suspension, read in-app, age).
+--
+-- An email is secondary to the notification: if queueing fails for any reason
+-- the notification (and the booking, request or message behind it) must still
+-- go through, so the error becomes a warning and the email is lost, not the action.
 create or replace function public.email_outbox_enqueue()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
-  v_delay int := public.email_rule_delay_minutes(new.category::text, new.payload ->> 'event');
+  v_delay int;
 begin
-  if v_delay is not null then
-    insert into public.email_outbox (notification_id, user_id, not_before)
-    values (new.id, new.user_id, new.created_at + make_interval(mins => v_delay))
-    on conflict (notification_id) do nothing;
-  end if;
+  begin
+    v_delay := public.email_rule_delay_minutes(new.category::text, new.payload ->> 'event');
+    if v_delay is not null then
+      insert into public.email_outbox (notification_id, user_id, not_before)
+      values (new.id, new.user_id, new.created_at + make_interval(mins => v_delay))
+      on conflict (notification_id) do nothing;
+    end if;
+  exception when others then
+    raise warning 'email_outbox_enqueue: % (notification %)', sqlstate, new.id;
+  end;
   return null;
 end;
 $$;
@@ -189,6 +202,66 @@ grant execute on function public.email_outbox_claim(int) to service_role;
 grant execute on function public.email_outbox_peek(int) to service_role;
 grant execute on function public.email_outbox_mark(uuid, text, text, timestamptz, int, text, text) to service_role;
 
--- The pg_cron tick (net.http_post with Vault 'marketplace_email_url' /
--- 'marketplace_email_key', as tick_rest_pushes() does) is deliberately NOT
--- here: it is scheduled by hand once the secrets exist (docs/MARKETPLACE_EMAIL.md §8).
+-- ---------- 5. the tick (as tick_rest_pushes) ----------
+-- Calls the dispatcher only when something is due and Vault knows where it is.
+-- Without Vault or pg_net (local stack, the offline harness) it does nothing.
+create or replace function public.tick_marketplace_email()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  v_url text;
+  v_key text;
+begin
+  if not exists (
+    select 1 from public.email_outbox o
+     where (o.status in ('pending', 'retry') and o.not_before <= now())
+        or (o.status = 'sending' and o.locked_until < now())
+  ) then
+    return;
+  end if;
+
+  begin
+    select decrypted_secret into v_url from vault.decrypted_secrets where name = 'marketplace_email_url';
+    select decrypted_secret into v_key from vault.decrypted_secrets where name = 'marketplace_email_key';
+  exception when others then
+    return;
+  end;
+  if v_url is null or v_key is null then
+    return;
+  end if;
+
+  begin
+    perform net.http_post(
+      url := v_url,
+      headers := jsonb_build_object('Authorization', 'Bearer ' || v_key, 'Content-Type', 'application/json'),
+      body := '{}'::jsonb,
+      timeout_milliseconds := 10000
+    );
+  exception when others then
+    raise notice 'tick_marketplace_email: http_post unavailable (%)', sqlerrm;
+  end;
+end;
+$$;
+revoke execute on function public.tick_marketplace_email() from public, anon, authenticated;
+
+-- Every minute, created INACTIVE. Switching it on is a deliberate step
+-- (docs/MARKETPLACE_EMAIL.md §8):
+--   select cron.alter_job((select jobid from cron.job where jobname = 'marketplace-email-tick'), active := true);
+-- cron.schedule() on an existing name replaces the job, so this block is
+-- idempotent — and re-running it switches the job off again.
+do $$
+declare
+  v_job bigint;
+begin
+  if exists (select 1 from pg_available_extensions where name = 'pg_cron') then
+    create extension if not exists pg_cron;
+    begin
+      v_job := cron.schedule('marketplace-email-tick', '* * * * *', $cron$ select public.tick_marketplace_email(); $cron$);
+      perform cron.alter_job(v_job, active := false);
+    exception when others then
+      -- the block is one subtransaction: a failed switch-off also undoes the
+      -- schedule, so an active job is never left behind
+      raise notice 'marketplace-email-tick not scheduled (%)', sqlerrm;
+    end;
+  end if;
+end;
+$$;
