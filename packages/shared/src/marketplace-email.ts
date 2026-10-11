@@ -166,9 +166,12 @@ export function marketplaceEmailPath(category: string, payload: Record<string, u
   return (screen && SCREEN_PATH[screen]) || "/notifications";
 }
 
-/** The provider idempotency key: one notification can only ever be one email. */
+/**
+ * The provider idempotency key: one notification can only ever be one email.
+ * The notification id itself, because Brevo requires the key to be a UUID.
+ */
 export function marketplaceEmailIdempotencyKey(notificationId: string): string {
-  return `voinic-notification-${notificationId}`;
+  return notificationId;
 }
 
 export const EMAIL_MAX_ATTEMPTS = 5;

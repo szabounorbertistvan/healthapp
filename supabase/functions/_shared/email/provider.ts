@@ -1,6 +1,6 @@
 // The email provider, isolated behind one small interface so it can be swapped.
 //
-// Resend is the candidate (docs/MARKETPLACE_EMAIL.md). Nothing here runs unless
+// Brevo is the provider (docs/MARKETPLACE_EMAIL.md). Nothing here runs unless
 // the dispatcher is configured: readEmailConfig() refuses to return a config
 // with a missing value, and the only thing it ever reports is the *names* of
 // what is missing — never a value. The API key is read from the function's
@@ -11,7 +11,7 @@ export interface OutgoingEmail {
   subject: string;
   html: string;
   text: string;
-  /** Same key → the provider sends at most once, whatever the retries. */
+  /** Same key → the provider sends at most once, whatever the retries. A UUID (Brevo requires one). */
   idempotencyKey: string;
   headers?: Record<string, string>;
 }
@@ -39,7 +39,7 @@ export interface EmailConfig {
   enabled: boolean;
 }
 
-export const EMAIL_CONFIG_KEYS = ["RESEND_API_KEY", "EMAIL_FROM", "SITE_URL"] as const;
+export const EMAIL_CONFIG_KEYS = ["BREVO_API_KEY", "EMAIL_FROM", "SITE_URL"] as const;
 
 export class EmailConfigError extends Error {
   constructor(readonly missing: string[]) {
@@ -56,11 +56,11 @@ const SENDER = /^[^<>\r\n]{1,80}<[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+>$|^[^\s@<>]+@[^\
  */
 export function readEmailConfig(get: (name: string) => string | undefined): EmailConfig {
   const problems: string[] = [];
-  const apiKey = (get("RESEND_API_KEY") ?? "").trim();
+  const apiKey = (get("BREVO_API_KEY") ?? "").trim();
   const from = (get("EMAIL_FROM") ?? "").trim();
   const siteRaw = (get("SITE_URL") ?? "").trim();
 
-  if (!apiKey) problems.push("RESEND_API_KEY");
+  if (!apiKey) problems.push("BREVO_API_KEY");
   if (!from || !SENDER.test(from)) problems.push("EMAIL_FROM");
   let siteUrl = "";
   try {
@@ -74,32 +74,49 @@ export function readEmailConfig(get: (name: string) => string | undefined): Emai
   return { apiKey, from, siteUrl, enabled: get("EMAIL_DISPATCH_ENABLED") === "true" };
 }
 
-const RESEND_URL = "https://api.resend.com/emails";
+const BREVO_URL = "https://api.brevo.com/v3/smtp/email";
+
+/** `Voinic <notificari@voinic.fit>` → Brevo's `{ name, email }`; a bare address has no name. */
+export function brevoSender(from: string): { name?: string; email: string } {
+  const named = /^(.*?)\s*<([^<>]+)>$/.exec(from.trim());
+  if (!named) return { email: from.trim() };
+  const name = named[1]!.trim().replace(/^"(.*)"$/, "$1");
+  return name ? { name, email: named[2]! } : { email: named[2]! };
+}
 
 /**
- * The Resend HTTP API. `fetchImpl` is injectable so tests use a mock — no test
- * ever reaches the network. A thrown fetch (DNS, TLS, timeout) is status 0.
+ * The Brevo transactional email API. `fetchImpl` is injectable so tests use a
+ * mock — no test ever reaches the network. A thrown fetch (DNS, TLS, timeout)
+ * is status 0.
+ *
+ * Idempotency: Brevo takes the key as `idempotencyKey` inside the body's
+ * `headers` (a UUID, remembered for 30 minutes) and answers a repeat with the
+ * error code `duplicate_parameter` without sending. The request has one
+ * recipient and no other list, so that code can only mean "already accepted":
+ * it is reported as 208, a 2xx, so the dispatcher marks the row sent and
+ * `last_status` 208 shows it was a dedupe. A retry more than 30 minutes after
+ * the first attempt is not covered by Brevo (docs/MARKETPLACE_EMAIL.md §5).
  */
-export function resendProvider(config: Pick<EmailConfig, "apiKey" | "from">, fetchImpl: typeof fetch = fetch): EmailProvider {
+export function brevoProvider(config: Pick<EmailConfig, "apiKey" | "from">, fetchImpl: typeof fetch = fetch): EmailProvider {
   return {
-    name: "resend",
+    name: "brevo",
     async send(email) {
       let response: Response;
       try {
-        response = await fetchImpl(RESEND_URL, {
+        response = await fetchImpl(BREVO_URL, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${config.apiKey}`,
+            "api-key": config.apiKey,
+            Accept: "application/json",
             "Content-Type": "application/json",
-            "Idempotency-Key": email.idempotencyKey,
           },
           body: JSON.stringify({
-            from: config.from,
-            to: [email.to],
+            sender: brevoSender(config.from),
+            to: [{ email: email.to }],
             subject: email.subject,
-            html: email.html,
-            text: email.text,
-            ...(email.headers ? { headers: email.headers } : {}),
+            htmlContent: email.html,
+            textContent: email.text,
+            headers: { ...email.headers, idempotencyKey: email.idempotencyKey },
           }),
           signal: AbortSignal.timeout(10_000),
         });
@@ -114,10 +131,11 @@ export function resendProvider(config: Pick<EmailConfig, "apiKey" | "from">, fet
       }
       const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
       if (response.ok) {
-        return { status: response.status, providerMessageId: typeof record.id === "string" ? record.id : null, errorCode: null };
+        return { status: response.status, providerMessageId: typeof record.messageId === "string" ? record.messageId : null, errorCode: null };
       }
-      // Resend's `name` is a fixed code ("validation_error", "rate_limit_exceeded"…); keep only that.
-      const code = typeof record.name === "string" && /^[a-z_]{1,60}$/.test(record.name) ? record.name : `http_${response.status}`;
+      if (record.code === "duplicate_parameter") return { status: 208, providerMessageId: null, errorCode: null };
+      // Brevo's `code` is a fixed enum ("invalid_parameter", "unauthorized", "not_enough_credits"…); keep only that, never `message`.
+      const code = typeof record.code === "string" && /^[a-z_]{1,60}$/.test(record.code) ? record.code : `http_${response.status}`;
       return { status: response.status, providerMessageId: null, errorCode: code };
     },
   };

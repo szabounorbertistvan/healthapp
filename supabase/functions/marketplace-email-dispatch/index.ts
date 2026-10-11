@@ -13,13 +13,13 @@
 // sends nothing.
 //
 // Secrets (supabase secrets set …):
-//   RESEND_API_KEY          — the provider key (sending-only scope)
+//   BREVO_API_KEY           — the Brevo API key (transactional email)
 //   EMAIL_FROM              — e.g. "Voinic <notificari@voinic.fit>", a verified sender
 //   SITE_URL                — https://www.voinic.fit
 //   EMAIL_DISPATCH_ENABLED  — "true" to send; anything else allows dry runs only
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { handleDispatchRequest, type OutboxRow, type OutboxStore, type OutboxUpdate } from "../_shared/email/dispatch.ts";
-import { resendProvider } from "../_shared/email/provider.ts";
+import { brevoProvider } from "../_shared/email/provider.ts";
 
 function supabaseStore(): OutboxStore {
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -52,6 +52,6 @@ Deno.serve((req) =>
   handleDispatchRequest(req, {
     env: (name) => Deno.env.get(name),
     makeStore: supabaseStore,
-    makeProvider: (config) => resendProvider(config),
+    makeProvider: (config) => brevoProvider(config),
   })
 );

@@ -106,7 +106,8 @@ describe("marketplaceEmailPath", () => {
 describe("delivery helpers", () => {
   it("keys the provider request by the notification, so a retry is the same email", () => {
     expect(marketplaceEmailIdempotencyKey(ID)).toBe(marketplaceEmailIdempotencyKey(ID));
-    expect(marketplaceEmailIdempotencyKey(ID)).toContain(ID);
+    // Brevo accepts only a UUID as the key
+    expect(marketplaceEmailIdempotencyKey(ID)).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
   });
 
   it("retries what may pass later and stops on what will not", () => {

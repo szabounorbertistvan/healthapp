@@ -3,10 +3,10 @@ import { handleDispatchRequest, processBatch, type OutboxRow, type OutboxStore, 
 import type { EmailProvider, OutgoingEmail, SendResult } from "./provider.ts";
 
 const SERVICE = "service-role-key-for-tests";
-const SECRET = "re_test_SECRET_value_never_shown";
+const SECRET = "xkeysib-test-SECRET-value-never-shown";
 const NOW = new Date("2026-10-09T12:00:00Z");
 const ago = (m: number) => new Date(NOW.getTime() - m * 60_000).toISOString();
-const CONFIGURED: Record<string, string> = { SUPABASE_SERVICE_ROLE_KEY: SERVICE, RESEND_API_KEY: SECRET, EMAIL_FROM: "Voinic <n@voinic.fit>", SITE_URL: "https://www.voinic.fit" };
+const CONFIGURED: Record<string, string> = { SUPABASE_SERVICE_ROLE_KEY: SERVICE, BREVO_API_KEY: SECRET, EMAIL_FROM: "Voinic <n@voinic.fit>", SITE_URL: "https://www.voinic.fit" };
 
 function row(over: Partial<OutboxRow> = {}): OutboxRow {
   return {
@@ -48,7 +48,7 @@ describe("processBatch", () => {
     expect(summary.sent).toBe(1);
     expect(sent).toHaveLength(1);
     expect(sent[0]!.to).toBe("ana@example.test");
-    expect(sent[0]!.idempotencyKey).toBe("voinic-notification-11111111-2222-4333-8444-555555555555");
+    expect(sent[0]!.idempotencyKey).toBe("11111111-2222-4333-8444-555555555555");
     expect(sent[0]!.html).toContain("https://www.voinic.fit/coaches/bookings");
     expect(marks).toEqual([{ id: "o1", status: "sent", lastStatus: 200, providerMessageId: "msg_1" }]);
   });
@@ -144,7 +144,7 @@ describe("handleDispatchRequest", () => {
     const { response, makeProvider } = call({ headers: auth, env: { SUPABASE_SERVICE_ROLE_KEY: SERVICE, EMAIL_FROM: "bad" } });
     const res = await response;
     expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ error: "email_not_configured", missing: ["RESEND_API_KEY", "EMAIL_FROM", "SITE_URL"] });
+    expect(await res.json()).toEqual({ error: "email_not_configured", missing: ["BREVO_API_KEY", "EMAIL_FROM", "SITE_URL"] });
     expect(makeProvider).not.toHaveBeenCalled();
   });
 

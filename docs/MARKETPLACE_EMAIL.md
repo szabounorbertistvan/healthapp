@@ -1,13 +1,13 @@
 # Marketplace email — design (nothing sends yet)
 
-Status 2026-10-09: **implemented locally, not active, nothing sends.** Auth email
+Status 2026-10-11: **implemented locally, not active, nothing sends.** Provider: **Brevo** (chosen 2026-10-11, replacing the Resend draft). Auth email
 (confirm sign-up, reset password) is a separate path, owned by Supabase Auth —
 see docs/ENGINES.md §Accounts.
 
 | Piece | Where | State |
 |---|---|---|
 | Policy: rules, preferences, send/skip/wait, links, retry | `packages/shared/src/marketplace-email.ts` | done, unit-tested; link parity with the in-app notice tested |
-| Provider (Resend HTTP API, swappable interface, config validation) | `supabase/functions/_shared/email/provider.ts` | done, tested with a mocked fetch |
+| Provider (Brevo transactional API, swappable interface, config validation) | `supabase/functions/_shared/email/provider.ts` | done, tested with a mocked fetch |
 | RO/EN templates, Voinic branding | `supabase/functions/_shared/email/templates.ts` | done, tested (escaping, no message text or sender, both languages for every rule) |
 | Dispatcher core + HTTP handler | `supabase/functions/_shared/email/dispatch.ts` | done, tested with a mock store and provider |
 | Edge function | `supabase/functions/marketplace-email-dispatch/index.ts`, `verify_jwt = true` in `config.toml` | wired, **not deployed**; without the outbox it answers 500, without secrets 503 |
@@ -90,20 +90,20 @@ pg_cron every minute ── net.http_post (Vault URL + key) ──▶ marketplac
                                      ── marketplaceEmailDecision() ──
                                        skip ─▶ status 'skipped', reason
                                        wait ─▶ not_before = until
-                                       send ─▶ Resend API, Idempotency-Key = notification id
+                                       send ─▶ Brevo API, idempotencyKey = notification id (a UUID)
                                                  2xx ─▶ 'sent', provider_message_id
                                                  retry ─▶ attempts+1, not_before += backoff
                                                  permanent / attempts exhausted ─▶ 'failed'
 ```
 
 **Recommendation: a dedicated edge function `marketplace-email-dispatch`**
-calling the Resend HTTP API (not SMTP: an HTTP API gives an idempotency key and
+calling the Brevo transactional HTTP API, `POST /v3/smtp/email` (not SMTP: an HTTP API gives an idempotency key and
 clear status codes). It follows the `rest-push` pattern exactly, so there is no
 new security model:
 - not callable anonymously: `verify_jwt = true` *and* the bearer must equal the
   service role key; it takes **no recipient, subject or body from the request**
   — it only reads its own outbox, so it cannot be used to send arbitrary mail;
-- `RESEND_API_KEY` only in Supabase Secrets; the function URL/key only in Vault;
+- `BREVO_API_KEY` only in Supabase Secrets; the function URL/key only in Vault;
 - logs: notification id, category, event, status, provider status code — never
   an email address, name or body.
 
@@ -123,10 +123,10 @@ policies** and no grants (service role only), plus a pgTAP suite.
 
 | Concern | Handling |
 |---|---|
-| Duplicates | `UNIQUE(notification_id)` (one email per row, even if the trigger fires twice); Resend `Idempotency-Key` = `marketplaceEmailIdempotencyKey(id)` (a retry after a timeout cannot become a second email); claim with `FOR UPDATE SKIP LOCKED` + `locked_until` (two overlapping runs never take the same row). Message spam is already bounded by `message_notify` (one unread row per thread) plus the 15-min hold. |
+| Duplicates | `UNIQUE(notification_id)` (one email per row, even if the trigger fires twice); Brevo `idempotencyKey` (in the body's `headers`, must be a UUID) = `marketplaceEmailIdempotencyKey(id)` = the notification id, so a retry after a timeout cannot become a second email — Brevo answers a repeat with `duplicate_parameter`, which the provider reports as 208 (sent). Brevo keeps a key **30 minutes**: retries 1–3 (at +1, +6, +21 min) are covered, the 4th (+81 min) is not, so only a timed-out attempt followed by that late retry could ever double-send; claim with `FOR UPDATE SKIP LOCKED` + `locked_until` (two overlapping runs never take the same row). Message spam is already bounded by `message_notify` (one unread row per thread) plus the 15-min hold. |
 | Retries | only for `retry` statuses (0/network, 408, 409, 425, 429, 5xx); backoff 1, 5, 15, 60 min; `EMAIL_MAX_ATTEMPTS = 5`. A row stuck in `sending` past `locked_until` returns to `retry`. |
 | Permanent errors | 400/401/403/404/422 → `failed`, no retry. A 401/403 means a bad key: alert a person, do not burn the queue (pause the cron). |
-| Provider limits | batch size ≤ the plan's per-second limit; 429 → retry with backoff; a daily cap counter before the plan's daily limit (Resend free tier is roughly 100/day — check current terms). |
+| Provider limits | batch size ≤ the plan's per-second limit; 429 → retry with backoff; a daily cap counter before the plan's daily limit (Brevo free plan: 300 emails/day — check current terms; a 402 `not_enough_credits` is permanent and needs a person). |
 | Must not be resent | anything `sent`; anything older than the rule's `maxAgeMinutes` (a reminder after the session, a stale booking change after an outage) → `skipped/stale`. |
 | In-app exists, email failed | the notification stays in the app (it is the source of truth); the outbox row ends `failed` with the status; nothing retries a `failed` row automatically. Admin visibility: a count of `failed` in `/admin/system` (proposed). |
 
@@ -150,14 +150,14 @@ The code for these exists, but the outbox is a proposal, so **no reliability pro
   Supabase Secrets) and the `List-Unsubscribe` header.
 - Data minimisation: no message text, no health data; the outbox stores no
   address (read at send time). Privacy policy must name the email provider as a
-  processor (Resend: DPA, EU/US transfer terms) before the first send.
+  processor (Brevo — Sendinblue SAS, France, EU-hosted; sign its DPA) before the first send.
 - Account deletion: outbox rows cascade with the notification/user.
 
 ## 7. Secrets and configuration (implementation stage)
 
 | Name | Where | Purpose |
 |---|---|---|
-| `RESEND_API_KEY` | Supabase Secrets | provider key, sending-only scope |
+| `BREVO_API_KEY` | Supabase Secrets | Brevo API key (SMTP & API → API keys); restrict it to the Supabase egress if the plan allows IP allow-listing |
 | `EMAIL_FROM` | Supabase Secrets | e.g. `Voinic <notificari@voinic.fit>` |
 | `SITE_URL` | Supabase Secrets | `https://www.voinic.fit`, prefixed to `marketplaceEmailPath()` |
 | `EMAIL_DISPATCH_ENABLED` | Supabase Secrets | `true` to send; anything else allows only `{"dry_run": true}` |
@@ -173,11 +173,11 @@ Manual steps, in order (the function imports `packages/shared/src/marketplace-em
 from outside `supabase/functions/`: confirm the CLI bundles it with
 `supabase functions deploy marketplace-email-dispatch --dry-run` or a staging
 deploy before relying on it; if not, vendor that one file into `_shared/`):
-1. Resend account; verify a sending domain (`voinic.fit` or a subdomain) with SPF, DKIM, DMARC.
+1. Brevo account; authenticate the sending domain (`voinic.fit` or a subdomain) — Brevo's DKIM + brevo-code TXT records, SPF, DMARC — and add `notificari@voinic.fit` as a sender. The same account can serve Supabase Auth: Dashboard → Authentication → SMTP, host `smtp-relay.brevo.com`, port 587, the Brevo SMTP login and an SMTP key (not the API key); then paste `supabase/templates/{confirmation,recovery}.html`. Never `supabase config push` for this.
 2. Approve §9; write the migration (outbox + enqueue trigger + claim/mark RPCs + cron, cron **disabled**) with a pgTAP suite.
 3. ~~Write `marketplace-email-dispatch` + RO/EN templates~~ — done (2026-10-09); `deno check` passes; `verify_jwt = true` is in `config.toml`.
 4. `supabase secrets set …` (§7); `supabase functions deploy marketplace-email-dispatch`; Vault secrets.
-5. Dry run: POST `{"dry_run": true}` with the service key — the function reports each decision (`would_send`, `skipped`…) without calling Resend or changing a row (`email_outbox_peek`).
+5. Dry run: POST `{"dry_run": true}` with the service key — the function reports each decision (`would_send`, `skipped`…) without calling Brevo or changing a row (`email_outbox_peek`).
 6. Enable the cron; watch `sent`/`failed` counts.
 
 Tests required before production:
@@ -190,6 +190,6 @@ Tests required before production:
 
 1. Adding the `email_outbox` table + trigger (schema change).
 2. The kind of each event (operational vs optional) and the defaults in §6.
-3. Resend as provider (cost tier, DPA) and the sending address.
+3. ~~Provider~~ — Brevo, decided 2026-10-11; still open: the plan (free 300/day vs paid), the DPA, the sending address.
 4. Hold time for messages (15 min) and the stale limits.
 5. Who sees failures (admin page) and who is alerted on a bad key.
