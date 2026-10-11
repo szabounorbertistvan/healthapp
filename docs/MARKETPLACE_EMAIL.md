@@ -173,7 +173,7 @@ Manual steps, in order (the function imports `packages/shared/src/marketplace-em
 from outside `supabase/functions/`: confirm the CLI bundles it with
 `supabase functions deploy marketplace-email-dispatch --dry-run` or a staging
 deploy before relying on it; if not, vendor that one file into `_shared/`):
-1. Brevo account; authenticate the sending domain (`voinic.fit` or a subdomain) — Brevo's DKIM + brevo-code TXT records, SPF, DMARC — and add `notificari@voinic.fit` as a sender. The same account can serve Supabase Auth: Dashboard → Authentication → SMTP, host `smtp-relay.brevo.com`, port 587, the Brevo SMTP login and an SMTP key (not the API key); then paste `supabase/templates/{confirmation,recovery}.html`. Never `supabase config push` for this.
+1. ~~Brevo account; authenticate the sending domain `voinic.fit`; Supabase Auth custom SMTP through Brevo (`smtp-relay.brevo.com`, port 587, SMTP key)~~ — done by the owner in the dashboards, 2026-10-10. Still open here: create a Brevo **API key** (separate from the SMTP key) for `BREVO_API_KEY`, confirm the sender address the dispatcher will use in `EMAIL_FROM`, and paste `supabase/templates/{confirmation,recovery}.html` into Dashboard → Authentication → Email Templates if not done yet. Never `supabase config push` for this.
 2. Approve §9; write the migration (outbox + enqueue trigger + claim/mark RPCs + cron, cron **disabled**) with a pgTAP suite.
 3. ~~Write `marketplace-email-dispatch` + RO/EN templates~~ — done (2026-10-09); `deno check` passes; `verify_jwt = true` is in `config.toml`.
 4. `supabase secrets set …` (§7); `supabase functions deploy marketplace-email-dispatch`; Vault secrets.
