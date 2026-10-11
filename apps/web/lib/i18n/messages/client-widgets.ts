@@ -51,6 +51,20 @@ const en = {
     vsPreviousSame: "Same as previous",
     openExercise: "History",
   },
+  emailPrefs: {
+    title: "Email notifications",
+    intro: "Emails about things you take part in on Voinic. In-app notifications are not affected. We never send newsletters or promotions from here.",
+    categories: {
+      coaching_request: { label: "Coaching requests", hint: "A request sent to you, and the answer to one you sent." },
+      booking: { label: "Bookings", hint: "New bookings, confirmations, cancellations and the reminder before a session." },
+      new_message: { label: "New messages", hint: "Only if you have not read the message in the app within 15 minutes. The email never contains the message." },
+      review: { label: "Reviews", hint: "A new review on your coach page, or a coach's reply to your review." },
+      marketplace: { label: "Your coach page", hint: "When your coach page or its changes are published or sent back." },
+    },
+    on: "On",
+    off: "Off",
+    couldNotSave: "Could not save — try again.",
+  },
   restTimer: {
     title: "Rest timer",
     rest: "Rest",
@@ -322,6 +336,20 @@ const ro: typeof en = {
     vsPreviousRepsDown: "−{value} rep față de anterior",
     vsPreviousSame: "La fel ca anterior",
     openExercise: "Istoric",
+  },
+  emailPrefs: {
+    title: "Notificări pe email",
+    intro: "Emailuri despre lucrurile la care participi pe Voinic. Notificările din aplicație nu se schimbă. De aici nu trimitem niciodată newslettere sau promoții.",
+    categories: {
+      coaching_request: { label: "Cereri de coaching", hint: "O cerere primită și răspunsul la o cerere trimisă de tine." },
+      booking: { label: "Programări", hint: "Programări noi, confirmări, anulări și memento-ul dinaintea unei sesiuni." },
+      new_message: { label: "Mesaje noi", hint: "Doar dacă nu ai citit mesajul în aplicație în 15 minute. Emailul nu conține mesajul." },
+      review: { label: "Recenzii", hint: "O recenzie nouă pe pagina ta de antrenor sau răspunsul unui antrenor la recenzia ta." },
+      marketplace: { label: "Pagina ta de antrenor", hint: "Când pagina ta sau modificările ei sunt publicate ori trimise înapoi." },
+    },
+    on: "Pornit",
+    off: "Oprit",
+    couldNotSave: "Nu s-a putut salva — încearcă din nou.",
   },
   restTimer: {
     title: "Cronometru de pauză",

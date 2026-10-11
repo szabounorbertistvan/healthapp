@@ -4,6 +4,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/account";
 import { RestTimerCard } from "@/components/rest-settings";
+import { EmailPrefsCard } from "@/components/email-settings";
 import { SocialPrivacyCard } from "@/components/social-v2";
 import { getMySocialPrivacy } from "@/lib/social-data";
 import { getMyCoachProfileStatus } from "@/lib/coach-profile-data";
@@ -12,10 +13,10 @@ import { MyGymCard } from "@/components/gyms";
 import { getMyGyms } from "@/lib/gym-data";
 
 /**
- * The client's account screen. It carries only controls that change something:
- * `notification_prefs` is the one column still without a control: nothing reads
- * it, so a switch here would be a dead knob. Language and theme already live in
- * the header, so they are not repeated.
+ * The client's account screen. It carries only controls that change something.
+ * Of `notification_prefs`, only the `email` switches have a control (the
+ * marketplace email dispatcher reads them); the top-level push switches still
+ * have none. Language and theme already live in the header, so they are not repeated.
  */
 export default async function AccountPage() {
   const [{ t }, profile, privacy, coachStatus, gyms] = await Promise.all([
@@ -47,6 +48,8 @@ export default async function AccountPage() {
         <MyGymCard my={gyms} />
 
         <RestTimerCard prefs={profile.rest_prefs} />
+
+        <EmailPrefsCard prefs={profile.email_prefs} role={profile.role} />
 
         {/* Who sees the numbers on the social profile (/people/[id]). */}
         {privacy ? <SocialPrivacyCard privacy={privacy} /> : null}

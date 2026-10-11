@@ -52,7 +52,10 @@ npm run web
 
 CI (`.github/workflows/ci.yml`) runs typecheck + test + build, a `deno check` over
 `supabase/functions/` (the edge functions are Deno modules that `tsc` never sees —
-run it locally with `npx -y deno@2 check --node-modules-dir=auto supabase/functions/`),
+run it locally with `npx -y deno@2 check --node-modules-dir=none supabase/functions/`,
+then `git checkout -- deno.lock`. **Never `--node-modules-dir=auto` here**: CI can afford
+it in a fresh checkout, but locally it swaps npm's packages for junctions into
+`node_modules/.deno` (newer next, supabase-js…) and breaks `npm run typecheck` — 2026-10-11),
 plus a separate job that applies every migration to a throwaway stack and runs the
 RLS tests.
 

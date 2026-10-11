@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  classifyEmailSendStatus, EMAIL_MAX_ATTEMPTS, emailCategoryEnabled, emailRetryDelaySeconds,
+  classifyEmailSendStatus, EMAIL_MAX_ATTEMPTS, EMAIL_PREF_CATEGORIES, emailCategoryEnabled, emailPrefsState, emailRetryDelaySeconds,
+  isEmailPrefCategory, withEmailPref,
   MARKETPLACE_EMAIL_RULES, marketplaceEmailDecision, marketplaceEmailIdempotencyKey, marketplaceEmailPath,
   marketplaceEmailRule, type EmailCandidate, type EmailRecipientState,
 } from "./marketplace-email";
@@ -121,5 +122,24 @@ describe("delivery helpers", () => {
     expect(emailRetryDelaySeconds(4)).toBe(3600);
     expect(emailRetryDelaySeconds(EMAIL_MAX_ATTEMPTS)).toBeNull();
     expect(emailRetryDelaySeconds(0)).toBeNull();
+  });
+});
+
+describe("email preference switches", () => {
+  it("has one switch per category, defaults set by its kind", () => {
+    expect(EMAIL_PREF_CATEGORIES.map((c) => c.category)).toEqual(["coaching_request", "booking", "new_message", "review", "marketplace"]);
+    expect(emailPrefsState({})).toEqual({ coaching_request: true, booking: true, new_message: false, review: false, marketplace: true });
+    expect(EMAIL_PREF_CATEGORIES.filter((c) => c.coachOnly).map((c) => c.category)).toEqual(["marketplace"]);
+    expect(isEmailPrefCategory("booking")).toBe(true);
+    expect(isEmailPrefCategory("new_kudos")).toBe(false);
+  });
+
+  it("sets one email switch and keeps every push switch", () => {
+    const prefs = { new_message: false, email: { booking: false } };
+    const next = withEmailPref(prefs, "new_message", true);
+    expect(next).toEqual({ new_message: false, email: { booking: false, new_message: true } });
+    expect(emailPrefsState(next)).toMatchObject({ booking: false, new_message: true });
+    expect(withEmailPref(null, "booking", false)).toEqual({ email: { booking: false } });
+    expect(withEmailPref({ email: [1] }, "booking", true)).toEqual({ email: { booking: true } });
   });
 });

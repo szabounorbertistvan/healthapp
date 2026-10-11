@@ -38,6 +38,8 @@ export type Profile = {
   leaderboard_visibility: "public" | "followers" | "private";
   /** Rest timer between sets: default, per-lift overrides, notifications. Normalised on read. */
   rest_prefs: RestPrefs;
+  /** Email switch per marketplace category (users.notification_prefs.email), defaults applied. */
+  email_prefs: Record<string, boolean>;
   role: Role;
   /** Effective tier — includes an active 30-day trial and Premium inherited from a Coach Pro. */
   tier: Tier;

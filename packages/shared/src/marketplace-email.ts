@@ -85,6 +85,32 @@ export function emailCategoryEnabled(prefs: unknown, rule: Pick<MarketplaceEmail
   return rule.kind === "operational" ? value !== false : value === true;
 }
 
+/** One email switch per category, in display order, with the kind that sets its default. */
+export const EMAIL_PREF_CATEGORIES: readonly { category: string; kind: EmailKind; coachOnly: boolean }[] = (() => {
+  const seen = new Map<string, EmailKind>();
+  for (const r of MARKETPLACE_EMAIL_RULES) if (!seen.has(r.category)) seen.set(r.category, r.kind);
+  // Only a coach has a listing to be published or returned.
+  return [...seen].map(([category, kind]) => ({ category, kind, coachOnly: category === "marketplace" }));
+})();
+
+export const isEmailPrefCategory = (category: string): boolean =>
+  EMAIL_PREF_CATEGORIES.some((c) => c.category === category);
+
+/** What each switch shows: the stored choice, else the kind's default (operational on, optional off). */
+export function emailPrefsState(prefs: unknown): Record<string, boolean> {
+  return Object.fromEntries(EMAIL_PREF_CATEGORIES.map((c) => [c.category, emailCategoryEnabled(prefs, c)]));
+}
+
+/**
+ * `notification_prefs` with one email switch set, every other key kept —
+ * the top-level keys are push-dispatch's push switches and must survive.
+ */
+export function withEmailPref(prefs: unknown, category: string, on: boolean): Record<string, unknown> {
+  const base = prefs && typeof prefs === "object" && !Array.isArray(prefs) ? (prefs as Record<string, unknown>) : {};
+  const email = base.email && typeof base.email === "object" && !Array.isArray(base.email) ? (base.email as Record<string, unknown>) : {};
+  return { ...base, email: { ...email, [category]: on } };
+}
+
 export interface EmailCandidate {
   category: string;
   payload: Record<string, unknown> | null;

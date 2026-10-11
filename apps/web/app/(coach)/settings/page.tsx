@@ -8,6 +8,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/account";
 import { RestTimerCard } from "@/components/rest-settings";
+import { EmailPrefsCard } from "@/components/email-settings";
 import { SocialPrivacyCard } from "@/components/social-v2";
 import { getMySocialPrivacy } from "@/lib/social-data";
 import { getMyCoachProfileStatus } from "@/lib/coach-profile-data";
@@ -56,6 +57,9 @@ export default async function SettingsPage() {
 
         {/* A coach trains too (My training): their own rest between sets. */}
         <RestTimerCard prefs={profile.rest_prefs} />
+
+        {/* Marketplace email: requests, bookings, messages, reviews, the coach page. */}
+        <EmailPrefsCard prefs={profile.email_prefs} role={profile.role} />
 
         {/* Who sees the numbers on the social profile (/people/[id]). */}
         {privacy ? <SocialPrivacyCard privacy={privacy} /> : null}

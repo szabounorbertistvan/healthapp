@@ -12,7 +12,8 @@ see docs/ENGINES.md §Accounts.
 | Dispatcher core + HTTP handler | `supabase/functions/_shared/email/dispatch.ts` | done, tested with a mock store and provider |
 | Edge function | `supabase/functions/marketplace-email-dispatch/index.ts`, `verify_jwt = true` in `config.toml` | wired, **not deployed**; without the outbox it answers 500, without secrets 503 |
 | Outbox table, enqueue trigger, claim/peek/mark RPCs, cron tick | `supabase/migrations/20261114100000_email_outbox.sql` + `supabase/tests/email_outbox.test.sql` | **migration** (approved 2026-10-11); the `marketplace-email-tick` cron job is created **inactive**; the enqueue trigger never blocks a notification (an error becomes a warning); SQL rule list held equal to the TS rules by `apps/web/lib/email-outbox-rules.test.ts` |
-| pg_cron tick, preferences UI, unsubscribe links | — | not built |
+| Preferences UI | `components/email-settings.tsx` (`EmailPrefsCard` on `/account` and the coach's `/settings`), `app/email-actions.ts` (`saveEmailPref`), helpers `EMAIL_PREF_CATEGORIES` / `emailPrefsState` / `withEmailPref` in the shared module | done 2026-10-11; unit + e2e (`e2e/email-prefs.spec.ts`); "Your coach page" only for someone who coaches; push switches (top-level keys) preserved |
+| Unsubscribe links, `List-Unsubscribe`, admin `failed` count | — | not built |
 
 The Vitest suite includes `supabase/functions/_shared/**/*.test.ts`; `deno check`
 covers the function and its tests.
@@ -145,7 +146,7 @@ The outbox is a migration since 2026-10-11, so these hold wherever it is applied
   an email switch (`emailCategoryEnabled` reads only `notification_prefs.email`).
 - Minimal model, **no schema change**: `users.notification_prefs.email.<category>
   = true|false`, inside the jsonb the owner can already update. Needed before
-  launch: a settings UI (on `/account` and the coach's `/settings`), a signed
+  launch: ~~a settings UI (on `/account` and the coach's `/settings`)~~ (built 2026-10-11), a signed
   unsubscribe link in every email (token = HMAC of user id + category, secret in
   Supabase Secrets) and the `List-Unsubscribe` header.
 - Data minimisation: no message text, no health data; the outbox stores no
