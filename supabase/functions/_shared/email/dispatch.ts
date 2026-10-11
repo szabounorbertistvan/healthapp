@@ -51,6 +51,11 @@ export type OutboxUpdate =
   | { id: string; status: "failed"; lastStatus: number; errorCode: string | null };
 
 export interface OutboxStore {
+  /**
+   * Whether the caller's key may use the outbox at all — the RPCs are granted
+   * to service_role alone, so Postgres decides, not a string comparison.
+   */
+  authorize(): Promise<boolean>;
   /** Locks and returns due rows (FOR UPDATE SKIP LOCKED); a second caller never gets the same row. */
   claim(limit: number): Promise<OutboxRow[]>;
   /** Due rows without locking or changing them — for a dry run. */
@@ -181,14 +186,6 @@ export async function processBatch(args: {
   return summary;
 }
 
-/** Constant-time string comparison, so the bearer check leaks nothing through timing. */
-export function sameSecret(a: string, b: string): boolean {
-  const len = Math.max(a.length, b.length);
-  let diff = a.length ^ b.length;
-  for (let i = 0; i < len; i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
-  return diff === 0 && a.length > 0;
-}
-
 const ALLOWED_FIELDS = new Set(["limit", "dry_run"]);
 
 function json(body: unknown, status: number): Response {
@@ -196,26 +193,35 @@ function json(body: unknown, status: number): Response {
 }
 
 /**
- * The function's whole HTTP surface. Service role only: the bearer must be the
- * project's service role key (the pg_cron tick sends it from Vault, as
- * rest-push does). The body may carry `limit` and `dry_run` and nothing else —
- * a recipient, address, subject or html field is refused, not ignored.
+ * The function's whole HTTP surface. Service role only — decided by Postgres,
+ * as in rest-push: the caller's bearer becomes the database client's key, and
+ * the outbox RPCs are executable by service_role alone, so any other key gets
+ * 42501 → 403 before anything else is looked at. (Comparing the bearer to the
+ * runtime's SUPABASE_SERVICE_ROLE_KEY fails on this project: the Vault key the
+ * cron sends is a valid service-role key but not byte-equal to that variable.)
+ * The body may carry `limit` and `dry_run` and nothing else — a recipient,
+ * address, subject or html field is refused, not ignored.
  */
 export async function handleDispatchRequest(
   req: Request,
   deps: {
     env: (name: string) => string | undefined;
-    makeStore: () => OutboxStore;
+    makeStore: (bearer: string) => OutboxStore;
     makeProvider: (config: EmailConfig) => EmailProvider;
     now?: () => Date;
   },
 ): Promise<Response> {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-  const serviceKey = deps.env("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!serviceKey) return json({ error: "server_misconfigured" }, 500);
-  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!sameSecret(bearer, serviceKey)) return json({ error: "forbidden" }, 403);
+  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!bearer) return json({ error: "forbidden" }, 403);
+  const store = deps.makeStore(bearer);
+  try {
+    if (!(await store.authorize())) return json({ error: "forbidden" }, 403);
+  } catch (e) {
+    console.error("marketplace-email-dispatch: authorize failed:", e instanceof Error ? e.message : "unknown error");
+    return json({ error: "store_unavailable" }, 500);
+  }
 
   let body: Record<string, unknown> = {};
   const raw = await req.text();
@@ -249,7 +255,7 @@ export async function handleDispatchRequest(
 
   try {
     const summary = await processBatch({
-      store: deps.makeStore(),
+      store,
       provider: dryRun ? null : deps.makeProvider(config),
       config,
       now: deps.now ?? (() => new Date()),

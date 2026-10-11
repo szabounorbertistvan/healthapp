@@ -24,6 +24,7 @@ function row(over: Partial<OutboxRow> = {}): OutboxRow {
 function mockStore(rows: OutboxRow[]) {
   const marks: OutboxUpdate[] = [];
   const store: OutboxStore = {
+    authorize: vi.fn(async () => true),
     claim: vi.fn(async () => rows),
     peek: vi.fn(async () => rows),
     mark: vi.fn(async (u: OutboxUpdate) => { marks.push(u); }),
@@ -142,17 +143,24 @@ describe("handleDispatchRequest", () => {
     const makeProvider = vi.fn(() => provider);
     const response = handleDispatchRequest(
       new Request("https://fn.local/marketplace-email-dispatch", { method: "POST", ...init }),
-      { env: (n) => (init.env ?? CONFIGURED)[n], makeStore: () => store, makeProvider, now: () => NOW },
+      // Postgres decides: only a service-role key may run the outbox RPCs.
+      { env: (n) => (init.env ?? CONFIGURED)[n], makeStore: (bearer) => ({ ...store, authorize: async () => bearer === SERVICE }), makeProvider, now: () => NOW },
     );
     return { response, sent, makeProvider, store };
   };
   const auth = { Authorization: `Bearer ${SERVICE}` };
 
-  it("refuses anyone without the service role key", async () => {
+  it("refuses anyone the database does not accept as the service role", async () => {
     expect((await call().response).status).toBe(403);
-    expect((await call({ headers: { Authorization: "Bearer anon-key" } }).response).status).toBe(403);
+    const anon = await call({ headers: { Authorization: "Bearer anon-key" }, body: JSON.stringify({ dry_run: true }) }).response;
+    expect(anon.status).toBe(403);
+    expect(await anon.json()).toEqual({ error: "forbidden" }); // nothing about the configuration
     expect((await call({ method: "GET", headers: auth }).response).status).toBe(405);
-    expect((await call({ headers: auth, env: {} }).response).status).toBe(500);
+  });
+
+  it("does not need the runtime service key to match the caller byte for byte", async () => {
+    const res = await call({ headers: auth, env: { ...CONFIGURED, SUPABASE_SERVICE_ROLE_KEY: "a-different-format-of-the-key" }, body: JSON.stringify({ dry_run: true }) }).response;
+    expect(res.status).toBe(200);
   });
 
   it("refuses a caller-chosen recipient, subject or body", async () => {
@@ -186,7 +194,7 @@ describe("handleDispatchRequest", () => {
     expect((await ok.response).status).toBe(200);
     expect(ok.sent).toHaveLength(1);
 
-    const failing: OutboxStore = { claim: async () => { throw new Error(`relation missing ${SECRET}`); }, peek: async () => [], mark: async () => {} };
+    const failing: OutboxStore = { authorize: async () => true, claim: async () => { throw new Error(`relation missing ${SECRET}`); }, peek: async () => [], mark: async () => {} };
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await handleDispatchRequest(
       new Request("https://fn.local/x", { method: "POST", headers: auth }),

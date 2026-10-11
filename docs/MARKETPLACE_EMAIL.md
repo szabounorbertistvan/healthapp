@@ -27,7 +27,7 @@ covers the function and its tests.
 | Writers | `coach_request_notify`, `booking_notify`, `message_notify` (trigger), `review_notify`, `marketplace_notify`, `coaching_notify` | Each runs `social_notify_ok()` first (recipient live, not deleting, not blocked, not the actor) — except `marketplace_notify`, which only checks the user exists. One row per event, per recipient. `message_notify` keeps **one unread row per conversation**. |
 | Reminders | `detect_booking_reminders()`, pg_cron `booking-reminders` every 15 min | Claims `bookings.reminded_at` in the same `UPDATE … RETURNING`, so a booking is reminded once; writes one row to each side. |
 | `push-dispatch` | `supabase/functions/push-dispatch` | Expo push. **Not scheduled** (no cron in any migration) and unused (no app writes `push_token`). When run it sets `sent_at` on every row it reads — pushed **and skipped** — so `sent_at` cannot be reused to track email. |
-| `rest-push` | `supabase/functions/rest-push`, `tick_rest_pushes()` | The working pattern for a service-only function: pg_cron → `net.http_post` with URL + service key from **Vault** (`rest_push_url`, `rest_push_key`), the function compares the bearer to `SUPABASE_SERVICE_ROLE_KEY`, the row is claimed before sending. |
+| `rest-push` | `supabase/functions/rest-push`, `tick_rest_pushes()` | The working pattern for a service-only function: pg_cron → `net.http_post` with URL + service key from **Vault** (`rest_push_url`, `rest_push_key`), the function uses the caller's bearer as its database key and relies on the service-only grant of its claim RPC (comparing the bearer to `SUPABASE_SERVICE_ROLE_KEY` returns 403 on this project — the Vault key is a valid service-role key but not byte-equal to that variable), the row is claimed before sending. `marketplace-email-dispatch` does the same since 2026-10-11. |
 | Preferences | `users.notification_prefs jsonb default '{}'` | Writable by the owner (column grant), **no UI**. push-dispatch reads `prefs[category] === false` as "off". Nothing about email. |
 | Email addresses | `auth.users.email`, `email_confirmed_at` | `public.users` has no email column. Only the service role can read them. |
 | Locale | `users.locale` | For RO/EN email text. |
@@ -81,7 +81,7 @@ domain RPC / trigger
                                              not_before = created_at + delay)
                                               │
 pg_cron every minute ── net.http_post (Vault URL + key) ──▶ marketplace-email-dispatch   (proposed)
-                                              │   bearer == SUPABASE_SERVICE_ROLE_KEY, else 403
+                                              │   bearer = DB key; email_outbox_peek granted to service_role only → else 403
                                               ▼
                                    claim batch: UPDATE … SET status='sending', locked_until
                                      WHERE status in ('pending','retry') AND not_before <= now()
@@ -166,7 +166,7 @@ The outbox is a migration since 2026-10-11, so these hold wherever it is applied
 | `SITE_URL` | Supabase Secrets | `https://www.voinic.fit`, prefixed to `marketplaceEmailPath()` |
 | `EMAIL_DISPATCH_ENABLED` | Supabase Secrets | `true` to send; anything else allows only `{"dry_run": true}` |
 | `marketplace_email_url`, `marketplace_email_key` | Vault | function URL + service key for the cron tick (as `rest_push_*`) |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | provided by Supabase | function → database |
+| `SUPABASE_URL` | provided by Supabase | function → database (the key is the caller's bearer) |
 
 None of these go in the repo, Vercel or the browser.
 

@@ -21,9 +21,12 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { handleDispatchRequest, type OutboxRow, type OutboxStore, type OutboxUpdate } from "../_shared/email/dispatch.ts";
 import { brevoProvider } from "../_shared/email/provider.ts";
 
-function supabaseStore(): OutboxStore {
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
-    auth: { persistSession: false },
+// The caller's own bearer is the client's key: the outbox RPCs are granted to
+// service_role alone, so Postgres answers 42501 to anything else (rest-push
+// does the same, for the same reason — see handleDispatchRequest).
+function supabaseStore(bearer: string): OutboxStore {
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, bearer, {
+    auth: { persistSession: false, autoRefreshToken: false },
   });
   const rows = async (fn: string, limit: number): Promise<OutboxRow[]> => {
     const { data, error } = await supabase.rpc(fn, { p_limit: limit });
@@ -31,6 +34,13 @@ function supabaseStore(): OutboxStore {
     return (data ?? []) as OutboxRow[];
   };
   return {
+    async authorize() {
+      const { error } = await supabase.rpc("email_outbox_peek", { p_limit: 1 });
+      if (!error) return true;
+      // 42501: not granted. PGRST301 / 401: a key the API itself rejects.
+      if (error.code === "42501" || error.code === "PGRST301") return false;
+      throw new Error(`email_outbox_peek: ${error.code ?? "error"}`);
+    },
     claim: (limit) => rows("email_outbox_claim", limit),
     peek: (limit) => rows("email_outbox_peek", limit),
     async mark(u: OutboxUpdate) {
