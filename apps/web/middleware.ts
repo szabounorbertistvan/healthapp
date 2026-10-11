@@ -76,7 +76,10 @@ export async function middleware(request: NextRequest) {
     path === "/coaches" || path.startsWith("/coaches/") ||
     // what crawlers read first (20261107100000): a redirect to /login here
     // would hide the whole public directory from search engines
-    path === "/robots.txt" || path === "/sitemap.xml"
+    path === "/robots.txt" || path === "/sitemap.xml" ||
+    // the link at the foot of every marketplace email (20261115100000): it
+    // must work from any inbox, signed in or not — the token is the proof
+    path === "/unsubscribe" || path === "/unsubscribe/one-click"
   ) return response;
   const isLanding = path === "/";
   const isLogin = path.startsWith("/login");

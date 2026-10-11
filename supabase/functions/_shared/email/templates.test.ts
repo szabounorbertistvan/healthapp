@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { MARKETPLACE_EMAIL_RULES } from "../../../../packages/shared/src/marketplace-email.ts";
 import { emailLocale, renderMarketplaceEmail, templateKeys } from "./templates.ts";
 
-const base = { link: "https://www.voinic.fit/bookings", settingsLink: "https://www.voinic.fit/account" };
+const UNSUB = "https://www.voinic.fit/unsubscribe?u=11111111-2222-4333-8444-555555555555&c=booking&t=0123456789abcdef0123456789abcdef";
+const base = { link: "https://www.voinic.fit/bookings", settingsLink: "https://www.voinic.fit/account", unsubscribeLink: UNSUB };
 
 describe("marketplace templates", () => {
   it("exist for every eligible event, in Romanian and in English", () => {
@@ -22,6 +23,15 @@ describe("marketplace templates", () => {
     expect(ro.html).toContain("Voinic");
     expect(ro.html).toContain(base.link);
     expect(ro.text).toContain(base.link);
+  });
+
+  it("end with a one-click unsubscribe link, escaped in the HTML", () => {
+    const ro = renderMarketplaceEmail({ ...base, category: "booking", event: "confirmed", locale: "ro", actorName: "Kai" })!;
+    const en = renderMarketplaceEmail({ ...base, category: "booking", event: "confirmed", locale: "en", actorName: "Kai" })!;
+    expect(ro.html).toContain(`href="${UNSUB.replaceAll("&", "&amp;")}"`);
+    expect(ro.html).toContain("Nu mai trimite emailuri de acest fel");
+    expect(en.html).toContain("Stop emails like this");
+    expect(ro.text).toContain(UNSUB);
   });
 
   it("show a session time in the recipient's time zone", () => {

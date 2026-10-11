@@ -102,6 +102,25 @@ export function emailPrefsState(prefs: unknown): Record<string, boolean> {
 }
 
 /**
+ * The unsubscribe link in every email (migration 20261115100000): the page a
+ * person opens, or with `oneClick` the URL a mail client POSTs to from the
+ * List-Unsubscribe header (RFC 8058). The token is signed in the database.
+ */
+export function emailUnsubscribePath(userId: string, category: string, token: string, oneClick = false): string {
+  const q = new URLSearchParams({ u: userId, c: category, t: token });
+  return `/unsubscribe${oneClick ? "/one-click" : ""}?${q.toString()}`;
+}
+
+/** The link's parameters if they have the right shape; the database still checks the token. */
+export function parseEmailUnsubscribe(params: { u?: unknown; c?: unknown; t?: unknown }): { userId: string; category: string; token: string } | null {
+  const { u, c, t } = params;
+  if (typeof u !== "string" || typeof c !== "string" || typeof t !== "string") return null;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u)) return null;
+  if (!isEmailPrefCategory(c) || !/^[0-9a-f]{32}$/.test(t)) return null;
+  return { userId: u.toLowerCase(), category: c, token: t };
+}
+
+/**
  * `notification_prefs` with one email switch set, every other key kept —
  * the top-level keys are push-dispatch's push switches and must survive.
  */

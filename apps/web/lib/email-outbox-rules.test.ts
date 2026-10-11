@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { MARKETPLACE_EMAIL_RULES } from "@healthapp/shared";
+import { EMAIL_PREF_CATEGORIES, MARKETPLACE_EMAIL_RULES } from "@healthapp/shared";
 
 // The outbox migration decides in SQL which notifications are queued; the
 // dispatcher decides in TypeScript which are sent. The two lists must match.
@@ -14,5 +14,12 @@ describe("email outbox rules", () => {
     const sqlRules = [...body.matchAll(/\('([a-z_]+)', '([a-z_*]+)', (\d+)\)/g)].map((m) => `${m[1]}/${m[2]}/${m[3]}`).sort();
     const tsRules = MARKETPLACE_EMAIL_RULES.map((r) => `${r.category}/${r.event}/${r.delayMinutes}`).sort();
     expect(sqlRules).toEqual(tsRules);
+  });
+
+  it("lets an unsubscribe link switch off exactly the categories the settings card shows", () => {
+    const sql = readFileSync(path.resolve(__dirname, "../../../supabase/migrations/20261115100000_email_unsubscribe.sql"), "utf8");
+    const list = /select p_category in \(([^)]*)\)/.exec(sql)?.[1] ?? "";
+    const sqlCategories = [...list.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
+    expect(sqlCategories).toEqual(EMAIL_PREF_CATEGORIES.map((c) => c.category).sort());
   });
 });

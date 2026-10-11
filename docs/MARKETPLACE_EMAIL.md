@@ -13,7 +13,8 @@ see docs/ENGINES.md §Accounts.
 | Edge function | `supabase/functions/marketplace-email-dispatch/index.ts`, `verify_jwt = true` in `config.toml` | wired, **not deployed**; without the outbox it answers 500, without secrets 503 |
 | Outbox table, enqueue trigger, claim/peek/mark RPCs, cron tick | `supabase/migrations/20261114100000_email_outbox.sql` + `supabase/tests/email_outbox.test.sql` | **migration** (approved 2026-10-11); the `marketplace-email-tick` cron job is created **inactive**; the enqueue trigger never blocks a notification (an error becomes a warning); SQL rule list held equal to the TS rules by `apps/web/lib/email-outbox-rules.test.ts` |
 | Preferences UI | `components/email-settings.tsx` (`EmailPrefsCard` on `/account` and the coach's `/settings`), `app/email-actions.ts` (`saveEmailPref`), helpers `EMAIL_PREF_CATEGORIES` / `emailPrefsState` / `withEmailPref` in the shared module | done 2026-10-11; unit + e2e (`e2e/email-prefs.spec.ts`); "Your coach page" only for someone who coaches; push switches (top-level keys) preserved |
-| Unsubscribe links, `List-Unsubscribe`, admin `failed` count | — | not built |
+| Unsubscribe links | `supabase/migrations/20261115100000_email_unsubscribe.sql` (signing key generated **inside the database**, `email_unsubscribe_token()` signs in `email_outbox_rows()`, `email_unsubscribe()` the anon door that verifies), `/unsubscribe` (page + button, nothing changes on GET), `/unsubscribe/one-click` (RFC 8058 POST, the `List-Unsubscribe` header), footer link in every template; the dispatcher skips (`no_unsubscribe`) any email without a token | done 2026-10-11; pgTAP `email_unsubscribe.test.sql` (16), unit tests for links, headers, footer |
+| Admin `failed` count | — | not built |
 
 The Vitest suite includes `supabase/functions/_shared/**/*.test.ts`; `deno check`
 covers the function and its tests.
@@ -146,9 +147,11 @@ The outbox is a migration since 2026-10-11, so these hold wherever it is applied
   an email switch (`emailCategoryEnabled` reads only `notification_prefs.email`).
 - Minimal model, **no schema change**: `users.notification_prefs.email.<category>
   = true|false`, inside the jsonb the owner can already update. Needed before
-  launch: ~~a settings UI (on `/account` and the coach's `/settings`)~~ (built 2026-10-11), a signed
-  unsubscribe link in every email (token = HMAC of user id + category, secret in
-  Supabase Secrets) and the `List-Unsubscribe` header.
+  launch: ~~a settings UI (on `/account` and the coach's `/settings`)~~ and ~~a signed
+  unsubscribe link in every email + the `List-Unsubscribe` header~~ — both built
+  2026-10-11. The token is HMAC-SHA256(user id + ":" + category) truncated to 128
+  bits, keyed by `email_signing_key` — a key the migration generates in the
+  database and that never leaves it, so there is no unsubscribe secret to set.
 - Data minimisation: no message text, no health data; the outbox stores no
   address (read at send time). Privacy policy must name the email provider as a
   processor (Brevo — Sendinblue SAS, France, EU-hosted; sign its DPA) before the first send.
@@ -162,7 +165,6 @@ The outbox is a migration since 2026-10-11, so these hold wherever it is applied
 | `EMAIL_FROM` | Supabase Secrets | e.g. `Voinic <notificari@voinic.fit>` |
 | `SITE_URL` | Supabase Secrets | `https://www.voinic.fit`, prefixed to `marketplaceEmailPath()` |
 | `EMAIL_DISPATCH_ENABLED` | Supabase Secrets | `true` to send; anything else allows only `{"dry_run": true}` |
-| `EMAIL_UNSUBSCRIBE_SECRET` | Supabase Secrets | HMAC for unsubscribe links |
 | `marketplace_email_url`, `marketplace_email_key` | Vault | function URL + service key for the cron tick (as `rest_push_*`) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | provided by Supabase | function → database |
 

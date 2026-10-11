@@ -12,6 +12,7 @@ import {
   classifyEmailSendStatus,
   emailRetryDelaySeconds,
   marketplaceEmailDecision,
+  emailUnsubscribePath,
   marketplaceEmailIdempotencyKey,
 } from "../../../../packages/shared/src/marketplace-email.ts";
 import { EmailConfigError, readEmailConfig, type EmailConfig, type EmailProvider } from "./provider.ts";
@@ -36,6 +37,10 @@ export interface OutboxRow {
   deletion_requested: boolean;
   actor_name: string | null;
   starts_at: string | null;
+  /** The recipient — for the unsubscribe link only. */
+  user_id: string;
+  /** Signed in the database for this person and category (20261115100000); null = no switch for it. */
+  unsubscribe_token: string | null;
 }
 
 export type OutboxUpdate =
@@ -111,6 +116,16 @@ export async function processBatch(args: {
       continue;
     }
 
+    // Every email can switch itself off in one click; one that cannot is not sent.
+    if (!row.unsubscribe_token) {
+      summary.skipped++;
+      summary.log.push({ ...entry, outcome: "skipped", reason: "no_unsubscribe" });
+      if (!dryRun) await store.mark({ id: row.id, status: "skipped", reason: "no_unsubscribe" });
+      continue;
+    }
+    const unsubscribeLink = `${config.siteUrl}${emailUnsubscribePath(row.user_id, row.category, row.unsubscribe_token)}`;
+    const oneClickLink = `${config.siteUrl}${emailUnsubscribePath(row.user_id, row.category, row.unsubscribe_token, true)}`;
+
     const rendered = renderMarketplaceEmail({
       category: row.category,
       event,
@@ -120,6 +135,7 @@ export async function processBatch(args: {
       timeZone: row.time_zone,
       link: `${config.siteUrl}${decision.path ?? "/notifications"}`,
       settingsLink: `${config.siteUrl}/account`,
+      unsubscribeLink,
     });
     if (!rendered) {
       summary.skipped++;
@@ -138,6 +154,8 @@ export async function processBatch(args: {
       html: rendered.html,
       text: rendered.text,
       idempotencyKey: marketplaceEmailIdempotencyKey(row.notification_id),
+      // RFC 8058 one-click: Gmail / Yahoo show "Unsubscribe" and POST here.
+      headers: { "List-Unsubscribe": `<${oneClickLink}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
     });
     const kind = classifyEmailSendStatus(result.status);
     if (kind === "sent") {

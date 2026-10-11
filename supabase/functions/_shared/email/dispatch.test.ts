@@ -8,12 +8,15 @@ const NOW = new Date("2026-10-09T12:00:00Z");
 const ago = (m: number) => new Date(NOW.getTime() - m * 60_000).toISOString();
 const CONFIGURED: Record<string, string> = { SUPABASE_SERVICE_ROLE_KEY: SERVICE, BREVO_API_KEY: SECRET, EMAIL_FROM: "Voinic <n@voinic.fit>", SITE_URL: "https://www.voinic.fit" };
 
+const TOKEN = "0123456789abcdef0123456789abcdef";
+
 function row(over: Partial<OutboxRow> = {}): OutboxRow {
   return {
     id: "o1", notification_id: "11111111-2222-4333-8444-555555555555", attempts: 0,
     category: "booking", payload: { event: "confirmed", screen: "my_bookings" }, created_at: ago(1), read_at: null,
     email: "ana@example.test", email_confirmed: true, locale: "ro", time_zone: "Europe/Bucharest", prefs: {},
     suspended: false, deletion_requested: false, actor_name: "Kai", starts_at: "2026-10-12T07:00:00Z",
+    user_id: "22222222-3333-4444-8555-666666666666", unsubscribe_token: TOKEN,
     ...over,
   };
 }
@@ -51,6 +54,26 @@ describe("processBatch", () => {
     expect(sent[0]!.idempotencyKey).toBe("11111111-2222-4333-8444-555555555555");
     expect(sent[0]!.html).toContain("https://www.voinic.fit/coaches/bookings");
     expect(marks).toEqual([{ id: "o1", status: "sent", lastStatus: 200, providerMessageId: "msg_1" }]);
+  });
+
+  it("carries a one-click unsubscribe for its own category, in the body and the headers", async () => {
+    const { store } = mockStore([row()]);
+    const { provider, sent } = mockProvider([]);
+    await run(store, provider);
+    const query = `u=22222222-3333-4444-8555-666666666666&c=booking&t=${TOKEN}`;
+    expect(sent[0]!.text).toContain(`https://www.voinic.fit/unsubscribe?${query}`);
+    expect(sent[0]!.headers).toEqual({
+      "List-Unsubscribe": `<https://www.voinic.fit/unsubscribe/one-click?${query}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    });
+  });
+
+  it("never sends an email that cannot be unsubscribed from", async () => {
+    const { store, marks } = mockStore([row({ unsubscribe_token: null })]);
+    const { provider, sent } = mockProvider([]);
+    await run(store, provider);
+    expect(sent).toHaveLength(0);
+    expect(marks).toEqual([{ id: "o1", status: "skipped", reason: "no_unsubscribe" }]);
   });
 
   it("skips without sending: unconfirmed address, suspended account, opted out, not eligible", async () => {

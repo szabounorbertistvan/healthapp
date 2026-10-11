@@ -1,7 +1,8 @@
 "use server";
 // The person's marketplace email switches (docs/MARKETPLACE_EMAIL.md §6).
 //
-//   saveEmailPref   users.notification_prefs.email.<category> = true | false
+//   saveEmailPref       users.notification_prefs.email.<category> = true | false
+//   unsubscribeByLink   the same, = false, from an email's signed link (no session)
 //
 // The dispatcher reads them at send time through emailCategoryEnabled(), so a
 // switch flipped here applies to every email not yet sent, queued ones included.
@@ -10,7 +11,18 @@ import { isEmailPrefCategory, withEmailPref } from "@healthapp/shared";
 import { liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { notSignedIn } from "@/lib/action-result";
+import { unsubscribeWithLink, type UnsubscribeOutcome } from "@/lib/email-unsubscribe";
 import type { ActionResult } from "./actions";
+
+/** The button on /unsubscribe. The token, not a session, is the proof. */
+export async function unsubscribeByLink(link: { u: string; c: string; t: string }): Promise<UnsubscribeOutcome> {
+  const outcome = await unsubscribeWithLink(link);
+  if (outcome === "done") {
+    revalidatePath("/account");
+    revalidatePath("/settings");
+  }
+  return outcome;
+}
 
 export async function saveEmailPref(category: string, on: boolean): Promise<ActionResult> {
   if (!isEmailPrefCategory(category) || typeof on !== "boolean") {

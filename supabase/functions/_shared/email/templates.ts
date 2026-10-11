@@ -21,6 +21,8 @@ export interface TemplateInput {
   link: string;
   /** Absolute link to where notification settings live. */
   settingsLink: string;
+  /** Absolute one-click link that switches off this email's category. */
+  unsubscribeLink: string;
 }
 
 export interface RenderedEmail {
@@ -78,9 +80,17 @@ const COPY: Record<EmailLocale, Record<string, (v: Vars) => Copy>> = {
   },
 };
 
-const FOOTER: Record<EmailLocale, { why: string; settings: string }> = {
-  ro: { why: "Primești acest email pentru că ai un cont Voinic și această notificare este pornită.", settings: "Setări notificări" },
-  en: { why: "You are receiving this because you have a Voinic account and this notification is on.", settings: "Notification settings" },
+const FOOTER: Record<EmailLocale, { why: string; settings: string; unsubscribe: string }> = {
+  ro: {
+    why: "Primești acest email pentru că ai un cont Voinic și această notificare este pornită.",
+    settings: "Setări notificări",
+    unsubscribe: "Nu mai trimite emailuri de acest fel",
+  },
+  en: {
+    why: "You are receiving this because you have a Voinic account and this notification is on.",
+    settings: "Notification settings",
+    unsubscribe: "Stop emails like this",
+  },
 };
 
 const FALLBACK_NAME: Record<EmailLocale, string> = { ro: "Cineva", en: "Someone" };
@@ -119,6 +129,7 @@ export function renderMarketplaceEmail(input: TemplateInput): RenderedEmail | nu
   const safe = template({ name: escapeHtml(name), when: escapeHtml(when) });
   const link = escapeHtml(input.link);
   const settings = escapeHtml(input.settingsLink);
+  const unsubscribe = escapeHtml(input.unsubscribeLink);
   const footer = FOOTER[locale];
 
   const html = `<!doctype html>
@@ -138,7 +149,7 @@ export function renderMarketplaceEmail(input: TemplateInput): RenderedEmail | nu
           <a href="${link}" style="display:inline-block;background:#d4a938;color:#0b0b0d;text-decoration:none;font-weight:700;font-size:15px;padding:12px 22px;border-radius:10px;">${safe.cta}</a>
         </td></tr>
         <tr><td style="padding:22px 28px 24px 28px;">
-          <p style="margin:0;font-size:12px;line-height:1.5;color:#807c73;">${escapeHtml(footer.why)} <a href="${settings}" style="color:#807c73;">${escapeHtml(footer.settings)}</a></p>
+          <p style="margin:0;font-size:12px;line-height:1.5;color:#807c73;">${escapeHtml(footer.why)} <a href="${settings}" style="color:#807c73;">${escapeHtml(footer.settings)}</a> · <a href="${unsubscribe}" style="color:#807c73;">${escapeHtml(footer.unsubscribe)}</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -146,7 +157,7 @@ export function renderMarketplaceEmail(input: TemplateInput): RenderedEmail | nu
 </body>
 </html>`;
 
-  const text = `${plain.heading}\n\n${plain.body}\n\n${plain.cta}: ${input.link}\n\n—\n${footer.why}\n${footer.settings}: ${input.settingsLink}\n`;
+  const text = `${plain.heading}\n\n${plain.body}\n\n${plain.cta}: ${input.link}\n\n—\n${footer.why}\n${footer.settings}: ${input.settingsLink}\n${footer.unsubscribe}: ${input.unsubscribeLink}\n`;
   return { subject: oneLine(plain.subject, 120), html, text };
 }
 

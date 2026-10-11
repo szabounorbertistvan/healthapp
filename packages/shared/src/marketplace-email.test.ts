@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyEmailSendStatus, EMAIL_MAX_ATTEMPTS, EMAIL_PREF_CATEGORIES, emailCategoryEnabled, emailPrefsState, emailRetryDelaySeconds,
-  isEmailPrefCategory, withEmailPref,
+  emailUnsubscribePath, isEmailPrefCategory, parseEmailUnsubscribe, withEmailPref,
   MARKETPLACE_EMAIL_RULES, marketplaceEmailDecision, marketplaceEmailIdempotencyKey, marketplaceEmailPath,
   marketplaceEmailRule, type EmailCandidate, type EmailRecipientState,
 } from "./marketplace-email";
@@ -141,5 +141,23 @@ describe("email preference switches", () => {
     expect(emailPrefsState(next)).toMatchObject({ booking: false, new_message: true });
     expect(withEmailPref(null, "booking", false)).toEqual({ email: { booking: false } });
     expect(withEmailPref({ email: [1] }, "booking", true)).toEqual({ email: { booking: true } });
+  });
+});
+
+describe("unsubscribe links", () => {
+  const TOKEN = "0123456789abcdef0123456789abcdef";
+  it("builds the page and the one-click URL, and reads them back", () => {
+    expect(emailUnsubscribePath(ID, "booking", TOKEN)).toBe(`/unsubscribe?u=${ID}&c=booking&t=${TOKEN}`);
+    expect(emailUnsubscribePath(ID, "booking", TOKEN, true)).toBe(`/unsubscribe/one-click?u=${ID}&c=booking&t=${TOKEN}`);
+    const q = new URLSearchParams(emailUnsubscribePath(ID, "new_message", TOKEN).split("?")[1]);
+    expect(parseEmailUnsubscribe(Object.fromEntries(q))).toEqual({ userId: ID, category: "new_message", token: TOKEN });
+  });
+
+  it("refuses a link of the wrong shape before it reaches the database", () => {
+    expect(parseEmailUnsubscribe({ u: "nope", c: "booking", t: TOKEN })).toBeNull();
+    expect(parseEmailUnsubscribe({ u: ID, c: "new_kudos", t: TOKEN })).toBeNull();
+    expect(parseEmailUnsubscribe({ u: ID, c: "booking", t: "short" })).toBeNull();
+    expect(parseEmailUnsubscribe({ u: ID, c: "booking", t: [TOKEN] })).toBeNull();
+    expect(parseEmailUnsubscribe({})).toBeNull();
   });
 });

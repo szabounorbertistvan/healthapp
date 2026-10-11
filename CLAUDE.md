@@ -153,10 +153,10 @@ references — a new read of `foods` must use those, not `.from("foods")`. **Not
 readable by `anon`** except through the Coach Discovery doors —
 `coach_public_profile(slug)`, `coach_public_posts(slug)`, `coach_public_programs(slug)`,
 `search_coaches(...)`, `coach_discovery_facets()` (2026-10-01), `coach_booking_services(slug)` and
-`coach_booking_slots(...)` (free start/end times only, 2026-10-07), `coach_public_reviews(slug)`, `coach_slug_redirect(slug)` and `coach_sitemap()` (2026-10-07), and the one anonymous *write* `marketplace_track()` (first-party, cookieless measurement — the visitor hash is computed in SQL from the request headers; 20261110120000), all gated by the internal `coach_public_visible()` / `booking_eligibility()` (published, account
+`coach_booking_slots(...)` (free start/end times only, 2026-10-07), `coach_public_reviews(slug)`, `coach_slug_redirect(slug)` and `coach_sitemap()` (2026-10-07), and the one anonymous *write* `marketplace_track()` (first-party, cookieless measurement — the visitor hash is computed in SQL from the request headers; 20261110120000), plus `email_unsubscribe(user, category, token)` behind the `/unsubscribe` link in every email (it only sets that one email switch off, and only for a token signed by the database; 20261115100000), all gated by the internal `coach_public_visible()` / `booking_eligibility()` (published, account
 live, no block): `coach_*` tables have owner/admin policies only, and those functions'
 field lists *are* the public contract — adding a key publishes it. `/coaches/*` is the
-one app route middleware lets through without a session.
+one app area middleware lets through without a session, besides `/unsubscribe` (+ `/one-click`) and the legal/auth pages.
 **`trainer_clients` is written only by functions** (since 2026-10-07): the lifecycle
 invited → active → (paused ⇄ active) → ended is a trigger, participant moves go through
 `coaching_transition()`, and one *current* (active or paused) coach per client is a unique index.
