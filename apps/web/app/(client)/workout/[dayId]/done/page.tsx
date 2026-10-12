@@ -12,6 +12,8 @@ import { StreakAfterWorkout } from "@/components/streak";
 import { AiReview } from "@/components/ai-review";
 import { getWorkoutReviewPrompt } from "@/lib/ai-review";
 import { getI18n } from "@/lib/i18n/server";
+import { SessionGymPicker } from "@/components/session-gym";
+import { getMyGyms, getRecentGyms, getSessionGym } from "@/lib/gym-data";
 
 /**
  * "Workout completed!" — the aggregates of the session just finished and the
@@ -30,9 +32,10 @@ export default async function WorkoutDonePage({
 }) {
   const { t, locale } = await getI18n();
   const [{ dayId }, { session }] = await Promise.all([params, searchParams]);
-  const [shareable, streak, profile, prompt] = await Promise.all([
+  const [shareable, streak, profile, prompt, gyms, recentGyms, sessionGym] = await Promise.all([
     session ? getShareableSession(session) : null, getMyStreak(), getProfile(),
     session ? getWorkoutReviewPrompt(session, dayId, locale, t) : null,
+    getMyGyms(), getRecentGyms(), session ? getSessionGym(session) : null,
   ]);
   if (!shareable) redirect("/today");
   const s = t.common.social;
@@ -42,6 +45,15 @@ export default async function WorkoutDonePage({
     <div className="mx-auto max-w-3xl space-y-4">
       <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{s.workoutCompleted}</h1>
       {streak ? <StreakAfterWorkout view={streak} /> : null}
+      {/* Optional: where this workout happened, for the gym's tops and stats. */}
+      {session ? (
+        <SessionGymPicker
+          sessionId={session}
+          current={sessionGym}
+          home={gyms.home ? { id: gyms.home.id, name: gyms.home.name, city: gyms.home.city } : null}
+          recent={recentGyms}
+        />
+      ) : null}
       <WorkoutDoneShare session={shareable} photoUploads={cloudinaryConfigured()} />
       {prompt ? <AiReview prompt={prompt} /> : null}
       <div className="flex flex-wrap gap-3">

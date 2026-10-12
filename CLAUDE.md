@@ -48,6 +48,7 @@ npm run web
 | `npm run build` | Turbo build |
 | `npm run db:start` / `db:reset` | Local Supabase stack |
 | `npm run db:test` | pgTAP RLS tests in `supabase/tests/` (needs Docker) |
+| `npm run db:backup` | `pg_dump` of the **live** project (public, auth, storage, migration ledger) into the gitignored `backups/<timestamp>/` — [scripts/db-backup.mjs](scripts/db-backup.mjs). Needs the CLI logged in and a local PostgreSQL 17 `pg_dump`; no Docker, no DB password. |
 | `npm run db:test:offline` | the same suites without Docker — [scripts/pgtest](scripts/pgtest/README.md). One-time `cd scripts/pgtest && npm install` (downloads a Postgres, ~100 MB, not a workspace). Stub pgTAP + stub `auth`; CI stays the source of truth. |
 
 CI (`.github/workflows/ci.yml`) runs typecheck + test + build, a `deno check` over

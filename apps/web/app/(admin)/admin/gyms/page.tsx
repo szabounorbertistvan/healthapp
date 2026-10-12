@@ -2,8 +2,9 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { PAGE_SIZE, listHref, oneOf, pageOf, paging, searchOf, type Search } from "@/lib/admin/params";
 import { supabaseServer } from "@/lib/supabase/server";
 import Link from "next/link";
-import { approveGym, deleteGym } from "@/app/admin-gym-actions";
+import { approveGym, deleteGym, refreshGymFromGoogle } from "@/app/admin-gym-actions";
 import { gymMapHref } from "@/lib/gym-map";
+import { GYM_TOP_METRICS, GYM_TOP_PERIODS, getAdminGymTops, type GymTopMetric, type GymTopPeriod } from "@/lib/gym-data";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 import { ConfirmAction } from "@/components/admin/confirm-action";
@@ -23,6 +24,10 @@ type Row = {
   lng: number | null;
   maps_url: string | null;
   status: "active" | "pending";
+  google_place_id: string | null;
+  google_rating: number | null;
+  google_ratings_total: number | null;
+  google_refreshed_at: string | null;
   created_at: string;
   suggested_by: string | null;
   members: number;
@@ -63,6 +68,13 @@ export default async function AdminGymsPage({ searchParams }: { searchParams: Pr
   const { stats, total, rows } = payload;
   const pg = paging(total, page, PAGE_SIZE);
 
+  // Gym-vs-gym tops: admin-only while there is too little data to show people (20261117110000).
+  const tp = t.gyms.tops;
+  const tm = (GYM_TOP_METRICS as readonly string[]).includes(String(params.tmetric ?? "")) ? (params.tmetric as GymTopMetric) : "workouts";
+  const tper = (GYM_TOP_PERIODS as readonly string[]).includes(String(params.tperiod ?? "")) ? (params.tperiod as GymTopPeriod) : "month";
+  const tops = await getAdminGymTops(tm, tper, null);
+  const topsHref = (patch: Record<string, string>) => listHref("/admin/gyms", { ...current, tmetric: tm, tperiod: tper }, patch) + "#tops";
+
   return (
     <div>
       <AdminHeader title={m.title} intro={m.intro} />
@@ -76,6 +88,36 @@ export default async function AdminGymsPage({ searchParams }: { searchParams: Pr
           <Kpi label={m.requests} value={n(stats.requests)} />
         </KpiGrid>
       </Section>
+
+      <div className="mt-4" id="tops">
+        <Section title={tp.title} hint={tp.hint}>
+          <div className="mb-3 flex flex-wrap gap-2">
+            {GYM_TOP_PERIODS.map((p) => (
+              <Link key={p} href={topsHref({ tperiod: p })} className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${p === tper ? "bg-accent text-accent-fg" : "bg-surface text-ink-soft"}`}>{tp.periods[p]}</Link>
+            ))}
+            <span className="w-2" />
+            {GYM_TOP_METRICS.map((mm) => (
+              <Link key={mm} href={topsHref({ tmetric: mm })} className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${mm === tm ? "bg-accent-soft text-accent-ink" : "bg-surface text-ink-soft"}`}>{tp.metrics[mm]}</Link>
+            ))}
+          </div>
+          {tops.length === 0 ? (
+            <Note>{tp.empty}</Note>
+          ) : (
+            <Table empty={null} head={<><Th>#</Th><Th>{m.gym}</Th><Th>{m.city}</Th><Th>{tp.metrics[tm]}</Th><Th>{tp.metrics.athletes}</Th><Th>{tp.metrics.workouts}</Th></>}>
+              {tops.map((r) => (
+                <tr key={r.gym_id}>
+                  <Td nowrap className="tabular-nums">{r.rank}</Td>
+                  <Td><Link href={`/gyms/${r.gym_id}`} className="font-semibold hover:underline">{r.name}</Link></Td>
+                  <Td nowrap>{r.city}</Td>
+                  <Td nowrap className="tabular-nums">{n(r.score)} {tp.unit[tm]}</Td>
+                  <Td nowrap className="tabular-nums">{n(r.athletes)}</Td>
+                  <Td nowrap className="tabular-nums">{n(r.workouts)}</Td>
+                </tr>
+              ))}
+            </Table>
+          )}
+        </Section>
+      </div>
 
       <div className="mt-4">
         <Section title={m.add}>
@@ -107,6 +149,9 @@ export default async function AdminGymsPage({ searchParams }: { searchParams: Pr
                         {fmtDate(g.created_at, locale)}
                         {g.suggested_by ? ` · ${fill(m.suggestedBy, { name: g.suggested_by })}` : null}
                         {g.lat != null ? ` · ${g.lat.toFixed(4)}, ${g.lng?.toFixed(4)}` : null}
+                        {g.google_place_id
+                          ? ` · ★ ${g.google_rating != null ? Number(g.google_rating).toFixed(1) : "—"} (${fmtNum(g.google_ratings_total, locale)}) · ${fill(m.googleFresh, { date: fmtDate(g.google_refreshed_at, locale) })}`
+                          : null}
                       </span>
                     </Td>
                     <Td nowrap>{g.city}</Td>
@@ -132,6 +177,7 @@ export default async function AdminGymsPage({ searchParams }: { searchParams: Pr
                       <div className="flex flex-wrap items-start gap-2">
                         {g.status === "pending" ? <AdminGymApprove action={approveGym.bind(null, g.id)} label={m.approve} /> : null}
                         <AdminGymEdit gym={g} label={m.edit} />
+                        {g.google_place_id ? <AdminGymApprove action={refreshGymFromGoogle.bind(null, g.id)} label={m.refreshGoogle} /> : null}
                         <ConfirmAction
                           label={g.status === "pending" ? m.reject : m.delete}
                           title={fill(g.status === "pending" ? m.rejectTitle : m.deleteTitle, { name: g.name })}

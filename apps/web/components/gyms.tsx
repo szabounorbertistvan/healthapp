@@ -108,7 +108,7 @@ function GymSearch({
 
 // ---------- suggest ----------
 
-function SuggestGym({ pending }: { pending: GymRef[] }) {
+export function SuggestGym({ pending }: { pending: GymRef[] }) {
   const { t } = useI18n();
   const s = t.gyms.suggest;
   const errorOf = useGymError();

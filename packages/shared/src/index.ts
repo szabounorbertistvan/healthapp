@@ -37,3 +37,4 @@ export * from "./coaching-lifecycle";
 export * from "./marketplace";
 export * from "./calendar";
 export * from "./marketplace-email";
+export * from "./gym-hours";

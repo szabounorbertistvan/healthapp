@@ -89,3 +89,29 @@ export async function respondCoachRequest(requestId: string, accept: boolean): P
   if (!accept) return call("decline_coaching_request", { p_request: id, p_reason: null }, [...INBOX_PATHS, "/requests"]);
   return call("accept_coaching_request", { p_request: id }, [...INBOX_PATHS, "/requests"]);
 }
+
+/**
+ * Where a finished workout happened (logged_sessions.gym_id, 20261117100000),
+ * or null to forget it. The owner's own row through sessions_owner; a trigger
+ * accepts only an active gym. Optional — nothing asks for it twice.
+ */
+export async function setSessionGym(sessionId: string, gymId: string | null): Promise<GymResult> {
+  const session = idOf(sessionId);
+  const gym = gymId === null ? null : idOf(gymId);
+  if (!session || (gymId !== null && !gym)) return { ok: false, error: "GYM_NOT_FOUND" };
+  const live = await liveUser();
+  if (!live) return { ok: false };
+  const { error, count } = await live.supabase
+    .from("logged_sessions")
+    .update({ gym_id: gym }, { count: "exact" })
+    .eq("id", session)
+    .eq("user_id", live.userId);
+  if (error) {
+    const code = codeOf(error.message);
+    if (!code) console.error("setSessionGym failed:", error.message);
+    return { ok: false, error: code };
+  }
+  if (!count) return { ok: false };
+  revalidatePath("/gyms", "layout");
+  return { ok: true };
+}

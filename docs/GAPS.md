@@ -540,10 +540,23 @@ them the section renders a "not configured" note instead of a broken upload.
   One active coach per client stays: `request_coaching()` refuses
   ALREADY_HAS_COACH, and accepting a request whose client found a coach
   meanwhile closes it (`status = 'closed'`). The coach's inbox is on
-  /dashboard and /clients. Still missing: **a map** (no provider chosen;
-  `lat`/`lng`, `google_place_id`, `osm_id` wait for it), **a notification** when
-  a request arrives, a link from `gyms.city` to `cities`, and gym filters in
-  coach search.
+  /dashboard and /clients. Since 20261117100000 (applied live 2026-10-12): **the map** at `/gyms`
+  (MapLibre + OpenFreeMap tiles, no key — DishFinder's approach), **gym
+  records** at `/gyms/[id]` (20261117110000 + 20261117120000: who lifts the
+  most there per exercise, by estimated 1RM or heaviest lift, opt-in through
+  `gym_board` and reciprocal), **one gym's stats** (busiest hours and days)
+  behind a three-people floor so no gym number is one person's, and
+  **gym-vs-gym tops** (workouts / people / volume / members) — admin-only on
+  `/admin/gyms` until there is data; **where a workout
+  happened** (`logged_sessions.gym_id`, optional, on the workout-done screen);
+  and **Google Places (New)** on the admin's gym form, server-only
+  (`GOOGLE_PLACES_API_KEY`): rating, hours / open now, status, phone, website,
+  types, summary, parking / accessibility / payment, one photo (served by
+  `/api/gyms/[id]/photo`), parsed in SQL by `gym_apply_google()`; refreshed by
+  a button and monthly by pg_cron + pg_net (`gym-google-refresh` /
+  `gym-google-collect`), which do nothing until the key is also in Vault as
+  `google_places_api_key`. Still missing: a notification when a request
+  arrives, a link from `gyms.city` to `cities`.
 - **Nothing shares outside the app yet.** `lib/share-payload.ts` builds the
   card data for every post kind, but no button calls it and no image is
   rendered from it; §19 asked for the infrastructure, not the integration.

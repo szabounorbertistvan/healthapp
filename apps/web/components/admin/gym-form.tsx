@@ -1,7 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { readMapsLink, saveGym, type GymInput } from "@/app/admin-gym-actions";
+import { readMapsLink, saveGym, type GymGoogle, type GymInput } from "@/app/admin-gym-actions";
+import { fill as fillText } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { GymErrorCode } from "@/lib/i18n/messages/gyms";
 
@@ -37,6 +38,8 @@ export function AdminGymForm({ gym, onDone }: { gym?: AdminGymValues; onDone?: (
     mapsUrl: gym?.maps_url ?? "",
   });
   const [error, setError] = useState<string | null>(null);
+  // What Google said about the linked place (null: no key or no match; undefined: not asked yet).
+  const [google, setGoogle] = useState<{ raw: GymGoogle; rating: number | null; total: number | null } | null | undefined>(undefined);
   const [busy, start] = useTransition();
   const set = (k: keyof GymInput) => (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value });
 
@@ -54,12 +57,19 @@ export function AdminGymForm({ gym, onDone }: { gym?: AdminGymValues; onDone?: (
         return;
       }
       const facts = r.facts;
+      const place = r.place ?? null;
+      // "Str. X 1, Cluj-Napoca 400000, Romania" → "Cluj-Napoca"; only a guess for an empty field.
+      const parts = place?.address?.split(",").map((x) => x.trim()) ?? [];
+      const cityGuess = parts.length >= 2 ? parts[parts.length - 2].replace(/\d+/g, "").trim() : "";
       setV((cur) => ({
         ...cur,
-        name: cur.name || facts.name || "",
-        lat: facts.lat != null ? String(facts.lat) : cur.lat,
-        lng: facts.lng != null ? String(facts.lng) : cur.lng,
+        name: cur.name || place?.name || facts.name || "",
+        city: cur.city || cityGuess,
+        address: cur.address || place?.address || "",
+        lat: place?.lat != null ? String(Number(place.lat.toFixed(6))) : facts.lat != null ? String(facts.lat) : cur.lat,
+        lng: place?.lng != null ? String(Number(place.lng.toFixed(6))) : facts.lng != null ? String(facts.lng) : cur.lng,
       }));
+      setGoogle(place ? { raw: place.raw, rating: place.rating, total: place.ratingsTotal } : null);
     });
   }
 
@@ -67,12 +77,13 @@ export function AdminGymForm({ gym, onDone }: { gym?: AdminGymValues; onDone?: (
     e.preventDefault();
     setError(null);
     start(async () => {
-      const r = await saveGym(gym?.id ?? null, v);
+      const r = await saveGym(gym?.id ?? null, v, google?.raw ?? null);
       if (!r.ok) {
         setError(messageOf(r.message));
         return;
       }
       if (!gym) setV({ name: "", city: "", address: "", lat: "", lng: "", mapsUrl: "" });
+      setGoogle(undefined);
       onDone?.();
       router.refresh();
     });
@@ -91,6 +102,13 @@ export function AdminGymForm({ gym, onDone }: { gym?: AdminGymValues; onDone?: (
           </div>
         </label>
         <p className="mt-1 text-[11.5px] leading-relaxed text-ink-faint">{f.linkHint}</p>
+        {google ? (
+          <p className="mt-1 text-[12px] font-semibold text-accent-ink">
+            {fillText(f.google, { r: google.rating != null ? google.rating.toFixed(1) : "—", n: google.total ?? 0 })}
+          </p>
+        ) : google === null ? (
+          <p className="mt-1 text-[12px] text-ink-faint">{f.googleNone}</p>
+        ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className={LABEL}>{f.name}<input className={FIELD} value={v.name} onChange={set("name")} required maxLength={120} /></label>
