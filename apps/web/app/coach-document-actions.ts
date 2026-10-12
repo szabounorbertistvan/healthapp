@@ -35,6 +35,12 @@ function revalidate() {
 export async function requestCoachDocumentUpload(): Promise<ActionResult & { ticket?: AvatarUploadTicket }> {
   const live = await liveUser();
   if (!live) return notSignedIn;
+  // Only a coach whose application takes documents now gets a ticket: no profile, in review or
+  // suspended means nothing could be recorded, and the upload would only leave a stray file.
+  const { data: app, error } = await live.supabase.rpc("coach_my_application");
+  if (error) return failure(error);
+  if (!app) return { ok: false, errorCode: "NO_COACH_PROFILE" };
+  if (!(app as { documents_editable?: boolean }).documents_editable) return { ok: false, errorCode: "DOCUMENTS_LOCKED" };
   try {
     return { ok: true, ticket: signCoachDocumentUpload(live.userId, randomBytes(16).toString("hex")) };
   } catch (error) {
@@ -81,7 +87,9 @@ export async function saveCoachDocument(input: {
     p_label: label || null, p_specialization: specialization || null,
   });
   if (error) {
-    await discard();
+    // 23505: this name is already on record (a ticket used twice) — the file is that record's
+    // evidence, possibly accepted, and must not be deleted from under it
+    if (error.code !== "23505") await discard();
     return failure(error);
   }
   revalidate();

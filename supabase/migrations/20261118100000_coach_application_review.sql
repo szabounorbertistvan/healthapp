@@ -27,7 +27,7 @@
 --      boxes ticked by the admin and the same evidence on file;
 --   6. admin_decide_coach_application() is the one way to approve, ask for
 --      more information, reject or revoke; admin_set_coach_profile_status()
---      keeps suspend / restore only (a restore to public needs a past approval);
+--      keeps suspend / restore only (a restore to public only for a profile that was public when suspended);
 --   7. notifications for submitted / more information / rejected (approved and
 --      revoked reuse profile_published / profile_unpublished), in-app and email,
 --      saying nothing about the documents.
@@ -50,6 +50,15 @@ alter table public.specializations
 alter table public.coach_profiles
   add column review_decision text
     check (review_decision is null or review_decision in ('changes_requested', 'rejected', 'revoked'));
+
+-- the status a profile had when an admin suspended it: a restore goes back to public only from a
+-- public one (published_at alone survives a revocation). Not in the coach's column grant either.
+alter table public.coach_profiles
+  add column suspended_from text
+    check (suspended_from is null or suspended_from in ('draft', 'pending_review', 'published', 'hidden'));
+-- profiles already suspended keep what the old rule allowed them: public again only if once published
+update public.coach_profiles set suspended_from = case when published_at is not null then 'published' else 'draft' end
+ where status = 'suspended';
 
 -- ============================================================================
 -- 2. decisions and documents
@@ -496,8 +505,9 @@ begin
   if not (
        (v_cp.status <> 'suspended' and p_status = 'suspended')
     or (v_cp.status = 'suspended' and p_status = 'draft')
-    -- back to public only for a profile an admin approved before it was suspended
-    or (v_cp.status = 'suspended' and p_status = 'published' and v_cp.published_at is not null)
+    -- back to public only for a profile that was public when it was suspended: published_at
+    -- alone is not enough, it survives a revocation and a later resubmission
+    or (v_cp.status = 'suspended' and p_status = 'published' and v_cp.suspended_from in ('published', 'hidden'))
   ) then
     raise exception 'BAD_TRANSITION' using errcode = '22023';
   end if;
@@ -512,6 +522,7 @@ begin
     published_at = case when p_status = 'published' then coalesce(published_at, now()) else published_at end,
     review_note = case when p_status = 'draft' then v_reason when p_status = 'published' then null else review_note end,
     suspended_at = case when p_status = 'suspended' then now() end,
+    suspended_from = case when p_status = 'suspended' then v_cp.status end,
     suspension_reason = case when p_status = 'suspended' then v_reason end
   where id = p_profile;
 
@@ -603,6 +614,7 @@ do $$
 declare
   v_legacy int;
   v_pending int;
+  v_suspended int;
 begin
   insert into public.coach_application_decisions (coach_profile_id, actor_id, decision, note, created_at)
   select cp.id, cp.reviewed_by, 'legacy_approved',
@@ -612,7 +624,8 @@ begin
   where cp.published_at is not null;
   get diagnostics v_legacy = row_count;
   select count(*) into v_pending from public.coach_profiles where status = 'pending_review';
-  raise notice 'coach applications: % previously published profile(s) recorded as legacy_approved (visibility unchanged); % pending review need an identity document before approval',
-    v_legacy, v_pending;
+  select count(*) into v_suspended from public.coach_profiles where status = 'suspended' and suspended_from = 'published';
+  raise notice 'coach applications: % previously published profile(s) recorded as legacy_approved (visibility unchanged); % pending review need an identity document before approval; % suspended profile(s) may still be restored to public',
+    v_legacy, v_pending, v_suspended;
 end;
 $$;

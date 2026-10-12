@@ -101,7 +101,11 @@ feedback still do not exist** — nothing writes `reference_type` `set`,
 
 ## Coach applications (20261118100000)
 
-Built, not applied to the live project. Missing: an admin screen to set
+Built, not applied to the live project. Production-readiness audit (2026-10-12): see the
+deployment checklist in that session's report. Missing: an admin notice of new submissions;
+a notice when one document is not accepted; orphan cleanup for uploads never recorded; a
+`suspended_from`-aware "Restore and publish" button (the database refuses, the button still
+shows); HEIC documents cannot be previewed in most browsers (download instead); an admin screen to set
 `specializations.qualification_evidence` (SQL only — every discipline defaults to
 `recommended`); email on revocation (in-app only, `profile_unpublished` has no email
 rule); a virus scan of uploaded documents (Cloudinary checks format and size only);

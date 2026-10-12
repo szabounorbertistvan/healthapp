@@ -14,7 +14,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(95);
+select plan(102);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -318,6 +318,24 @@ select throws_ok($$ select public.admin_set_coach_profile_status(pg_temp.pid('ca
   '22023', 'BAD_TRANSITION', 'a restore cannot publish a profile that was never approved');
 select lives_ok($$ select public.admin_set_coach_profile_status(pg_temp.pid('ca-appr'), 'suspended', 'reports') $$, 'an approved profile suspended');
 select lives_ok($$ select public.admin_set_coach_profile_status(pg_temp.pid('ca-appr'), 'published') $$, '… and restored, approved before');
+reset role;
+-- a revoked coach who applies again keeps published_at from the old approval; suspending the new
+-- application must not turn a restore into an approval
+select pg_temp.authenticate_as(pg_temp.uid(6));
+select is(public.submit_coach_for_review(), '{}'::text[], 'the revoked coach applies again');
+reset role;
+select pg_temp.authenticate_as('ca000000-0000-0000-0000-0000000000ad');
+select lives_ok($$ select public.admin_set_coach_profile_status(pg_temp.pid('ca-revk'), 'suspended', 'spam') $$, 'the new application is suspended');
+select is((select suspended_from from public.coach_profiles where id = pg_temp.pid('ca-revk')), 'pending_review', 'the suspension remembers where it came from');
+select throws_ok($$ select public.admin_set_coach_profile_status(pg_temp.pid('ca-revk'), 'published') $$,
+  '22023', 'BAD_TRANSITION', 'a restore cannot publish what was not public when suspended, even with an old published_at');
+select lives_ok($$ select public.admin_set_coach_profile_status(pg_temp.pid('ca-revk'), 'draft') $$, '… it can only go back to draft');
+reset role;
+select pg_temp.anonymous();
+select ok(not pg_temp.exposed('ca-revk'), 'and stays off every public door');
+reset role;
+select pg_temp.authenticate_as(pg_temp.uid(6));
+select throws_ok($$ update public.coach_profiles set suspended_from = 'published' where user_id = auth.uid() $$, '42501', null, 'a coach cannot write it');
 reset role;
 
 select * from finish();

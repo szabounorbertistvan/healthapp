@@ -1030,7 +1030,9 @@ submitted documents and records `coach_verifications` identity (and certificatio
 accepted) as verified; `changes_requested` / `rejected` (from pending) and `revoked` (from published / hidden) need
 the note the coach reads and put the profile back to `draft` with `coach_profiles.review_decision` saying why.
 `admin_set_coach_profile_status()` now refuses those moves (USE_APPLICATION_REVIEW) and keeps suspend / restore;
-a suspended profile goes back to public only if it had been approved before. A coach cannot approve themselves:
+a suspended profile goes back to public only if it was public when suspended (`coach_profiles.suspended_from`,
+set by the suspension; `published_at` alone survives a revocation, so it no longer decides — audit 2026-10-12).
+Profiles already suspended at migration time get `suspended_from = 'published'` when they had been published. A coach cannot approve themselves:
 `admin_assert()`, no write grant on status / review columns, no insert on the decisions table.
 
 **States as people read them** (`applicationState()`): draft · pending_review · more_info_required (draft +
@@ -1045,11 +1047,13 @@ discipline and label, pdf / jpg / png / webp / heic, ≤ 10 MB, ≤ 12 per coach
 review note): select policy owner-or-admin, **no write grant** — `coach_add_verification_document()` (path must be
 `voinic/coach-docs/<auth.uid()>/<opaque>`), `coach_remove_verification_document()` (not while pending / suspended;
 an accepted one stays while the profile is live), `admin_set_verification_document_status()`. Files: authenticated
-Cloudinary uploads signed by `app/coach-document-actions.ts` into the coach's own folder under a random name, checked
+Cloudinary uploads signed by `app/coach-document-actions.ts` (only for a coach whose application takes documents now;
+`overwrite=false`, so a ticket cannot replace a file on record) into the coach's own folder under a random name, checked
 again from what Cloudinary stored (format, bytes) and deleted if refused; read only through
 `/api/coach-documents/[id]`, which reads the row with the caller's session (so RLS decides) and streams the file
 through a five-minute signed download link the browser never sees — no-store, nosniff, sandboxed images, a neutral
-file name. Purged with the account (`destroyUserPhotos`). Never in a public RPC, notification, audit row or log.
+file name. Purged with the account (`destroyUserPhotos`, documents first). Never in a public RPC, notification, audit
+row or log.
 
 **History.** `coach_application_decisions` (admin-only select): submitted / approved / changes_requested / rejected /
 revoked / legacy_approved, actor, both review flags, note, `clock_timestamp()`. The coach sees decision, note and date
@@ -1064,7 +1068,9 @@ not accepted, the two boxes, the note, approve / request info / reject / revoke,
 
 **Notifications.** `application_submitted`, `application_changes_requested`, `application_rejected` (category
 `marketplace`, in-app + operational email, ro / en templates); approval reuses `profile_published`, revocation
-`profile_unpublished`. Payload: the profile id only.
+`profile_unpublished` (in-app only: no email rule). Payload: the profile id only. Email goes out only once the
+dispatcher is switched on (`marketplace-email-dispatch`: secrets, `EMAIL_DISPATCH_ENABLED`, the cron tick); push needs
+a device token, which only a native app would register. No admin is told about a new submission — the queue is polled.
 
 **Legacy profiles.** The migration changes no visibility. Every profile with `published_at` gets a `legacy_approved`
 history row (counted in a NOTICE); `/admin/coach-applications?state=legacy` lists the live ones without a real

@@ -114,6 +114,10 @@ export function photoUrl(publicId: string, options: { width?: number } = {}): st
  */
 export async function destroyUserPhotos(userId: string): Promise<void> {
   const client = configured();
+  // Verification evidence (20261118100000) first: identity documents above all must not outlive the
+  // account, and a failure further down must not leave them behind.
+  await client.api.delete_resources_by_prefix(coachDocumentFolder(userId), { type: "authenticated" });
+  await client.api.delete_folder(coachDocumentFolder(userId)).catch(() => {});
   const prefix = progressFolder(userId);
   await client.api.delete_resources_by_prefix(prefix, { type: "authenticated" });
   // The folder itself lingers otherwise, empty but named after a user id.
@@ -130,9 +134,6 @@ export async function destroyUserPhotos(userId: string): Promise<void> {
   // A coach page's cover, public like the avatar.
   await client.api.delete_resources_by_prefix(coverFolder(userId));
   await client.api.delete_folder(coverFolder(userId)).catch(() => {});
-  // Verification evidence (20261118100000): identity documents above all must not outlive the account.
-  await client.api.delete_resources_by_prefix(coachDocumentFolder(userId), { type: "authenticated" });
-  await client.api.delete_folder(coachDocumentFolder(userId)).catch(() => {});
 }
 
 // ---------- profile pictures ----------
@@ -411,6 +412,9 @@ export function signCoachDocumentUpload(userId: string, publicId: string): Avata
     timestamp,
     type: "authenticated",
     allowed_formats: COACH_DOCUMENT_FORMATS.join(","),
+    // a ticket is good for about an hour: it must not be able to replace a file once it is on record
+    // (an accepted document swapped for something else after review)
+    overwrite: "false",
   };
   const signature = client.utils.api_sign_request(params, API_SECRET!);
   return {
@@ -418,7 +422,7 @@ export function signCoachDocumentUpload(userId: string, publicId: string): Avata
     apiKey: API_KEY!,
     fields: {
       folder: params.folder, public_id: params.public_id, timestamp: String(timestamp), type: params.type,
-      allowed_formats: params.allowed_formats, signature,
+      allowed_formats: params.allowed_formats, overwrite: params.overwrite, signature,
     },
   };
 }
