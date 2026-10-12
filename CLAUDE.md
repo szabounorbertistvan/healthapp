@@ -164,9 +164,11 @@ invited → active → (paused ⇄ active) → ended is a trigger, participant m
 **The directory's order is `coach_ranked()`** (20261110130000) — one internal ranking layer behind
 `search_coaches()`; never re-sort coaches in app code, and never return its scores from a public RPC.
 **A coach is public only after an admin approved the application** (20261118100000): `admin_decide_coach_application()`
-is the one approval path (both review boxes + the evidence), `admin_set_coach_profile_status()` only suspends / restores;
-`coach_verification_documents` are owner/admin-readable rows with no write grant, files in private Cloudinary storage
-read only through `/api/coach-documents/[id]` — never in a public RPC, a notification, an audit row or a log.
+is the one approval path (profile + qualifications reviewed, and the qualification evidence its disciplines require),
+`admin_set_coach_profile_status()` only suspends / restores; `coach_verification_documents` are owner/admin-readable rows
+with no write grant, files in private Cloudinary storage read only through `/api/coach-documents/[id]` — never in a public
+RPC, a notification, an audit row or a log. **Voinic collects no identity documents and verifies no identity**
+(20261119100000): don't add an identity upload, an identity check or an "identity verified" badge without a decided procedure.
 **Calendar tokens and busy time are service-role only** (since 2026-10-08): `calendar_credentials` and
 `calendar_busy_blocks` have no grant and no policy — the coach reads status through `my_calendar_integrations()`;
 no provider adapter exists yet (`lib/calendar/provider.ts`).

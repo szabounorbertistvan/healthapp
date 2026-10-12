@@ -72,7 +72,13 @@ export default async function AdminCoachApplicationsPage({ searchParams }: { sea
                       <span className="block text-[12px] text-ink-faint">/coaches/{row.slug}</span>
                     </Td>
                     <Td className="max-w-[260px] text-ink-soft">{row.specializations.join(", ") || c.none}</Td>
-                    <Td nowrap>{fill(m.docCount, { identity: row.identity_documents, qualification: row.qualification_documents })}</Td>
+                    <Td nowrap>
+                      {fill(m.docCount, { qualification: row.qualification_documents })}
+                      {/* identity documents are no longer collected (20261119100000): one left on file is only something to remove */}
+                      {row.identity_documents > 0 ? (
+                        <span className="mt-1 block text-[12px] text-warn">{fill(m.identityOnFile, { n: row.identity_documents })}</span>
+                      ) : null}
+                    </Td>
                     <Td nowrap>
                       <Pill tone={s === "pending_review" || s === "more_info_required" ? "warn" : s === "approved" ? "accent" : s === "rejected" || s === "revoked" || s === "suspended" ? "risk" : "neutral"}>
                         {t.coachProfile.application.states[s]}

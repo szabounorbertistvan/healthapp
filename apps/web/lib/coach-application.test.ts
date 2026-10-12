@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  COACH_DOCUMENT_MAX_BYTES, applicationState, checkDocumentFile, checkStoredDocument, documentsToAdd, formatBytes,
+  COACH_DOCUMENT_KINDS, COACH_DOCUMENT_MAX_BYTES, applicationState, checkDocumentFile, checkStoredDocument, disciplinesToEvidence,
+  formatBytes, isLegacyIdentityDocument,
 } from "./coach-application";
 
 const USER = "11111111-2222-3333-4444-555555555555";
@@ -56,9 +57,20 @@ describe("checkStoredDocument (after upload, from Cloudinary)", () => {
 });
 
 describe("helpers", () => {
-  it("lists what is still to add, identity first", () => {
-    expect(documentsToAdd({ missing: ["QUALIFICATION_DOCUMENT", "IDENTITY_DOCUMENT"] })).toEqual(["IDENTITY_DOCUMENT", "QUALIFICATION_DOCUMENT"]);
-    expect(documentsToAdd({ missing: [] })).toEqual([]);
+  const yoga = { slug: "yoga", name_en: "Yoga", name_ro: "Yoga" };
+  const box = { slug: "boxing", name_en: "Boxing", name_ro: "Box" };
+  it("names the disciplines still waiting for a qualification, in the server's order", () => {
+    expect(disciplinesToEvidence({ missing: ["QUALIFICATION_DOCUMENT"], required_specializations: [yoga, box], missing_specializations: ["boxing"] }))
+      .toEqual([box]);
+    // an older server that only says "missing": every required discipline
+    expect(disciplinesToEvidence({ missing: ["QUALIFICATION_DOCUMENT"], required_specializations: [yoga, box] })).toEqual([yoga, box]);
+    expect(disciplinesToEvidence({ missing: [], required_specializations: [yoga], missing_specializations: [] })).toEqual([]);
+  });
+  it("never offers an identity document, and treats one on file as something to remove", () => {
+    expect(COACH_DOCUMENT_KINDS).toEqual(["qualification", "other"]);
+    expect((COACH_DOCUMENT_KINDS as readonly string[]).includes("identity")).toBe(false);
+    expect(isLegacyIdentityDocument({ kind: "identity" })).toBe(true);
+    expect(isLegacyIdentityDocument({ kind: "qualification" })).toBe(false);
   });
   it("formats sizes", () => {
     expect(formatBytes(10 * 1024 * 1024, "en")).toBe("10 MB");

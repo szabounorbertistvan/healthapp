@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import {
-  COACH_DOCUMENT_ACCEPT, COACH_DOCUMENT_KINDS, COACH_DOCUMENT_MAX_BYTES, applicationState, checkDocumentFile, documentsToAdd,
-  formatBytes, type ApplicationState, type CoachDocument, type CoachDocumentKind, type MyCoachApplication,
+  COACH_DOCUMENT_ACCEPT, COACH_DOCUMENT_KINDS, COACH_DOCUMENT_MAX_BYTES, applicationState, checkDocumentFile, disciplinesToEvidence,
+  formatBytes, isLegacyIdentityDocument, type ApplicationState, type CoachDocument, type CoachUploadKind, type MyCoachApplication,
 } from "@/lib/coach-application";
 import { uploadSignedImage } from "@/lib/cloudinary-upload";
 import { deleteCoachDocument, requestCoachDocumentUpload, saveCoachDocument } from "@/app/coach-document-actions";
@@ -26,8 +26,9 @@ const TONE: Record<ApplicationState, string> = {
 
 /**
  * The coach's side of the application review (20261118100000): where it
- * stands, the reviewer's note, the private documents and what happened so
- * far. Everything here is the coach's own — coach_my_application() leaves
+ * stands, the reviewer's note, the private qualification documents and what
+ * happened so far. No identity document is asked for or accepted
+ * (20261119100000); one left from before is listed only so it can be removed. Everything here is the coach's own — coach_my_application() leaves
  * out storage paths and reviewer ids — and a document opens through
  * /api/coach-documents/[id], which re-asks the database who may read it.
  */
@@ -40,7 +41,7 @@ export function CoachApplicationCard({ application, uploads, disciplines }: {
   const { t, locale } = useI18n();
   const a = t.coachProfile.application;
   const state = applicationState(application.status, application.review_decision);
-  const toAdd = documentsToAdd(application);
+  const toEvidence = disciplinesToEvidence(application);
   const legacy = (state === "approved" || state === "hidden") && !application.history.some((h) => h.decision === "approved");
   const showNote = application.review_note && (state === "more_info_required" || state === "rejected" || state === "revoked");
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -65,17 +66,12 @@ export function CoachApplicationCard({ application, uploads, disciplines }: {
         <p className={`${HINT} mt-2`}>{a.intro}</p>
         <p className={`${HINT} mt-1`}>{a.whatMeans}</p>
 
-        {toAdd.length > 0 ? (
+        {toEvidence.length > 0 ? (
           <div className="mt-4 rounded-2xl bg-bg px-3.5 py-3 text-[13.5px]" data-testid="coach-application-needed">
             <p className="font-semibold">{a.needed}</p>
-            <ul className="mt-1 list-disc pl-5 text-ink-soft">
-              {toAdd.includes("IDENTITY_DOCUMENT") ? <li>{a.neededIdentity}</li> : null}
-              {toAdd.includes("QUALIFICATION_DOCUMENT") ? (
-                <li>{fill(a.neededQualification, {
-                  list: application.required_specializations.map((s) => (locale === "ro" ? s.name_ro : s.name_en)).join(", "),
-                })}</li>
-              ) : null}
-            </ul>
+            <p className="mt-1 text-ink-soft">
+              {fill(a.neededQualification, { list: toEvidence.map((s) => (locale === "ro" ? s.name_ro : s.name_en)).join(", ") })}
+            </p>
           </div>
         ) : null}
 
@@ -110,9 +106,9 @@ function Documents({ application, uploads, disciplines }: {
   const inputRef = useRef<HTMLInputElement>(null);
   const ids = useId();
   const editable = application.documents_editable;
-  const [kind, setKind] = useState<CoachDocumentKind>(
-    application.missing.includes("IDENTITY_DOCUMENT") ? "identity" : application.missing.includes("QUALIFICATION_DOCUMENT") ? "qualification" : "identity");
-  const [specialization, setSpecialization] = useState("");
+  const [kind, setKind] = useState<CoachUploadKind>("qualification");
+  // a discipline still waiting for evidence first: an untagged qualification does not count for a required one
+  const [specialization, setSpecialization] = useState(() => disciplinesToEvidence(application)[0]?.slug ?? "");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -180,16 +176,20 @@ function Documents({ application, uploads, disciplines }: {
       {application.documents.length === 0 ? <p className={`${HINT} mt-1.5`}>{a.noDocuments}</p> : (
         <ul className="mt-1.5 grid gap-1.5" data-testid="coach-documents">
           {application.documents.map((doc) => {
-            const removable = editable && !(doc.status === "accepted" && application.status !== "draft");
+            // a leftover identity document can always go; it is not part of any review
+            const legacyIdentity = isLegacyIdentityDocument(doc);
+            const removable = legacyIdentity || (editable && !(doc.status === "accepted" && application.status !== "draft"));
             return (
               <li key={doc.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-bg px-3.5 py-2.5 text-[13px]"
                 data-testid="coach-document" data-kind={doc.kind} data-status={doc.status}>
                 <span className="min-w-0">
                   <span className="block font-semibold">{doc.label || a.kinds[doc.kind]}</span>
                   <span className="block text-[12px] text-ink-faint">
-                    {[a.kinds[doc.kind], doc.format.toUpperCase(), formatBytes(doc.bytes, locale), a.docStatus[doc.status]].join(" · ")}
+                    {[a.kinds[doc.kind], doc.format.toUpperCase(), formatBytes(doc.bytes, locale), legacyIdentity ? null : a.docStatus[doc.status]]
+                      .filter(Boolean).join(" · ")}
                   </span>
                   {doc.review_note ? <span className="block text-[12px] text-ink-soft">{fill(a.docNote, { note: doc.review_note })}</span> : null}
+                  {legacyIdentity ? <span className="block text-[12px] text-warn" data-testid="coach-document-identity-legacy">{a.identityLegacy}</span> : null}
                 </span>
                 <span className="flex items-center gap-2">
                   <a href={`/api/coach-documents/${doc.id}`} target="_blank" rel="noopener noreferrer" className="text-[13px] font-semibold text-accent-ink hover:underline">
@@ -224,7 +224,7 @@ function Documents({ application, uploads, disciplines }: {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1">
               <span className={LABEL}>{a.kind}</span>
-              <select className={FIELD} value={kind} onChange={(e) => setKind(e.target.value as CoachDocumentKind)} disabled={busy}>
+              <select className={FIELD} value={kind} onChange={(e) => setKind(e.target.value as CoachUploadKind)} disabled={busy}>
                 {COACH_DOCUMENT_KINDS.map((k) => <option key={k} value={k}>{a.kinds[k]}</option>)}
               </select>
             </label>

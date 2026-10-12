@@ -6,7 +6,8 @@
 -- before documents existed — then every public door is asked about each one,
 -- anonymously and signed in. Around that: who may move an application (only an
 -- admin, only through the checklist), the evidence it needs, private documents
--- (owner and admin only, validated, no direct writes), the decision history,
+-- (owner and admin only, validated, no direct writes; qualifications only — no identity
+-- documents since 20261119100000), the decision history,
 -- the notifications, and protected columns a coach cannot write.
 --
 -- Run with a local stack up:  npm run db:test
@@ -14,7 +15,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(102);
+select plan(104);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -97,34 +98,40 @@ insert into public.coach_services (coach_profile_id, name, kind, price_cents, pr
 select id, 'Class', 'online_coaching', 5000, 'session', true, 60, 'public' from public.coach_profiles where user_id::text like 'ca000000-%';
 insert into public.coach_slug_redirects (old_slug, coach_profile_id)
 select slug || '-old', id from public.coach_profiles where user_id::text like 'ca000000-%';
+-- the fixtures' discipline needs proof of qualification (an admin setting); no identity document
+-- is ever asked for (20261119100000)
+update public.specializations set qualification_evidence = 'required' where slug = 'dance-fitness';
 
 -- ============================================================================
 -- 1. an application needs evidence; documents are validated and private
 -- ============================================================================
 select pg_temp.authenticate_as(pg_temp.uid(1));
-select is(public.submit_coach_for_review(), array['IDENTITY_DOCUMENT'], 'a complete profile without an identity document cannot be submitted');
+select is(public.submit_coach_for_review(), array['QUALIFICATION_DOCUMENT'], 'a complete profile in a discipline that requires a qualification cannot be submitted without one');
 select is((select status from public.coach_profiles where user_id = auth.uid()), 'draft', '… and stays a draft');
-select throws_ok($$ select public.coach_add_verification_document('identity', 'voinic/coach-docs/ca000000-0000-0000-0000-000000000008/stolen00001', 'pdf', 1000) $$,
+select throws_ok($$ select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid() || '/idcard00001', 'pdf', 120000) $$,
+  '22023', 'IDENTITY_DOCUMENTS_NOT_ACCEPTED', 'an identity document is refused');
+select throws_ok($$ select public.coach_add_verification_document('qualification', 'voinic/coach-docs/ca000000-0000-0000-0000-000000000008/stolen00001', 'pdf', 1000) $$,
   '22023', 'BAD_DOCUMENT_PATH', 'a document must be in the coach''s own folder');
-select throws_ok($$ select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid() || '/idcard00001', 'exe', 1000) $$,
+select throws_ok($$ select public.coach_add_verification_document('qualification', 'voinic/coach-docs/' || auth.uid() || '/cert0000009', 'exe', 1000) $$,
   '22023', 'BAD_DOCUMENT', 'only PDF and images');
-select throws_ok($$ select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid() || '/idcard00001', 'pdf', 10485761) $$,
+select throws_ok($$ select public.coach_add_verification_document('qualification', 'voinic/coach-docs/' || auth.uid() || '/cert0000009', 'pdf', 10485761) $$,
   '22023', 'BAD_DOCUMENT', '10 MB at most');
-select throws_ok($$ select public.coach_add_verification_document('selfie', 'voinic/coach-docs/' || auth.uid() || '/idcard00001', 'pdf', 1000) $$,
+select throws_ok($$ select public.coach_add_verification_document('selfie', 'voinic/coach-docs/' || auth.uid() || '/cert0000009', 'pdf', 1000) $$,
   '22023', 'BAD_DOCUMENT', 'a known kind only');
 select throws_ok($$ select public.coach_add_verification_document('qualification', 'voinic/coach-docs/' || auth.uid() || '/cert0000001', 'pdf', 1000, 'Yoga', 'yoga') $$,
   '22023', 'UNKNOWN_SPECIALIZATION', 'a discipline-specific qualification names one of the coach''s own disciplines');
-select lives_ok($$ select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid() || '/idcard00001', 'pdf', 120000, 'ID card') $$,
-  'the coach adds an identity document');
+select lives_ok($$ select public.coach_add_verification_document('qualification', 'voinic/coach-docs/' || auth.uid() || '/cert0000000', 'pdf', 120000, 'First aid') $$,
+  'the coach adds a qualification not tied to a discipline');
+select is(public.submit_coach_for_review(), array['QUALIFICATION_DOCUMENT'], '… which does not evidence the discipline that requires one');
 select lives_ok($$ select public.coach_add_verification_document('qualification', 'voinic/coach-docs/' || auth.uid() || '/cert0000001', 'jpg', 90000, 'Zumba instructor', 'dance-fitness') $$,
   '… and a qualification for one of their disciplines');
 select throws_ok($$ insert into public.coach_verification_documents (coach_profile_id, kind, storage_public_id, format, bytes)
-                    select id, 'identity', 'voinic/coach-docs/' || auth.uid() || '/direct00001', 'pdf', 1 from public.coach_profiles where user_id = auth.uid() $$,
+                    select id, 'qualification', 'voinic/coach-docs/' || auth.uid() || '/direct00001', 'pdf', 1 from public.coach_profiles where user_id = auth.uid() $$,
   '42501', null, 'no direct insert around the checks');
 select throws_ok($$ update public.coach_verification_documents set status = 'accepted' $$,
   '42501', null, 'a coach cannot accept their own document');
 select is((select count(*)::int from public.coach_verification_documents), 2, 'the coach reads their own documents');
-select is(public.submit_coach_for_review(), '{}'::text[], 'with an identity document the application is submitted');
+select is(public.submit_coach_for_review(), '{}'::text[], 'with the qualification for its discipline (and no identity document) the application is submitted');
 select is((select status from public.coach_profiles where user_id = auth.uid()), 'pending_review', 'pending review');
 select throws_ok($$ select public.coach_add_verification_document('other', 'voinic/coach-docs/' || auth.uid() || '/late0000001', 'pdf', 1000) $$,
   '55000', 'DOCUMENTS_LOCKED', 'documents are frozen while an admin reviews them');
@@ -149,7 +156,8 @@ begin
   for n in select unnest(array[2, 3, 4, 6]) loop
     perform set_config('role', 'authenticated', true);
     perform set_config('request.jwt.claims', json_build_object('sub', pg_temp.uid(n)::text, 'role', 'authenticated')::text, true);
-    perform public.coach_add_verification_document('identity', 'voinic/coach-docs/' || pg_temp.uid(n) || '/idcard00001', 'png', 50000);
+    perform public.coach_add_verification_document('qualification', 'voinic/coach-docs/' || pg_temp.uid(n) || '/cert0000001', 'png', 50000,
+                                                   'Zumba licence', 'dance-fitness');
     perform public.submit_coach_for_review();
     reset role;
   end loop;
@@ -189,8 +197,8 @@ select pg_temp.authenticate_as('ca000000-0000-0000-0000-0000000000ad');
 select is((public.admin_coach_applications('pending') ->> 'total')::int, 5, 'the queue lists the five pending applications');
 select is((select array_agg(i ->> 'slug' order by o) from jsonb_array_elements(public.admin_coach_applications('pending') -> 'items') with ordinality t(i, o))
           [1], 'ca-appr', 'oldest submission first');
-select is((select (i ->> 'identity_documents')::int from jsonb_array_elements(public.admin_coach_applications('pending') -> 'items') i where i ->> 'slug' = 'ca-appr'),
-  1, 'with its evidence counted');
+select is((select (i ->> 'qualification_documents')::int from jsonb_array_elements(public.admin_coach_applications('pending') -> 'items') i where i ->> 'slug' = 'ca-appr'),
+  2, 'with its evidence counted');
 select is((public.admin_coach_applications('pending', current_date + 1) ->> 'total')::int, 0, 'and a submitted-since filter');
 select throws_ok($$ select public.admin_set_coach_profile_status(pg_temp.pid('ca-appr'), 'published') $$,
   '22023', 'USE_APPLICATION_REVIEW', 'the old status switch can no longer approve');
@@ -199,7 +207,7 @@ select throws_ok($$ select public.admin_set_coach_profile_status(pg_temp.pid('ca
 select throws_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-appr'), 'approved') $$,
   '22023', 'REVIEW_CHECKLIST_INCOMPLETE', 'approval needs the checklist');
 select throws_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-appr'), 'approved', null, true, false) $$,
-  '22023', 'REVIEW_CHECKLIST_INCOMPLETE', 'both boxes: identity and qualifications');
+  '22023', 'REVIEW_CHECKLIST_INCOMPLETE', 'both boxes: profile and qualifications');
 select throws_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-more'), 'changes_requested') $$,
   '22023', 'REASON_REQUIRED', 'asking for more needs instructions');
 select throws_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-rej'), 'rejected', '   ') $$,
@@ -209,13 +217,13 @@ select throws_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca
 select throws_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-appr'), 'published') $$,
   '22023', 'BAD_DECISION', 'an unknown decision is refused');
 
-select lives_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-appr'), 'approved', 'ID and Zumba licence checked', true, true) $$, 'approved');
+select lives_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-appr'), 'approved', 'Profile and Zumba licence checked', true, true) $$, 'approved');
 select lives_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-revk'), 'approved', null, true, true) $$, 'approved (to be revoked)');
-select lives_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-more'), 'changes_requested', 'Upload the back of your ID card.') $$, 'more information requested');
+select lives_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-more'), 'changes_requested', 'Upload a readable copy of your licence.') $$, 'more information requested');
 select lives_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-rej'), 'rejected', 'The certificate does not match the name.') $$, 'rejected');
 select lives_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-revk'), 'revoked', 'Qualification expired.') $$, 'approval revoked');
 select throws_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-legacy'), 'approved', null, true, true) $$,
-  '22023', 'APPLICATION_INCOMPLETE: IDENTITY_DOCUMENT', 'a legacy profile cannot be re-approved without evidence');
+  '22023', 'APPLICATION_INCOMPLETE: QUALIFICATION_DOCUMENT', 'a legacy profile cannot be re-approved without evidence');
 select is((public.admin_coach_applications('legacy') -> 'items' -> 0 ->> 'slug'), 'ca-legacy', 'legacy approvals have their own queue');
 
 select is((select status || '/' || coalesce(review_decision, '-') from public.coach_profiles where slug = 'ca-appr'), 'published/-', 'approved → published');
@@ -225,12 +233,12 @@ select is((select status || '/' || review_decision from public.coach_profiles wh
 select is((select array_agg(status order by kind) from public.coach_verification_documents where coach_profile_id = pg_temp.pid('ca-appr')),
   array['accepted', 'accepted'], 'the reviewed documents are accepted');
 select is((select array_agg(kind || ':' || status order by kind) from public.coach_verifications where coach_profile_id = pg_temp.pid('ca-appr')),
-  array['certification:verified', 'identity:verified'], 'identity checked and qualification reviewed are recorded separately');
-select is((select array_agg(kind) from public.coach_verifications where coach_profile_id = pg_temp.pid('ca-revk')),
-  array['identity'], 'no qualification document, no qualification check');
+  array['certification:verified'], 'the qualification review is recorded; no identity claim is');
+select is((select count(*)::int from public.coach_verifications where kind = 'identity' and coach_profile_id in (select id from ids)),
+  0, 'approval never records an identity verification');
 select is((select array_agg(decision order by created_at) from public.coach_application_decisions where coach_profile_id = pg_temp.pid('ca-revk')),
   array['submitted', 'approved', 'revoked'], 'the history: submitted, approved, revoked');
-select ok((select actor_id = 'ca000000-0000-0000-0000-0000000000ad' and identity_reviewed and qualifications_reviewed
+select ok((select actor_id = 'ca000000-0000-0000-0000-0000000000ad' and profile_reviewed and qualifications_reviewed and not identity_reviewed
              from public.coach_application_decisions where coach_profile_id = pg_temp.pid('ca-appr') and decision = 'approved'),
   'each decision names its reviewer and the checklist');
 select ok(exists (select 1 from public.admin_audit_events where metadata ->> 'op' = 'coach_application' and metadata ->> 'decision' = 'revoked'),
@@ -268,11 +276,11 @@ reset role;
 -- ============================================================================
 select pg_temp.authenticate_as(pg_temp.uid(3));
 select is(public.coach_my_application() ->> 'review_decision', 'changes_requested', 'the coach sees that more is needed');
-select is(public.coach_my_application() ->> 'review_note', 'Upload the back of your ID card.', '… and the instructions');
+select is(public.coach_my_application() ->> 'review_note', 'Upload a readable copy of your licence.', '… and the instructions');
 select ok(not (public.coach_my_application() -> 'history' -> 0 ? 'actor'), 'the history does not name the reviewer');
-select is((public.coach_my_application() -> 'documents' -> 0 ->> 'kind'), 'identity', 'the coach sees their documents');
+select is((public.coach_my_application() -> 'documents' -> 0 ->> 'kind'), 'qualification', 'the coach sees their documents');
 select ok(not (public.coach_my_application() -> 'documents' -> 0 ? 'storage_public_id'), '… without the storage handle');
-select lives_ok($$ select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid() || '/idback00001', 'jpg', 40000, 'ID back') $$,
+select lives_ok($$ select public.coach_add_verification_document('qualification', 'voinic/coach-docs/' || auth.uid() || '/licence0002', 'jpg', 40000, 'Licence, readable', 'dance-fitness') $$,
   'the coach adds what was asked for');
 select is(public.submit_coach_for_review(), '{}'::text[], '… and resubmits');
 select is((select status || '/' || coalesce(review_decision, '-') from public.coach_profiles where user_id = auth.uid()), 'pending_review/-',

@@ -1017,17 +1017,28 @@ pgTAP `coaching_lifecycle`. F double booking: `npm run db:test:race`.
 
 ## Coach application review (mandatory admin approval)
 
-Migration `20261118100000_coach_application_review.sql` — **not applied to the live project yet**; pgTAP
-`coach_application_review` (95) plus the four older coach suites moved onto the new path; unit
-`lib/coach-application.test.ts`; e2e `coach-application.spec.ts` (gates only, read-only).
+Migrations `20261118100000_coach_application_review.sql` and `20261119100000_coach_applications_without_identity_documents.sql`
+— **neither applied to the live project yet**; pgTAP `coach_application_review` (104), `coach_applications_without_identity`
+(40) plus the four older coach suites; unit `lib/coach-application.test.ts`; e2e `coach-application.spec.ts` (gates only,
+read-only).
+
+**No identity documents (20261119100000).** Voinic does not collect or store identity documents and has no
+identity-verification procedure. An application needs qualification evidence only; `coach_add_verification_document()`
+refuses `identity` (IDENTITY_DOCUMENTS_NOT_ACCEPTED, plus a NOT VALID check `coach_verification_documents_no_identity`
+for any new row); the upload form offers qualification / other only. An identity document left from before is never
+accepted (`admin_set_verification_document_status` refuses it), never accepted by an approval, served by
+`/api/coach-documents/[id]` to its owner only (not to admins), and removable by its owner at any time; the
+migration NOTICE counts such rows (none are deleted automatically). Approval records no identity verification,
+`admin_set_coach_verification()` refuses `identity` + `verified` (IDENTITY_VERIFICATION_NOT_OFFERED), and
+`coach_public_profile()` drops an `identity_verified` badge (rows recorded before are kept as history, not shown).
 
 **The rule.** No coach profile is public until an admin approved its application. That was already true of the
 lifecycle (only `published` passes `coach_public_visible()`, `coach_ranked()`, the sitemap, the facets, gyms,
 `request_coaching()`); this migration makes the approval itself a recorded review. `admin_decide_coach_application(profile,
-decision, note, identity_reviewed, qualifications_reviewed)` is the **only** way to approve: `approved` needs both
+decision, note, profile_reviewed, qualifications_reviewed)` is the **only** way to approve: `approved` needs both
 boxes (REVIEW_CHECKLIST_INCOMPLETE) and the evidence (`APPLICATION_INCOMPLETE: codes`), publishes, accepts the
-submitted documents and records `coach_verifications` identity (and certification when a qualification was
-accepted) as verified; `changes_requested` / `rejected` (from pending) and `revoked` (from published / hidden) need
+submitted qualification / other documents and records a `certification` verification only when a qualification was
+accepted (never an identity one); `changes_requested` / `rejected` (from pending) and `revoked` (from published / hidden) need
 the note the coach reads and put the profile back to `draft` with `coach_profiles.review_decision` saying why.
 `admin_set_coach_profile_status()` now refuses those moves (USE_APPLICATION_REVIEW) and keeps suspend / restore;
 a suspended profile goes back to public only if it was public when suspended (`coach_profiles.suspended_from`,
@@ -1040,9 +1051,11 @@ changes_requested) · rejected · revoked · approved (published) · hidden · s
 profile and apply again; nothing blocks resubmission (product decision, below).
 
 **Evidence.** `specializations.qualification_evidence` = `required` | `recommended` (default) | `none`, set per
-discipline by an admin in SQL (no UI yet). `coach_application_missing()` asks for an identity document always and
-a qualification document when any chosen discipline is `required`; `submit_coach_for_review()` returns those codes
-with the profile's own. **Documents** — `coach_verification_documents` (identity / qualification / other, optional
+discipline by an admin in SQL (no UI yet). `coach_application_missing()` asks for QUALIFICATION_DOCUMENT when a
+declared discipline is `required` — or its parent is — and has no non-rejected qualification tagged with it or its
+parent (`coach_application_missing_disciplines()` names them; an untagged qualification does not count);
+`submit_coach_for_review()` returns that code with the profile's own. **Documents** — `coach_verification_documents`
+(qualification / other; `identity` only on rows from before 20261119100000; optional
 discipline and label, pdf / jpg / png / webp / heic, ≤ 10 MB, ≤ 12 per coach, submitted / accepted / rejected +
 review note): select policy owner-or-admin, **no write grant** — `coach_add_verification_document()` (path must be
 `voinic/coach-docs/<auth.uid()>/<opaque>`), `coach_remove_verification_document()` (not while pending / suspended;
@@ -1056,15 +1069,17 @@ file name. Purged with the account (`destroyUserPhotos`, documents first). Never
 row or log.
 
 **History.** `coach_application_decisions` (admin-only select): submitted / approved / changes_requested / rejected /
-revoked / legacy_approved, actor, both review flags, note, `clock_timestamp()`. The coach sees decision, note and date
+revoked / legacy_approved, actor, `profile_reviewed` + `qualifications_reviewed` (`identity_reviewed` is historical,
+false since 20261119100000), note, `clock_timestamp()`. The coach sees decision, note and date
 (`coach_my_application()`), never who decided; the admin sees the actor (`admin_coach_application()`).
 
 **Screens.** Coach: the *Coach application* card on `/settings/coach-profile` (`components/coach-profile/application.tsx`) —
 state, the reviewer's note, what is still needed, upload / list / remove documents, history; the publish checklist has a
-*Verification documents* group. Admin: `/admin/coach-applications` (queue: pending oldest first, more info, rejected,
+*Qualification documents* group. Admin: `/admin/coach-applications` (queue: pending oldest first, more info, rejected,
 approved, legacy, all; submitted-since filter) and the *Application review* panel on `/admin/coaches/[id]`
-(`components/admin/application-review.tsx`): evidence per discipline, documents with view / download and accept /
-not accepted, the two boxes, the note, approve / request info / reject / revoke, the history.
+(`components/admin/application-review.tsx`): evidence per discipline (and which still lack it), qualification
+documents with view / download and accept / not accepted (an old identity document is listed only as one to remove),
+the two boxes (profile reviewed, qualifications reviewed), the note, approve / request info / reject / revoke, the history.
 
 **Notifications.** `application_submitted`, `application_changes_requested`, `application_rejected` (category
 `marketplace`, in-app + operational email, ro / en templates); approval reuses `profile_published`, revocation
@@ -1074,8 +1089,8 @@ a device token, which only a native app would register. No admin is told about a
 
 **Legacy profiles.** The migration changes no visibility. Every profile with `published_at` gets a `legacy_approved`
 history row (counted in a NOTICE); `/admin/coach-applications?state=legacy` lists the live ones without a real
-approval, flagged on the review page. A legacy coach is asked for documents on their card; their next submission
-needs them. A profile already *pending* at migration time needs an identity document before it can be approved.
+approval, flagged on the review page. A legacy coach is asked on their card for the qualification documents their
+disciplines require; their next submission needs them.
 
 ## Engagement
 

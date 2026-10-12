@@ -87,9 +87,9 @@ describe("submit checklist (mirror of coach_profile_missing)", () => {
       { group: "verification", done: true },
     ]);
     expect(summary(["AVATAR", "LOCATION"]).filter((s) => !s.done).map((s) => s.group)).toEqual(["location", "photo"]);
-    // the application's evidence (20261118100000) is its own group
-    expect(summary(["IDENTITY_DOCUMENT", "QUALIFICATION_DOCUMENT"]).filter((s) => !s.done).map((s) => s.group)).toEqual(["verification"]);
-    expect(stepForMissing("IDENTITY_DOCUMENT")).toBe(3);
+    // the application's qualification evidence (20261118100000; no identity document since 20261119100000) is its own group
+    expect(summary(["QUALIFICATION_DOCUMENT"]).filter((s) => !s.done).map((s) => s.group)).toEqual(["verification"]);
+    expect(stepForMissing("QUALIFICATION_DOCUMENT")).toBe(3);
   });
   it("tracks which steps have content", () => {
     expect(stepsTouched(empty, 0)).toEqual([false, false, false, false, false, false]);

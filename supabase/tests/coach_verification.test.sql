@@ -73,7 +73,6 @@ grant select on ids to authenticated, anon;
 
 -- publish it (review), then look: complete and public is NOT verified
 select pg_temp.authenticate_as('c6000000-0000-0000-0000-000000000001');
-select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid()::text || '/identity0001', 'pdf', 120000);
 select public.submit_coach_for_review();
 reset role;
 select pg_temp.authenticate_as('c6000000-0000-0000-0000-000000000003');

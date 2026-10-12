@@ -48,14 +48,15 @@ async function setStatus(profileId: string, status: "published" | "draft" | "sus
 export async function decideCoachApplication(
   profileId: string,
   decision: "approved" | "changes_requested" | "rejected" | "revoked",
-  input: { note?: string; identityReviewed?: boolean; qualificationsReviewed?: boolean } = {},
+  // profile reviewed (accuracy, appropriateness) + qualifications reviewed; Voinic does not review identity documents
+  input: { note?: string; profileReviewed?: boolean; qualificationsReviewed?: boolean } = {},
 ): Promise<ActionResult> {
   if (!["approved", "changes_requested", "rejected", "revoked"].includes(decision)) return { ok: false, message: "Unknown decision" };
   const result = await adminRpc("admin_decide_coach_application", {
     p_profile: uuidOf(profileId),
     p_decision: decision,
     p_note: (input.note ?? "").trim().slice(0, 1000) || null,
-    p_identity_reviewed: input.identityReviewed === true,
+    p_profile_reviewed: input.profileReviewed === true,
     p_qualifications_reviewed: input.qualificationsReviewed === true,
   });
   if (result.ok) revalidatePath("/admin/coach-applications");

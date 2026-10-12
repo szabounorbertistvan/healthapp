@@ -327,8 +327,8 @@ function Section({ title, id, children }: { title: string; id?: string; children
 }
 
 /**
- * Under the name of a verified coach: what Voinic checked (identity /
- * certifications / business, when recorded) — one quiet line, never more
+ * Under the name of a verified coach: what Voinic checked (certifications /
+ * business, when recorded; never identity — see VerifiedDetailText) — one quiet line, never more
  * badges. Nothing for anyone else.
  */
 function VerifiedDetail({ profile }: { profile: CoachPublicProfile }) {
@@ -350,7 +350,10 @@ function VerifiedDetailText({ profile }: { profile: CoachPublicProfile }) {
     certification_verified: p.verifiedCertification,
     business_verified: p.verifiedBusiness,
   };
-  return <>{profile.badges.length ? `${v.checked} ${profile.badges.map((b) => label[b].toLowerCase()).join(" · ")}` : v.badgeHint}</>;
+  // no identity claim: Voinic has no identity-verification procedure (20261119100000); the database
+  // already leaves the badge out, this keeps a stale payload from showing it
+  const badges = profile.badges.filter((b) => b !== "identity_verified");
+  return <>{badges.length ? `${v.checked} ${badges.map((b) => label[b].toLowerCase()).join(" · ")}` : v.badgeHint}</>;
 }
 
 /**

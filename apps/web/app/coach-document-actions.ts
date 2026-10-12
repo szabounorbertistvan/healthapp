@@ -13,8 +13,10 @@ import {
 } from "@/lib/cloudinary";
 import type { ActionResult } from "./actions";
 
-// A coach's verification documents (20261118100000): identity and
-// qualification evidence for the admin who reviews the application. Private
+// A coach's verification documents (20261118100000): qualification evidence
+// (and other supporting documents) for the admin who reviews the application.
+// Voinic does not collect identity documents (20261119100000): this file
+// offers no way to add one, and the database refuses one anyway. Private
 // end to end — an authenticated Cloudinary upload into a folder only this
 // server names, a public_id the database re-checks against the caller, read
 // back only through /api/coach-documents/[id] (owner or admin, a five-minute

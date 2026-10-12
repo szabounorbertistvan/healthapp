@@ -133,8 +133,6 @@ select throws_ok($$ select document_ref from public.coach_certifications $$,
 select is(public.coach_profile_missing(), array['AVATAR'], 'only the profile photo is missing now');
 
 update public.users set avatar_url = 'https://res.cloudinary.com/demo/image/upload/andrei.jpg' where id = auth.uid();
--- an identity document is part of the application (20261118100000)
-select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid()::text || '/identity0001', 'pdf', 120000);
 select is(public.submit_coach_for_review(), '{}'::text[], 'a complete draft is submitted');
 select is((select status from public.coach_profiles where user_id = auth.uid()), 'pending_review',
   'draft → pending_review');
@@ -178,8 +176,8 @@ select lives_ok($$ select public.admin_decide_coach_application(
 select ok((select published_at is not null from public.coach_profiles where slug = 'andrei-pop'),
   'published_at is stamped');
 select lives_ok($$ select public.admin_set_coach_verification(
-    (select id from public.coach_profiles where slug = 'andrei-pop'), 'identity', 'verified', 'internal-id-note') $$,
-  'an admin verifies identity');
+    (select id from public.coach_profiles where slug = 'andrei-pop'), 'certification', 'verified', 'internal-cert-note') $$,
+  'an admin records a certification check');
 select lives_ok($$ select public.admin_set_coach_verification(
     (select id from public.coach_profiles where slug = 'andrei-pop'), 'business', 'pending') $$,
   'a pending business verification is recorded');
@@ -249,8 +247,8 @@ select is(public.coach_public_profile('andrei-pop') -> 'user_id', 'null'::jsonb,
 select is(public.coach_public_profile('cora-client'), null, '8. a user without a coach profile produces nothing');
 select is(public.coach_public_profile($q$' or 1=1 --$q$), null, '9. a hostile slug produces nothing');
 select is(public.coach_public_profile(null), null, '9. a null slug produces nothing');
-select is(public.coach_public_profile('andrei-pop') -> 'badges', '["identity_verified"]'::jsonb,
-  'only the approved verification is a badge (identity yes, pending business no)');
+select is(public.coach_public_profile('andrei-pop') -> 'badges', '["certification_verified"]'::jsonb,
+  'only the approved verification is a badge (certification yes, pending business no)');
 select is(public.coach_public_profile('andrei-pop') #>> '{certifications,0,verified}', 'true',
   'a verified certification carries its badge');
 select is(jsonb_array_length(public.coach_public_profile('andrei-pop') -> 'services'), 2,

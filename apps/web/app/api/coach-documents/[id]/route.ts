@@ -9,6 +9,10 @@
 // Cloudinary download link; the browser never sees that link or the storage
 // path. Never cached anywhere, sandboxed, and nothing about the document is
 // logged. `?download=1` asks for an attachment instead of an inline view.
+//
+// Voinic no longer collects identity documents (20261119100000). One left from
+// before is served to its owner only (so they can see what they are deleting),
+// never to an admin: it is not part of any review.
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { coachDocumentDownloadUrl } from "@/lib/cloudinary";
@@ -34,10 +38,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return notFound();
   const { data } = await supabase
-    .from("coach_verification_documents").select("storage_public_id, format").eq("id", id).maybeSingle();
-  const row = data as { storage_public_id: string; format: string } | null;
+    .from("coach_verification_documents").select("storage_public_id, format, kind, coach_profile_id").eq("id", id).maybeSingle();
+  const row = data as { storage_public_id: string; format: string; kind: string; coach_profile_id: string } | null;
   const type = row ? TYPES[row.format] : undefined;
   if (!row || !type) return notFound();
+  if (row.kind === "identity") {
+    const { data: own } = await supabase
+      .from("coach_profiles").select("id").eq("id", row.coach_profile_id).eq("user_id", auth.user.id).maybeSingle();
+    if (!own) return notFound();
+  }
 
   let upstream: Response;
   try {

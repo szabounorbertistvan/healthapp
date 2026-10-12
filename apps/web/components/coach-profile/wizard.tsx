@@ -903,7 +903,8 @@ export function buildPreview({
     followers: 0,
     verified: data.profile.verification_status === "verified",
     badges: data.profile.verification_status === "verified"
-      ? data.verifications.filter((v) => v.status === "verified").map((v) => `${v.kind}_verified` as const) : [],
+      // never an identity claim (20261119100000): no identity-verification procedure exists
+      ? data.verifications.filter((v) => v.status === "verified" && v.kind !== "identity").map((v) => `${v.kind}_verified` as const) : [],
     specializations: draft.specializations
       .map((slug) => catalog.specializations.find((s) => s.slug === slug))
       .filter((s): s is NonNullable<typeof s> => Boolean(s))

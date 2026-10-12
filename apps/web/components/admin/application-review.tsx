@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { decideCoachApplication, setVerificationDocumentStatus } from "@/app/admin-coach-actions";
-import { formatBytes, type CoachDocument, type ApplicationMissing, type ReviewDecision } from "@/lib/coach-application";
+import { formatBytes, isLegacyIdentityDocument, type CoachDocument, type ApplicationMissing, type ReviewDecision } from "@/lib/coach-application";
 import type { CoachProfileStatus } from "@/lib/coach-profile";
 import { ConfirmAction } from "./confirm-action";
 
@@ -17,22 +17,29 @@ export type AdminApplication = {
   reviewed_at: string | null;
   published_at: string | null;
   missing: ApplicationMissing[];
+  /** Declared disciplines still without a qualification (20261119100000; absent before). */
+  missing_specializations?: string[];
   legacy: boolean;
   specializations: { slug: string; name_en: string; name_ro: string; is_primary: boolean; qualification_evidence: "required" | "recommended" | "none" }[];
   documents: (CoachDocument & { reviewed_at: string | null })[];
   history: {
     decision: "submitted" | "approved" | "changes_requested" | "rejected" | "revoked" | "legacy_approved";
-    note: string | null; created_at: string; identity_reviewed: boolean; qualifications_reviewed: boolean; actor: string | null;
+    note: string | null; created_at: string;
+    /** Historical: the identity-document box of 20261118100000, false on every decision since 20261119100000. */
+    identity_reviewed: boolean;
+    profile_reviewed?: boolean;
+    qualifications_reviewed: boolean; actor: string | null;
   }[];
 };
 
 type Decision = "approved" | "changes_requested" | "rejected" | "revoked";
 
 /**
- * Admin · one coach application (admin_coach_application, 20261118100000).
- * The evidence first — what each chosen discipline expects, the documents
+ * Admin · one coach application (admin_coach_application, 20261118100000;
+ * no identity documents since 20261119100000). The evidence first — what
+ * each chosen discipline expects, the qualification documents
  * (opened through /api/coach-documents/[id], never a storage URL) — then the
- * two review boxes, the note and the decisions the status allows. The
+ * two review boxes (profile, qualifications), the note and the decisions the status allows. The
  * database re-checks every one: the boxes, the evidence, the note, the
  * transition. The decision history says who decided what, and when.
  */
@@ -46,7 +53,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
   const m = t.admin.coaches.application;
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
-  const [identity, setIdentity] = useState(false);
+  const [profileReviewed, setProfileReviewed] = useState(false);
   const [qualifications, setQualifications] = useState(false);
   const [note, setNote] = useState("");
   const [decision, setDecision] = useState<Decision | null>(null);
@@ -57,7 +64,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
     ? ["approved", "changes_requested", "rejected"]
     : s === "published" || s === "hidden" ? ["approved", "revoked"] : [];
   const needsNote = (d: Decision) => d !== "approved";
-  const canApprove = identity && qualifications && application.missing.length === 0;
+  const canApprove = profileReviewed && qualifications && application.missing.length === 0;
 
   const label: Record<Decision, string> = { approved: m.approve, changes_requested: m.requestInfo, rejected: m.reject, revoked: m.revoke };
   const title: Record<Decision, string> = {
@@ -73,7 +80,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
       setError(t.admin.coaches.errors.REASON_REQUIRED);
       return;
     }
-    if (d === "approved" && !(identity && qualifications)) {
+    if (d === "approved" && !(profileReviewed && qualifications)) {
       setError(t.admin.coaches.errors.REVIEW_CHECKLIST_INCOMPLETE);
       return;
     }
@@ -85,7 +92,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
     if (!decision) return;
     start(async () => {
       const result = await decideCoachApplication(application.id, decision, {
-        note, identityReviewed: identity, qualificationsReviewed: qualifications,
+        note, profileReviewed, qualificationsReviewed: qualifications,
       });
       if (!result.ok) {
         setError(result.message ?? t.admin.common.loadError);
@@ -94,7 +101,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
       }
       dialog.current?.close();
       setNote("");
-      setIdentity(false);
+      setProfileReviewed(false);
       setQualifications(false);
       router.refresh();
     });
@@ -109,7 +116,13 @@ export function AdminApplicationReview({ application, name, fmt }: {
         </p>
       ) : null}
       {application.missing.length ? (
-        <p className="text-warn">{fill(m.missing, { list: application.missing.map((c) => m.missingCodes[c]).join(", ") })}</p>
+        <p className="text-warn">
+          {application.missing_specializations?.length
+            ? fill(m.missingDisciplines, { list: application.missing_specializations
+                .map((slug) => { const sp = application.specializations.find((x) => x.slug === slug); return sp ? (locale === "ro" ? sp.name_ro : sp.name_en) : slug; })
+                .join(", ") })
+            : fill(m.missing, { list: application.missing.map((c) => m.missingCodes[c]).join(", ") })}
+        </p>
       ) : null}
 
       <div>
@@ -130,17 +143,20 @@ export function AdminApplicationReview({ application, name, fmt }: {
           <ul className="mt-1.5 grid gap-1.5" data-testid="admin-application-documents">
             {application.documents.map((d) => {
               const spec = application.specializations.find((x) => x.slug === d.specialization);
+              // left from before 20261119100000: not reviewed, not opened here, only listed so it can be removed
+              const legacyIdentity = isLegacyIdentityDocument(d);
               return (
                 <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-bg px-3.5 py-2.5" data-testid="admin-application-document" data-status={d.status}>
                   <span className="min-w-0">
                     <span className="block font-semibold">{m.docKinds[d.kind]}{d.label ? ` — ${d.label}` : ""}</span>
                     <span className="block text-[12px] text-ink-faint">
                       {[spec ? (locale === "ro" ? spec.name_ro : spec.name_en) : null, d.format.toUpperCase(), formatBytes(d.bytes, locale),
-                        fmt[d.created_at], m.docStatuses[d.status]].filter(Boolean).join(" · ")}
+                        fmt[d.created_at], legacyIdentity ? null : m.docStatuses[d.status]].filter(Boolean).join(" · ")}
                     </span>
                     {d.review_note ? <span className="block text-[12px] text-ink-soft">{d.review_note}</span> : null}
+                    {legacyIdentity ? <span className="block text-[12px] text-warn" data-testid="admin-document-identity-legacy">{m.identityLegacy}</span> : null}
                   </span>
-                  <span className="flex flex-wrap items-center gap-2">
+                  {legacyIdentity ? null : <span className="flex flex-wrap items-center gap-2">
                     <a href={`/api/coach-documents/${d.id}`} target="_blank" rel="noopener noreferrer" className="text-[13px] font-semibold text-accent-ink hover:underline">{m.view}</a>
                     <a href={`/api/coach-documents/${d.id}?download=1`} className="text-[13px] font-semibold text-ink-soft hover:underline">{m.download}</a>
                     {d.status !== "accepted" ? (
@@ -151,7 +167,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
                       <ConfirmAction tone="neutral" withReason label={m.rejectDoc} title={m.rejectDocTitle} body={m.rejectDocBody}
                         action={setVerificationDocumentStatus.bind(null, d.id, "rejected")} />
                     ) : null}
-                  </span>
+                  </span>}
                 </li>
               );
             })}
@@ -163,8 +179,8 @@ export function AdminApplicationReview({ application, name, fmt }: {
         <div className="grid gap-3 rounded-2xl border border-line p-3.5" data-testid="admin-application-decide">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.checklist}</p>
           <label className="flex items-start gap-2">
-            <input type="checkbox" className="mt-1" checked={identity} onChange={(e) => setIdentity(e.target.checked)} data-testid="admin-identity-reviewed" />
-            <span>{m.identityReviewed}</span>
+            <input type="checkbox" className="mt-1" checked={profileReviewed} onChange={(e) => setProfileReviewed(e.target.checked)} data-testid="admin-profile-reviewed" />
+            <span>{m.profileReviewed}</span>
           </label>
           <label className="flex items-start gap-2">
             <input type="checkbox" className="mt-1" checked={qualifications} onChange={(e) => setQualifications(e.target.checked)} data-testid="admin-qualifications-reviewed" />
@@ -198,7 +214,8 @@ export function AdminApplicationReview({ application, name, fmt }: {
                 <span className="text-ink-faint"> · {fmt[h.created_at]} · {fill(m.by, { name: h.actor ?? m.system })}</span>
                 {h.decision === "approved" ? (
                   <span className="block text-[12px] text-ink-faint">
-                    {fill(m.checked, { identity: h.identity_reviewed ? m.yes : m.no, qualifications: h.qualifications_reviewed ? m.yes : m.no })}
+                    {fill(m.checked, { profile: h.profile_reviewed ? m.yes : m.no, qualifications: h.qualifications_reviewed ? m.yes : m.no })}
+                    {h.identity_reviewed ? ` · ${m.checkedIdentityLegacy}` : ""}
                   </span>
                 ) : null}
                 {h.note ? <span className="block whitespace-pre-line text-ink-soft">{h.note}</span> : null}

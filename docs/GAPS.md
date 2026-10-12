@@ -99,9 +99,10 @@ Now read (one extra parallel query, no extra wave). **Per-set and per-session
 feedback still do not exist** — nothing writes `reference_type` `set`,
 `session` or `set_video`, so the landing page no longer claims it.
 
-## Coach applications (20261118100000)
+## Coach applications (20261118100000, 20261119100000)
 
-Built, not applied to the live project. Production-readiness audit (2026-10-12): see the
+Built, not applied to the live project. No identity documents and no identity verification
+(20261119100000); there is no KYC and none is planned without a decision on a provider. Production-readiness audit (2026-10-12): see the
 deployment checklist in that session's report. Missing: an admin notice of new submissions;
 a notice when one document is not accepted; orphan cleanup for uploads never recorded; a
 `suspended_from`-aware "Restore and publish" button (the database refuses, the button still
@@ -243,7 +244,8 @@ verified → rejected = revoke. Coaches never write it. Credentials (`coach_cert
 `credential_number` (owner/admin only, never public) and `expires_on`; each stays "provided by coach" until an
 admin verifies it (`admin_set_certification_status`); any edit resets it. One reusable badge,
 `components/coach-discovery/verified-badge.tsx`, on the search card and the public page; the per-kind
-`coach_verifications` rows only add a "checked: identity · …" line under it. Search ranking unchanged (verified
+`coach_verifications` rows only add a "checked: certifications · …" line under it (never identity since
+20261119100000: no identity-verification procedure exists). Search ranking unchanged (verified
 stays one tie-breaker). Admin: a verification panel on /admin/coaches/[id] and a "Verification requests" queue
 (`?verification=pending`). Credentials are still editable in draft only (pre-moderation). Not built: KYC,
 document upload (`document_ref` exists, unused), external registry checks, notifying the coach of a decision.

@@ -72,7 +72,6 @@ update public.users set avatar_url = 'https://res.cloudinary.com/demo/image/uplo
  where id = 'c4000000-0000-0000-0000-000000000001';
 select pg_temp.authenticate_as('c4000000-0000-0000-0000-000000000001');
 select is(public.coach_profile_missing(), '{}'::text[], 'the optional fields (certifications, cover, languages) are not required');
-select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid()::text || '/identity0001', 'pdf', 120000);
 select is(public.submit_coach_for_review(), '{}'::text[], 'a complete draft is submitted');
 select is((select status from public.coach_profiles where user_id = auth.uid()), 'pending_review', 'and waits for review');
 select is(pg_temp.found('ioana'), 0, 'pending review is not discoverable');

@@ -114,8 +114,9 @@ export function photoUrl(publicId: string, options: { width?: number } = {}): st
  */
 export async function destroyUserPhotos(userId: string): Promise<void> {
   const client = configured();
-  // Verification evidence (20261118100000) first: identity documents above all must not outlive the
-  // account, and a failure further down must not leave them behind.
+  // Verification evidence (20261118100000) first — qualification documents, and any identity document
+  // left from before Voinic stopped collecting them (20261119100000): none may outlive the account, and
+  // a failure further down must not leave them behind.
   await client.api.delete_resources_by_prefix(coachDocumentFolder(userId), { type: "authenticated" });
   await client.api.delete_folder(coachDocumentFolder(userId)).catch(() => {});
   const prefix = progressFolder(userId);

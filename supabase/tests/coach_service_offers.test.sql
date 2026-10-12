@@ -173,7 +173,6 @@ reset role;
 -- 5. published: the public page shows only active services, with the new fields
 -- ============================================================================
 select pg_temp.authenticate_as('c5000000-0000-0000-0000-000000000001');
-select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid()::text || '/identity0001', 'pdf', 120000);
 select is(public.submit_coach_for_review(), '{}'::text[], 'submitted');
 reset role;
 select pg_temp.authenticate_as('c5000000-0000-0000-0000-000000000003');

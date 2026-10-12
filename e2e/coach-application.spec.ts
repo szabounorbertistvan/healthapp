@@ -71,8 +71,11 @@ test.describe("coach", () => {
     test.skip(!(await card.count()), "the coach has no profile, or 20261118100000 is not applied to this project");
     await expect(card.getByTestId("coach-application-state")).toBeVisible();
     await expect(card.getByText("only you and Voinic's reviewers can open them")).toBeVisible();
-    // never a "certified" claim
+    // never a "certified" claim, never an identity document (20261119100000)
     await expect(card.getByText(/certified by voinic/i)).toHaveCount(0);
+    await expect(card.getByText("Voinic does not ask for identity documents.", { exact: false })).toBeVisible();
+    await expect(card.locator('select option[value="identity"]')).toHaveCount(0);
+    await expect(card.getByText(/passport|driving licence|ID card/i)).toHaveCount(0);
     // every document opens through the app's own gate, never a storage URL
     for (const href of await card.locator("a[href*='coach-documents'], a[href*='cloudinary']").evaluateAll((as) => as.map((a) => a.getAttribute("href")))) {
       expect(href).toMatch(/^\/api\/coach-documents\/[0-9a-f-]{36}$/);

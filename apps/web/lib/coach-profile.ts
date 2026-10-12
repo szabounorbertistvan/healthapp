@@ -72,13 +72,14 @@ export type CoachProfileMissing =
   | "HEADLINE" | "ABOUT" | "SPECIALIZATION" | "DELIVERY_MODE" | "LOCATION"
   | "SERVICE" | "SERVICE_PRICE" | "AVATAR" | "SLUG" | "COACHING_SINCE"
   // the application's evidence (20261118100000) — reported by submit only, never by coach_profile_missing()
-  | "IDENTITY_DOCUMENT" | "QUALIFICATION_DOCUMENT";
+  | "QUALIFICATION_DOCUMENT";
 
 /** Every business code the coach discovery RPCs raise. */
 export const COACH_PROFILE_ERRORS = [
   "PROFILE_INCOMPLETE",
   // coach applications (20261118100000)
   "DOCUMENTS_LOCKED",
+  "IDENTITY_DOCUMENTS_NOT_ACCEPTED",
   "BAD_DOCUMENT_PATH",
   "BAD_DOCUMENT",
   "TOO_MANY_DOCUMENTS",
