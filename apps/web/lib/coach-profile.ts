@@ -229,7 +229,12 @@ export type CoachingRequestRow = {
 
 // ---------- reference data ----------
 
-export type Specialization = { id: string; slug: string; name_en: string; name_ro: string; sort_order: number };
+export type Specialization = {
+  id: string; slug: string; name_en: string; name_ro: string; sort_order: number;
+  /** The picker's group and, for a style, its discipline's slug (20261116100000); null before that migration. */
+  category: string | null;
+  parent: string | null;
+};
 export type Language = { code: string; name_en: string; name_ro: string; native_name: string; sort_order: number };
 export type City = {
   id: string; slug: string; name: string; name_en: string | null; country_code: string;

@@ -214,9 +214,16 @@ function PreviewCard({ card, t, locale }: { card: CoachCardModel; t: Dictionary;
         ) : null}
         {specs.length > 0 ? (
           <ul className="mt-2 flex flex-wrap gap-1.5">
-            {specs.map((name) => (
-              <li key={name} className="rounded-full bg-surface px-2.5 py-0.5 text-[11.5px] font-semibold text-ink-soft">{name}</li>
-            ))}
+            {specs.map((name) => {
+              // the coach's own starred focus, from the database — never guessed from the order
+              const primary = name === card.primarySpecialization;
+              return (
+                <li key={name} className={`rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold ${primary ? "bg-accent-soft text-accent-ink" : "bg-surface text-ink-soft"}`}>
+                  {primary ? <span className="sr-only">{t.coachProfile.taxonomy.primaryBadge}: </span> : null}
+                  {name}
+                </li>
+              );
+            })}
             {more > 0 ? <li className="px-1 py-0.5 text-[11.5px] font-semibold text-ink-faint">{fill(c.more, { n: more })}</li> : null}
           </ul>
         ) : null}

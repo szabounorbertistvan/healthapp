@@ -126,6 +126,23 @@ const en = {
     },
     claimWarning: "Avoid promises Voinic can't stand behind — guaranteed results, set weight loss in a set time, or medical treatment. Describe how you work instead.",
   },
+  // the discipline groups (public.specializations.category, 20261116100000), shared by the editor and the directory
+  taxonomy: {
+    groups: {
+      strength: "Strength & fitness",
+      mind_body: "Yoga & Pilates",
+      functional: "Functional training",
+      endurance: "Endurance & outdoor",
+      combat: "Combat sports",
+      other: "More focuses",
+    },
+    searchLabel: "Find a specialization",
+    searchPlaceholder: "Search: yoga, boxing, running…",
+    noMatch: "No specialization matches “{q}”.",
+    clearSearch: "Clear",
+    selectedCount: "{n} of {max} selected",
+    primaryBadge: "Main focus",
+  },
   where: {
     intro: "How and where people can train with you.",
     online: "Online coaching",
@@ -1152,6 +1169,22 @@ const ro: typeof en = {
       healthy_habits: "Obiceiuri sănătoase", beginners: "Începători absoluți", return_to_training: "Revenire la antrenament",
     },
     claimWarning: "Evită promisiunile pe care Voinic nu le poate garanta — rezultate garantate, un număr de kilograme într-un timp fix sau tratament medical. Descrie mai bine cum lucrezi.",
+  },
+  taxonomy: {
+    groups: {
+      strength: "Forță și fitness",
+      mind_body: "Yoga și Pilates",
+      functional: "Antrenament funcțional",
+      endurance: "Anduranță și outdoor",
+      combat: "Sporturi de contact",
+      other: "Alte direcții",
+    },
+    searchLabel: "Caută o specializare",
+    searchPlaceholder: "Caută: yoga, box, alergare…",
+    noMatch: "Nicio specializare nu se potrivește cu „{q}”.",
+    clearSearch: "Șterge",
+    selectedCount: "{n} din {max} alese",
+    primaryBadge: "Direcția principală",
   },
   where: {
     intro: "Cum și unde se pot antrena oamenii cu tine.",

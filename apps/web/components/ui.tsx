@@ -78,7 +78,7 @@ export function Chip({
       aria-pressed={on}
       disabled={disabled}
       onClick={onToggle}
-      className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-semibold outline-none ring-accent/50 focus-visible:ring-2 disabled:opacity-50 ${
+      className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold leading-tight outline-none ring-accent/50 focus-visible:ring-2 disabled:opacity-50 ${
         on ? "bg-accent text-accent-fg" : "bg-bg text-ink-soft hover:text-ink"
       } ${className}`}
     >

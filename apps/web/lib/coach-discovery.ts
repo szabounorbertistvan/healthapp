@@ -242,7 +242,14 @@ export const RESTRICTIVE_FILTERS = 5;
 
 export type DiscoveryFacets = {
   /** Every active specialization; `coaches` = published coaches with it (20261111110000). */
-  specializations: { slug: string; name_en: string; name_ro: string; coaches?: number }[];
+  specializations: {
+    slug: string; name_en: string; name_ro: string;
+    /** Published coaches with it or one of its styles, each once. */
+    coaches?: number;
+    /** The group and, for a style, its discipline (20261116100000); absent before. */
+    category?: string | null;
+    parent?: string | null;
+  }[];
   countries: { code: string; slug: string; name_en: string; name_ro: string; coaches: number }[];
   cities: { slug: string; name: string; name_en: string; country_code: string; coaches: number }[];
   /** Active gyms with a published coach (20261027100000); `city` is a city slug. */
@@ -353,7 +360,8 @@ export type CoachSearchRow = {
   accepting_clients: boolean;
   followers: number;
   location: { city: string; city_en: string; country_code: string } | null;
-  specializations: { slug: string; name_en: string; name_ro: string }[];
+  /** Up to three, the primary first; `is_primary` from 20261116100000 (absent before). */
+  specializations: { slug: string; name_en: string; name_ro: string; is_primary?: boolean }[];
   specializations_total: number;
   starting_price: { cents: number; currency: string; unit: PriceUnit } | null;
   // for a signed-in caller only (20261026100000); absent for anyone else
@@ -383,6 +391,8 @@ export type CoachCardModel = {
   formats: ("online" | "in_person")[];
   years: number | null;
   specializations: string[];
+  /** The coach's own main focus, when they starred one — never inferred from order. */
+  primarySpecialization: string | null;
   moreSpecializations: number;
   startingPrice: { cents: number; currency: string; unit: PriceUnit } | null;
   followers: number;
@@ -419,6 +429,10 @@ export function toCoachCard(row: CoachSearchRow, locale: "en" | "ro", now = new 
     formats: [row.online ? "online" as const : null, row.in_person ? "in_person" as const : null].filter((f): f is "online" | "in_person" => Boolean(f)),
     years: years && years > 0 ? years : null,
     specializations: row.specializations.map((s) => (locale === "ro" ? s.name_ro : s.name_en)),
+    primarySpecialization: (() => {
+      const p = row.specializations.find((s) => s.is_primary === true);
+      return p ? (locale === "ro" ? p.name_ro : p.name_en) : null;
+    })(),
     moreSpecializations: Math.max(0, row.specializations_total - row.specializations.length),
     startingPrice: row.starting_price,
     followers: row.followers,

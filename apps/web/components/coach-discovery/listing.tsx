@@ -32,8 +32,10 @@ export async function DiscoveryListing({ query, result, facets, signedIn, label 
   const empty = emptyKind(result.total, query);
   const active = filterCount(query);
 
+  // minmax(0,1fr) on a phone too: the implicit auto column grew to the widest card's
+  // min-content (a long, truncated coach name) and pushed the page past the viewport
   return (
-    <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
       <FiltersSidebar query={query} facets={facets} />
 
       <section aria-labelledby="coach-results" aria-live="polite">

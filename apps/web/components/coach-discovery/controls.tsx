@@ -13,6 +13,7 @@ import { SERVICE_KINDS } from "@/lib/coach-profile";
 import { trackMarketplace } from "../marketplace-tracker";
 import { BUTTON, FIELD, HINT, LABEL, SMALL_BUTTON } from "@/lib/form-classes";
 import { Chip, Switch } from "../ui";
+import { SpecializationChips } from "../specialization-chips";
 import { NavIcon } from "../client-nav";
 
 // Every control writes the search into the URL (lib/coach-discovery.ts) and
@@ -235,18 +236,21 @@ function FilterFields({ query, facets, onChange, instant = true, pending = false
 
       <fieldset>
         <legend className={LABEL}>{d.specializations}</legend>
-        <div className="mt-2 flex flex-wrap gap-1.5" data-testid="discovery-specializations">
-          {facets.specializations.map((s) => {
-            const on = query.specializations.includes(s.slug);
-            return (
-              <Chip key={s.slug} on={on} onToggle={() => go(withChange(query, {
-                specializations: on ? query.specializations.filter((x) => x !== s.slug) : [...query.specializations, s.slug],
-              }))}>
-                {name(s)}
-              </Chip>
-            );
-          })}
-        </div>
+        {/* Grouped, styles under their discipline, and only what someone offers: a chip for a
+            discipline nobody published would promise coaches who are not there. A picked one
+            always stays, so it can be taken off. `coaches` counts a discipline's styles too. */}
+        <SpecializationChips
+          testId="discovery-specializations"
+          entries={facets.specializations.filter((s) => s.coaches === undefined || s.coaches > 0 || query.specializations.includes(s.slug))}
+          isOn={(slug) => query.specializations.includes(slug)}
+          onToggle={(slug) => {
+            const on = query.specializations.includes(slug);
+            go(withChange(query, {
+              specializations: on ? query.specializations.filter((x) => x !== slug) : [...query.specializations, slug],
+            }));
+          }}
+          badge={(s) => (s.coaches ? <span className="text-[11px] font-semibold opacity-70">{s.coaches}</span> : null)}
+        />
       </fieldset>
 
       <fieldset>

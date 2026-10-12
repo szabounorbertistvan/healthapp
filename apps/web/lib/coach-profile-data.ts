@@ -102,7 +102,9 @@ export async function getCoachCatalog(): Promise<CoachCatalog> {
   if (!live) return { specializations: [], languages: [], cities: [], countries: [] };
   const { supabase } = live;
   const [specs, langs, cities, countries] = await Promise.all([
-    supabase.from("specializations").select("id, slug, name_en, name_ro, sort_order").eq("active", true).order("sort_order"),
+    // `*`, not a column list: category / parent_id arrive with 20261116100000, and the editor must
+    // keep working on a database that does not have them yet (it then shows one flat group)
+    supabase.from("specializations").select("*").eq("active", true).order("sort_order"),
     supabase.from("languages").select("code, name_en, name_ro, native_name, sort_order").eq("active", true).order("sort_order"),
     supabase.from("cities").select("id, slug, name, name_en, country_code, latitude, longitude").eq("active", true).order("name"),
     supabase.from("countries").select("code, slug, name_en, name_ro").eq("active", true).order("name_en"),
@@ -110,8 +112,15 @@ export async function getCoachCatalog(): Promise<CoachCatalog> {
   for (const r of [specs, langs, cities, countries]) {
     if (r.error) throw new Error(`coach catalog: ${r.error.message}`);
   }
+  type SpecRow = Omit<Specialization, "category" | "parent"> & { category?: string | null; parent_id?: string | null };
+  const specRows = (specs.data ?? []) as SpecRow[];
+  const slugById = new Map(specRows.map((s) => [s.id, s.slug]));
   return {
-    specializations: (specs.data ?? []) as Specialization[],
+    specializations: specRows.map((s) => ({
+      id: s.id, slug: s.slug, name_en: s.name_en, name_ro: s.name_ro, sort_order: s.sort_order,
+      category: s.category ?? null,
+      parent: (s.parent_id && slugById.get(s.parent_id)) || null,
+    })),
     languages: (langs.data ?? []) as Language[],
     cities: (cities.data ?? []) as City[],
     countries: (countries.data ?? []) as Country[],

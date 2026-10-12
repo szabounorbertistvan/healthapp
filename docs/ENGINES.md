@@ -897,6 +897,21 @@ Cities and countries resolve only while they have a published coach (else 404); 
 resolves. Every `/coaches?…` combination stays `noindex, follow`. The Discovery Home's city and specialty links
 point at the landing pages (`listingHref`).
 
+**Disciplines (20261116100000).** The taxonomy is still `specializations` (slug = identifier, `name_en` /
+`name_ro` = labels) — now 45 rows in six groups (`category`: strength, mind_body, functional, endurance, combat,
+other) with one level of styles (`parent_id`: Hatha / Vinyasa / Yin / Ashtanga under Yoga, Mat / Reformer under
+Pilates, Hypertrophy / Bodybuilding under Muscle Building, Powerlifting / S&C under Strength, Marathon under
+Running, Sports-Specific under Sports Performance). The eleven original slugs and every coach's links are
+untouched; `mobility` reads "Mobility & Flexibility". A new slug was skipped (with a NOTICE) where a coach, an old
+coach link, a city or a country already answered `/coaches/<slug>`. A filter on a discipline includes its styles
+(`specialization_slugs_expand()` in `coach_ranked()`), each coach once; the facet count does the same; the card
+marks the starred primary (`is_primary`). An untagged coach who writes a discipline word scores by field
+(`coach_token_score`), always below a tagged one. UI: `components/specialization-chips.tsx` (grouped, styles set
+in under their discipline, a search box from 14 entries; a picked chip is never hidden) in the coach editor and
+the directory filter, which — like the Discovery Home's chips and tiles — shows only what a published coach
+offers. Not in the taxonomy: Personal Training (a service kind), anything clinical. Grouping / search:
+`lib/coach-taxonomy.ts`; suite `coach_disciplines.test.sql`.
+
 **Profile content.** `coach_profiles` gains `approach`, `experience_summary`, `client_goals` (closed codes, ≤ 6)
 and `social_links` (handles for instagram / tiktok / youtube / facebook / linkedin and one https website —
 `coach_social_links_valid()`; the app builds every URL, `lib/coach-content.ts`). Content like the rest: editable

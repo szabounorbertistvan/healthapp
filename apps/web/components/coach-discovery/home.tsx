@@ -45,13 +45,18 @@ export async function DiscoveryHome({ query, facets, recommended, near, signedIn
   const h = d.home;
   const specName = (x: { name_en: string; name_ro: string }) => (locale === "ro" ? x.name_ro : x.name_en);
   const noCoaches = recommended.total === 0;
+  // only what a published coach offers (a style's coaches count for its discipline); `coaches`
+  // is absent on a database before 20261111110000, where every entry is kept as it was
+  const offered = facets.specializations.filter((s) => s.coaches === undefined || s.coaches > 0);
+  // the tiles are the disciplines; their styles are one tap further, in the listing's filter
+  const tiles = offered.filter((s) => !s.parent);
 
   const quick: { key: string; label: string; href: string }[] = [
     ...(near.kind === "matched" ? [{ key: "near", label: h.nearMe, href: `/coaches${discoverySearch(near.seeAll)}` }] : []),
     { key: "online", label: d.online, href: href({ online: true }) },
     { key: "in_person", label: d.inPerson, href: href({ inPerson: true }) },
     ...QUICK_SPECIALIZATIONS.flatMap((slug) => {
-      const s = facets.specializations.find((x) => x.slug === slug);
+      const s = offered.find((x) => x.slug === slug);
       return s ? [{ key: slug, label: specName(s), href: href({ specializations: [slug] }) }] : [];
     }),
   ];
@@ -138,11 +143,11 @@ export async function DiscoveryHome({ query, facets, recommended, near, signedIn
           </section>
 
           {/* ---------- by specialty ---------- */}
-          {facets.specializations.length > 0 ? (
+          {tiles.length > 0 ? (
             <section aria-labelledby="home-specialties" data-testid="home-specialties">
               <SectionHead id="home-specialties" title={h.specialties} hint={h.specialtiesHint} />
               <ul className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-                {facets.specializations.map((s, i) => (
+                {tiles.map((s, i) => (
                   <li key={s.slug}>
                     <Link href={href({ specializations: [s.slug] })}
                       className="group flex h-full min-h-[76px] items-end justify-between gap-2 rounded-2xl bg-surface p-4 transition hover:bg-accent-soft">

@@ -21,6 +21,7 @@ import type { ActionResult } from "@/app/actions";
 import { Logo } from "../logo";
 import { AvatarPicker } from "../account";
 import { Card, Chip, Switch } from "../ui";
+import { SpecializationChips } from "../specialization-chips";
 import { CertificationsStep, ServicesStep } from "./lists";
 import { searchGyms } from "@/app/gym-actions";
 import type { GymHit } from "@/lib/gym-data";
@@ -467,24 +468,25 @@ function ExpertiseStep({
         <legend className={LABEL}>{c.specializations}</legend>
         <p className={HINT}>{fill(c.specializationsHint, { max: COACH_LIMITS.specializations })}</p>
         {catalog.specializations.length === 0 ? <p className="mt-3 text-[13px] text-ink-faint">{c.none}</p> : null}
-        <div className="mt-3 flex flex-wrap gap-1.5" data-testid="coach-specializations">
-          {catalog.specializations.map((s) => {
-            const on = draft.specializations.includes(s.slug);
-            return (
-              <Chip
-                key={s.slug} on={on}
-                onToggle={() => {
-                  const next = toggleSpecialization(draft.specializations, draft.primarySpecialization, s.slug);
-                  setRefused(next.refused);
-                  if (!next.refused) setDraft((d) => ({ ...d, specializations: next.selected, primarySpecialization: next.primary }));
-                }}
-              >
-                {on && draft.primarySpecialization === s.slug ? <span aria-hidden>★</span> : null}
-                {locale === "ro" ? s.name_ro : s.name_en}
-              </Chip>
-            );
-          })}
-        </div>
+        <p className="mt-2 text-[12.5px] font-semibold text-ink-soft" aria-live="polite">
+          {fill(t.coachProfile.taxonomy.selectedCount, { n: draft.specializations.length, max: COACH_LIMITS.specializations })}
+        </p>
+        <SpecializationChips
+          testId="coach-specializations"
+          entries={catalog.specializations}
+          isOn={(slug) => draft.specializations.includes(slug)}
+          onToggle={(slug) => {
+            const next = toggleSpecialization(draft.specializations, draft.primarySpecialization, slug);
+            setRefused(next.refused);
+            if (!next.refused) setDraft((d) => ({ ...d, specializations: next.selected, primarySpecialization: next.primary }));
+          }}
+          label={(s) => (
+            <>
+              {draft.specializations.includes(s.slug) && draft.primarySpecialization === s.slug ? <span aria-hidden>★</span> : null}
+              {locale === "ro" ? s.name_ro : s.name_en}
+            </>
+          )}
+        />
         {refused ? <p role="alert" className={FIELD_ERROR}>{fill(c.maxReached, { max: COACH_LIMITS.specializations })}</p> : null}
         {draft.specializations.length > 1 ? (
           <div className="mt-4">

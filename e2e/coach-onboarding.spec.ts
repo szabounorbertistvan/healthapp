@@ -251,7 +251,7 @@ test.describe("wizard", () => {
       await expect(page).toHaveURL(/step=2/);
       const chips = page.getByTestId("coach-specializations");
       if ((await chips.locator("[aria-pressed=true]").count()) === 0) {
-        await chips.getByRole("button", { name: /Strength/ }).click();
+        await chips.getByRole("button", { name: /^★?Strength$/ }).click();
         specAdded = true;
       }
       await page.getByRole("button", { name: "Continue" }).click();
@@ -300,7 +300,7 @@ test.describe("wizard", () => {
       }
       if (specAdded) {
         await page.goto(`${PATH}?step=2`);
-        await page.getByTestId("coach-specializations").getByRole("button", { name: /Strength/ }).click();
+        await page.getByTestId("coach-specializations").getByRole("button", { name: /^★?Strength$/ }).click();
         await saved(page);
       }
       await page.goto(`${PATH}?step=1`);

@@ -172,12 +172,23 @@ describe("card mapping", () => {
   it("maps a row to what the card draws, in the reader's language", () => {
     expect(toCoachCard(row, "ro", new Date("2026-10-01"))).toEqual({
       href: "/coaches/ana", name: "Ana", avatarUrl: null, headline: "Strength coach", verified: true,
-      city: "București", formats: ["online", "in_person"], years: 10, specializations: ["Forță"],
+      city: "București", formats: ["online", "in_person"], years: 10, specializations: ["Forță"], primarySpecialization: null,
       moreSpecializations: 3, startingPrice: { cents: 20000, currency: "RON", unit: "month" }, followers: 12, accepting: true,
       rating: null, follow: null, isSelf: false, save: null, profileId: null, availableSoon: false,
     });
     expect(toCoachCard({ ...row, available_soon: true }, "en").availableSoon).toBe(true);
     expect(toCoachCard(row, "en").city).toBe("Bucharest");
+  });
+  it("names the primary only when the database marks it (20261116100000), never by position", () => {
+    const two = [{ slug: "hatha-yoga", name_en: "Hatha Yoga", name_ro: "Hatha yoga", is_primary: true },
+                 { slug: "yoga", name_en: "Yoga", name_ro: "Yoga", is_primary: false }];
+    const card = toCoachCard({ ...row, specializations: two, specializations_total: 2 }, "ro");
+    expect(card.primarySpecialization).toBe("Hatha yoga");
+    expect(card.specializations).toEqual(["Hatha yoga", "Yoga"]);
+    expect(card.moreSpecializations).toBe(0);
+    // a legacy coach who never starred one, or a database before the flag: no primary is claimed
+    expect(toCoachCard({ ...row, specializations: two.map((s) => ({ ...s, is_primary: false })) }, "en").primarySpecialization).toBeNull();
+    expect(toCoachCard(row, "en").primarySpecialization).toBeNull();
   });
   it("carries the database's rating, and none when there are no reviews (20261106100000)", () => {
     expect(toCoachCard({ ...row, rating: { average: "4.67", count: 3 } }, "en").rating).toEqual({ average: 4.67, count: 3 });
