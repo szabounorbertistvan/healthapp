@@ -41,6 +41,7 @@ export type ShareContext2D = {
   createRadialGradient(x0: number, y0: number, r0: number, x1: number, y1: number, r1: number): CanvasGradient;
   createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradient;
   drawImage(image: CanvasImageSource, dx: number, dy: number, dw: number, dh: number): void;
+  drawImage(image: CanvasImageSource, sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, dw: number, dh: number): void;
 };
 
 export type ShareFonts = { display: string; body: string };
@@ -51,11 +52,38 @@ export type ShareAssets = {
   mark: CanvasImageSource | null;
   wordmark: CanvasImageSource | null;
   avatar: CanvasImageSource | null;
+  /** The picture a `photo` item draws (the coach card's portrait); absent = the initial. */
+  photo?: CanvasImageSource | null;
+  /** The wordmark tinted near-black, for a brand item with tone "dark" (see tintImage). */
+  wordmarkDark?: CanvasImageSource | null;
 };
+
+/** An image's own pixel size: natural for an <img>, plain width / height for a canvas or a bitmap. */
+function sourceSize(img: CanvasImageSource): { w: number; h: number } {
+  const i = img as { naturalWidth?: number; naturalHeight?: number; width?: number | { baseVal?: { value: number } }; height?: number | { baseVal?: { value: number } } };
+  const w = i.naturalWidth || (typeof i.width === "number" ? i.width : 0);
+  const h = i.naturalHeight || (typeof i.height === "number" ? i.height : 0);
+  return { w, h };
+}
+
+/** The source rectangle that covers a w × h box from the image's centre, aspect kept — object-fit: cover. */
+export function coverCrop(src: { w: number; h: number }, box: { w: number; h: number }, focusY = 0.5): { sx: number; sy: number; sw: number; sh: number } {
+  if (src.w <= 0 || src.h <= 0) return { sx: 0, sy: 0, sw: src.w, sh: src.h };
+  const scale = Math.max(box.w / src.w, box.h / src.h);
+  const sw = box.w / scale;
+  const sh = box.h / scale;
+  return { sx: (src.w - sw) / 2, sy: Math.max(0, Math.min(src.h - sh, (src.h - sh) * focusY)), sw, sh };
+}
 
 /** Natural sizes of the brand PNGs (public/brand), used to scale by height. */
 const MARK_RATIO = 1; // 681 × 681
 const WORDMARK_RATIO = 781 / 141;
+
+function hexToRgba(hex: string, alpha: number): string {
+  const v = hex.replace("#", "");
+  const n = parseInt(v.length === 3 ? v.split("").map((c) => c + c).join("") : v, 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
 
 function fontString(item: Pick<ShareTextItem, "weight" | "font">, size: number, fonts: ShareFonts): string {
   return `${item.weight} ${size}px ${item.font === "display" ? fonts.display : fonts.body}`;
@@ -185,25 +213,119 @@ function paintItem(ctx: ShareContext2D, item: ShareCardItem, layout: ShareCardLa
       ctx.stroke();
       return;
     }
+    case "photo": {
+      ctx.save();
+      ctx.beginPath();
+      if (item.circle) ctx.arc(item.x + item.w / 2, item.y + item.h / 2, Math.min(item.w, item.h) / 2, 0, Math.PI * 2);
+      else rounded(ctx, item.x, item.y, item.w, item.h, item.radius);
+      ctx.closePath();
+      ctx.clip();
+      const img = assets.photo ?? null;
+      const size = img ? sourceSize(img) : { w: 0, h: 0 };
+      if (img && size.w > 0 && size.h > 0) {
+        // a face sits in the upper part of a portrait: crop a little above centre
+        const c = coverCrop(size, { w: item.w, h: item.h }, 0.35);
+        ctx.drawImage(img, c.sx, c.sy, c.sw, c.sh, item.x, item.y, item.w, item.h);
+      } else {
+        ctx.fillStyle = SHARE_CARD_COLORS[item.fallback];
+        ctx.fillRect(item.x, item.y, item.w, item.h);
+        const g = ctx.createRadialGradient(item.x + item.w / 2, item.y, 0, item.x + item.w / 2, item.y, Math.max(item.w, item.h));
+        g.addColorStop(0, "rgba(212, 169, 56, 0.20)");
+        g.addColorStop(1, "rgba(212, 169, 56, 0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(item.x, item.y, item.w, item.h);
+        // the brand emblem, faint, behind the initials: a designed monogram rather than an empty box
+        if (assets.mark) {
+          const m = Math.round(Math.min(item.w, item.h) * 0.78);
+          ctx.globalAlpha = 0.09;
+          ctx.drawImage(assets.mark, item.x + (item.w - m) / 2, item.y + (item.h - m) / 2, m, m);
+          ctx.globalAlpha = 1;
+        }
+        const letters = Math.max(1, item.initial.length);
+        ctx.font = `800 ${Math.round(Math.min(item.w, item.h) * (letters > 1 ? 0.34 : 0.42))}px ${assets.fonts.display}`;
+        if (ctx.letterSpacing !== undefined) ctx.letterSpacing = "0px";
+        ctx.fillStyle = SHARE_CARD_COLORS[item.initialColor];
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(item.initial, item.x + item.w / 2, item.y + item.h / 2 + Math.min(item.w, item.h) * 0.03);
+      }
+      ctx.restore();
+      if (item.stroke) {
+        ctx.strokeStyle = SHARE_CARD_COLORS[item.stroke];
+        ctx.lineWidth = item.strokeWidth ?? 4;
+        ctx.beginPath();
+        if (item.circle) ctx.arc(item.x + item.w / 2, item.y + item.h / 2, Math.min(item.w, item.h) / 2 - ctx.lineWidth / 2, 0, Math.PI * 2);
+        else rounded(ctx, item.x, item.y, item.w, item.h, item.radius);
+        ctx.closePath();
+        ctx.stroke();
+      }
+      return;
+    }
+    case "fade": {
+      const g = ctx.createLinearGradient(0, item.y, 0, item.y + item.h);
+      const solid = hexToRgba(SHARE_CARD_COLORS[item.color], 1);
+      const clear = hexToRgba(SHARE_CARD_COLORS[item.color], 0);
+      g.addColorStop(0, item.reverse ? solid : clear);
+      g.addColorStop(1, item.reverse ? clear : solid);
+      ctx.fillStyle = g;
+      ctx.fillRect(item.x, item.y, item.w, item.h);
+      return;
+    }
+    case "qr": {
+      const n = item.modules.length;
+      const quiet = 4;
+      // whole-pixel modules: a fractional cell gives alternating 7 / 8 px columns, which
+      // throws off a scanner's grid sampling; the code is centred in its light square instead
+      const cell = Math.max(1, Math.floor(item.size / (n + quiet * 2)));
+      const inset = Math.floor((item.size - cell * (n + quiet * 2)) / 2);
+      ctx.fillStyle = SHARE_CARD_COLORS[item.light];
+      if (item.radius > 0) {
+        rounded(ctx, item.x, item.y, item.size, item.size, item.radius);
+        ctx.fill();
+      } else {
+        ctx.fillRect(item.x, item.y, item.size, item.size);
+      }
+      ctx.fillStyle = SHARE_CARD_COLORS[item.dark];
+      for (let r = 0; r < n; r++) {
+        const row = item.modules[r]!;
+        for (let c = 0; c < n; c++) {
+          if (row[c]) ctx.fillRect(item.x + inset + (c + quiet) * cell, item.y + inset + (r + quiet) * cell, cell, cell);
+        }
+      }
+      return;
+    }
+    case "poly": {
+      if (item.points.length < 3) return;
+      ctx.globalAlpha = item.alpha ?? 1;
+      ctx.fillStyle = SHARE_CARD_COLORS[item.color];
+      ctx.beginPath();
+      ctx.moveTo(item.points[0]![0], item.points[0]![1]);
+      for (const [px, py] of item.points.slice(1)) ctx.lineTo(px, py);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    }
     case "brand": {
       const markH = Math.round(item.h * 0.56);
       const wordH = Math.round(item.h * 0.3);
       const gap = Math.round(item.h * 0.18);
+      const word = item.tone === "dark" ? (assets.wordmarkDark ?? null) : assets.wordmark;
       const markW = assets.mark ? markH * MARK_RATIO : 0;
-      const wordW = assets.wordmark ? wordH * WORDMARK_RATIO : 0;
+      const wordW = word ? wordH * WORDMARK_RATIO : 0;
       const cy = item.y + item.h / 2;
-      if (assets.mark || assets.wordmark) {
+      if (assets.mark || word) {
         const total = markW + (markW && wordW ? gap : 0) + wordW;
         let x = item.align === "left" ? item.x : item.align === "center" ? item.x - total / 2 : item.x - total;
         if (assets.mark) {
           ctx.drawImage(assets.mark, x, cy - markH / 2, markW, markH);
           x += markW + gap;
         }
-        if (assets.wordmark) ctx.drawImage(assets.wordmark, x, cy - wordH / 2, wordW, wordH);
+        if (word) ctx.drawImage(word, x, cy - wordH / 2, wordW, wordH);
       } else {
         ctx.font = `800 ${Math.round(item.h * 0.36)}px ${assets.fonts.display}`;
         if (ctx.letterSpacing !== undefined) ctx.letterSpacing = `${Math.round(item.h * 0.36 * 0.2)}px`;
-        ctx.fillStyle = SHARE_CARD_COLORS.ink;
+        ctx.fillStyle = SHARE_CARD_COLORS[item.tone === "dark" ? "tileInk" : "ink"];
         ctx.textAlign = item.align;
         ctx.textBaseline = "middle";
         ctx.fillText(item.text.toUpperCase(), item.x, cy);
@@ -268,12 +390,56 @@ export async function loadShareFonts(): Promise<ShareFonts> {
   const display = root.getPropertyValue("--font-exo2").trim() || "system-ui";
   const body = root.getPropertyValue("--font-inter").trim() || "system-ui";
   if (typeof document.fonts?.load === "function") {
+    // load() fetches only the unicode-range files its sample text needs — the default
+    // sample is plain Latin, which left ă â î ș ț (the latin-ext file) to a fallback face
+    // on the first card painted. Ask for them explicitly, both cedilla and comma forms.
+    const sample = "AaZz09 ĂăÂâÎîȘșȚțŞşŢţ →✓·";
     await Promise.all([
-      ...[600, 700, 800].map((w) => document.fonts.load(`${w} 40px ${display}`)),
-      ...[500, 600, 700].map((w) => document.fonts.load(`${w} 40px ${body}`)),
+      ...[600, 700, 800].map((w) => document.fonts.load(`${w} 40px ${display}`, sample)),
+      ...[400, 500, 600, 700].map((w) => document.fonts.load(`${w} 40px ${body}`, sample)),
     ]).catch(() => undefined);
   }
   return { display, body };
+}
+
+/**
+ * A copy of a one-colour image (the white wordmark) in another colour, keeping
+ * its alpha — the canvas version of the light theme's `.brand-wordmark` invert.
+ */
+export function tintImage(img: CanvasImageSource | null, color: string): HTMLCanvasElement | null {
+  if (!img) return null;
+  const { w, h } = sourceSize(img);
+  if (!w || !h) return null;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, w, h);
+  ctx.globalCompositeOperation = "source-in";
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, w, h);
+  return c;
+}
+
+/**
+ * Measures a line exactly as paintText will draw it — same font string, same
+ * tracking — on a scratch canvas, so a layout that wraps with it never meets
+ * the painter's shrink-to-fit safety net. Fonts must be loaded first.
+ */
+export function canvasMeasure(fonts: ShareFonts): (text: string, size: number, weight: number, font: "display" | "body", tracking: number) => number {
+  const ctx = document.createElement("canvas").getContext("2d") as unknown as ShareContext2D | null;
+  if (!ctx) return (text, size) => text.length * size * 0.56;
+  return (text, size, weight, font, tracking) => {
+    ctx.font = `${weight} ${size}px ${font === "display" ? fonts.display : fonts.body}`;
+    if (ctx.letterSpacing !== undefined) {
+      ctx.letterSpacing = `${tracking * size}px`;
+      const w = ctx.measureText(text).width;
+      ctx.letterSpacing = "0px";
+      return w;
+    }
+    return ctx.measureText(text).width + tracking * size * Math.max(0, text.length - 1);
+  };
 }
 
 /** Loads an image for the canvas; null when it cannot be drawn (missing, CORS-tainted). */

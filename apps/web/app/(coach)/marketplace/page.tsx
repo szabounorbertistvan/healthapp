@@ -63,9 +63,15 @@ export default async function MarketplacePage() {
           <p className="mt-1 max-w-[62ch] text-[13.5px] text-ink-soft">{m.hint}</p>
         </div>
         {profile.status === "published" ? (
-          <Link href={`/coaches/${profile.slug}`} className="inline-flex h-10 items-center rounded-full bg-surface px-4 text-[13.5px] font-semibold text-ink-soft hover:text-ink">
-            {m.viewPublic} ↗
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/marketplace/share" data-testid="marketplace-share-card"
+              className="inline-flex h-10 items-center rounded-full bg-accent px-4 text-[13.5px] font-semibold text-accent-fg hover:opacity-90">
+              {t.coachProfile.shareCard.title}
+            </Link>
+            <Link href={`/coaches/${profile.slug}`} className="inline-flex h-10 items-center rounded-full bg-surface px-4 text-[13.5px] font-semibold text-ink-soft hover:text-ink">
+              {m.viewPublic} ↗
+            </Link>
+          </div>
         ) : null}
       </header>
 

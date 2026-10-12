@@ -76,7 +76,7 @@ written. Every "client app" screen today is a web route under
 `apps/web/app/(client)/`.
 
 Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
-check-ins, messages, marketplace (the coach's overview; one sidebar entry that also covers requests, bookings (+ `bookings/availability`), reviews and `settings/coach-profile`, with `MarketplaceTabs` over them), settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
+check-ins, messages, marketplace (the coach's overview; one sidebar entry that also covers requests, bookings (+ `bookings/availability`), reviews, `settings/coach-profile` and `marketplace/share` — the coach share-card generator — with `MarketplaceTabs` over them), settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
 (overview, users, users/[id], activity, auth, invitations, workouts,
 exercises (+ /translate), foods, nutrition, gyms, coaches (+ /[id], the coach-profile review queue), social, challenges, notifications,
 feedback, errors, system, search, reports (the social_reports queue, coach profiles and reviews included), marketplace (aggregate analytics + the ranking inspector)) — its own layout, gated by `lib/admin/guard.ts` and, in the

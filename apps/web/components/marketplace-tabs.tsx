@@ -17,6 +17,7 @@ const TABS = [
   { key: "requests", href: "/requests" },
   { key: "bookings", href: "/bookings" },
   { key: "reviews", href: "/reviews" },
+  { key: "share", href: "/marketplace/share" },
 ] as const;
 
 export function MarketplaceTabs() {
@@ -28,6 +29,8 @@ export function MarketplaceTabs() {
     if (tab.key === "services") return pathname === "/settings/coach-profile" && step === "5";
     if (tab.key === "profile") return pathname === "/settings/coach-profile" && step !== "5";
     if (tab.key === "bookings") return pathname === "/bookings";
+    // the overview owns /marketplace itself, not the pages under it (Share card is its own tab)
+    if (tab.key === "overview") return pathname === "/marketplace";
     return pathname === tab.href || pathname.startsWith(`${tab.href}/`);
   };
   return (

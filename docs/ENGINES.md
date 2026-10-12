@@ -1052,6 +1052,32 @@ button + preview dialog (format, Edit Stats, Show/Hide profile). Entries: the
 done page (the session just finished), history rows on the day page, and
 Today's "Last workout".
 
+**Coach share cards** (`/marketplace/share`, the Marketplace tab "Share card",
+and a button in the Marketplace header once the profile is published). A coach
+makes a promotional PNG of their own public profile: three templates
+(Signature, Minimal on the cream `tile` palette, Athletic) × Square 1080×1080 /
+Story 1080×1920, a photo among their own (profile, cover, or initials over the
+faint brand mark), up to three of their own specializations besides the primary,
+headline and QR on/off. Same engine as the workout card: `lib/coach-share-card.ts`
+(pure — the data is `coachShareCardFromPublic`, a field list taken from
+`coach_public_profile()`, so nothing private can reach the image; layout with
+measured word wrap that breaks at spaces, `-` and `/`, never overlaps, keeps
+story text inside a 250 px safe band) and the shared painter in
+`lib/share-card-render.ts` (new `photo` cover-crop, `fade`, `qr` on whole-pixel
+modules, `poly` items; a tinted dark wordmark for light backgrounds;
+`loadShareFonts` now asks for the latin-ext glyphs so ă ș ț are in the brand
+face on the first card). `lib/coach-share-render.ts` is the browser half
+(Cloudinary 1080 px rendition of the same asset, falling back to the stored URL,
+then initials) and is imported dynamically, with `lib/qr.ts` — the QR code is
+`@zxing/library`'s encoder, the scanner's own dependency, no new package.
+`lib/coach-share-deliver.ts`: Web Share with the PNG file + profile link, the link
+alone where files cannot be shared, Download otherwise; copy link. Nothing is
+posted anywhere and nothing is stored. A profile that is not published gets an
+explanation instead of a card (it would link to a 404). Tests:
+`coach-share-card.test.ts` (geometry of every template × format × profile, the
+public-only field list, QR decoded back with zxing), `coach-share-deliver.test.ts`,
+`e2e/coach-share-card.spec.ts` (real PNG downloads, IHDR size checked).
+
 ---
 
 ## Accounts, billing, admin

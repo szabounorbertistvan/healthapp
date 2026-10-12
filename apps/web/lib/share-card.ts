@@ -159,6 +159,12 @@ export const SHARE_CARD_COLORS = {
   accent: "#d4a938",
   accentInk: "#e6c25a",
   accentFg: "#0b0b0d",
+  // the inverse tile (globals.css --color-tile*): cream paper, brand near-black ink — the coach card's light template
+  tile: "#f2efe8",
+  tileInk: "#0b0b0d",
+  tileSoft: "#5b574f",
+  tileAccent: "#8a6510",
+  tileLine: "#dcd8cf",
 } as const;
 
 export type ShareColor = keyof typeof SHARE_CARD_COLORS;
@@ -201,9 +207,32 @@ export type ShareBarItem = { kind: "bar"; id: string; x: number; y: number; w: n
 export type ShareAvatarItem = { kind: "avatar"; id: string; x: number; y: number; size: number; url: string | null; initial: string };
 
 /** Mark + wordmark, drawn from the brand PNGs; falls back to the name as text. */
-export type ShareBrandItem = { kind: "brand"; id: string; x: number; y: number; h: number; align: "left" | "center" | "right"; text: string };
+export type ShareBrandItem = {
+  kind: "brand"; id: string; x: number; y: number; h: number; align: "left" | "center" | "right"; text: string;
+  /** "dark" on a light background: the wordmark in near-black, as the light theme shows it. Default light. */
+  tone?: "light" | "dark";
+};
 
 export type ShareGlowItem = { kind: "glow"; id: string; x: number; y: number; r: number };
+
+/**
+ * A photo cropped to cover its box (centred, never stretched), in a rounded
+ * rectangle or a circle. Without an image (none chosen, none loadable) the box
+ * is filled with `fallback` and the initial is set in its centre.
+ */
+export type SharePhotoItem = {
+  kind: "photo"; id: string; x: number; y: number; w: number; h: number; radius: number; circle?: boolean;
+  initial: string; fallback: ShareColor; initialColor: ShareColor; stroke?: ShareColor; strokeWidth?: number;
+};
+
+/** A vertical fade from transparent to `color` (top → bottom), to set type over a photo. */
+export type ShareFadeItem = { kind: "fade"; id: string; x: number; y: number; w: number; h: number; color: ShareColor; reverse?: boolean };
+
+/** A QR code: dark modules on a light quiet zone (4 modules wide), as scanners expect. */
+export type ShareQrItem = { kind: "qr"; id: string; x: number; y: number; size: number; modules: readonly (readonly boolean[])[]; dark: ShareColor; light: ShareColor; radius: number };
+
+/** A filled polygon — the athletic template's slanted bands. */
+export type SharePolyItem = { kind: "poly"; id: string; points: readonly (readonly [number, number])[]; color: ShareColor; alpha?: number };
 
 export type ShareCardItem =
   | ShareTextItem
@@ -211,7 +240,11 @@ export type ShareCardItem =
   | ShareBarItem
   | ShareAvatarItem
   | ShareBrandItem
-  | ShareGlowItem;
+  | ShareGlowItem
+  | SharePhotoItem
+  | ShareFadeItem
+  | ShareQrItem
+  | SharePolyItem;
 
 export type ShareCardLayout = {
   format: ShareFormat;
