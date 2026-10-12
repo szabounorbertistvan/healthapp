@@ -38,9 +38,8 @@ export async function LandingCoachDiscovery({ coachCtaHref }: { coachCtaHref: st
       {cards.length > 0 ? (
         <div data-testid="landing-coaches-picks">
           <ul aria-label={fill(l.picks, { app: APP_NAME })} className="space-y-2.5 sm:space-y-3">
-            {cards.map((card, i) => (
-              // a gentle stagger on wide screens gives the stack depth without a carousel
-              <li key={card.href} className={i === 1 ? "lg:-translate-x-5" : i === 2 ? "lg:translate-x-2" : ""}>
+            {cards.map((card) => (
+              <li key={card.href}>
                 <PreviewCard card={card} t={t} locale={locale} />
               </li>
             ))}
@@ -78,21 +77,31 @@ export async function LandingCoachDiscovery({ coachCtaHref }: { coachCtaHref: st
   );
 }
 
-/** The copy and calls to action alone, while the coaches stream in. */
+/**
+ * The copy and calls to action at once; the coach rows as pulse bars of a
+ * real row's height (name, headline, meta, chips) and the count line under
+ * them, so the section barely moves when the coaches arrive.
+ */
 export function LandingCoachDiscoverySkeleton({ t, coachCtaHref }: { t: Dictionary; coachCtaHref: string }) {
+  const bar = "block animate-pulse rounded-full bg-surface motion-reduce:animate-none";
   return (
     <Shell t={t} coachCtaHref={coachCtaHref}>
-      <ul aria-busy="true" className="space-y-2.5 sm:space-y-3" data-testid="landing-coaches-skeleton">
-        {Array.from({ length: PICKS }, (_, i) => (
-          <li key={i} className="flex items-center gap-4 rounded-2xl bg-bg p-4 sm:p-5">
-            <span className="h-14 w-14 shrink-0 animate-pulse rounded-full bg-surface sm:h-16 sm:w-16" />
-            <span className="flex-1 space-y-2">
-              <span className="block h-4 w-2/5 animate-pulse rounded-full bg-surface" />
-              <span className="block h-3 w-3/4 animate-pulse rounded-full bg-surface" />
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div aria-busy="true" data-testid="landing-coaches-skeleton">
+        <ul className="space-y-2.5 sm:space-y-3">
+          {Array.from({ length: PICKS }, (_, i) => (
+            <li key={i} className="flex items-center gap-4 rounded-2xl bg-bg p-4 sm:p-5">
+              <span className={`${bar} h-14 w-14 shrink-0 sm:h-16 sm:w-16`} />
+              <span className="flex-1">
+                <span className={`${bar} h-4 w-2/5`} />
+                <span className={`${bar} mt-2 h-3 w-3/4`} />
+                <span className={`${bar} mt-2 h-2.5 w-1/2`} />
+                <span className={`${bar} mt-2.5 h-5 w-28`} />
+              </span>
+            </li>
+          ))}
+        </ul>
+        <span className={`${bar} mx-1 mt-4 h-3.5 w-48`} />
+      </div>
     </Shell>
   );
 }
@@ -124,8 +133,11 @@ function Shell({ t, coachCtaHref, children }: { t: Dictionary; coachCtaHref: str
       {/* the Discovery Home's own warm light, low and in the corner */}
       <div aria-hidden className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-accent-soft opacity-60 blur-3xl sm:h-96 sm:w-96" />
 
-      <div className="relative grid items-center gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-14">
-        <div>
+      {/* Phones and tablets read copy → coaches → the coach invitation, so the
+          second audience never sits between the main button and the coaches
+          it promises. Desktop puts the invitation back under the copy. */}
+      <div className="relative grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[1fr_auto] lg:gap-x-14 lg:gap-y-8">
+        <div className="lg:col-start-1 lg:row-start-1 lg:self-end">
           <p className="flex items-center gap-3 font-display text-xs font-bold uppercase tracking-[0.28em] text-accent-ink">
             <span className="h-px w-8 bg-accent" aria-hidden />
             {l.eyebrow}
@@ -144,17 +156,18 @@ function Shell({ t, coachCtaHref, children }: { t: Dictionary; coachCtaHref: str
               <span aria-hidden>→</span>
             </Link>
           </div>
-          {/* the second audience, quieter: a coach is the supply the directory needs */}
-          <p className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-5 text-[13.5px] text-ink-soft sm:mt-8">
-            <span className="font-semibold text-ink">{h.forCoaches}</span>
-            <Link href={coachCtaHref} data-testid="landing-coaches-for-coaches"
-              className="rounded font-semibold text-accent-ink outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
-              {h.forCoachesCta} →
-            </Link>
-          </p>
         </div>
 
-        <div className="min-w-0">{children}</div>
+        <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">{children}</div>
+
+        {/* the second audience, quieter: a coach is the supply the directory needs */}
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-5 text-[13.5px] text-ink-soft lg:col-start-1 lg:row-start-2 lg:self-start">
+          <span className="font-semibold text-ink">{h.forCoaches}</span>
+          <Link href={coachCtaHref} data-testid="landing-coaches-for-coaches"
+            className="rounded font-semibold text-accent-ink outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
+            {h.forCoachesCta} →
+          </Link>
+        </p>
       </div>
     </section>
   );
@@ -179,7 +192,7 @@ function PreviewCard({ card, t, locale }: { card: CoachCardModel; t: Dictionary;
       data-testid="landing-coach-card"
       className="group relative flex items-center gap-4 rounded-2xl bg-bg p-4 ring-accent/60 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-within:ring-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-5"
     >
-      <Avatar name={card.name} url={card.avatarUrl} size="h-14 w-14 sm:h-16 sm:w-16" />
+      <Avatar name={card.name} url={card.avatarUrl} size="h-14 w-14 sm:h-16 sm:w-16" initialClassName="font-display text-xl sm:text-2xl" />
       <div className="min-w-0 flex-1">
         <h3 className="flex items-center gap-1.5">
           <Link
@@ -190,9 +203,14 @@ function PreviewCard({ card, t, locale }: { card: CoachCardModel; t: Dictionary;
           </Link>
           <VerifiedBadge verified={card.verified} />
         </h3>
-        {card.headline ? <p className="mt-0.5 line-clamp-1 text-[13px] text-ink-soft">{card.headline}</p> : null}
+        {card.headline ? <p className="mt-0.5 line-clamp-2 text-[13px] text-ink-soft sm:line-clamp-1">{card.headline}</p> : null}
         {where || rating ? (
-          <p className="mt-1 truncate text-[12px] text-ink-faint">{[where, rating].filter(Boolean).join(" · ")}</p>
+          <p className="mt-1 text-[12px] text-ink-faint">
+            {where}
+            {where && rating ? <span aria-hidden> · </span> : null}
+            {/* published reviews only; its own nowrap run, so a narrow card wraps before it, never through it */}
+            {rating ? <span className="whitespace-nowrap font-semibold text-ink-soft">{rating}</span> : null}
+          </p>
         ) : null}
         {specs.length > 0 ? (
           <ul className="mt-2 flex flex-wrap gap-1.5">

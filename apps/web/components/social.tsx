@@ -57,13 +57,19 @@ const EXTERNAL = "M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 3v12M7 8l5-5 5 5"
 const UNAVAILABLE = "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M5.6 5.6l12.8 12.8";
 const VIS_ICON: Record<PostVisibility, string> = { public: GLOBE, followers: PEOPLE, private: LOCK };
 
-export function Avatar({ name, url, size = "h-9 w-9" }: { name: string; url: string | null; size?: string }) {
+export function Avatar({ name, url, size = "h-9 w-9", initialClassName = "text-sm" }: {
+  name: string;
+  url: string | null;
+  size?: string;
+  /** The initial's type when there is no photo; a large avatar needs a larger letter. */
+  initialClassName?: string;
+}) {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
   return url ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={url} alt="" className={`${size} shrink-0 rounded-full object-cover`} />
   ) : (
-    <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-bold text-accent-ink`}>
+    <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-accent-soft ${initialClassName} font-bold text-accent-ink`}>
       {initial}
     </span>
   );

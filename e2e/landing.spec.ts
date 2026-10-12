@@ -74,6 +74,12 @@ test.describe("landing: Coach Discovery", () => {
     expect(overflow).toBeLessThanOrEqual(0);
     const [box, section] = await Promise.all([cta.boundingBox(), page.getByTestId("landing-coaches").boundingBox()]);
     expect(box!.width).toBeGreaterThan(section!.width * 0.75);
+    // the reading order is button → coaches → the coach invitation: the second
+    // audience never sits between the main call to action and its proof
+    const proof = page.getByTestId("landing-coaches-picks").or(page.getByTestId("landing-coaches-steps"));
+    const [proofBox, invite] = await Promise.all([proof.boundingBox(), page.getByTestId("landing-coaches-for-coaches").boundingBox()]);
+    expect(proofBox!.y).toBeGreaterThan(box!.y + box!.height);
+    expect(invite!.y).toBeGreaterThan(proofBox!.y + proofBox!.height);
     await context.close();
   });
 });
