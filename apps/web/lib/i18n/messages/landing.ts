@@ -7,6 +7,20 @@ const en = {
     heroBody:
       "{app} replaces WhatsApp threads, spreadsheets and three different trackers with a single flow between you and your coach — or on your own.",
     startFree: "Start free",
+    // Coach Discovery on the landing page, right under the pillars (components/coach-discovery/landing.tsx)
+    coaches: {
+      nav: "Coaches",
+      eyebrow: "Discover your coach",
+      title: "The right coach can change your whole journey.",
+      body: "Browse coaches by goal, specialization and city, read real profiles, and start working with the one who fits you — online or in person.",
+      cta: "Discover coaches",
+      accepting: "{n} coaches taking clients now",
+      acceptingOne: "1 coach taking clients now",
+      published: "{n} coaches on {app}",
+      publishedOne: "1 coach on {app}",
+      seeAll: "See all",
+      picks: "Coaches on {app}",
+    },
     pillars: [
       { title: "Train", body: "Programs built by your coach, logged set by set." },
       { title: "Plan", body: "Weekly check-ins and habits that keep the plan honest." },
@@ -218,6 +232,19 @@ const ro: typeof en = {
     heroBody:
       "{app} înlocuiește conversațiile de WhatsApp, tabelele Excel și trei aplicații diferite de tracking cu un singur flux între tine și antrenorul tău — sau pe cont propriu.",
     startFree: "Începe gratuit",
+    coaches: {
+      nav: "Antrenori",
+      eyebrow: "Găsește-ți antrenorul",
+      title: "Antrenorul potrivit îți poate schimba parcursul.",
+      body: "Descoperă antrenori după obiectiv, specializare și oraș, citește profiluri reale și începe să lucrezi cu cel care ți se potrivește — online sau față în față.",
+      cta: "Descoperă antrenorii",
+      accepting: "{n} antrenori primesc clienți acum",
+      acceptingOne: "1 antrenor primește clienți acum",
+      published: "{n} antrenori pe {app}",
+      publishedOne: "1 antrenor pe {app}",
+      seeAll: "Vezi toți",
+      picks: "Antrenori pe {app}",
+    },
     pillars: [
       { title: "Antrenează", body: "Programe construite de antrenor, notate set cu set." },
       { title: "Planifică", body: "Check-in-uri săptămânale și obiceiuri care țin planul onest." },

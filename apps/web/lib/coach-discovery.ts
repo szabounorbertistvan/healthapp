@@ -560,6 +560,17 @@ export function listingHref(query: DiscoveryQuery): string {
   return landing ? `/coaches/${landing}` : `/coaches${discoverySearch(query)}`;
 }
 
+/**
+ * Where "Create your coach profile" goes for this reader: sign-in first (then
+ * the "become a coach" card on /account), a client straight to that card, a
+ * coach to the profile wizard. One answer for the Discovery Home and the
+ * landing page.
+ */
+export function coachProfileCtaHref(role: string | null | undefined, signedIn: boolean): string {
+  if (!signedIn) return `/login?${new URLSearchParams({ next: "/account" })}`;
+  return role === "client" ? "/account" : "/settings/coach-profile";
+}
+
 /** Every indexable landing page (LANDING_MIN_COACHES or more), for the sitemap. */
 export function landingSlugs(facets: DiscoveryFacets): string[] {
   const ok = (n: number | undefined) => landingIndexable({ coaches: n ?? 0 });

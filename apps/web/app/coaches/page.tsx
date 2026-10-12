@@ -5,7 +5,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { getProfile } from "@/lib/data";
 import { getDiscoveryFacets, searchCoaches } from "@/lib/coach-profile-data";
 import {
-  EMPTY_QUERY, hasFilters, isDiscoveryHome, matchViewerCity, parseDiscoveryQuery, toCoachCard,
+  EMPTY_QUERY, coachProfileCtaHref, hasFilters, isDiscoveryHome, matchViewerCity, parseDiscoveryQuery, toCoachCard,
   type DiscoveryFacets, type DiscoveryQuery,
 } from "@/lib/coach-discovery";
 import { DiscoveryHome, type NearState } from "@/components/coach-discovery/home";
@@ -103,9 +103,7 @@ async function Home({ query, profile, locale }: {
   }
   const near = await nearState(profile, facets, locale);
 
-  const role = profile?.role ?? null;
-  const coachCtaHref = !profile ? `/login?${new URLSearchParams({ next: "/account" })}`
-    : role === "client" ? "/account" : "/settings/coach-profile";
+  const coachCtaHref = coachProfileCtaHref(profile?.role, Boolean(profile));
 
   return (
     <DiscoveryHome

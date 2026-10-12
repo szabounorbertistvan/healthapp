@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { PLAN_PRICES, TRIAL_DAYS } from "@healthapp/shared";
@@ -9,23 +10,31 @@ import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo, LogoMark, Wordmark } from "@/components/logo";
 import { LoginModal } from "@/components/login-modal";
+import { LandingCoachDiscovery, LandingCoachDiscoverySkeleton } from "@/components/coach-discovery/landing";
+import { coachProfileCtaHref } from "@/lib/coach-discovery";
 
 /**
  * The public page. The brand athletes carry it: the pair beside the promise,
  * then the client and the coach next to what each one gets, each figure turned
  * toward its own copy. Cutouts with a transparent background stand directly on
  * the page — no box, no glow — and the dark studio frames run as one band.
+ * Coach Discovery follows the pillars: finding a coach is the first thing a
+ * visitor without one needs, so it sits before the detail, not after it.
  */
 export default async function LandingPage() {
   const [{ t }, profile] = await Promise.all([getI18n(), getProfile()]);
   const l = t.landing;
   // Signed-in visitors (they got here via the logo) get a way back into the app.
   const appHref = profile ? (profile.role === "client" ? "/today" : "/dashboard") : null;
+  const coachCtaHref = coachProfileCtaHref(profile?.role, Boolean(profile));
 
   return (
     <main className="mx-auto max-w-[1280px] px-4 pb-16 sm:px-7">
       <header className="flex items-center justify-end gap-4 py-4 sm:py-[18px]">
         <nav className="flex items-center gap-2 sm:gap-2.5">
+          <Link href="/coaches" className="hidden h-10 items-center rounded-full px-3 text-[13.5px] font-semibold text-ink-soft hover:text-ink sm:inline-flex">
+            {l.coaches.nav}
+          </Link>
           <LanguageSelector />
           <ThemeToggle />
           {appHref ? (
@@ -114,6 +123,11 @@ export default async function LandingPage() {
           </div>
         ))}
       </section>
+
+      {/* Coach Discovery: the copy renders at once, the coaches stream in after it. */}
+      <Suspense fallback={<LandingCoachDiscoverySkeleton t={t} coachCtaHref={coachCtaHref} />}>
+        <LandingCoachDiscovery coachCtaHref={coachCtaHref} />
+      </Suspense>
 
       {/* A breath between the promise and the detail: three studio frames. */}
       <section className="mt-9 grid gap-3.5 sm:mt-16 sm:grid-cols-3">
