@@ -114,6 +114,25 @@ function EnglishContent() {
         </section>
 
         <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">Coach applications and qualification documents</h2>
+          <p>
+            A coach profile appears in the directory only after a Voinic administrator has
+            reviewed it. To show their qualifications, coaches upload certificates, diplomas
+            or licences (and optionally other supporting documents, such as a CV). We do not
+            ask for, accept or keep identity documents, and we do not verify identity.
+            Qualification documents are stored privately: only the coach and Voinic&apos;s
+            administrators can open them, they never appear on the public page, and they are
+            not shared with anyone else. A coach can remove a document while their
+            application is not under review; documents an approved profile relies on stay
+            while the profile is live. A document that was not accepted, and the documents of
+            an application that was rejected or withdrawn, are deleted after 12 months. All of
+            them are deleted when the account is deleted. The decisions on an application
+            (what was decided, when, and the note to the coach) are kept as a record while
+            the account exists.
+          </p>
+        </section>
+
+        <section>
           <h2 className="mb-2 text-lg font-bold text-ink">Your rights (GDPR)</h2>
           <ul className="list-disc space-y-1 pl-5">
             <li><b className="text-ink">Export</b> — download everything we hold about you, from Settings, at any time.</li>
@@ -234,6 +253,24 @@ function RomanianContent() {
             după 180 de zile. Când creați un cont de pe pagina unui antrenor, păstrăm de pe ce
             pagină și din ce sursă a venit, până la ștergerea contului sau timp de doi ani.
             Antrenorii văd doar totaluri despre propria pagină. Nimic nu este partajat cu terți.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">Aplicațiile antrenorilor și documentele de calificare</h2>
+          <p>
+            Un profil de antrenor apare în director doar după ce un administrator Voinic l-a
+            verificat. Pentru a-și dovedi calificările, antrenorii încarcă certificate, diplome
+            sau licențe (și, opțional, alte documente doveditoare, de exemplu un CV). Nu cerem,
+            nu acceptăm și nu păstrăm acte de identitate și nu verificăm identitatea.
+            Documentele de calificare sunt stocate privat: doar antrenorul și administratorii
+            Voinic le pot deschide, nu apar niciodată pe pagina publică și nu sunt partajate cu
+            nimeni altcineva. Un antrenor își poate șterge un document cât timp aplicația nu
+            este în verificare; documentele pe care se bazează un profil aprobat rămân cât
+            timp profilul este public. Un document neacceptat, precum și documentele unei
+            aplicații respinse sau retrase, se șterg după 12 luni. Toate se șterg odată cu
+            contul. Deciziile luate asupra unei aplicații (ce s-a decis, când și nota pentru
+            antrenor) sunt păstrate ca evidență cât timp există contul.
           </p>
         </section>
 

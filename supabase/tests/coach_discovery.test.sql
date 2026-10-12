@@ -61,8 +61,9 @@ select is((select slug from public.coach_profiles where user_id = 'cd000000-0000
 select is(public.become_coach(),
   (select id from public.coach_profiles where user_id = 'cd000000-0000-0000-0000-000000000001'),
   'become_coach is idempotent');
--- own_tier() reads coach_free for a coach role (coach_pro while a new account's trial runs)
-select ok(public.own_tier('cd000000-0000-0000-0000-000000000001') in ('coach_free', 'coach_pro'),
+-- own_tier() reads coach_free for a coach role (coach_pro while a new account's trial runs); the user
+-- reads their own through my_plan (own_tier itself is internal since 20261120110000)
+select ok((select own_tier from public.my_plan) in ('coach_free', 'coach_pro'),
   'the tier follows the role: a coach tier');
 
 reset role;

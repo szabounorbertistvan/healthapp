@@ -61,6 +61,8 @@ const COPY: Record<EmailLocale, Record<string, (v: Vars) => Copy>> = {
     "marketplace/application_submitted": () => ({ subject: "Am primit aplicația ta de antrenor", heading: "Aplicația ta e în verificare", body: "Echipa Voinic îți va verifica profilul. Îți scriem când există o decizie.", cta: "Vezi aplicația" }),
     "marketplace/application_changes_requested": () => ({ subject: "Aplicația ta de antrenor are nevoie de informații", heading: "E nevoie de informații suplimentare", body: "Echipa Voinic ți-a lăsat o notă în aplicația de antrenor. Actualizeaz-o și trimite-o din nou.", cta: "Vezi nota" }),
     "marketplace/application_rejected": () => ({ subject: "Răspuns la aplicația ta de antrenor", heading: "Aplicația ta nu a fost aprobată", body: "Motivul este în aplicația ta de antrenor, în Voinic.", cta: "Vezi motivul" }),
+    "marketplace/profile_unpublished": () => ({ subject: "Profilul tău de antrenor a fost retras", heading: "Profilul tău nu mai este public", body: "Aprobarea profilului tău de antrenor a fost retrasă. Motivul este în aplicația ta de antrenor, în Voinic; îl poți corecta și trimite din nou.", cta: "Vezi motivul" }),
+    "marketplace/document_not_accepted": () => ({ subject: "Un document de calificare nu a fost acceptat", heading: "Un document are nevoie de atenție", body: "Unul dintre documentele tale de calificare nu a fost acceptat. Nota este lângă document, în aplicația ta de antrenor.", cta: "Vezi nota" }),
   },
   en: {
     "coaching_request/sent": (v) => ({ subject: `New coaching request from ${v.name}`, heading: "You have a new coaching request", body: `${v.name} would like to work with you.`, cta: "View request" }),
@@ -83,6 +85,8 @@ const COPY: Record<EmailLocale, Record<string, (v: Vars) => Copy>> = {
     "marketplace/application_submitted": () => ({ subject: "We received your coach application", heading: "Your application is in review", body: "The Voinic team will review your profile. We'll email you when there is a decision.", cta: "View application" }),
     "marketplace/application_changes_requested": () => ({ subject: "Your coach application needs more information", heading: "More information is needed", body: "The Voinic team left a note on your coach application. Update it and submit again.", cta: "View the note" }),
     "marketplace/application_rejected": () => ({ subject: "An answer to your coach application", heading: "Your application was not approved", body: "The reason is on your coach application in Voinic.", cta: "View the reason" }),
+    "marketplace/profile_unpublished": () => ({ subject: "Your coach profile was taken offline", heading: "Your profile is no longer public", body: "The approval of your coach profile was withdrawn. The reason is on your coach application in Voinic; you can fix it and submit again.", cta: "View the reason" }),
+    "marketplace/document_not_accepted": () => ({ subject: "A qualification document was not accepted", heading: "A document needs your attention", body: "One of your qualification documents was not accepted. The note is next to it on your coach application.", cta: "View the note" }),
   },
 };
 

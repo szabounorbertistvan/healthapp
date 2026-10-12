@@ -68,7 +68,7 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
   const name = review.display_name;
   const open = summary(review.missing ?? []).filter((x) => !x.done).map((x) => groups[x.group]);
   // the coach's reviews, any state (20261106100000)
-  const [reviews, { data: revisionData }, reports, ranking, ops, { data: applicationData }] = await Promise.all([
+  const [reviews, { data: revisionData }, reports, ranking, ops, { data: applicationData }, { data: suspension }] = await Promise.all([
     review.user_id ? getAdminReviews(review.user_id) : Promise.resolve([]),
     // a published coach's staged changes (20261108100000); a database without them answers an error, read as none
     supabase.rpc("admin_coach_revision", { p_profile: id }),
@@ -80,7 +80,11 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
     getAdminCoachSummary(id),
     // the application: evidence, documents, decision history (20261118100000); an error before that migration, read as none
     supabase.rpc("admin_coach_application", { p_profile: id }),
+    // where a suspension came from (20261118100000): only a profile that was public may be restored to public
+    supabase.from("coach_profiles").select("suspended_from").eq("id", id).maybeSingle(),
   ]);
+  const suspendedFrom = (suspension as { suspended_from: string | null } | null)?.suspended_from ?? null;
+  const restorable = suspendedFrom === "published" || suspendedFrom === "hidden";
   const application = (applicationData ?? null) as AdminApplication | null;
   const fmt: Record<string, string> = {};
   for (const iso of [...(application?.documents ?? []).map((d) => d.created_at), ...(application?.history ?? []).map((h) => h.created_at)]) {
@@ -114,8 +118,10 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
             {/* approve / ask for more / reject / revoke: the application review below (20261118100000) */}
             {s === "suspended" ? (
               <>
-                <ConfirmAction tone="accent" label={m.restore} title={fill(m.restoreTitle, { name })} body={m.restoreBody}
-                  action={restoreCoachProfile.bind(null, review.id, "published")} />
+                {restorable ? (
+                  <ConfirmAction tone="accent" label={m.restore} title={fill(m.restoreTitle, { name })} body={m.restoreBody}
+                    action={restoreCoachProfile.bind(null, review.id, "published")} />
+                ) : null}
                 <ConfirmAction tone="neutral" label={m.restoreDraft} title={fill(m.restoreDraftTitle, { name })} body={m.restoreDraftBody}
                   action={restoreCoachProfile.bind(null, review.id, "draft")} />
               </>

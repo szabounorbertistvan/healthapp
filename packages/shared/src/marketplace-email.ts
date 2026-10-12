@@ -69,6 +69,9 @@ export const MARKETPLACE_EMAIL_RULES: readonly MarketplaceEmailRule[] = [
   { category: "marketplace", event: "application_submitted", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
   { category: "marketplace", event: "application_changes_requested", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
   { category: "marketplace", event: "application_rejected", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
+  // 10. a revocation and a document not accepted (20261120100000); an admin's new-application notice stays in-app
+  { category: "marketplace", event: "profile_unpublished", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
+  { category: "marketplace", event: "document_not_accepted", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
 ];
 
 export function marketplaceEmailRule(category: string, payload: Record<string, unknown> | null): MarketplaceEmailRule | null {

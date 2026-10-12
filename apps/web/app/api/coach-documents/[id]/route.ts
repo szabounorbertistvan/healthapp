@@ -57,7 +57,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (upstream.status === 404) return notFound();
   if (!upstream.ok || !upstream.body) return new NextResponse(null, { status: 502, headers: NO_STORE });
 
-  const download = new URL(request.url).searchParams.get("download") === "1";
+  // HEIC has no viewer in most browsers: always a download. Anything else inline only on request.
+  const download = new URL(request.url).searchParams.get("download") === "1" || row.format === "heic";
   const headers = new Headers({
     ...NO_STORE,
     "Content-Type": type,
@@ -70,6 +71,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // an image cannot run anything, but say so; a sandboxed PDF would not open in Chrome's viewer at all,
   // and the type is ours (never the upstream's), so nothing else can be served as a page here
   if (type !== "application/pdf") headers.set("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+  // a PDF opens in the browser's own viewer, top-level only: no other page may frame it
+  else headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+  headers.set("X-Frame-Options", "DENY");
   const length = upstream.headers.get("content-length");
   if (length) headers.set("Content-Length", length);
   return new NextResponse(upstream.body, { status: 200, headers });

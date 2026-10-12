@@ -51,6 +51,8 @@ const SCREEN_HREF: Record<string, string> = {
   coach_reviews: "/reviews",
   // moderation outcomes (20261110110000): the coach's own profile settings
   coach_profile_settings: "/settings/coach-profile",
+  // a new coach application, for an admin (20261120100000)
+  admin_coach_applications: "/admin/coach-applications",
 };
 
 export function notificationHref(category: string, payload: Record<string, unknown> | null): string | null {
@@ -136,6 +138,8 @@ export const MARKETPLACE_EVENTS = [
   "profile_suspended", "profile_restored", "review_hidden",
   // the application review (20261118100000)
   "application_submitted", "application_changes_requested", "application_rejected",
+  // 20261120100000: a document not accepted (the coach); a new application (each admin)
+  "document_not_accepted", "admin_application_submitted",
 ] as const;
 export type MarketplaceSentence = `marketplace_${(typeof MARKETPLACE_EVENTS)[number]}`;
 

@@ -15,7 +15,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(104);
+select plan(108);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -344,6 +344,21 @@ select ok(not pg_temp.exposed('ca-revk'), 'and stays off every public door');
 reset role;
 select pg_temp.authenticate_as(pg_temp.uid(6));
 select throws_ok($$ update public.coach_profiles set suspended_from = 'published' where user_id = auth.uid() $$, '42501', null, 'a coach cannot write it');
+reset role;
+
+-- ============================================================================
+-- 7. a resubmission after "more information" is approved like a first one
+-- ============================================================================
+select pg_temp.authenticate_as('ca000000-0000-0000-0000-0000000000ad');
+select throws_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-more'), 'approved', null, false, true) $$,
+  '22023', 'REVIEW_CHECKLIST_INCOMPLETE', 'the resubmission needs the full checklist again');
+select lives_ok($$ select public.admin_decide_coach_application(pg_temp.pid('ca-more'), 'approved', null, true, true) $$,
+  'the resubmitted application is approved');
+reset role;
+select is((select array_agg(decision order by created_at) from public.coach_application_decisions where coach_profile_id = pg_temp.pid('ca-more')),
+  array['submitted', 'changes_requested', 'submitted', 'approved'], 'its history tells the whole story, in order');
+select pg_temp.anonymous();
+select ok(pg_temp.exposed('ca-more'), 'and only now is it public');
 reset role;
 
 select * from finish();

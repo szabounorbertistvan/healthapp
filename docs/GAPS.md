@@ -102,7 +102,11 @@ feedback still do not exist** — nothing writes `reference_type` `set`,
 ## Coach applications (20261118100000, 20261119100000)
 
 Built, not applied to the live project. No identity documents and no identity verification
-(20261119100000); there is no KYC and none is planned without a decision on a provider. Production-readiness audit (2026-10-12): see the
+(20261119100000); there is no KYC and none is planned without a decision on a provider.
+Since 20261120100000: admin notice of submissions, a document-not-accepted notice, revocation
+email, a suspended_from-aware restore button, an operator cleanup / retention / orphan script
+(not scheduled anywhere yet — the 12-month retention in the privacy policy depends on running
+it). Still open below unless stated. Production-readiness audit (2026-10-12): see the
 deployment checklist in that session's report. Missing: an admin notice of new submissions;
 a notice when one document is not accepted; orphan cleanup for uploads never recorded; a
 `suspended_from`-aware "Restore and publish" button (the database refuses, the button still

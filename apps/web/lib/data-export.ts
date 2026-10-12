@@ -127,11 +127,14 @@ export async function exportMyData(): Promise<DataExport | null> {
 
   // Only a coach has a profile; its rows hang off the profile id, one wave later.
   const profileId = (profile.data as { id?: string } | null)?.id;
-  const profileRows = profileId
-    ? await Promise.all(
-        PROFILE_TABLES.map((table) => supabase.from(table).select("*").eq("coach_profile_id", profileId)),
-      )
-    : [];
+  const [profileRows, application] = profileId
+    ? await Promise.all([
+        Promise.all(PROFILE_TABLES.map((table) => supabase.from(table).select("*").eq("coach_profile_id", profileId))),
+        // the coach application (20261118100000): status, the documents on file (without storage
+        // handles) and the decision history (without reviewer ids) — the coach's own view of it
+        supabase.rpc("coach_my_application"),
+      ])
+    : [[], null];
 
   const errors: Record<string, string> = {};
   const out: DataExport = {
@@ -154,6 +157,12 @@ export async function exportMyData(): Promise<DataExport | null> {
     out[table] = result.data ?? [];
     if (result.error) errors[table] = result.error.message;
   });
+
+  if (application) {
+    out.coach_application = application.data ?? null;
+    // a database without the application review yet has nothing to export, not an error
+    if (application.error && application.error.code !== "PGRST202") errors.coach_application = application.error.message;
+  }
 
   rest.forEach((result, i) => {
     const { table } = TABLES[i]!;

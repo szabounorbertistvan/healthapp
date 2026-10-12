@@ -1022,6 +1022,21 @@ Migrations `20261118100000_coach_application_review.sql` and `20261119100000_coa
 (40) plus the four older coach suites; unit `lib/coach-application.test.ts`; e2e `coach-application.spec.ts` (gates only,
 read-only).
 
+**Operations (20261120100000, 20261120110000).** A live coach's revision cannot be approved while a declared
+discipline (or its parent) requires a qualification that is not on file (`admin_decide_coach_revision` raises
+APPLICATION_INCOMPLETE and nothing is applied); the coach can tag a qualification with a discipline their open
+revision adds. Notices: every admin gets `admin_application_submitted` (in-app, links to the queue) for each
+submission; the coach gets `document_not_accepted` (in-app + email); `profile_unpublished` (revocation) is emailed
+too. `/admin/coaches/[id]` offers "Restore and publish" only when `suspended_from` was public. The download route
+sends HEIC as an attachment and PDFs with `frame-ancestors 'none'`. Data export includes `coach_application`
+(the coach's own view). Cleanup and retention: `scripts/coach-documents.mjs` (identity / retention / orphans; dry run by
+default) over the service-role functions `coach_document_purge_candidates()`, `coach_document_purge()`,
+`coach_document_storage_ids()` — see docs/COACH_DOCUMENTS_CLEANUP.md; retention 365 days by default (privacy policy).
+Deployment: docs/DEPLOY_COACH_DISCOVERY.md (`scripts/migration-diff.mjs` compares a pasted remote ledger with the
+local files). Privilege audit (2026-10-12): `own_tier` / `effective_tier` / `paywall_on` / `user_plan_limit` answered
+anyone about any user (tier, preview flag, a coaching relationship) — now internal, `my_plan` reads through the
+definer `my_plan_row()`; `program_usage` needs a session (pgTAP `plan_functions_private`).
+
 **No identity documents (20261119100000).** Voinic does not collect or store identity documents and has no
 identity-verification procedure. An application needs qualification evidence only; `coach_add_verification_document()`
 refuses `identity` (IDENTITY_DOCUMENTS_NOT_ACCEPTED, plus a NOT VALID check `coach_verification_documents_no_identity`

@@ -169,6 +169,9 @@ is the one approval path (profile + qualifications reviewed, and the qualificati
 with no write grant, files in private Cloudinary storage read only through `/api/coach-documents/[id]` — never in a public
 RPC, a notification, an audit row or a log. **Voinic collects no identity documents and verifies no identity**
 (20261119100000): don't add an identity upload, an identity check or an "identity verified" badge without a decided procedure.
+Coach documents are removed only by `scripts/coach-documents.mjs` (dry run by default; docs/COACH_DOCUMENTS_CLEANUP.md);
+the plan functions (`own_tier`, `effective_tier`, `paywall_on`, `user_plan_limit`) are internal since 20261120110000 —
+read the caller's plan through `my_plan`. Deploying this work: docs/DEPLOY_COACH_DISCOVERY.md.
 **Calendar tokens and busy time are service-role only** (since 2026-10-08): `calendar_credentials` and
 `calendar_busy_blocks` have no grant and no policy — the coach reads status through `my_calendar_integrations()`;
 no provider adapter exists yet (`lib/calendar/provider.ts`).

@@ -14,7 +14,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(40);
+select plan(44);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -194,6 +194,20 @@ select is(public.coach_public_profile('cb-oldver') ->> 'verified', 'true', '… 
 reset role;
 select is((select count(*)::int from public.coach_verifications where coach_profile_id = pg_temp.pid('cb-oldver') and kind = 'identity'),
   1, 'the old row is history: kept, not deleted');
+
+-- a coach declaring a discipline and one of its styles: a qualification tagged with the style does not
+-- evidence the discipline itself; one tagged with the discipline evidences both
+insert into public.coach_specializations (coach_profile_id, specialization_id, is_primary)
+select pg_temp.pid('cb-oldver'), id, false from public.specializations where slug in ('yoga', 'hatha-yoga');
+update public.coach_profiles set status = 'draft' where slug = 'cb-oldver';
+select pg_temp.authenticate_as(pg_temp.uid(4));
+select lives_ok($$ select public.coach_add_verification_document('qualification', 'voinic/coach-docs/' || auth.uid() || '/hatha000001', 'pdf', 1000, 'Hatha', 'hatha-yoga') $$,
+  'a qualification for the style');
+select is(public.coach_my_application() -> 'missing_specializations', '["yoga"]'::jsonb, '… leaves the discipline itself without evidence');
+select lives_ok($$ select public.coach_add_verification_document('qualification', 'voinic/coach-docs/' || auth.uid() || '/yoga000001', 'pdf', 1000, 'Yoga', 'yoga') $$,
+  'a qualification for the discipline');
+select is(public.coach_my_application() -> 'missing', '[]'::jsonb, '… evidences the discipline and its style');
+reset role;
 
 select * from finish();
 rollback;
