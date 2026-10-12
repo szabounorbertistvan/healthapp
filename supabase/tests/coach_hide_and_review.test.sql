@@ -72,6 +72,7 @@ update public.users set avatar_url = 'https://res.cloudinary.com/demo/image/uplo
  where id = 'c4000000-0000-0000-0000-000000000001';
 select pg_temp.authenticate_as('c4000000-0000-0000-0000-000000000001');
 select is(public.coach_profile_missing(), '{}'::text[], 'the optional fields (certifications, cover, languages) are not required');
+select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid()::text || '/identity0001', 'pdf', 120000);
 select is(public.submit_coach_for_review(), '{}'::text[], 'a complete draft is submitted');
 select is((select status from public.coach_profiles where user_id = auth.uid()), 'pending_review', 'and waits for review');
 select is(pg_temp.found('ioana'), 0, 'pending review is not discoverable');
@@ -110,7 +111,7 @@ select is(public.admin_coach_review((select id from ids)) ->> 'status', 'pending
 select is(public.admin_coach_review((select id from ids)) -> 'missing', '[]'::jsonb, 'with its open checklist');
 select is(public.admin_coach_review((select id from ids)) ->> 'headline', 'Mobility coach',
   'in the public page''s own shape (the preview)');
-select lives_ok($$ select public.admin_set_coach_profile_status((select id from ids), 'published') $$, 'the admin approves');
+select lives_ok($$ select public.admin_decide_coach_application((select id from ids), 'approved', null, true, true) $$, 'the admin approves');
 reset role;
 select is(public.coach_public_profile('ioana-hide') -> 'badges', '[]'::jsonb, 'publishing never verifies anyone');
 
@@ -176,7 +177,7 @@ select lives_ok($$ update public.coach_profiles set headline = 'Mobility & stren
 reset role;
 update public.coach_profiles set status = 'hidden' where id = (select id from ids);
 select pg_temp.authenticate_as('c4000000-0000-0000-0000-000000000003');
-select throws_ok($$ select public.admin_set_coach_profile_status((select id from ids), 'draft') $$,
+select throws_ok($$ select public.admin_decide_coach_application((select id from ids), 'revoked') $$,
   '22023', 'REASON_REQUIRED', 'an admin sending a hidden profile back to draft must say why');
 select throws_ok($$ select public.admin_set_coach_profile_status((select id from ids), 'hidden') $$,
   '22023', 'BAD_TRANSITION', 'hiding is the coach''s switch, not an admin''s');

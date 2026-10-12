@@ -99,6 +99,16 @@ Now read (one extra parallel query, no extra wave). **Per-set and per-session
 feedback still do not exist** — nothing writes `reference_type` `set`,
 `session` or `set_video`, so the landing page no longer claims it.
 
+## Coach applications (20261118100000)
+
+Built, not applied to the live project. Missing: an admin screen to set
+`specializations.qualification_evidence` (SQL only — every discipline defaults to
+`recommended`); email on revocation (in-app only, `profile_unpublished` has no email
+rule); a virus scan of uploaded documents (Cloudinary checks format and size only);
+document retention rules beyond "until the account is deleted"; a resubmission cool-down
+after a rejection (none on purpose for now). The upload → save → view → decide path has
+not been driven against live Cloudinary from this environment.
+
 ## Coach Discovery
 
 **Database, server actions and the coach's onboarding UI** (2026-10-01). Migration

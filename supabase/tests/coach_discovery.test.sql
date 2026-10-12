@@ -133,6 +133,8 @@ select throws_ok($$ select document_ref from public.coach_certifications $$,
 select is(public.coach_profile_missing(), array['AVATAR'], 'only the profile photo is missing now');
 
 update public.users set avatar_url = 'https://res.cloudinary.com/demo/image/upload/andrei.jpg' where id = auth.uid();
+-- an identity document is part of the application (20261118100000)
+select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid()::text || '/identity0001', 'pdf', 120000);
 select is(public.submit_coach_for_review(), '{}'::text[], 'a complete draft is submitted');
 select is((select status from public.coach_profiles where user_id = auth.uid()), 'pending_review',
   'draft → pending_review');
@@ -167,11 +169,11 @@ reset role;
 select pg_temp.authenticate_as('cd000000-0000-0000-0000-000000000003');
 select is((select count(*)::int from public.admin_coach_profiles('pending_review')
            where slug = 'andrei-pop'), 1, 'the admin queue lists the pending profile');
-select throws_ok($$ select public.admin_set_coach_profile_status(
-    (select id from public.coach_profiles where slug = 'andrei-pop'), 'draft') $$,
+select throws_ok($$ select public.admin_decide_coach_application(
+    (select id from public.coach_profiles where slug = 'andrei-pop'), 'changes_requested') $$,
   '22023', 'REASON_REQUIRED', 'a rejection needs a reason');
-select lives_ok($$ select public.admin_set_coach_profile_status(
-    (select id from public.coach_profiles where slug = 'andrei-pop'), 'published') $$,
+select lives_ok($$ select public.admin_decide_coach_application(
+    (select id from public.coach_profiles where slug = 'andrei-pop'), 'approved', null, true, true) $$,
   'an admin approves');
 select ok((select published_at is not null from public.coach_profiles where slug = 'andrei-pop'),
   'published_at is stamped');
@@ -185,7 +187,7 @@ select lives_ok($$ select public.admin_set_certification_status(
     (select id from public.coach_certifications where name = 'ISSA CPT'), 'verified') $$,
   'an admin verifies a certification');
 select ok(exists (select 1 from public.admin_audit_events
-                  where action = 'ADMIN_ACTION' and metadata ->> 'op' = 'coach_profile_status'),
+                  where action = 'ADMIN_ACTION' and metadata ->> 'op' = 'coach_application' and metadata ->> 'decision' = 'approved'),
   'the approval is audited');
 
 -- the search foundation (read as the owner: search_text is never served)

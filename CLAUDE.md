@@ -79,7 +79,7 @@ Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
 check-ins, messages, marketplace (the coach's overview; one sidebar entry that also covers requests, bookings (+ `bookings/availability`), reviews, `settings/coach-profile` and `marketplace/share` — the coach share-card generator — with `MarketplaceTabs` over them), settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
 (overview, users, users/[id], activity, auth, invitations, workouts,
 exercises (+ /translate), foods, nutrition, gyms, coaches (+ /[id], the coach-profile review queue), social, challenges, notifications,
-feedback, errors, system, search, reports (the social_reports queue, coach profiles and reviews included), marketplace (aggregate analytics + the ranking inspector)) — its own layout, gated by `lib/admin/guard.ts` and, in the
+feedback, errors, system, search, coach-applications (the approval queue), reports (the social_reports queue, coach profiles and reviews included), marketplace (aggregate analytics + the ranking inspector)) — its own layout, gated by `lib/admin/guard.ts` and, in the
 database, by `admin_assert()` inside every `admin_*` RPC
 (`20260920100000_admin_panel.sql`; reads in `lib/admin/data.ts`, writes in
 `app/admin-actions.ts`, strings in `messages/admin.ts`). `(client)` = today, workout (list of every
@@ -163,6 +163,10 @@ invited → active → (paused ⇄ active) → ended is a trigger, participant m
 `coaching_transition()`, and one *current* (active or paused) coach per client is a unique index.
 **The directory's order is `coach_ranked()`** (20261110130000) — one internal ranking layer behind
 `search_coaches()`; never re-sort coaches in app code, and never return its scores from a public RPC.
+**A coach is public only after an admin approved the application** (20261118100000): `admin_decide_coach_application()`
+is the one approval path (both review boxes + the evidence), `admin_set_coach_profile_status()` only suspends / restores;
+`coach_verification_documents` are owner/admin-readable rows with no write grant, files in private Cloudinary storage
+read only through `/api/coach-documents/[id]` — never in a public RPC, a notification, an audit row or a log.
 **Calendar tokens and busy time are service-role only** (since 2026-10-08): `calendar_credentials` and
 `calendar_busy_blocks` have no grant and no policy — the coach reads status through `my_calendar_integrations()`;
 no provider adapter exists yet (`lib/calendar/provider.ts`).

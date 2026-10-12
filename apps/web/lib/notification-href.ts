@@ -134,6 +134,8 @@ export type NotificationSentence =
 export const MARKETPLACE_EVENTS = [
   "verification_verified", "verification_rejected", "profile_published", "profile_returned", "profile_unpublished",
   "profile_suspended", "profile_restored", "review_hidden",
+  // the application review (20261118100000)
+  "application_submitted", "application_changes_requested", "application_rejected",
 ] as const;
 export type MarketplaceSentence = `marketplace_${(typeof MARKETPLACE_EVENTS)[number]}`;
 

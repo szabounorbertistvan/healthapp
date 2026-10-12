@@ -65,6 +65,10 @@ export const MARKETPLACE_EMAIL_RULES: readonly MarketplaceEmailRule[] = [
   { category: "marketplace", event: "profile_returned", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
   { category: "marketplace", event: "revision_approved", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
   { category: "marketplace", event: "revision_returned", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
+  // 9. the application review (20261118100000): the outcome, never what was in a document
+  { category: "marketplace", event: "application_submitted", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
+  { category: "marketplace", event: "application_changes_requested", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
+  { category: "marketplace", event: "application_rejected", kind: "operational", delayMinutes: 0, skipIfRead: false, maxAgeMinutes: 3 * DAY },
 ];
 
 export function marketplaceEmailRule(category: string, payload: Record<string, unknown> | null): MarketplaceEmailRule | null {

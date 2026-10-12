@@ -58,6 +58,9 @@ const COPY: Record<EmailLocale, Record<string, (v: Vars) => Copy>> = {
     "marketplace/profile_returned": () => ({ subject: "Profilul tău de antrenor are nevoie de modificări", heading: "Profilul tău are nevoie de modificări", body: "Echipa Voinic ți-a lăsat o notă pe pagina profilului de antrenor.", cta: "Vezi nota" }),
     "marketplace/revision_approved": () => ({ subject: "Modificările profilului tău sunt publice", heading: "Modificările tale sunt publice", body: "Pagina ta publică arată acum modificările trimise.", cta: "Vezi profilul" }),
     "marketplace/revision_returned": () => ({ subject: "Modificările profilului tău au nevoie de o revizuire", heading: "Modificările tale au nevoie de o revizuire", body: "Pagina ta publică a rămas neschimbată. Echipa Voinic ți-a lăsat o notă.", cta: "Vezi nota" }),
+    "marketplace/application_submitted": () => ({ subject: "Am primit aplicația ta de antrenor", heading: "Aplicația ta e în verificare", body: "Echipa Voinic îți va verifica profilul. Îți scriem când există o decizie.", cta: "Vezi aplicația" }),
+    "marketplace/application_changes_requested": () => ({ subject: "Aplicația ta de antrenor are nevoie de informații", heading: "E nevoie de informații suplimentare", body: "Echipa Voinic ți-a lăsat o notă în aplicația de antrenor. Actualizeaz-o și trimite-o din nou.", cta: "Vezi nota" }),
+    "marketplace/application_rejected": () => ({ subject: "Răspuns la aplicația ta de antrenor", heading: "Aplicația ta nu a fost aprobată", body: "Motivul este în aplicația ta de antrenor, în Voinic.", cta: "Vezi motivul" }),
   },
   en: {
     "coaching_request/sent": (v) => ({ subject: `New coaching request from ${v.name}`, heading: "You have a new coaching request", body: `${v.name} would like to work with you.`, cta: "View request" }),
@@ -77,6 +80,9 @@ const COPY: Record<EmailLocale, Record<string, (v: Vars) => Copy>> = {
     "marketplace/profile_returned": () => ({ subject: "Your coach profile needs changes", heading: "Your profile needs changes", body: "The Voinic team left a note on your coach profile page.", cta: "View the note" }),
     "marketplace/revision_approved": () => ({ subject: "Your profile changes are live", heading: "Your changes are live", body: "Your public page now shows the changes you submitted.", cta: "View profile" }),
     "marketplace/revision_returned": () => ({ subject: "Your profile changes need another look", heading: "Your changes need another look", body: "Your public page is unchanged. The Voinic team left you a note.", cta: "View the note" }),
+    "marketplace/application_submitted": () => ({ subject: "We received your coach application", heading: "Your application is in review", body: "The Voinic team will review your profile. We'll email you when there is a decision.", cta: "View application" }),
+    "marketplace/application_changes_requested": () => ({ subject: "Your coach application needs more information", heading: "More information is needed", body: "The Voinic team left a note on your coach application. Update it and submit again.", cta: "View the note" }),
+    "marketplace/application_rejected": () => ({ subject: "An answer to your coach application", heading: "Your application was not approved", body: "The reason is on your coach application in Voinic.", cta: "View the reason" }),
   },
 };
 

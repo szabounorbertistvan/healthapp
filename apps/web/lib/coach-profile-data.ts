@@ -4,6 +4,7 @@ import { cache } from "react";
 import type { RoutineCard } from "@healthapp/shared";
 import { currentUserId, liveUser, supabasePublic, supabaseServer } from "@/lib/supabase/server";
 import { toCards } from "@/lib/routine-data";
+import type { MyCoachApplication } from "@/lib/coach-application";
 import {
   searchArgs, type CoachSearchResult, type DiscoveryFacets, type DiscoveryQuery,
 } from "@/lib/coach-discovery";
@@ -280,3 +281,19 @@ export async function getCoachSlugRedirect(slug: string): Promise<string | null>
   if (error) throw new Error(`coach slug redirect: ${error.message}`);
   return (data as string | null) ?? null;
 }
+
+/**
+ * The signed-in coach's application (coach_my_application, 20261118100000):
+ * where the review stands, the note and history, and their documents —
+ * without storage handles or reviewer ids. Null before the migration is
+ * applied (PGRST202) or without a coach profile.
+ */
+export const getMyCoachApplication = cache(async (): Promise<MyCoachApplication | null> => {
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("coach_my_application");
+  if (error) {
+    if (error.code === "PGRST202") return null;
+    throw new Error(`coach application: ${error.message}`);
+  }
+  return (data ?? null) as MyCoachApplication | null;
+});

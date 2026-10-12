@@ -5,8 +5,9 @@ import { EMAIL_PREF_CATEGORIES, MARKETPLACE_EMAIL_RULES } from "@healthapp/share
 
 // The outbox migration decides in SQL which notifications are queued; the
 // dispatcher decides in TypeScript which are sent. The two lists must match.
-// A later migration that redefines email_rule_delay_minutes() must move this path.
-const SQL = readFileSync(path.resolve(__dirname, "../../../supabase/migrations/20261114100000_email_outbox.sql"), "utf8");
+// A later migration that redefines email_rule_delay_minutes() must move this path
+// (20261114100000_email_outbox → 20261118100000_coach_application_review).
+const SQL = readFileSync(path.resolve(__dirname, "../../../supabase/migrations/20261118100000_coach_application_review.sql"), "utf8");
 
 describe("email outbox rules", () => {
   it("queues exactly the categories, events and holds the policy sends", () => {

@@ -72,18 +72,21 @@ export function stepForMissing(code: CoachProfileMissing): number {
     case "SPECIALIZATION": case "COACHING_SINCE": return 1;
     case "DELIVERY_MODE": case "LOCATION": return 2;
     case "SERVICE": case "SERVICE_PRICE": return 4;
+    // the documents live with the credentials (step 4)
+    case "IDENTITY_DOCUMENT": case "QUALIFICATION_DOCUMENT": return 3;
     case "AVATAR": return 5;
   }
 }
 
 /** The five lines of the "ready to submit" summary, each ticked or not. */
-export const SUMMARY_GROUPS = ["professional", "specializations", "location", "services", "photo"] as const;
+export const SUMMARY_GROUPS = ["professional", "specializations", "location", "services", "photo", "verification"] as const;
 export type SummaryGroup = (typeof SUMMARY_GROUPS)[number];
 
 const GROUP_OF: Record<CoachProfileMissing, SummaryGroup> = {
   HEADLINE: "professional", ABOUT: "professional", SLUG: "professional", COACHING_SINCE: "specializations",
   SPECIALIZATION: "specializations", DELIVERY_MODE: "location", LOCATION: "location",
   SERVICE: "services", SERVICE_PRICE: "services", AVATAR: "photo",
+  IDENTITY_DOCUMENT: "verification", QUALIFICATION_DOCUMENT: "verification",
 };
 
 export function summary(missing: readonly CoachProfileMissing[]): { group: SummaryGroup; done: boolean }[] {

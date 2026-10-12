@@ -1015,6 +1015,62 @@ C coach (request → accept → start → message → book → complete → revi
 pgTAP `marketplace_launch` (+ the admin e2e with `E2E_ADMIN_EMAIL`). E lifecycle: `coaching-lifecycle.spec.ts` +
 pgTAP `coaching_lifecycle`. F double booking: `npm run db:test:race`.
 
+## Coach application review (mandatory admin approval)
+
+Migration `20261118100000_coach_application_review.sql` — **not applied to the live project yet**; pgTAP
+`coach_application_review` (95) plus the four older coach suites moved onto the new path; unit
+`lib/coach-application.test.ts`; e2e `coach-application.spec.ts` (gates only, read-only).
+
+**The rule.** No coach profile is public until an admin approved its application. That was already true of the
+lifecycle (only `published` passes `coach_public_visible()`, `coach_ranked()`, the sitemap, the facets, gyms,
+`request_coaching()`); this migration makes the approval itself a recorded review. `admin_decide_coach_application(profile,
+decision, note, identity_reviewed, qualifications_reviewed)` is the **only** way to approve: `approved` needs both
+boxes (REVIEW_CHECKLIST_INCOMPLETE) and the evidence (`APPLICATION_INCOMPLETE: codes`), publishes, accepts the
+submitted documents and records `coach_verifications` identity (and certification when a qualification was
+accepted) as verified; `changes_requested` / `rejected` (from pending) and `revoked` (from published / hidden) need
+the note the coach reads and put the profile back to `draft` with `coach_profiles.review_decision` saying why.
+`admin_set_coach_profile_status()` now refuses those moves (USE_APPLICATION_REVIEW) and keeps suspend / restore;
+a suspended profile goes back to public only if it had been approved before. A coach cannot approve themselves:
+`admin_assert()`, no write grant on status / review columns, no insert on the decisions table.
+
+**States as people read them** (`applicationState()`): draft · pending_review · more_info_required (draft +
+changes_requested) · rejected · revoked · approved (published) · hidden · suspended. A rejected coach may change the
+profile and apply again; nothing blocks resubmission (product decision, below).
+
+**Evidence.** `specializations.qualification_evidence` = `required` | `recommended` (default) | `none`, set per
+discipline by an admin in SQL (no UI yet). `coach_application_missing()` asks for an identity document always and
+a qualification document when any chosen discipline is `required`; `submit_coach_for_review()` returns those codes
+with the profile's own. **Documents** — `coach_verification_documents` (identity / qualification / other, optional
+discipline and label, pdf / jpg / png / webp / heic, ≤ 10 MB, ≤ 12 per coach, submitted / accepted / rejected +
+review note): select policy owner-or-admin, **no write grant** — `coach_add_verification_document()` (path must be
+`voinic/coach-docs/<auth.uid()>/<opaque>`), `coach_remove_verification_document()` (not while pending / suspended;
+an accepted one stays while the profile is live), `admin_set_verification_document_status()`. Files: authenticated
+Cloudinary uploads signed by `app/coach-document-actions.ts` into the coach's own folder under a random name, checked
+again from what Cloudinary stored (format, bytes) and deleted if refused; read only through
+`/api/coach-documents/[id]`, which reads the row with the caller's session (so RLS decides) and streams the file
+through a five-minute signed download link the browser never sees — no-store, nosniff, sandboxed images, a neutral
+file name. Purged with the account (`destroyUserPhotos`). Never in a public RPC, notification, audit row or log.
+
+**History.** `coach_application_decisions` (admin-only select): submitted / approved / changes_requested / rejected /
+revoked / legacy_approved, actor, both review flags, note, `clock_timestamp()`. The coach sees decision, note and date
+(`coach_my_application()`), never who decided; the admin sees the actor (`admin_coach_application()`).
+
+**Screens.** Coach: the *Coach application* card on `/settings/coach-profile` (`components/coach-profile/application.tsx`) —
+state, the reviewer's note, what is still needed, upload / list / remove documents, history; the publish checklist has a
+*Verification documents* group. Admin: `/admin/coach-applications` (queue: pending oldest first, more info, rejected,
+approved, legacy, all; submitted-since filter) and the *Application review* panel on `/admin/coaches/[id]`
+(`components/admin/application-review.tsx`): evidence per discipline, documents with view / download and accept /
+not accepted, the two boxes, the note, approve / request info / reject / revoke, the history.
+
+**Notifications.** `application_submitted`, `application_changes_requested`, `application_rejected` (category
+`marketplace`, in-app + operational email, ro / en templates); approval reuses `profile_published`, revocation
+`profile_unpublished`. Payload: the profile id only.
+
+**Legacy profiles.** The migration changes no visibility. Every profile with `published_at` gets a `legacy_approved`
+history row (counted in a NOTICE); `/admin/coach-applications?state=legacy` lists the live ones without a real
+approval, flagged on the review page. A legacy coach is asked for documents on their card; their next submission
+needs them. A profile already *pending* at migration time needs an identity document before it can be approved.
+
 ## Engagement
 
 `app/(client)/habits`. `addHabit` / `toggleHabit`; `getMyHabits`. Tables `habits`,

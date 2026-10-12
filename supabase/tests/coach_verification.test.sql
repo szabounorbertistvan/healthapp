@@ -73,10 +73,11 @@ grant select on ids to authenticated, anon;
 
 -- publish it (review), then look: complete and public is NOT verified
 select pg_temp.authenticate_as('c6000000-0000-0000-0000-000000000001');
+select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid()::text || '/identity0001', 'pdf', 120000);
 select public.submit_coach_for_review();
 reset role;
 select pg_temp.authenticate_as('c6000000-0000-0000-0000-000000000003');
-select public.admin_set_coach_profile_status((select id from ids), 'published');
+select public.admin_decide_coach_application((select id from ids), 'approved', null, true, true);
 reset role;
 select pg_temp.anonymous();
 select is(public.coach_public_profile('vera-verif') ->> 'verified', 'false', 'a complete, published profile is not Voinic Verified');

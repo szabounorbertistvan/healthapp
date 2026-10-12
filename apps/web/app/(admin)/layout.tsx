@@ -32,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/nutrition", label: n.nutrition, icon: "M3 12h18a9 9 0 0 1-18 0zM8 12c0-3 2-5 5-6 2 2 3 4 1 6" },
     { href: "/admin/foods", label: n.foods, icon: "M5 4h14v4H5zM5 8v12h14V8M9 12h6" },
     { href: "/admin/coaches", label: n.coaches, icon: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0M17 4l2 2 3-3" },
+    { href: "/admin/coach-applications", label: n.coachApplications, icon: "M7 3h7l5 5v13H7zM14 3v5h5M10 14l2 2 4-4" },
     { href: "/admin/reports", label: n.reports, icon: "M5 21V4M5 4h11l-2 4 2 4H5" },
     { href: "/admin/marketplace", label: n.marketplace, icon: "M4 19V5M4 19h16M8 15l3-4 3 2 5-6" },
     { href: "/admin/gyms", label: t.gyms.admin.nav, icon: "M2 10v4M22 10v4M5 8v8M19 8v8M8 6v12M16 6v12M8 12h8M4 21h16" },

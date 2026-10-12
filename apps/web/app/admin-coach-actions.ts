@@ -7,11 +7,12 @@ import { getI18n } from "@/lib/i18n/server";
 import type { ActionResult } from "./actions";
 
 /**
- * /admin/coaches writes: the review decisions on a coach profile. Same
- * contract as admin-actions.ts — one RPC each, admin_set_coach_profile_status(),
- * which re-checks is_admin() in SQL, allows only the lifecycle's transitions
- * (20261029100000), requires a reason where the coach needs one, and writes
- * its own audit row. Hide / show are not here: they are the coach's switch.
+ * /admin/coaches writes. Same contract as admin-actions.ts — one RPC each,
+ * re-checked by is_admin() in SQL, audited there. Suspend / restore go
+ * through admin_set_coach_profile_status() (20261029100000); approving,
+ * asking for more, rejecting and revoking are the application review below
+ * (20261118100000), which that function now refuses (USE_APPLICATION_REVIEW).
+ * Hide / show are not here: they are the coach's switch.
  */
 async function setStatus(profileId: string, status: "published" | "draft" | "suspended", reason = ""): Promise<ActionResult> {
   if (!(await adminActor())) return { ok: false, message: "Admins only" };
@@ -34,14 +35,41 @@ async function setStatus(profileId: string, status: "published" | "draft" | "sus
   return { ok: true };
 }
 
-/** pending_review → published. Never verifies: badges are admin_set_coach_verification(), separately. */
-export async function approveCoachProfile(profileId: string): Promise<ActionResult> {
-  return setStatus(profileId, "published");
+// ---------- the application review (20261118100000) ----------
+
+/**
+ * One decision on a coach application, through admin_decide_coach_application():
+ * it re-checks is_admin(), refuses an approval unless both review boxes are
+ * ticked and the required evidence is there, needs the note the coach will
+ * read for everything but an approval, records who decided and when, and
+ * notifies the coach without any document detail. Approving is the only way
+ * a profile goes public; it never sets the Voinic Verified badge.
+ */
+export async function decideCoachApplication(
+  profileId: string,
+  decision: "approved" | "changes_requested" | "rejected" | "revoked",
+  input: { note?: string; identityReviewed?: boolean; qualificationsReviewed?: boolean } = {},
+): Promise<ActionResult> {
+  if (!["approved", "changes_requested", "rejected", "revoked"].includes(decision)) return { ok: false, message: "Unknown decision" };
+  const result = await adminRpc("admin_decide_coach_application", {
+    p_profile: uuidOf(profileId),
+    p_decision: decision,
+    p_note: (input.note ?? "").trim().slice(0, 1000) || null,
+    p_identity_reviewed: input.identityReviewed === true,
+    p_qualifications_reviewed: input.qualificationsReviewed === true,
+  });
+  if (result.ok) revalidatePath("/admin/coach-applications");
+  return result;
 }
 
-/** pending_review | published | hidden → draft, with the note the coach will see. */
-export async function returnCoachProfileToDraft(profileId: string, reason: string): Promise<ActionResult> {
-  return setStatus(profileId, "draft", reason);
+/** One document: accepted, or not accepted with a note the coach sees. Audited without any file detail. */
+export async function setVerificationDocumentStatus(
+  documentId: string, status: "accepted" | "rejected" | "submitted", note = "",
+): Promise<ActionResult> {
+  if (!["accepted", "rejected", "submitted"].includes(status)) return { ok: false, message: "Unknown status" };
+  return adminRpc("admin_set_verification_document_status", {
+    p_document: uuidOf(documentId), p_status: status, p_note: note.trim().slice(0, 1000) || null,
+  });
 }
 
 export async function suspendCoachProfile(profileId: string, reason: string): Promise<ActionResult> {

@@ -80,12 +80,16 @@ describe("submit checklist (mirror of coach_profile_missing)", () => {
     expect(stepForMissing("SERVICE_PRICE")).toBe(4);
     expect(stepForMissing("AVATAR")).toBe(5);
   });
-  it("the summary ticks the five groups", () => {
+  it("the summary ticks the six groups", () => {
     expect(summary([])).toEqual([
       { group: "professional", done: true }, { group: "specializations", done: true },
       { group: "location", done: true }, { group: "services", done: true }, { group: "photo", done: true },
+      { group: "verification", done: true },
     ]);
     expect(summary(["AVATAR", "LOCATION"]).filter((s) => !s.done).map((s) => s.group)).toEqual(["location", "photo"]);
+    // the application's evidence (20261118100000) is its own group
+    expect(summary(["IDENTITY_DOCUMENT", "QUALIFICATION_DOCUMENT"]).filter((s) => !s.done).map((s) => s.group)).toEqual(["verification"]);
+    expect(stepForMissing("IDENTITY_DOCUMENT")).toBe(3);
   });
   it("tracks which steps have content", () => {
     expect(stepsTouched(empty, 0)).toEqual([false, false, false, false, false, false]);

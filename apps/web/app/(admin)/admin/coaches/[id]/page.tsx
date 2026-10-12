@@ -7,10 +7,8 @@ import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { summary } from "@/lib/coach-onboarding";
 import type { CoachProfileMissing, CoachProfileStatus, CoachPublicProfile } from "@/lib/coach-profile";
-import {
-  approveCoachProfile, restoreCoachProfile, returnCoachProfileToDraft, setCoachVerification, setCredentialStatus,
-  suspendCoachProfile,
-} from "@/app/admin-coach-actions";
+import { restoreCoachProfile, setCoachVerification, setCredentialStatus, suspendCoachProfile } from "@/app/admin-coach-actions";
+import { AdminApplicationReview, type AdminApplication } from "@/components/admin/application-review";
 import type { CoachVerificationStatus, CredentialStatus } from "@/lib/coach-profile";
 import { ConfirmAction } from "@/components/admin/confirm-action";
 import { AdminHeader, Note, Pill, Section, fmtDateTime } from "@/components/admin/ui";
@@ -70,7 +68,7 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
   const name = review.display_name;
   const open = summary(review.missing ?? []).filter((x) => !x.done).map((x) => groups[x.group]);
   // the coach's reviews, any state (20261106100000)
-  const [reviews, { data: revisionData }, reports, ranking, ops] = await Promise.all([
+  const [reviews, { data: revisionData }, reports, ranking, ops, { data: applicationData }] = await Promise.all([
     review.user_id ? getAdminReviews(review.user_id) : Promise.resolve([]),
     // a published coach's staged changes (20261108100000); a database without them answers an error, read as none
     supabase.rpc("admin_coach_revision", { p_profile: id }),
@@ -80,7 +78,14 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
     getAdminRanking({ profile: id, limit: 1 }),
     // marketplace numbers, services and the moderation history (20261112100000)
     getAdminCoachSummary(id),
+    // the application: evidence, documents, decision history (20261118100000); an error before that migration, read as none
+    supabase.rpc("admin_coach_application", { p_profile: id }),
   ]);
+  const application = (applicationData ?? null) as AdminApplication | null;
+  const fmt: Record<string, string> = {};
+  for (const iso of [...(application?.documents ?? []).map((d) => d.created_at), ...(application?.history ?? []).map((h) => h.created_at)]) {
+    fmt[iso] = fmtDateTime(iso, locale);
+  }
   const revision = (revisionData ?? null) as AdminRevision | null;
   const s = review.status;
 
@@ -106,18 +111,7 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
           {review.account_suspended ? <Note>{m.accountSuspended}</Note> : null}
 
           <div className="mt-2 flex flex-wrap gap-2">
-            {s === "pending_review" ? (
-              <>
-                <ConfirmAction tone="accent" label={m.approve} title={fill(m.approveTitle, { name })} body={m.approveBody}
-                  action={approveCoachProfile.bind(null, review.id)} />
-                <ConfirmAction tone="neutral" withReason label={m.reject} title={fill(m.rejectTitle, { name })} body={m.rejectBody}
-                  action={returnCoachProfileToDraft.bind(null, review.id)} />
-              </>
-            ) : null}
-            {s === "published" || s === "hidden" ? (
-              <ConfirmAction tone="neutral" withReason label={m.unpublish} title={fill(m.unpublishTitle, { name })} body={m.unpublishBody}
-                action={returnCoachProfileToDraft.bind(null, review.id)} />
-            ) : null}
+            {/* approve / ask for more / reject / revoke: the application review below (20261118100000) */}
             {s === "suspended" ? (
               <>
                 <ConfirmAction tone="accent" label={m.restore} title={fill(m.restoreTitle, { name })} body={m.restoreBody}
@@ -142,6 +136,14 @@ export default async function AdminCoachReviewPage({ params }: { params: Promise
           </div>
         </div>
       </Section>
+
+      {application ? (
+        <div className="mt-4">
+          <Section title={m.application.title}>
+            <AdminApplicationReview application={application} name={name} fmt={fmt} />
+          </Section>
+        </div>
+      ) : null}
 
       {revision ? (
         <div className="mt-4">

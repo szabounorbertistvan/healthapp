@@ -81,11 +81,13 @@ export function initialDraft(data: MyCoachProfile): Saved {
  * shared link lands on the same screen with the saved data.
  */
 export function CoachProfileWizard({
-  data, catalog, step, displayName, avatarUrl, photoUploads,
+  data, catalog, step, displayName, avatarUrl, photoUploads, documentsMissing = [],
 }: {
   data: MyCoachProfile;
   catalog: CoachCatalog;
   step: number;
+  /** coach_application_missing() (20261118100000): documents are uploaded on the application card, above. */
+  documentsMissing?: CoachProfileMissing[];
   displayName: string;
   avatarUrl: string | null;
   photoUploads: boolean;
@@ -267,7 +269,7 @@ export function CoachProfileWizard({
             <PublishStep
               data={data} draft={draft} services={services} certifications={certifications} catalog={catalog}
               displayName={displayName} avatarUrl={avatarUrl} photoUploads={photoUploads}
-              missing={missingFor(checklist)} onGo={goTo}
+              missing={[...missingFor(checklist), ...documentsMissing]} onGo={goTo}
             />
           )}
         </div>
@@ -820,7 +822,10 @@ function PublishStep({
               {!item.done ? (
                 <button
                   type="button" className="text-[13px] font-semibold text-accent-ink hover:underline"
-                  onClick={() => onGo(stepForMissing(open.find((m) => groupOf(m) === item.group)!))}
+                  onClick={() => item.group === "verification"
+                    // the documents live on the application card above the editor, not in a step
+                    ? document.getElementById("application")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    : onGo(stepForMissing(open.find((m) => groupOf(m) === item.group)!))}
                 >
                   {c.fix}
                 </button>

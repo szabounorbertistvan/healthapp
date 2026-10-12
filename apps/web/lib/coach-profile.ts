@@ -70,11 +70,22 @@ export function isValidCoachSlug(slug: string): boolean {
 /** What coach_profile_missing() / submit_coach_for_review() report. */
 export type CoachProfileMissing =
   | "HEADLINE" | "ABOUT" | "SPECIALIZATION" | "DELIVERY_MODE" | "LOCATION"
-  | "SERVICE" | "SERVICE_PRICE" | "AVATAR" | "SLUG" | "COACHING_SINCE";
+  | "SERVICE" | "SERVICE_PRICE" | "AVATAR" | "SLUG" | "COACHING_SINCE"
+  // the application's evidence (20261118100000) — reported by submit only, never by coach_profile_missing()
+  | "IDENTITY_DOCUMENT" | "QUALIFICATION_DOCUMENT";
 
 /** Every business code the coach discovery RPCs raise. */
 export const COACH_PROFILE_ERRORS = [
   "PROFILE_INCOMPLETE",
+  // coach applications (20261118100000)
+  "DOCUMENTS_LOCKED",
+  "BAD_DOCUMENT_PATH",
+  "BAD_DOCUMENT",
+  "TOO_MANY_DOCUMENTS",
+  "DOCUMENT_NOT_FOUND",
+  // raised by the document actions, not the database
+  "DOCUMENT_TOO_LARGE",
+  "UPLOADS_UNAVAILABLE",
   "ACCOUNT_UNAVAILABLE",
   "NO_COACH_PROFILE",
   "PROFILE_LOCKED",

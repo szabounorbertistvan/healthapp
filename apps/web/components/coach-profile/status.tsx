@@ -114,8 +114,10 @@ export function CoachProfileSettingsCard({ status }: { status: CoachProfileRow["
  * Published ↔ hidden is the coach's own switch (20261029100000): instant, and
  * no review, because a hidden profile cannot be edited either.
  */
-export function CoachProfileStatusPanel({ profile, editing = false }: {
+export function CoachProfileStatusPanel({ profile, editing = false, showNote = true }: {
   profile: CoachProfileRow;
+  /** False when the application card (20261118100000) shows the reviewer's note instead. */
+  showNote?: boolean;
   /** A staged revision is open (20261108100000): the editor is below, no Edit button. */
   editing?: boolean;
 }) {
@@ -225,7 +227,7 @@ export function CoachProfileStatusPanel({ profile, editing = false }: {
       {profile.status === "suspended" && profile.suspension_reason ? (
         <p className="mt-2 text-[13.5px] leading-relaxed text-risk">{fill(s.suspendedReason, { reason: profile.suspension_reason })}</p>
       ) : null}
-      {profile.status === "draft" && profile.review_note ? (
+      {showNote && profile.status === "draft" && profile.review_note ? (
         <p className="mt-2 rounded-2xl bg-warn-soft px-3.5 py-2.5 text-[13.5px] leading-relaxed text-warn">
           {fill(s.reviewNote, { note: profile.review_note })}
         </p>

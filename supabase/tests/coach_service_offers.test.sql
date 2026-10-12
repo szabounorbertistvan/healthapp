@@ -173,10 +173,11 @@ reset role;
 -- 5. published: the public page shows only active services, with the new fields
 -- ============================================================================
 select pg_temp.authenticate_as('c5000000-0000-0000-0000-000000000001');
+select public.coach_add_verification_document('identity', 'voinic/coach-docs/' || auth.uid()::text || '/identity0001', 'pdf', 120000);
 select is(public.submit_coach_for_review(), '{}'::text[], 'submitted');
 reset role;
 select pg_temp.authenticate_as('c5000000-0000-0000-0000-000000000003');
-select lives_ok($$ select public.admin_set_coach_profile_status((select id from public.coach_profiles where slug = 'sara-offers'), 'published') $$,
+select lives_ok($$ select public.admin_decide_coach_application((select id from public.coach_profiles where slug = 'sara-offers'), 'approved', null, true, true) $$,
   'the admin publishes');
 reset role;
 select pg_temp.anonymous();

@@ -130,6 +130,9 @@ export async function destroyUserPhotos(userId: string): Promise<void> {
   // A coach page's cover, public like the avatar.
   await client.api.delete_resources_by_prefix(coverFolder(userId));
   await client.api.delete_folder(coverFolder(userId)).catch(() => {});
+  // Verification evidence (20261118100000): identity documents above all must not outlive the account.
+  await client.api.delete_resources_by_prefix(coachDocumentFolder(userId), { type: "authenticated" });
+  await client.api.delete_folder(coachDocumentFolder(userId)).catch(() => {});
 }
 
 // ---------- profile pictures ----------
@@ -382,4 +385,64 @@ export async function destroyPostMedia(publicIds: string[]): Promise<void> {
   if (publicIds.length === 0) return;
   const client = configured();
   await client.api.delete_resources(publicIds, { type: "authenticated", resource_type: "image", invalidate: true });
+}
+
+// ---------- coach verification documents (20261118100000) ----------
+//
+// The progress-photo rules, for identity and qualification evidence:
+// `authenticated` assets only (never `upload`), a signature that pins the
+// folder, the public_id and the allowed formats, the database keeping only
+// the public_id, and every view a fresh short-lived signed link handed out by
+// /api/coach-documents/[id] after the database has said who may see it.
+
+export function coachDocumentFolder(userId: string): string {
+  return `voinic/coach-docs/${userId}`;
+}
+
+/** Cloudinary refuses anything else at upload time; the database re-checks. */
+export const COACH_DOCUMENT_FORMATS = ["pdf", "jpg", "jpeg", "png", "webp", "heic"] as const;
+
+export function signCoachDocumentUpload(userId: string, publicId: string): AvatarUploadTicket {
+  const client = configured();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = {
+    folder: coachDocumentFolder(userId),
+    public_id: publicId,
+    timestamp,
+    type: "authenticated",
+    allowed_formats: COACH_DOCUMENT_FORMATS.join(","),
+  };
+  const signature = client.utils.api_sign_request(params, API_SECRET!);
+  return {
+    cloudName: CLOUD_NAME!,
+    apiKey: API_KEY!,
+    fields: {
+      folder: params.folder, public_id: params.public_id, timestamp: String(timestamp), type: params.type,
+      allowed_formats: params.allowed_formats, signature,
+    },
+  };
+}
+
+/** What Cloudinary stored for one document — format and bytes as it read them, not as the browser said. */
+export async function lookupCoachDocument(publicId: string): Promise<StoredMediaAsset | null> {
+  const client = configured();
+  try {
+    const r = (await client.api.resource(publicId, { type: "authenticated", resource_type: "image" })) as StoredMediaAsset;
+    return r?.public_id ? r : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A download link valid for five minutes, through Cloudinary's signed API endpoint. */
+export function coachDocumentDownloadUrl(publicId: string, format: string): string {
+  const client = configured();
+  return client.utils.private_download_url(publicId, format, {
+    type: "authenticated", resource_type: "image", expires_at: Math.floor(Date.now() / 1000) + 300,
+  });
+}
+
+export async function destroyCoachDocument(publicId: string): Promise<void> {
+  const client = configured();
+  await client.uploader.destroy(publicId, { type: "authenticated", resource_type: "image", invalidate: true });
 }
