@@ -19,6 +19,8 @@ import { NavIcon } from "./client-nav";
 import { ShareWorkoutButton } from "./share-workout";
 import { TrainingLoadBadge } from "./training-load";
 import { Card } from "./ui";
+import { DishFinderMark } from "./dishfinder-mark";
+import { dishfinderEnabled } from "@/lib/dishfinder";
 
 // The Today dashboard: the week card (score ring with its four parts, the
 // Mon–Sun strip, three stats), then one card per context — training,
@@ -370,6 +372,15 @@ export function NutritionCard({ nutrition }: { nutrition: ClientDayNutrition }) 
           <NavIcon d="M12 5v14M5 12h14" className="h-3.5 w-3.5 [stroke-width:2.4]" />
           {d.logFood}
         </Link>
+        {/* One line to the diary, where every meal carries its two DishFinder links.
+            Only when a deployment serves recipes and there is a meal to start from —
+            a day with nothing logged or planned has nothing to find recipes for. */}
+        {dishfinderEnabled() && (bySlot.some((m) => m.names) || nutrition.plan_owner !== null) ? (
+          <Link href="/food" className="mt-2.5 flex items-center justify-center gap-1.5 text-[12.5px] font-semibold text-accent-ink hover:underline">
+            <DishFinderMark className="h-[13px] w-[13px] shrink-0" />
+            {d.recipeIdeas} →
+          </Link>
+        ) : null}
       </div>
     </Card>
   );

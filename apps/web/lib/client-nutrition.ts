@@ -30,7 +30,9 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
       .eq("status", "published"),
     supabase
       .from("food_logs")
-      .select("id, slot, food_name, grams, kcal, protein_g, carbs_g, fat_g")
+      // The food join is readable because the log references it (foods_select,
+      // 20261019120000); a custom or scanned product simply has no DishFinder id.
+      .select("id, slot, food_name, grams, kcal, protein_g, carbs_g, fat_g, food:foods(dishfinder_ingredient_id)")
       .eq("user_id", userId)
       .eq("date", day),
     activeCoachId(userId),
@@ -43,6 +45,7 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
   type LogRow = {
     id: string; slot: MealSlot; food_name: string; grams: number;
     kcal: number; protein_g: number; carbs_g: number; fat_g: number;
+    food: { dishfinder_ingredient_id: number | null } | null;
   };
   const entries = ((logs ?? []) as unknown as LogRow[]).map((l) => ({
     id: l.id,
@@ -50,6 +53,7 @@ export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrit
     food_name: l.food_name,
     grams: l.grams,
     macros: { kcal: l.kcal, protein: l.protein_g, carbs: l.carbs_g, fat: l.fat_g },
+    dishfinder_id: l.food?.dishfinder_ingredient_id ?? null,
   }));
   return {
     day,

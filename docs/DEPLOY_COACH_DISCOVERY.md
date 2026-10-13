@@ -8,7 +8,7 @@ The database side of Coach Discovery's launch work: disciplines, mandatory appli
 |---|---|---|---|
 | 20261116100000 | coach_disciplines | — | reported applied (SQL editor query, 2026-10-12) on an unconfirmed project |
 | 20261117100000 / 110000 / 120000 | gym_map_and_stats / gym_records / gym_record_lifts_own | — | unknown remotely; no overlap with the coach migrations |
-| 20261121100000 / 110000 | gym_import / gym_import_grid | 20261117100000 | **applied on caiaretlxiljiiuoirtp 2026-10-13**, together with 20261116 and 20261117* (2026-10-12) — so the remote is *newer* than 20261118–20261120: step 3 will flag them out of order and steps 4–5 need `--include-all` |
+| 20261121100000 / 110000 / 120000 | gym_import / gym_import_grid / gym_photo_cache | 20261117100000 | **applied on caiaretlxiljiiuoirtp 2026-10-13**, together with 20261116 and 20261117* (2026-10-12) — so the remote is *newer* than 20261118–20261120: step 3 will flag them out of order and steps 4–5 need `--include-all` |
 | 20261118100000 | coach_application_review | 20261116 (specializations) | redefines submit / status / notify / email rules; legacy backfill + NOTICE |
 | 20261119100000 | coach_applications_without_identity_documents | 20261116 (`parent_id`), 20261118 | drops + recreates `admin_decide_coach_application` (new argument name); NOTICE |
 | 20261120100000 | coach_documents_operations | 20261118, 20261119, 20261108 (revisions) | revision evidence check, notices, cleanup functions |

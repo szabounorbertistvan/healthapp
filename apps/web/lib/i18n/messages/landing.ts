@@ -34,6 +34,7 @@ const en = {
       { title: "Nutrition without spreadsheets", body: "Scan a barcode or tap “ate as planned”. Your macros update instantly against the plan your coach built." },
       { title: "See real progress", body: "Weight trends, strength PRs, weekly check-ins — everything in one timeline, not five apps." },
       { title: "Stay on a streak", body: "Habits, a streak calendar and monthly challenges carry the boring weeks. Leaderboards are there if you want them — ignore them and the streak still counts." },
+      { title: "Recipes from your plan", body: "Any meal opens DishFinder with its ingredients already selected — or with the same calories and protein, when you want something else. You cook and weigh; the plan stays your coach's." },
     ],
     coachBenefits: [
       { title: "Know who needs you today", body: "Every client carries an On Track / Needs Attention / Needs a Restart signal — with the reason spelled out." },
@@ -61,6 +62,7 @@ const en = {
         items: [
           "Your coach's programs, logged set by set — targets pre-filled, rest timer, PRs found for you",
           "Nutrition: barcode scanning, meal plans, and one tap for a meal you ate as planned",
+          "Recipes for any meal in DishFinder — with your ingredients, or with the same calories and protein",
           "Progress photos, compared side by side, private to you and your coach",
           "Habits, a streak calendar, monthly challenges and leaderboards you can opt out of",
           "Weight, waist, strength and adherence on one timeline",
@@ -258,6 +260,7 @@ const ro: typeof en = {
       { title: "Nutriție fără tabele Excel", body: "Scanează un cod de bare sau apasă „am mâncat conform planului”. Macronutrienții se actualizează instant față de planul construit de antrenor." },
       { title: "Vezi progres real", body: "Trendul greutății, recorduri de forță, check-in-uri săptămânale — totul într-o singură cronologie, nu în cinci aplicații." },
       { title: "Păstrează-ți seria", body: "Obiceiurile, calendarul seriei și provocările lunare duc și săptămânile plictisitoare. Clasamentele sunt acolo dacă le vrei — le ignori și seria contează la fel." },
+      { title: "Rețete din planul tău", body: "Orice masă deschide DishFinder cu ingredientele ei deja selectate — sau cu aceleași calorii și proteine, când vrei altceva. Tu gătești și cântărești; planul rămâne al antrenorului." },
     ],
     coachBenefits: [
       { title: "Știi cine are nevoie de tine azi", body: "Fiecare client poartă un semnal Pe drumul bun / Necesită atenție / Necesită repornire — cu motivul explicat clar." },
@@ -274,6 +277,7 @@ const ro: typeof en = {
         items: [
           "Programele antrenorului tău, notate set cu set — ținte precompletate, cronometru de pauză, recorduri găsite pentru tine",
           "Nutriție: scanare de coduri de bare, planuri de mese și o singură apăsare pentru o masă mâncată conform planului",
+          "Rețete pentru orice masă, în DishFinder — cu ingredientele tale sau cu aceleași calorii și proteine",
           "Poze de progres, comparate alăturat, private pentru tine și antrenorul tău",
           "Obiceiuri, calendarul seriei, provocări lunare și clasamente din care poți ieși",
           "Greutate, talie, forță și aderență pe o singură cronologie",

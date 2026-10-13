@@ -663,6 +663,8 @@ export type ClientFoodEntry = {
   food_name: string;
   grams: number;
   macros: Macros;
+  /** DishFinder ingredient id of the logged food, when it has one — feeds the recipe links. */
+  dishfinder_id?: number | null;
 };
 
 export type ClientDayNutrition = {
