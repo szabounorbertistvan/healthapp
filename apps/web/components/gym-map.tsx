@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type MapGeoJSONFeature } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { GymPin } from "@/lib/gym-data";
+import { gymWhere } from "@/lib/gym-map";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -184,7 +185,7 @@ export function GymMap({ pins, homeGymId }: { pins: GymPin[]; homeGymId: string 
     name.textContent = pin.name;
     const where = document.createElement("p");
     where.className = "mt-0.5 text-[12px] opacity-70";
-    where.textContent = [pin.address, pin.city].filter(Boolean).join(", ");
+    where.textContent = gymWhere(pin.address, pin.city);
     root.append(name, where);
     const facts = [
       fill(h.members, { n: pin.members }),

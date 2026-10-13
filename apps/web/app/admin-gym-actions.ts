@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { adminActor } from "@/lib/admin/guard";
 import { uuidOf } from "@/lib/admin/params";
 import { isMapsHost, parseMapsUrl, type MapsLinkFacts } from "@/lib/gym-map";
-import { findPlace, placeDetails, type PlaceFacts } from "@/lib/google-places";
+import { findPlace, placeDetails, searchGymsInCity, type PlaceFacts } from "@/lib/google-places";
 import type { ActionResult } from "./actions";
 
 /**
@@ -149,4 +149,47 @@ export async function readMapsLink(raw: string): Promise<{ ok: boolean; facts?: 
     url = next;
   }
   return { ok: false };
+}
+
+// ---------- bulk import from Google (20261121100000) ----------
+
+export type GoogleGymHit = {
+  raw: Record<string, unknown>;
+  placeId: string;
+  name: string;
+  address: string | null;
+  rating: number | null;
+  ratingsTotal: number | null;
+  known: boolean;
+};
+
+/** A city's gyms on Google, marked when they are already on our list. */
+export async function searchGoogleGyms(city: string): Promise<{ ok: boolean; message?: string; hits?: GoogleGymHit[] }> {
+  if (!(await adminActor())) return { ok: false, message: "Admins only" };
+  const places = await searchGymsInCity(String(city ?? ""));
+  if (places === null) return { ok: false, message: "GOOGLE_UNAVAILABLE" };
+  const supabase = await supabaseServer();
+  const { data } = await supabase.rpc("admin_known_place_ids", { p_ids: places.map((p) => p.placeId) });
+  const known = new Set((data ?? []) as string[]);
+  return {
+    ok: true,
+    hits: places.map((p) => ({
+      raw: p.raw, placeId: p.placeId, name: p.name, address: p.address,
+      rating: p.rating, ratingsTotal: p.ratingsTotal, known: known.has(p.placeId),
+    })),
+  };
+}
+
+/** Import the ticked places as active gyms of that city; known ones are skipped in SQL. */
+export async function importGoogleGyms(
+  city: string, places: Record<string, unknown>[],
+): Promise<{ ok: boolean; message?: string; imported?: number; skipped?: number }> {
+  if (!(await adminActor())) return { ok: false, message: "Admins only" };
+  if (!Array.isArray(places) || places.length === 0 || places.length > 100) return { ok: false, message: "GYM_IMPORT" };
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("admin_import_gyms", { p_places: places, p_city: String(city ?? "").trim().slice(0, 80) });
+  if (error) return { ok: false, message: error.message };
+  for (const p of [...PATHS, "/gyms"]) revalidatePath(p);
+  const r = (data ?? {}) as { imported?: number; skipped?: number };
+  return { ok: true, imported: r.imported ?? 0, skipped: r.skipped ?? 0 };
 }

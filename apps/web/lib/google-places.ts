@@ -165,3 +165,54 @@ export async function placePhotoUri(photoName: string, maxWidth = 900): Promise<
     return null;
   }
 }
+
+/**
+ * Every gym Google lists in a city, for the admin's bulk import: Text Search
+ * restricted to the "gym" type, 20 a page, up to three pages (Google's own
+ * cap of 60). Null without a key; an empty list when nothing matched.
+ */
+export async function searchGymsInCity(city: string): Promise<PlaceFacts[] | null> {
+  const key = process.env.GOOGLE_PLACES_API_KEY;
+  if (!key) return null;
+  const query = city.trim().slice(0, 80);
+  if (!query) return [];
+  const found: PlaceFacts[] = [];
+  let pageToken: string | undefined;
+  try {
+    for (let page = 0; page < 3; page++) {
+      const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "X-Goog-Api-Key": key,
+          "X-Goog-FieldMask": [...FIELDS.map((f) => `places.${f}`), "nextPageToken"].join(","),
+        },
+        body: JSON.stringify({
+          textQuery: `sală de fitness ${query}`,
+          includedType: "gym",
+          strictTypeFiltering: true,
+          languageCode: "ro",
+          regionCode: "RO",
+          pageSize: 20,
+          ...(pageToken ? { pageToken } : {}),
+        }),
+        signal: AbortSignal.timeout(10000),
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        console.error("places:searchText (city) failed:", res.status);
+        break;
+      }
+      const json = (await res.json()) as { places?: ApiPlace[]; nextPageToken?: string };
+      for (const p of json.places ?? []) {
+        const f = factsOf(p);
+        if (f && !found.some((x) => x.placeId === f.placeId)) found.push(f);
+      }
+      pageToken = json.nextPageToken;
+      if (!pageToken) break;
+    }
+  } catch (e) {
+    console.error("places:searchText (city) error:", (e as Error).message);
+  }
+  return found;
+}

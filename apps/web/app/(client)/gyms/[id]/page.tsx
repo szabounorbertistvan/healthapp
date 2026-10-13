@@ -6,7 +6,7 @@ import {
 } from "@/lib/gym-data";
 import { getProfile } from "@/lib/data";
 import { GymRecords } from "@/components/gym-records";
-import { gymMapHref } from "@/lib/gym-map";
+import { gymMapHref, gymWhere } from "@/lib/gym-map";
 import { gymOpenState } from "@healthapp/shared";
 import { CountBars, SetHomeGymButton } from "@/components/gym-stats";
 import { Avatar } from "@/components/social";
@@ -78,7 +78,7 @@ export default async function GymPage({
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{g.name}</h1>
-          <p className="mt-1 text-[13.5px] text-ink-soft">{[g.address, g.city].filter(Boolean).join(", ")}</p>
+          <p className="mt-1 text-[13.5px] text-ink-soft">{gymWhere(g.address, g.city)}</p>
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px]">
             <a href={gymMapHref(g)} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent-ink hover:underline">{s.openMap} ↗</a>
             {g.google_rating != null ? (
