@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { acceptInvite } from "@/app/client-actions";
@@ -65,7 +66,7 @@ export function JoinCoach({ redirectTo, autoFocus = true }: { redirectTo?: strin
         onClick={() =>
           startTransition(async () => {
             setError(null);
-            const r = await acceptInvite(code);
+            const r = await settle(() => acceptInvite(code), t.common.actions.unreachable);
             if (!r.ok) {
               setError(inviteMessage(inviteCopy, r.errorCode));
               return;

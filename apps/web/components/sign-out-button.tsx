@@ -1,4 +1,5 @@
 "use client";
+import { settleRead } from "@/lib/settle-action";
 import { useTransition } from "react";
 import { signOut } from "@/app/auth-actions";
 import { useI18n } from "@/lib/i18n/client";
@@ -21,7 +22,8 @@ export function SignOutButton({ className, icon = false }: { className?: string;
     <button
       type="button"
       disabled={pending}
-      onClick={() => startTransition(async () => { await signOut(); })}
+      // signOut() redirects; a call that never answered leaves the button to try again instead of the error screen
+      onClick={() => startTransition(async () => { await settleRead(() => signOut()); })}
       aria-label={icon ? t.common.signOut.action : undefined}
       title={icon ? t.common.signOut.action : undefined}
       className={

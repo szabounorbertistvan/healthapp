@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -40,7 +41,7 @@ export function NewPlanForm({
     setError(null);
     startTransition(async () => {
       const client = roster.find((c) => c.id === clientId);
-      const result = await createNutritionPlan({
+      const result = await settle(() => createNutritionPlan({
         name,
         clientId,
         clientName: client?.name ?? "—",
@@ -48,8 +49,8 @@ export function NewPlanForm({
         protein,
         carbs,
         fat,
-      });
-      if (result.ok && result.id) router.push(`/nutrition/${result.id}`);
+      }), t.common.actions.unreachable);
+      if (result.ok && "id" in result && result.id) router.push(`/nutrition/${result.id}`);
       else setError(result.message ?? m.createError);
     });
   }

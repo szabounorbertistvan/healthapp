@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
@@ -568,7 +569,7 @@ function StoryComposer({ me, onClose }: { me: Me; onClose: (published: boolean) 
           e.preventDefault();
           setError(null);
           startTransition(async () => {
-            const r = await publishStory(text, bg);
+            const r = await settle(() => publishStory(text, bg), t.common.actions.unreachable);
             if (!r.ok) { setError(r.message ?? s.failed); return; }
             close(true);
           });

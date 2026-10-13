@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition, useOptimistic } from "react";
 import { archiveHabit, toggleHabit } from "@/app/client-actions-app";
 import { useRouter } from "next/navigation";
@@ -73,7 +74,8 @@ export function HabitTicks({ habits, removable = false }: { habits: ClientHabitR
                       onClick={() =>
                         startTransition(async () => {
                           toggleOptimistic(habit.id);
-                          await toggleHabit(habit.id);
+                          // a tick that did not stick falls back to the server's state when the transition ends
+                          await settle(() => toggleHabit(habit.id), t.common.actions.unreachable);
                         })
                       }
                       className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1.5 text-left hover:bg-bg"
@@ -140,7 +142,7 @@ export function HabitTicks({ habits, removable = false }: { habits: ClientHabitR
                           disabled={pending}
                           onClick={() =>
                             startTransition(async () => {
-                              const r = await archiveHabit(habit.id);
+                              const r = await settle(() => archiveHabit(habit.id), t.common.actions.unreachable);
                               if (!r.ok) { setRemoveError(r.message ?? t.clientApp.habits.couldNotDelete); return; }
                               setConfirming(null);
                               router.refresh();

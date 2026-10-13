@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
-  DEFAULT_MACRO_SPLIT, MAX_KCAL_TARGET, MAX_MACRO_TARGET_G, MIN_KCAL_TARGET, gramsFromSplit, isValidDailyTargets,
+  DEFAULT_MACRO_SPLIT, KCAL_PER_GRAM, MAX_KCAL_TARGET, MAX_MACRO_TARGET_G, MIN_KCAL_TARGET, gramsFromSplit, isValidDailyTargets,
   portionMacros, rebalanceSplit, splitFromGrams, sumMacros,
 } from "./macros";
 
@@ -148,9 +148,25 @@ describe("isValidDailyTargets", () => {
     expect(isValidDailyTargets({ ...ok, carbs: MAX_MACRO_TARGET_G + 1 })).toBe(false);
   });
 
-  test("accepts whatever gramsFromSplit derives for any kcal in range", () => {
-    for (const kcal of [MIN_KCAL_TARGET, 1234, 2600, MAX_KCAL_TARGET]) {
-      expect(isValidDailyTargets(gramsFromSplit(kcal, DEFAULT_MACRO_SPLIT))).toBe(true);
+  // setMyNutritionTargets stores exactly what gramsFromSplit derives, and the
+  // slider allows any split from 0 to 100 %: every such target must pass, or
+  // the table's check refuses a person's own valid choice with a raw error.
+  test("accepts whatever gramsFromSplit derives for any kcal in range and any split", () => {
+    const splits = [
+      DEFAULT_MACRO_SPLIT,
+      { protein: 100, carbs: 0, fat: 0 },
+      { protein: 0, carbs: 100, fat: 0 },
+      { protein: 0, carbs: 0, fat: 100 },
+      { protein: 20, carbs: 70, fat: 10 },
+    ];
+    for (const kcal of [MIN_KCAL_TARGET, 1234, 2600, 6000, MAX_KCAL_TARGET]) {
+      for (const split of splits) {
+        expect(isValidDailyTargets(gramsFromSplit(kcal, split)), `${kcal} kcal ${JSON.stringify(split)}`).toBe(true);
+      }
     }
+  });
+
+  test("the gram cap is exactly what the calorie ceiling can hold", () => {
+    expect(MAX_MACRO_TARGET_G).toBe(MAX_KCAL_TARGET / Math.min(KCAL_PER_GRAM.protein, KCAL_PER_GRAM.carbs, KCAL_PER_GRAM.fat));
   });
 });

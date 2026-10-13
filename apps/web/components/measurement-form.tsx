@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { displayToCm, displayToKg, parseDecimal } from "@healthapp/shared";
@@ -62,10 +63,10 @@ export function MeasurementForm() {
               setSaved(false);
               const typedWeight = parse(weight);
               const typedWaist = parse(waist);
-              const result = await addMeasurement({
+              const result = await settle(() => addMeasurement({
                 weightKg: typedWeight === null ? null : displayToKg(typedWeight, u.weightUnit),
                 waistCm: typedWaist === null ? null : displayToCm(typedWaist, u.lengthUnit),
-              });
+              }), t.common.actions.unreachable);
               if (!result.ok) {
                 setError(result.message ?? t.clientWidgets.measurementForm.couldNotSave);
                 return;

@@ -1,4 +1,5 @@
 "use client";
+import { settle, settleRead } from "@/lib/settle-action";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { isValidPortionGrams, MAX_PORTION_GRAMS, parseDecimal, portionMacros } from "@healthapp/shared";
@@ -90,7 +91,11 @@ export function FoodLogger({
   useEffect(() => {
     setShowEnglish(false);
     const timer = setTimeout(() => {
-      startTransition(async () => setResults(await searchFoods(q)));
+      startTransition(async () => {
+        const found = await settleRead(() => searchFoods(q));
+        if (found) setResults(found);
+        else setError(t.common.actions.unreachable);
+      });
     }, 200);
     return () => clearTimeout(timer);
   }, [q]);
@@ -124,7 +129,7 @@ export function FoodLogger({
     setFavs((prev) => (was ? without(prev) : [toQuick(food, lastGrams), ...without(prev)]));
     startTransition(async () => {
       setError(null);
-      const result = await toggleFavoriteFood({ foodId, foodName: nameOf(food), per100g: food.per_100g });
+      const result = await settle(() => toggleFavoriteFood({ foodId, foodName: nameOf(food), per100g: food.per_100g }), t.common.actions.unreachable);
       if (!result.ok) {
         setFavs((prev) => (was ? [toQuick(food, lastGrams), ...without(prev)] : without(prev)));
         if (isPlanLimitError(result.message)) setLimit("favorites");
@@ -245,7 +250,7 @@ export function FoodLogger({
             onClick={() =>
               startTransition(async () => {
                 setError(null);
-                const result = await logFood({
+                const result = await settle(() => logFood({
                   slot,
                   day,
                   foodName: nameOf(picked),
@@ -254,7 +259,7 @@ export function FoodLogger({
                   // Links the log to its foods row so a later portion edit
                   // re-costs from the unrounded per-100g basis.
                   foodId: picked.id || null,
-                });
+                }), t.common.actions.unreachable);
                 if (!result.ok) {
                   setError(result.message ?? fl.couldNotLog);
                   return;
@@ -290,7 +295,13 @@ export function FoodLogger({
           onCode={(code) =>
             startTransition(async () => {
               setScanError(null);
-              const result = await lookupBarcode(code);
+              const result = await settleRead(() => lookupBarcode(code));
+              // no answer at all: back to search, never a dead end
+              if (!result) {
+                setScanning(false);
+                setScanError(t.common.actions.unreachable);
+                return;
+              }
               if (result.ok) {
                 // Show what the product is before anything is logged.
                 setScanning(false);

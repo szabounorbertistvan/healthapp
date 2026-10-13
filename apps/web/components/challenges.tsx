@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -188,7 +189,7 @@ export function JoinLeaveButton({ challenge: c }: { challenge: ChallengeCardRow 
   function run(action: () => Promise<{ ok: boolean; message?: string }>) {
     setError(null);
     startTransition(async () => {
-      const result = await action();
+      const result = await settle(() => action(), t.common.actions.unreachable);
       if (!result.ok) setError(result.message ?? "Error");
       router.refresh();
     });

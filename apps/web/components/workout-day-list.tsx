@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ export function WorkoutDayList({ groups, sex, editable = true }: { groups: Clien
     return new Promise<void>((resolve) => {
       startTransition(async () => {
         setError(null);
-        const result = await removeProgramDay(day.program_id, day.day_id);
+        const result = await settle(() => removeProgramDay(day.program_id, day.day_id), t.common.actions.unreachable);
         if (!result.ok) setError(result.message ?? w.couldNotDelete);
         router.refresh();
         resolve();

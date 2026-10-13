@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { isValidPortionGrams, parseDecimal, portionMacros } from "@healthapp/shared";
@@ -35,7 +36,7 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
     if (!valid) return;
     startTransition(async () => {
       setError(null);
-      const result = await updateFoodLog(entry.id, gramsNum);
+      const result = await settle(() => updateFoodLog(entry.id, gramsNum), t.common.actions.unreachable);
       if (!result.ok) {
         setError(result.message ?? t.clientWidgets.foodEntry.couldNotUpdate);
         return;
@@ -48,7 +49,7 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
   function remove() {
     startTransition(async () => {
       setError(null);
-      const result = await deleteFoodLog(entry.id);
+      const result = await settle(() => deleteFoodLog(entry.id), t.common.actions.unreachable);
       if (!result.ok) {
         setError(result.message ?? t.clientWidgets.foodEntry.couldNotDelete);
         return;

@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { PostVisibility } from "@healthapp/shared";
@@ -33,7 +34,7 @@ export function ShareChallenge({ challengeId }: { challengeId: string }) {
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const r = await shareChallenge(challengeId, visibility);
+            const r = await settle(() => shareChallenge(challengeId, visibility), t.common.actions.unreachable);
             if (r.ok) setDone(true);
             router.refresh();
           })

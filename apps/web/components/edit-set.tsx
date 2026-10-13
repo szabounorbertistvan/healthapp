@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { displayToKg, kgToDisplay, parseDecimal, parseWholeNumber } from "@healthapp/shared";
@@ -62,7 +63,7 @@ export function EditSet({
     };
     startTransition(async () => {
       setError(null);
-      const r = await updateLoggedSet(set.id, edit, dayId ?? null);
+      const r = await settle(() => updateLoggedSet(set.id, edit, dayId ?? null), t.common.actions.unreachable);
       if (!r.ok) {
         setError(r.message ?? m.couldNotEdit);
         return;

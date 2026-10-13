@@ -59,9 +59,16 @@ env.download
 e2e/.auth/
 e2e/.results/
 e2e/.report/
+e2e-local/.auth/
+e2e-local/.results/
+e2e-local/.report/
 
 # Generated from a DishFinder database export; the Romanian name list is not published with the repo.
 supabase/seed/dishfinder-names.sql
 
 # live database backups (npm run db:backup) — health data and password hashes; never commit
 backups/
+
+# PostgREST binary fetched by scripts/pgtest/api.mjs
+scripts/pgtest/.bin/
+scripts/pgtest/.stack/

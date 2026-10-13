@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addHabit } from "@/app/client-actions-app";
@@ -33,7 +34,7 @@ export function AddHabitForm({ existingNames }: { existingNames: string[] }) {
   function add(habitName: string, days: number, after?: () => void) {
     startTransition(async () => {
       setError(null);
-      const result = await addHabit(habitName, days);
+      const result = await settle(() => addHabit(habitName, days), t.common.actions.unreachable);
       if (!result.ok) {
         setError(result.message ?? m.couldNotAdd);
         return;

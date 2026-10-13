@@ -50,6 +50,8 @@ npm run web
 | `npm run db:test` | pgTAP RLS tests in `supabase/tests/` (needs Docker) |
 | `npm run db:backup` | `pg_dump` of the **live** project (public, auth, storage, migration ledger) into the gitignored `backups/<timestamp>/` — [scripts/db-backup.mjs](scripts/db-backup.mjs). Needs the CLI logged in and a local PostgreSQL 17 `pg_dump`; no Docker, no DB password. |
 | `npm run db:test:offline` | the same suites without Docker — [scripts/pgtest](scripts/pgtest/README.md). One-time `cd scripts/pgtest && npm install` (downloads a Postgres, ~100 MB, not a workspace). Stub pgTAP + stub `auth`; CI stays the source of truth. |
+| `npm run db:test:api` | the write-scope rules (20261122100000) through a real PostgREST over the same offline Postgres — refusals, `count: 0` on filtered writes, forged ids. Downloads PostgREST once (pinned); `PGRST_BIN` elsewhere than Linux x64. [scripts/pgtest](scripts/pgtest/README.md). |
+| `npm run e2e:local` | the **local** E2E suite (`e2e-local/`, `playwright.local.config.ts`): starts a throwaway Supabase without Docker (`scripts/pgtest/stack.mjs`: Postgres + GoTrue + PostgREST at the CLI's versions), builds the app against it on :3210 (never 3100 — `web-prod` is live; a busy port fails the run, a network fence aborts any browser request leaving the machine), signs in seeded `.test` accounts (`supabase/seed/e2e.sql`) and runs flows that **write** — refuses any non-local URL. Kept apart from `npm run e2e` (live, read-only). Manual CI workflow `e2e-local.yml`. [e2e-local/README.md](e2e-local/README.md). |
 
 CI (`.github/workflows/ci.yml`) runs typecheck + test + build, a `deno check` over
 `supabase/functions/` (the edge functions are Deno modules that `tsc` never sees —
@@ -296,6 +298,7 @@ third-party text writes it.
 
 - [docs/ENGINES.md](docs/ENGINES.md) — per-feature map: what each engine does, which files, what state it's in.
 - [docs/GAPS.md](docs/GAPS.md) — what the spec promises that the code does not do yet.
+- [docs/DEPLOY_COACH_WRITE_SCOPE.md](docs/DEPLOY_COACH_WRITE_SCOPE.md) — migration 20261122100000: read-only pre-deploy checks (policy drift, legacy rows), smoke checks, remediation that needs approval.
 - [docs/MARKETPLACE_EMAIL.md](docs/MARKETPLACE_EMAIL.md) — marketplace email: designed, not built (event map, outbox, GDPR, rollout).
 - [docs/DISHFINDER.md](docs/DISHFINDER.md) — the sibling project at `D:\react\dishfinder`. Since
   2026-10-01 it is a **data source, not a dependency**: its Romanian ingredient names and ids

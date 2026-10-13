@@ -148,6 +148,8 @@ const en = {
     loading: "Loading…",
     nothingChanged: "Nothing was saved. This item is no longer available to you; refresh and try again.",
     invalidInput: "Something in this request was not valid, so nothing was saved. Refresh and try again.",
+    unreachable: "The server did not answer, so this may not have been saved. Check your connection and try again.",
+    editUnverified: "We could not confirm that you may edit this, so it is shown read-only. Reload the page to try again.",
   },
   errorBoundary: {
     title: "Something went wrong on this screen",
@@ -1265,6 +1267,8 @@ const ro: typeof en = {
     loading: "Se încarcă…",
     nothingChanged: "Nu s-a salvat nimic. Elementul nu îți mai este disponibil; reîncarcă pagina și încearcă din nou.",
     invalidInput: "Ceva din această cerere nu era valid, așa că nu s-a salvat nimic. Reîncarcă pagina și încearcă din nou.",
+    unreachable: "Serverul nu a răspuns, deci este posibil să nu se fi salvat. Verifică conexiunea și încearcă din nou.",
+    editUnverified: "Nu am putut confirma că poți modifica acest element, așa că este afișat doar pentru citire. Reîncarcă pagina pentru a încerca din nou.",
   },
   errorBoundary: {
     title: "Ceva n-a mers bine pe acest ecran",

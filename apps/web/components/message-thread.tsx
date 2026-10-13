@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import type { ConversationContext, MessageRow } from "@/lib/types";
@@ -40,7 +41,7 @@ export function MessageThread({
     if (!body) return;
     setNote(null);
     startTransition(async () => {
-      const result = await sendMessage(conversationId, body);
+      const result = await settle(() => sendMessage(conversationId, body), t.common.actions.unreachable);
       if (result.ok) {
         setMessages((prev) => [
           ...prev,

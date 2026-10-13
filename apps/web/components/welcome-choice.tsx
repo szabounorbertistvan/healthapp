@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { chooseSoloTraining } from "@/app/client-actions";
@@ -36,8 +37,9 @@ export function WelcomeChoice() {
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  await chooseSoloTraining();
-                  router.push("/workout/build");
+                  // only once the choice is saved: otherwise /today would send them straight back here
+                  const r = await settle(() => chooseSoloTraining(), t.common.actions.unreachable);
+                  if (r.ok) router.push("/workout/build");
                 })
               }
               className="flex h-11 w-full items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-40"

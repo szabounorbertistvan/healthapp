@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -286,7 +287,7 @@ function ShareMilestone({ milestone, streakStart, shared, inline = false }: { mi
         onClick={() =>
           startTransition(async () => {
             setError(null);
-            const r = await shareStreak(milestone, streakStart, visibility);
+            const r = await settle(() => shareStreak(milestone, streakStart, visibility), t.common.actions.unreachable);
             if (!r.ok) setError(r.message ?? "Error");
             else setDone(true);
             router.refresh();

@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { canShareProgram, copyName, TRAINING_STYLES, type RoutineCard } from "@healthapp/shared";
@@ -39,7 +40,7 @@ export function RoutineActions({
   function runCopy(forClientId?: string) {
     startTransition(async () => {
       setError(null);
-      const result = await copyRoutine({ sourceId: card.id, name, forClientId: forClientId ?? null });
+      const result = await settle(() => copyRoutine({ sourceId: card.id, name, forClientId: forClientId ?? null }), t.common.actions.unreachable);
       if (!result.ok) {
         setError(result.message ?? r.couldNotCopy);
         return;
@@ -180,7 +181,7 @@ function ShareButton({ programId }: { programId: string }) {
         title={r.shareHint}
         onClick={() =>
           startTransition(async () => {
-            const result = await shareRoutine(programId);
+            const result = await settle(() => shareRoutine(programId), t.common.actions.unreachable);
             if (!result.ok) { setError(result.message ?? r.couldNotShare); return; }
             setDone(true);
           })
@@ -226,7 +227,7 @@ export function RoutineDetailsForm({
   function save() {
     startTransition(async () => {
       setError(null);
-      const result = await updateRoutineDetails({
+      const result = await settle(() => updateRoutineDetails({
         programId: card.id,
         name: form.name,
         description: form.description,
@@ -234,7 +235,7 @@ export function RoutineDetailsForm({
         goal: form.goal || null,
         trainingStyle: form.style || null,
         visibility: canPublish ? form.visibility : undefined,
-      });
+      }), t.common.actions.unreachable);
       if (!result.ok) { setError(result.message ?? r.couldNotSave); return; }
       setSaved(true);
       router.refresh();
@@ -365,7 +366,7 @@ export function RoutineAdminFlags({ programId, featured, official }: { programId
   function set(nextFeatured: boolean, nextOfficial: boolean) {
     startTransition(async () => {
       setError(null);
-      const result = await setRoutineFlags(programId, nextFeatured, nextOfficial);
+      const result = await settle(() => setRoutineFlags(programId, nextFeatured, nextOfficial), t.common.actions.unreachable);
       if (!result.ok) { setError(result.message ?? r.couldNotFlag); return; }
       router.refresh();
     });

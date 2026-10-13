@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { createInvite } from "@/app/actions";
 import { useI18n } from "@/lib/i18n/client";
@@ -13,7 +14,7 @@ export function InviteButton({ disabled = false }: { disabled?: boolean }) {
   function onClick() {
     setError(null);
     startTransition(async () => {
-      const result = await createInvite();
+      const result = await settle(() => createInvite(), t.common.actions.unreachable);
       if (result.ok && result.code) setCode(result.code);
       else if (result.message?.includes("CLIENT_LIMIT_REACHED"))
         setError(m.limitReachedUpgrade);

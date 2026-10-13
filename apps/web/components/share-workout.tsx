@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { loadWorkoutShareCard } from "@/app/share-card-actions";
@@ -60,7 +61,7 @@ export function ShareWorkoutButton({
     }
     if (!sessionId) return;
     startTransition(async () => {
-      const r = await loadWorkoutShareCard(sessionId);
+      const r = await settle(() => loadWorkoutShareCard(sessionId), t.common.actions.unreachable);
       if (r.ok && r.card) setOpen(r.card);
       else setError(r.message ?? s.notFound);
     });

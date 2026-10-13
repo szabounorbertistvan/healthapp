@@ -62,15 +62,41 @@ local check, and it differs in ways that matter:
   is no GoTrue, so nothing that depends on an actual sign-in is exercised.
 - **No `pg_cron`, `pg_net` or `vault`.** The migrations already guard for their
   absence; anything gated behind them is simply not run here.
-- **No PostgREST.** These are SQL-level tests. RLS is exercised by setting the
-  `authenticated` role and a JWT claim, which is what the suites do anyway, but
-  nothing proves an embedded-resource filter in a PostgREST query behaves.
+- **No PostgREST in `run.mjs`.** These are SQL-level tests. RLS is exercised by
+  setting the `authenticated` role and a JWT claim, which is what the suites do
+  anyway. `api.mjs` (below) covers the HTTP layer for the write-scope rules.
+- **Function grants are not mirrored by `bootstrap.sql`.** Supabase also grants
+  EXECUTE on every new public function to anon / authenticated / service_role,
+  so a migration that revokes only `from public` passes here and is still
+  callable by anon live: always name `anon` in the revoke. `api.mjs` adds that
+  default, and the full suite was checked green with it (2026-10-13).
+
+## Through PostgREST: `api.mjs`
+
+```bash
+npm run db:test:api
+```
+
+The same embedded Postgres, then a real PostgREST (v16.1, the version the
+repo's Supabase CLI starts in Docker; downloaded once into `scripts/pgtest/.bin/`,
+SHA-256 pinned in `bins.mjs` — set `PGRST_BIN` on Windows / macOS) logged in as `authenticator`, JWTs signed with
+Supabase's claims, and requests built by `@supabase/postgrest-js` — what every
+`supabase.from(...)` in the app sends. It checks the rules of
+`20261122100000_coach_write_scope` as HTTP sees them: refusals as 42501, an
+RLS-filtered write as `count: 0` (what `mutated()` reads), forged ids in a
+payload, and the legitimate request beside each refusal.
+`PGTEST_EXCLUDE=<migration file>` runs it without one migration — every rule
+that migration adds should then fail. No GoTrue: tokens are minted here.
 
 ## Files
 
 | File | |
 |---|---|
 | `run.mjs` | starts the server, applies migrations, runs the suites, counts `not ok` |
+| `api.mjs` | the same, plus PostgREST: the write-scope rules over HTTP |
+| `stack.mjs` | a whole local Supabase for `e2e-local/` (`npm run e2e:stack`): Postgres + GoTrue + PostgREST + gateway on 127.0.0.1:54430–54433 |
+| `stack-env.mjs` | the stack's fixed local addresses and keys (no dependencies) |
+| `bins.mjs` | PostgREST v16.1 / GoTrue v2.195.0 — the CLI's own versions — downloaded once, SHA-256 pinned |
 | `bootstrap.sql` | roles, schemas, stub `auth`, `auth.uid()` |
 | `pgtap--0.1.sql` | the stub assertions, installed as a Postgres extension |
 

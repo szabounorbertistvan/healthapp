@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { createCustomFood } from "@/app/nutrition-actions";
 import { useI18n } from "@/lib/i18n/client";
@@ -43,14 +44,14 @@ export function NewFoodForm({
     if (!valid) return;
     startTransition(async () => {
       setError(null);
-      const result = await createCustomFood({
+      const result = await settle(() => createCustomFood({
         name,
         brand,
         kcal: num(kcal),
         protein: protein.trim() === "" ? 0 : num(protein),
         carbs: carbs.trim() === "" ? 0 : num(carbs),
         fat: fat.trim() === "" ? 0 : num(fat),
-      });
+      }), t.common.actions.unreachable);
       if (!result.ok) {
         setError(result.message || m.couldNotCreate);
         return;

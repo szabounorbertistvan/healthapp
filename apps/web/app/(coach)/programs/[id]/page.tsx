@@ -5,11 +5,13 @@ import { exerciseFacets } from "@/lib/exercise-library";
 import { NavIcon } from "@/components/client-nav";
 import { ProgramBuilder } from "@/components/program-builder";
 import { getI18n } from "@/lib/i18n/server";
+import { canEdit } from "@/lib/can-edit";
+import { ReadOnlyNotice } from "@/components/read-only-notice";
 
 export default async function ProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const { t } = await getI18n();
   const { id } = await params;
-  const [program, clients] = await Promise.all([getProgram(id), getActiveClientNames()]);
+  const [program, clients, access] = await Promise.all([getProgram(id), getActiveClientNames(), canEdit("can_edit_program", { p_program: id })]);
   if (!program) notFound();
 
   const facets = exerciseFacets();
@@ -41,7 +43,12 @@ export default async function ProgramPage({ params }: { params: Promise<{ id: st
           <NavIcon d="m9 6 6 6-6 6" className="h-[15px] w-[15px]" />
         </Link>
       </div>
-      <ProgramBuilder program={program} clients={clients} muscles={facets.muscles} equipment={facets.equipment} />
+      {access === "edit" ? null
+        : <ReadOnlyNotice text={access === "read-only" ? t.coachApp.programBuilderPage.readOnly : t.common.actions.editUnverified} />}
+      {/* Disabled, not hidden: the coach keeps reading what they wrote; the
+          database refuses the writes anyway (20261122100000). Editable only on
+          a confirmed yes — a check that failed is read-only too (lib/edit-access.ts). */}
+      <ProgramBuilder program={program} clients={clients} muscles={facets.muscles} equipment={facets.equipment} readOnly={access !== "edit"} />
     </div>
   );
 }

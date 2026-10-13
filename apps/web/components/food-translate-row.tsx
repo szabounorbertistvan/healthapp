@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setFoodRomanianName } from "@/app/food-admin-actions";
@@ -28,7 +29,7 @@ export function FoodTranslateRow({
   function save() {
     if (!dirty || pending) return;
     startTransition(async () => {
-      const result = await setFoodRomanianName(id, value);
+      const result = await settle(() => setFoodRomanianName(id, value), t.common.actions.unreachable);
       if (!result.ok) {
         setState("error");
         setMessage(result.message ?? null);

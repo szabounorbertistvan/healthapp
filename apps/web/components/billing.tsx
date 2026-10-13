@@ -3,6 +3,7 @@
 // Prices shown are the MVP defaults from @healthapp/shared — Stripe's checkout
 // page always displays the real amount, so a dashboard price change can't
 // charge something different from what the user confirms.
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import {
   PLAN_PRICES, TIER_LABEL, trialDaysLeft,
@@ -61,6 +62,7 @@ export function SubscribePanel({
   hasStripe: boolean;
   returnPath: string;
 }) {
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const prices = PLAN_PRICES[plan];
@@ -69,7 +71,7 @@ export function SubscribePanel({
   function go(interval: PlanInterval) {
     setError(null);
     startTransition(async () => {
-      const result = await startCheckout(plan, interval, returnPath);
+      const result = await settle(() => startCheckout(plan, interval, returnPath), t.common.actions.unreachable);
       if (result.ok && result.url) window.location.assign(result.url);
       else setError(result.message ?? "Could not start checkout");
     });
@@ -78,7 +80,7 @@ export function SubscribePanel({
   function portal() {
     setError(null);
     startTransition(async () => {
-      const result = await openBillingPortal(returnPath);
+      const result = await settle(() => openBillingPortal(returnPath), t.common.actions.unreachable);
       if (result.ok && result.url) window.location.assign(result.url);
       else setError(result.message ?? "Could not open billing portal");
     });
@@ -141,13 +143,14 @@ const GRANTABLE: Tier[] = ["free", "premium", "coach_free", "coach_pro"];
 
 /** Admin-only per-user comp control: grants any tier for free, bypassing Stripe. */
 export function AdminTierSelect({ userId, tier }: { userId: string; tier: Tier }) {
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function onChange(next: string) {
     setError(null);
     startTransition(async () => {
-      const result = await adminSetTier(userId, next);
+      const result = await settle(() => adminSetTier(userId, next), t.common.actions.unreachable);
       if (!result.ok) setError(result.message ?? "Failed");
     });
   }

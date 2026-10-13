@@ -1,4 +1,5 @@
 "use client";
+import { settle, settleRead } from "@/lib/settle-action";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useOptimistic, useReducer, useRef, useState, useTransition } from "react";
@@ -626,7 +627,7 @@ export function PostCard({ post, detail = false, removeOnUnsave = false }: {
           onConfirm={() =>
             startTransition(async () => {
               setDeleteError(null);
-              const r = await deletePost(post.id);
+              const r = await settle(() => deletePost(post.id), t.common.actions.unreachable);
               if (!r.ok) {
                 setDeleteError(r.message ?? s.saveError);
                 return;
@@ -660,7 +661,7 @@ export function PostCard({ post, detail = false, removeOnUnsave = false }: {
             e.preventDefault();
             setEditError(null);
             startTransition(async () => {
-              const r = await editPost(post.id, draft);
+              const r = await settle(() => editPost(post.id, draft), t.common.actions.unreachable);
               if (!r.ok) {
                 setEditError(r.message ?? s.textInvalid);
                 return;
@@ -990,7 +991,7 @@ function ShareSheet({ post, onClose }: { post: FeedPost; onClose: () => void }) 
               e.preventDefault();
               setError(null);
               startTransition(async () => {
-                const r = await sharePost(post.id, caption, visibility);
+                const r = await settle(() => sharePost(post.id, caption, visibility), t.common.actions.unreachable);
                 if (!r.ok) { setError(r.message ?? s.shareFailed); return; }
                 setComposing(false);
                 setStatus("shared");
@@ -1328,7 +1329,8 @@ function KudosDialog({ postId, onClose }: { postId: string; onClose: () => void 
   function more() {
     if (!cursor) return;
     startTransition(async () => {
-      const page = await loadKudos(postId, cursor);
+      const page = await settleRead(() => loadKudos(postId, cursor));
+      if (!page) return; // what is listed stays; the button stays to try again
       setItems((prev) => [...(prev ?? []), ...page.items]);
       setCursor(page.next_cursor);
     });
@@ -1499,12 +1501,12 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
             const r = progress
               // The box is in the reader's unit; social_posts stores kilograms
               // like every other weight, so the feed cannot mix the two.
-              ? await createProgressPost(
+              ? await settle(() => createProgressPost(
                   text,
                   visibility,
                   includeWeight ? displayToKg(Number(weight.replace(",", ".")), u.weightUnit) : null,
                   withOverlay,
-                )
+                ), t.common.actions.unreachable)
               : await createTextPost(text, visibility, withOverlay);
             if (!r.ok) {
               // The draft stays as it is — pictures included — so a retry is one tap.
@@ -1678,7 +1680,7 @@ export function FollowButton({ userId, following, followsMe = false, compact = f
     setError(null);
     startTransition(async () => {
       setState(next);
-      const r = await (next ? follow(userId) : unfollow(userId));
+      const r = await settle(() => (next ? follow(userId) : unfollow(userId)), t.common.actions.unreachable);
       if (!r.ok) {
         setError(r.message ?? s.followError);
         return; // no refresh: the optimistic state drops back to the server's
@@ -1901,7 +1903,7 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
                       return;
                     }
                     const list = plan.media.length === 1 && overlay ? [{ ...plan.media[0]!, overlay }] : plan.media;
-                    const r = await onShare(visibility, text, list.length > 0 ? list : null);
+                    const r = await settle(() => onShare(visibility, text, list.length > 0 ? list : null), t.common.actions.unreachable);
                     if (!r.ok) {
                       setError(r.message ?? s.mediaPublishFailed);
                       return;
@@ -1952,7 +1954,7 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
                     disabled={pending}
                     onClick={() =>
                       startTransition(async () => {
-                        const r = await onSharePr(pr.set_id, visibility);
+                        const r = await settle(() => onSharePr(pr.set_id, visibility), t.common.actions.unreachable);
                         if (r.ok) setSharedPrs((prev) => new Set([...prev, pr.set_id]));
                         else setError(r.message ?? "Error");
                         router.refresh();

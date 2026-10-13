@@ -54,6 +54,7 @@ const en = {
   programBuilderPage: {
     back: "Programs",
     newTitle: "New program",
+    readOnly: "Read only: you no longer coach this client (the coaching ended or is paused). You can still read the program; changes are not saved.",
   },
   library: {
     title: "Exercise library",
@@ -75,6 +76,7 @@ const en = {
     carbsShort: "C",
     fatShort: "F",
     back: "Nutrition",
+    readOnly: "Read only: you no longer coach this client (the coaching ended or is paused). You can still read the plan; changes are not saved.",
     newTitle: "New nutrition plan",
   },
   checkIns: {
@@ -219,6 +221,7 @@ const ro: typeof en = {
   programBuilderPage: {
     back: "Programe",
     newTitle: "Program nou",
+    readOnly: "Doar citire: nu mai antrenezi acest client (colaborarea s-a încheiat sau este pe pauză). Poți citi programul, dar modificările nu se salvează.",
   },
   library: {
     title: "Biblioteca de exerciții",
@@ -240,6 +243,7 @@ const ro: typeof en = {
     carbsShort: "C",
     fatShort: "G",
     back: "Nutriție",
+    readOnly: "Doar citire: nu mai antrenezi acest client (colaborarea s-a încheiat sau este pe pauză). Poți citi planul, dar modificările nu se salvează.",
     newTitle: "Plan de nutriție nou",
   },
   checkIns: {

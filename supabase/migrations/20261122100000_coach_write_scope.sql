@@ -30,6 +30,13 @@
 --   4. logged_sets. A set could be filed under another person's session.
 --
 --   5. nutrition_plans. Macro gram targets had no check: negatives were accepted.
+--
+--   6. habit_logs. A tick could be filed on someone else's habit, blocking theirs.
+--
+--   7. admin_set_tier. Executable by anon (refused inside, but needlessly reachable).
+--
+--   8. logged_sessions / logged_sets / set_videos. A session, set or video could point
+--      at another person's private program day, program exercise or logged set.
 
 -- ---------- 1. coach_feedback: the client marks it read, nothing else ----------
 revoke update on table public.coach_feedback from authenticated;
@@ -143,18 +150,67 @@ create policy pmfoods_delete on public.planned_meal_foods for delete to authenti
 -- posts). social_posts_guard totals a shared workout from every set in the
 -- session, so the victim's post showed the stranger's volume and PRs.
 drop policy if exists sets_owner on public.logged_sets;
+-- (and, section 8, its program exercise must be one the logger can see)
 create policy sets_owner on public.logged_sets for all to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid()
-    and exists (select 1 from public.logged_sessions s where s.id = session_id and s.user_id = auth.uid()));
+    and exists (select 1 from public.logged_sessions s where s.id = session_id and s.user_id = auth.uid())
+    and (program_exercise_id is null
+         or exists (select 1 from public.program_exercises pe join public.program_days d on d.id = pe.program_day_id
+                    where pe.id = program_exercise_id and public.can_see_program(d.program_id))));
 
 -- ---------- 5. macro targets are never negative ----------
 -- kcal_target had its range check from the start; the three gram targets had
 -- none, and createNutritionPlan checked only kcal, so a negative or absurd
--- target could be saved. Mirrors isValidDailyTargets (packages/shared/src/macros.ts).
+-- target could be saved. Mirrors isValidDailyTargets (packages/shared/src/macros.ts):
+-- 2 500 g is what the 10 000 kcal ceiling holds of protein or carbs, so every
+-- target setMyNutritionTargets derives from a valid kcal and split passes.
 -- NOT VALID: new and updated rows are checked; rows already stored are not
 -- rescanned, so this cannot fail on production data written before it.
 alter table public.nutrition_plans
   add constraint nutrition_plans_macro_targets_check
-  check (protein_target_g between 0 and 1000 and carbs_target_g between 0 and 1000 and fat_target_g between 0 and 1000)
+  check (protein_target_g between 0 and 2500 and carbs_target_g between 0 and 2500 and fat_target_g between 0 and 2500)
   not valid;
+
+-- ---------- 6. a habit is ticked only by the person whose habit it is ----------
+-- habit_logs_owner checked only habit_logs.user_id, while the table is unique on
+-- (habit_id, date). Anyone holding a habit's id — the coach who created it,
+-- also after the coaching ended — could insert a "tick" of their own on the
+-- client's habit for any day; the client's own tick then failed with a unique
+-- violation, on a row RLS hides from them so they cannot remove it either.
+-- Every reader counts habit_logs by user_id, so no statistic was skewed: the
+-- harm is the blocked tick. Rows already stored are not touched here.
+drop policy if exists habit_logs_owner on public.habit_logs;
+create policy habit_logs_owner on public.habit_logs for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid()
+    and exists (select 1 from public.habits h where h.id = habit_id and h.user_id = auth.uid()));
+
+-- ---------- 7. admin_set_tier: no anonymous caller ----------
+-- Executable by anon through the default PUBLIC grant. Not exploitable — it
+-- raises FORBIDDEN unless is_admin(), and auth.uid() is null without a session
+-- — but an admin write has no business answering a caller without a session.
+-- Its callers are billing-actions.ts (a signed-in admin) and the service role.
+revoke execute on function public.admin_set_tier(uuid, text) from public, anon;
+grant execute on function public.admin_set_tier(uuid, text) to authenticated, service_role;
+
+-- ---------- 8. what a session, a set or a video points at must be the logger's to use ----------
+-- The owner policies checked only the new row's user_id, never the row it
+-- references. Anyone could file a session under another person's PRIVATE
+-- program day (program_usage() then counted it in that program's statistics),
+-- a set under another person's program exercise (sets_owner, section 4), or a
+-- set video under another person's logged set. A day or exercise must belong to a program the logger
+-- can see (their own, the one their coach wrote for them, or a public / followed
+-- routine — every path the app logs through); a video's set must be their own.
+drop policy if exists sessions_owner on public.logged_sessions;
+create policy sessions_owner on public.logged_sessions for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid()
+    and (program_day_id is null
+         or exists (select 1 from public.program_days d where d.id = program_day_id and public.can_see_program(d.program_id))));
+
+drop policy if exists setvideos_owner on public.set_videos;
+create policy setvideos_owner on public.set_videos for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid()
+    and exists (select 1 from public.logged_sets ls where ls.id = logged_set_id and ls.user_id = auth.uid()));

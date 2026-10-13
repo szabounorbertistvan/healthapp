@@ -24,13 +24,18 @@ export function isValidPortionGrams(grams: number): boolean {
  * A plan's daily targets, as `nutrition_plans` stores them: whole kcal within
  * the column's own check (500..10 000), and each macro a whole number of grams
  * from 0 to MAX_MACRO_TARGET_G (mirrored by nutrition_plans_macro_targets_check,
- * 20261121100000). The coach types the grams freely, so a negative, empty (NaN)
+ * 20261122100000). The coach types the grams freely, so a negative, empty (NaN)
  * or absurd value must be refused before it becomes a target every progress
  * bar divides by.
+ *
+ * The gram cap is what the calorie ceiling can hold at all: 10 000 kcal of
+ * protein or carbs (4 kcal/g) is 2 500 g. Anything gramsFromSplit derives for
+ * a valid kcal and any split therefore passes — a lower cap refused a real
+ * 6 000 kcal, 70 % carbs athlete's 1 050 g of carbs.
  */
 export const MIN_KCAL_TARGET = 500;
 export const MAX_KCAL_TARGET = 10000;
-export const MAX_MACRO_TARGET_G = 1000;
+export const MAX_MACRO_TARGET_G = 2500;
 
 export function isValidDailyTargets(t: Macros): boolean {
   const whole = (n: number, min: number, max: number) => Number.isInteger(n) && n >= min && n <= max;

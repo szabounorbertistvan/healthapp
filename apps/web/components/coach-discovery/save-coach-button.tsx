@@ -37,6 +37,13 @@ export function SaveCoachButton({ profileId, saved, signedIn, variant = "icon", 
   const [pending, start] = useTransition();
   // the last state the server confirmed; the optimistic one rides on it during the request
   const [confirmed, setConfirmed] = useState(saved);
+  // a newer server answer wins: back from sign-in, SaveIntent saves and refreshes
+  // the page, and the button must show the coach as saved without a reload
+  const [lastSaved, setLastSaved] = useState(saved);
+  if (saved !== lastSaved) {
+    setLastSaved(saved);
+    setConfirmed(saved);
+  }
   const [state, setState] = useOptimistic(confirmed, (_, next: boolean) => next);
   const [error, setError] = useState<string | null>(null);
 

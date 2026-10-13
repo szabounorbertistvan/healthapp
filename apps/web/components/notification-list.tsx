@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import Link from "next/link";
 import { useEffect, useReducer, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -256,7 +257,7 @@ export function NotificationList({
     if (isRead(row)) return;
     dispatch({ type: "mark", id: row.id });
     startTransition(async () => {
-      await markNotificationRead(row.id);
+      await settle(() => markNotificationRead(row.id), t.common.actions.unreachable);
       router.refresh();
     });
   };
@@ -274,7 +275,7 @@ export function NotificationList({
             onClick={() =>
               startTransition(async () => {
                 dispatch({ type: "markAll" });
-                await markNotificationsRead();
+                await settle(() => markNotificationsRead(), t.common.actions.unreachable);
                 router.refresh();
               })
             }

@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -51,7 +52,7 @@ export function MacroTargetsForm({
     if (!kcalValid) return;
     startTransition(async () => {
       setError(null);
-      const result = await setMyNutritionTargets({ kcal: kcalNum, split });
+      const result = await settle(() => setMyNutritionTargets({ kcal: kcalNum, split }), t.common.actions.unreachable);
       if (!result.ok) {
         setError(result.message ?? m.couldNotSave);
         return;

@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { acceptConsent, completeProfile } from "@/app/profile-actions";
@@ -75,11 +76,11 @@ export function CompleteProfileForm({
     startTransition(async () => {
       setError(null);
       const result = consentOnly
-        ? await acceptConsent()
-        : await completeProfile({
+        ? await settle(() => acceptConsent(), t.common.actions.unreachable)
+        : await settle(() => completeProfile({
             fullName, username, sex: sex as Sex, age: parseInt(age, 10),
             role: askRole ? role : "client",
-          });
+          }), t.common.actions.unreachable);
       if (!result.ok) {
         setError(
           result.errorCode === "USERNAME_TAKEN" ? m.errUsernameTaken

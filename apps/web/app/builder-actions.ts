@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { DEFAULT_TARGETS, isExerciseMeasure, isPlanLimitError, isSetType, swapNeighbour, validateTargets, type ExerciseTargets } from "@healthapp/shared";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
-import { mutated } from "@/lib/supabase/mutate";
+import { inserted, mutated } from "@/lib/supabase/mutate";
 import type { ActionResult } from "./actions";
 import { notSignedIn, planLimitReached, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
@@ -124,7 +124,8 @@ export async function addProgramDay(programId: string, name: string): Promise<Ac
     day_index: dayIndex,
     name: dayName,
   });
-  if (error) return { ok: false, message: error.message };
+  const refused = await inserted(error);
+  if (refused) return refused;
   revalidatePath(`/programs/${programId}`);
   return { ok: true };
 }
@@ -183,7 +184,8 @@ export async function addProgramExercise(input: {
     ...targets,
     circuit: input.circuit ?? null,
   });
-  if (error) return { ok: false, message: error.message };
+  const refused = await inserted(error);
+  if (refused) return refused;
   programTouched(input.programId);
   return { ok: true };
 }
@@ -388,7 +390,9 @@ export async function duplicateProgramExercise(programId: string, exerciseRowId:
   if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const { error } = await supabase.rpc("duplicate_program_exercise", { p_row: exerciseRowId });
-  if (error) return { ok: false, message: error.message };
+  // the RPC raises 42501 for someone who may not edit the program
+  const refused = await inserted(error);
+  if (refused) return refused;
   programTouched(programId);
   return { ok: true };
 }
@@ -421,7 +425,9 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
     })
     .select("id")
     .single();
-  if (writeError) return { ok: false, message: writeError.message };
+  const refused = await inserted(writeError);
+  if (refused) return refused;
+  if (!created) return { ok: false };
 
   const rows = (source.program_exercises ?? []).map((e) => ({
     ...e,
@@ -429,7 +435,8 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
   }));
   if (rows.length > 0) {
     const { error } = await supabase.from("program_exercises").insert(rows);
-    if (error) return { ok: false, message: error.message };
+    const refusedRows = await inserted(error);
+    if (refusedRows) return refusedRows;
   }
   revalidatePath(`/programs/${programId}`);
   return { ok: true };

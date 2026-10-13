@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProgramDetail } from "@/lib/types";
@@ -22,9 +23,16 @@ type Props = {
   clients?: { id: string; name: string }[];
   muscles: string[];
   equipment: string[];
+  /**
+   * The signed-in coach may no longer change this program (can_edit_program
+   * says no: the coaching ended or is paused). Everything stays readable and
+   * "Copy to client" stays — copying what you wrote to a current client is
+   * allowed — while every change is disabled. The database refuses them anyway.
+   */
+  readOnly?: boolean;
 };
 
-export function ProgramBuilder({ program, clients = [], muscles, equipment }: Props) {
+export function ProgramBuilder({ program, clients = [], muscles, equipment, readOnly = false }: Props) {
   const router = useRouter();
   const { t } = useI18n();
   const { e: plan, upgrade } = usePlan();
@@ -40,7 +48,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment }: Pr
   function run(action: () => Promise<{ ok: boolean; message?: string }>) {
     setError(null);
     startTransition(async () => {
-      const result = await action();
+      const result = await settle(action, t.common.actions.unreachable);
       if (!result.ok) setError(result.message ?? m.somethingWentWrong);
       router.refresh();
     });
@@ -70,7 +78,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment }: Pr
                 addProgramDay(program.id, fill(m.dayDefaultName, { n: program.days.length + 1 })),
               )
             }
-            disabled={pending}
+            disabled={pending || readOnly}
             className="inline-flex h-11 items-center rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
           >
             {m.addDay}
@@ -86,7 +94,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment }: Pr
           </button>
           <button
             onClick={() => run(() => publishProgram(program.id))}
-            disabled={pending || isEmpty || program.status === "published"}
+            disabled={pending || readOnly || isEmpty || program.status === "published"}
             title={isEmpty ? m.publishHint : undefined}
             className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
           >
@@ -122,7 +130,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment }: Pr
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  const result = await deleteProgram(program.id);
+                  const result = await settle(() => deleteProgram(program.id), t.common.actions.unreachable);
                   if (!result.ok) {
                     setError(result.message ?? m.somethingWentWrong);
                     setConfirmingDelete(false);
@@ -144,7 +152,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment }: Pr
         <div className="mt-3 text-right">
           <button
             type="button"
-            disabled={pending}
+            disabled={pending || readOnly}
             onClick={() => { setError(null); setConfirmingDelete(true); }}
             className="text-[12.5px] font-semibold text-ink-faint hover:text-risk disabled:opacity-50"
           >
@@ -170,7 +178,8 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment }: Pr
       {copyHint && !canCopy ? <UpgradeHint card feature="programCopy" upgrade={upgrade} className="mt-4" /> : null}
       {copyOpen && canCopy ? <CopyToClient programId={program.id} clients={clients} /> : null}
 
-      <div className="mt-5 space-y-4 sm:mt-6">
+      {/* disabled, not hidden: the days stay readable */}
+      <fieldset disabled={readOnly} className="mt-5 min-w-0 space-y-4 sm:mt-6">
         {program.days.length === 0 ? <EmptyState plain title={m.noDaysTitle} hint={m.noDaysBody} /> : null}
 
         {program.days.map((day, i) => (
@@ -207,7 +216,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment }: Pr
             }
           />
         ))}
-      </div>
+      </fieldset>
     </div>
   );
 }

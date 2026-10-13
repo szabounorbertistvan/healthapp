@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { displayToKg, parseDecimal } from "@healthapp/shared";
@@ -92,11 +93,11 @@ export function CheckInForm() {
               // Typed in the reader's unit; check_ins.weight_kg is metric.
               const typed = parseDecimal(weight);
               const parsed = typed === null ? null : displayToKg(typed, u.weightUnit);
-              const result = await submitCheckIn({
+              const result = await settle(() => submitCheckIn({
                 weightKg: parsed,
                 ...scores,
                 note,
-              });
+              }), t.common.actions.unreachable);
               if (!result.ok) {
                 setError(result.message ?? t.clientWidgets.checkInForm.couldNotSubmit);
                 return;

@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setExerciseRomanian } from "@/app/exercise-admin-actions";
@@ -44,7 +45,7 @@ export function ExerciseTranslateRow({
   function save() {
     if (!dirty || pending) return;
     startTransition(async () => {
-      const result = await setExerciseRomanian(id, name, steps);
+      const result = await settle(() => setExerciseRomanian(id, name, steps), t.common.actions.unreachable);
       if (!result.ok) {
         setState("error");
         setMessage(result.message ?? null);

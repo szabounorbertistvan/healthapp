@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -137,7 +138,7 @@ export function SaveButton({ card, withLabel = false }: { card: RoutineCard; wit
         startTransition(async () => {
           const next = !saved;
           setSaved(next);
-          const result = await toggleRoutineSave(card.id, saved);
+          const result = await settle(() => toggleRoutineSave(card.id, saved), t.common.actions.unreachable);
           if (!result.ok) {
             setSaved(!next);
             return;

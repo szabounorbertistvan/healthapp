@@ -1,4 +1,5 @@
 "use client";
+import { settle, settleRead } from "@/lib/settle-action";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { exerciseRef, type ExerciseSummary } from "@healthapp/shared";
@@ -47,13 +48,14 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
   const [renaming, setRenaming] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   function saveRename(exercise: ExerciseSummary) {
     const id = exercise.id;
     if (!id) return;
     startTransition(async () => {
       setRenameError(null);
-      const r = await renameExercise(id, newName);
+      const r = await settle(() => renameExercise(id, newName), t.common.actions.unreachable);
       if (!r.ok) { setRenameError(r.message ?? m.couldNotRename); return; }
       setResults((current) => current.map((e) => (e.id === id ? { ...e, name_en: newName.trim(), name_ro: newName.trim() } : e)));
       setRenaming(null);
@@ -70,9 +72,12 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
     setLoading(true);
     const timer = setTimeout(() => {
       startTransition(async () => {
-        const found = await searchExerciseLibrary({ q, muscle, equipment: gear }, (page - 1) * PAGE_SIZE);
-        setResults(found.results);
-        setTotal(found.total);
+        const found = await settleRead(() => searchExerciseLibrary({ q, muscle, equipment: gear }, (page - 1) * PAGE_SIZE));
+        setSearchError(found ? null : t.common.actions.unreachable);
+        if (found) {
+          setResults(found.results);
+          setTotal(found.total);
+        }
         setLoading(false);
         listRef.current?.scrollTo({ top: 0 });
       });
@@ -176,6 +181,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
                 n: total,
               })}
           {total > results.length ? ` ${fill(m.showingFirst, { n: results.length })}` : ""}
+          {searchError ? <span role="alert" className="block text-risk">{searchError}</span> : null}
         </span>
         {/* The nudge sits next to the count once something is typed — a
             match may be listed and still not be the one they mean. */}

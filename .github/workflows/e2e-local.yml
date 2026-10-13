@@ -1,0 +1,44 @@
+name: E2E (local stack)
+
+# The local end-to-end suite (e2e-local/, playwright.local.config.ts): the real
+# app against a throwaway Supabase on the runner — Postgres, GoTrue and
+# PostgREST at the versions the repo's Supabase CLI pins — with its own seeded
+# accounts. It never reaches the live project (e2e-local/target.ts refuses any
+# non-local URL), so it needs no secret.
+#
+# Manual only for now: it takes several minutes (a production build plus the
+# stack), and ci.yml is the gate for every push and PR. Turning it on for
+# pull_request is a separate decision (see e2e-local/README.md).
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-local-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-local:
+    name: Local E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # the Docker-less stack's own dependencies (embedded Postgres); not a workspace
+      - run: npm ci
+        working-directory: scripts/pgtest
+      - run: npx playwright install --with-deps chromium
+      # starts the stack, builds and starts the app on :3210, runs the suite
+      - run: npm run e2e:local
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-local-report
+          path: |
+            e2e-local/.report
+            e2e-local/.results
+          retention-days: 7

@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { NutritionPlanDetail, PlanMealRow } from "@/lib/types";
@@ -35,7 +36,7 @@ export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
   function run(action: () => Promise<{ ok: boolean; message?: string }>) {
     setError(null);
     startTransition(async () => {
-      const result = await action();
+      const result = await settle(action, t.common.actions.unreachable);
       if (!result.ok) setError(result.message ?? m.somethingWentWrong);
       router.refresh();
     });

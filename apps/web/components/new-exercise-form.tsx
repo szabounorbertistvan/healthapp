@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import type { ExerciseSummary } from "@healthapp/shared";
 import { createCustomExercise } from "@/app/library-actions";
@@ -69,7 +70,7 @@ export function NewExerciseForm({
     if (!valid) return;
     startTransition(async () => {
       setError(null);
-      const result = await createCustomExercise({
+      const result = await settle(() => createCustomExercise({
         name,
         primaryMuscle: primary,
         secondaryMuscles: secondary,
@@ -78,7 +79,7 @@ export function NewExerciseForm({
         level: level || null,
         mechanic: mechanic || null,
         instructions,
-      });
+      }), t.common.actions.unreachable);
       if (!result.ok) {
         if (isPlanLimitError(result.message)) setLimitHit(true);
         else setError(result.message || m.couldNotCreate);

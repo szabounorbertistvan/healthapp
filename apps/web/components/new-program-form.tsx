@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -33,14 +34,14 @@ export function NewProgramForm({
     setError(null);
     startTransition(async () => {
       const client = roster.find((c) => c.id === clientId);
-      const result = await createProgram({
+      const result = await settle(() => createProgram({
         name,
         clientId,
         clientName: client?.name ?? "—",
         weeks,
         intensityMode,
-      });
-      if (result.ok && result.id) router.push(`/programs/${result.id}`);
+      }), t.common.actions.unreachable);
+      if (result.ok && "id" in result && result.id) router.push(`/programs/${result.id}`);
       else setError(result.message ?? m.createError);
     });
   }

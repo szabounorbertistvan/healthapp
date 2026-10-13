@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -47,7 +48,7 @@ export function SoloProgramBuilder({
   function run(action: () => Promise<{ ok: boolean; message?: string }>) {
     setError(null);
     startTransition(async () => {
-      const result = await action();
+      const result = await settle(action, t.common.actions.unreachable);
       if (!result.ok) setError(result.message ?? "Something went wrong");
       router.refresh();
     });

@@ -1,4 +1,5 @@
 "use client";
+import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import type { CheckInRow } from "@/lib/types";
 import { reviewCheckIn } from "@/app/actions";
@@ -26,7 +27,7 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
     if (!selected) return;
     setStatus(null);
     startTransition(async () => {
-      const result = await reviewCheckIn(selected.id, selected.client_id, markOnly ? "" : feedback);
+      const result = await settle(() => reviewCheckIn(selected.id, selected.client_id, markOnly ? "" : feedback), t.common.actions.unreachable);
       if (result.ok) {
         setStatus(m.feedbackSent);
         const next = queue.filter((c) => c.id !== selected.id);

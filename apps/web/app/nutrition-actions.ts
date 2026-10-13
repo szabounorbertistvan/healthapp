@@ -2,12 +2,13 @@
 import { type FoodItem } from "@/lib/food-portions";
 import { revalidatePath } from "next/cache";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
-import { mutated } from "@/lib/supabase/mutate";
+import { inserted, mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
 import { isPlanLimitError, isValidDailyTargets, MAX_KCAL_TARGET, MAX_MACRO_TARGET_G, MIN_KCAL_TARGET } from "@healthapp/shared";
 import type { ActionResult } from "./actions";
 import { notSignedIn, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
+import { createPlanWithMeals, defaultPlanMeals } from "@/lib/nutrition-plan-create";
 import { z } from "zod";
 import { id, num, parseInput, text } from "@/lib/validate";
 
@@ -174,33 +175,39 @@ export async function createNutritionPlan(input: {
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
-  const { data, error } = await supabase
-    .from("nutrition_plans")
-    .insert({
-      coach_id: userId,
-      client_id: input.clientId,
-      name,
-      kcal_target: input.kcal,
-      protein_target_g: input.protein,
-      carbs_target_g: input.carbs,
-      fat_target_g: input.fat,
-      status: "draft",
-    })
-    .select("id")
-    .single();
-  if (error) return { ok: false, message: error.message };
-
-  const slots = ["breakfast", "lunch", "dinner", "snack"] as const;
-  await supabase.from("planned_meals").insert(
-    slots.map((slot, position) => ({
-      plan_id: data.id,
-      slot,
-      name: slot[0].toUpperCase() + slot.slice(1),
-      position,
-    })),
-  );
+  const outcome = await createPlanWithMeals({
+    insertPlan: async () => {
+      const { data, error } = await supabase
+        .from("nutrition_plans")
+        .insert({
+          coach_id: userId,
+          client_id: input.clientId,
+          name,
+          kcal_target: input.kcal,
+          protein_target_g: input.protein,
+          carbs_target_g: input.carbs,
+          fat_target_g: input.fat,
+          status: "draft",
+        })
+        .select("id")
+        .single();
+      return error ? { id: null, error: error.message } : { id: data.id, error: null };
+    },
+    insertMeals: async (planId) =>
+      (await supabase.from("planned_meals").insert(defaultPlanMeals(planId))).error?.message ?? null,
+    // a draft: its author may delete it whatever has happened to the coaching since.
+    // Zero rows is a failure too — RLS filters a delete without an error.
+    deletePlan: async (planId) => {
+      const { error, count } = await supabase.from("nutrition_plans").delete({ count: "exact" }).eq("id", planId);
+      return error?.message ?? (count ? null : "NO_ROWS");
+    },
+  });
+  if (!outcome.ok) {
+    if (outcome.leftover) console.error("createNutritionPlan: a plan without meal slots was left behind", outcome.leftover);
+    return { ok: false, message: outcome.message };
+  }
   revalidatePath("/nutrition");
-  return { ok: true, id: data.id };
+  return { ok: true, id: outcome.id };
 }
 
 export async function addPlanFood(input: {
@@ -221,7 +228,8 @@ export async function addPlanFood(input: {
     food_id: input.foodId,
     grams: input.grams,
   });
-  if (error) return { ok: false, message: error.message };
+  const refused = await inserted(error);
+  if (refused) return refused;
   revalidatePath(`/nutrition/${input.planId}`);
   return { ok: true };
 }
@@ -474,7 +482,9 @@ export async function addMealDayVariant(
     })
     .select("id")
     .single();
-  if (error) return { ok: false, message: error.message };
+  const refused = await inserted(error);
+  if (refused) return refused;
+  if (!created) return { ok: false };
 
   const foods = (source.planned_meal_foods ?? []) as { food_id: string; grams: number }[];
   if (foods.length > 0) {

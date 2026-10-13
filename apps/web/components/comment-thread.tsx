@@ -1,4 +1,5 @@
 "use client";
+import { settle, settleRead } from "@/lib/settle-action";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -94,7 +95,8 @@ export function CommentThread({ postId, page, commentCount, embedded = false, au
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              const more = await loadComments(postId, cursor);
+              const more = await settleRead(() => loadComments(postId, cursor));
+              if (!more) return; // what is listed stays; the button stays to try again
               setThreads((current) => [...current, ...more.items]);
               setCursor(more.next_cursor);
             })
@@ -221,7 +223,7 @@ function CommentRow({
               e.preventDefault();
               setError(null);
               startTransition(async () => {
-                const r = await editComment(comment.id, postId, draft);
+                const r = await settle(() => editComment(comment.id, postId, draft), t.common.actions.unreachable);
                 if (!r.ok) {
                   setError(r.message ?? s.commentInvalid);
                   return;
@@ -277,8 +279,8 @@ function CommentRow({
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  await deleteComment(comment.id, postId);
-                  router.refresh();
+                  const r = await settle(() => deleteComment(comment.id, postId), t.common.actions.unreachable);
+                  if (r.ok) router.refresh();
                 })
               }
               className="text-[11px] font-semibold text-ink-faint hover:text-risk disabled:opacity-50"
@@ -446,7 +448,7 @@ export function CommentComposer({
           setError(null);
           startTransition(async () => {
             const posted = body;
-            const result = await addComment(postId, body, replyTo?.id ?? null);
+            const result = await settle(() => addComment(postId, body, replyTo?.id ?? null), t.common.actions.unreachable);
             if (!result.ok) {
               setError(result.message ?? s.commentInvalid);
               return;
