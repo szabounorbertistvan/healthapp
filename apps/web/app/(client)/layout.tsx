@@ -18,6 +18,9 @@ import { OfflineSetsNotice } from "@/components/offline-sets-notice";
 import { FeedbackButton } from "@/components/feedback";
 import { getMyNotifications, getUnreadNotificationCount } from "@/lib/notifications-data";
 import { CONSENT_VERSION } from "@/lib/legal";
+import { getOnboardingState } from "@/lib/onboarding";
+import { OnboardingProvider } from "@/components/onboarding/provider";
+import { HelpLink } from "@/components/onboarding/help-link";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -36,10 +39,12 @@ export default async function ClientLayout({ children }: { children: React.React
   if (!profile.username || profile.consent_version !== CONSENT_VERSION) redirect("/complete-profile");
   const name = displayName(profile);
   // One wave: the shell's reads go out together.
-  const [notifications, unread, plan] = await Promise.all([
+  const [notifications, unread, plan, onboarding] = await Promise.all([
     getMyNotifications(),
     getUnreadNotificationCount(),
     getPlan(),
+    // what guidance this person has seen (20261123100000); null = unknown, no tour opens by itself
+    getOnboardingState(),
   ]);
 
   return (
@@ -51,6 +56,7 @@ export default async function ClientLayout({ children }: { children: React.React
     {/* Sets logged without a connection wait on the device and replay from
         here, whichever (client) screen is open when the signal returns. */}
     <OfflineSetsProvider userId={profile.id}>
+    <OnboardingProvider userId={profile.id} initial={onboarding}>
     <div className="flex min-h-screen">
       {/* The sidebar sits on the page ground, no border: the cards are the
           only surfaces, so the eye has one kind of edge to read. */}
@@ -76,7 +82,7 @@ export default async function ClientLayout({ children }: { children: React.React
           <ClientNav coach={coach} />
         </div>
         <div className="mt-auto space-y-3 px-1 pt-6">
-          <div className="-mx-1"><FeedbackButton /></div>
+          <div className="-mx-1"><HelpLink /><FeedbackButton /></div>
           <div className="flex items-center gap-2">
             <NotificationBell notifications={notifications} unread={unread} placement="up" />
             <LanguageSelector />
@@ -97,6 +103,7 @@ export default async function ClientLayout({ children }: { children: React.React
       </div>
       <ClientTabBar coach={coach} unread={unread} />
     </div>
+    </OnboardingProvider>
     </OfflineSetsProvider>
     </RestTimerProvider>
     </UnitsProvider>

@@ -5,6 +5,7 @@ import { NavIcon } from "@/components/client-nav";
 import { timeAgo } from "@/lib/format";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
+import { PageTour } from "@/components/onboarding/tour";
 
 export default async function ProgramsPage() {
   const { t, locale } = await getI18n();
@@ -15,15 +16,19 @@ export default async function ProgramsPage() {
         <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
           {t.common.nav.programs}
         </h1>
+        <div className="flex flex-wrap items-center gap-2">
+        <PageTour id="programs" steps={["create", "list"]} />
         <Link
           href="/programs/new"
+          data-tour="programs-create"
           className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90"
         >
           {t.coachApp.programs.newProgram}
         </Link>
+        </div>
       </div>
 
-      <div className="mt-5 sm:mt-6">
+      <div data-tour="programs-list" className="mt-5 sm:mt-6">
         {programs.length === 0 ? (
           <EmptyState plain title={t.coachApp.programs.emptyTitle} hint={t.coachApp.programs.emptyHint} />
         ) : (

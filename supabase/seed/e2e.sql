@@ -17,6 +17,12 @@
 --   client E e2e-client-e  B's client, coaching paused: program "E2E Paused Program", plan "E2E Paused Plan"
 --   client F e2e-client-f  B's client (active): program "E2E Stale Program" — isolation.spec pauses and resumes it
 --   reset    e2e-reset     the password-reset flow changes this one's password
+--   new client e2e-new-client  signed up after onboarding existed: no onboarding row (onboarding.spec)
+--   new coach  e2e-new-coach   the same, as a coach
+--
+-- Every other account is an "existing" one, as 20261123100000 makes the accounts
+-- it finds: past the welcome cards (onboarding_state welcome = done), so its
+-- specs land where they always did.
 --
 -- Specs that write create their own rows (names carry a per-run tag) and remove
 -- them; nothing here is modified by a spec except e2e-reset's password and
@@ -70,6 +76,8 @@ declare
   client_e uuid := pg_temp.e2e_account('e2e-client-e@voinic.test', 'Client Ema E2E', 'e2e_client_e', 'client');
   client_f uuid := pg_temp.e2e_account('e2e-client-f@voinic.test', 'Client Filip E2E', 'e2e_client_f', 'client');
   reset_u uuid := pg_temp.e2e_account('e2e-reset@voinic.test', 'Reset E2E', 'e2e_reset', 'client');
+  new_client uuid := pg_temp.e2e_account('e2e-new-client@voinic.test', 'New Client E2E', 'e2e_new_client', 'client');
+  new_coach uuid := pg_temp.e2e_account('e2e-new-coach@voinic.test', 'New Coach E2E', 'e2e_new_coach', 'coach');
   v_profile uuid;
   v_program uuid;
   v_day uuid;
@@ -143,6 +151,12 @@ begin
   insert into public.programs (coach_id, client_id, name, status) values (coach_b, client_f, 'E2E Stale Program', 'published')
     returning id into v_program;
   insert into public.program_days (program_id, week_index, day_index, name) values (v_program, 1, 1, 'Stale Day 1');
+
+  -- everyone but the two new accounts is past the welcome cards, like an account the migration found
+  insert into public.onboarding_state (user_id, state)
+  select u.id, jsonb_build_object('welcome', 'done') from public.users u
+   where u.id not in (new_client, new_coach)
+  on conflict (user_id) do nothing;
 end
 $seed$;
 

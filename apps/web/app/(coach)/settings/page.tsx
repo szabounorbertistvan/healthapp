@@ -5,6 +5,7 @@ import { Card } from "@/components/ui";
 import { TIER_LABEL } from "@/lib/entitlements";
 import { PlanFeatureList, SubscribePanel, TrialBanner } from "@/components/billing";
 import { getI18n } from "@/lib/i18n/server";
+import { PageTour } from "@/components/onboarding/tour";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/account";
 import { RestTimerCard } from "@/components/rest-settings";
@@ -26,16 +27,18 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <header>
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{t.common.nav.settings}</h1>
+        <PageTour id="settings" steps={["coachProfile", "profile"]} />
       </header>
 
       <div className="mt-5 grid gap-3.5 sm:mt-6">
         {/* Coach Discovery: the public coach page, built at /settings/coach-profile. */}
-        <CoachProfileSettingsCard status={coachStatus} />
+        <div data-tour="settings-coachProfile"><CoachProfileSettingsCard status={coachStatus} /></div>
 
         {/* The coach had no way to edit their own profile until now: the form
             is the client's, minus the check-in day and leaderboard switch. */}
+        <div data-tour="settings-profile">
         <ProfileForm
           role={profile.role}
           avatarUrl={profile.avatar_url}
@@ -50,6 +53,7 @@ export default async function SettingsPage() {
           weightUnit={profile.weight_unit}
           lengthUnit={profile.length_unit}
         />
+        </div>
 
         {/* The gym they train at themselves (its board, like a client's). Where
             they coach is part of the coach profile (its "Where" step). */}

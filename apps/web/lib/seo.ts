@@ -14,7 +14,7 @@ import { landingIndexable } from "./coach-discovery";
  * written "/coach/" — a bare "/coach" would also match "/coaches".
  */
 export const ROBOTS_DISALLOW = [
-  "/api/", "/auth/", "/admin", "/login", "/complete-profile", "/reset-password", "/suspended", "/offline", "/serwist/",
+  "/api/", "/auth/", "/admin", "/login", "/complete-profile", "/onboarding", "/reset-password", "/suspended", "/offline", "/serwist/",
   // coach desk
   "/dashboard", "/clients", "/programs", "/library", "/nutrition", "/requests", "/bookings", "/reviews",
   "/check-ins", "/messages", "/settings",

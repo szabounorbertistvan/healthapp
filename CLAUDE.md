@@ -91,7 +91,11 @@ check-in, coach (+ `coach/messages/[id]`, any thread on the client's side — e.
 the URL, always noindex) and `coaches/[slug]` (the public coach page — or, when the slug is a city / specialization / country, its indexable landing listing; `coaches/[slug]/book` books a service, `coaches/[slug]/review` writes the reader's one review, `coaches/bookings` lists the reader's bookings) — own header layout, no session needed, login, complete-profile
 (username / sex / age / coach-or-client for accounts that signed up without
 them — both layouts redirect there while `users.username` is null), privacy,
-terms, get-the-app, and the crawler files `robots.ts` / `sitemap.ts` (public in middleware; rules in `lib/seo.ts`). **Send feedback** (`components/feedback.tsx`, in both sidebars and both
+terms, get-the-app, `onboarding` (welcome cards + role-specific setup steps; /today and
+/dashboard send an account with no `welcome` mark there once; "Getting started" in both
+sidebars / More sheets reopens it; state in `onboarding_state`, model `lib/onboarding-model.ts`,
+page tours = `PageTour` from `components/onboarding/tour.tsx` + `data-tour="<tour>-<step>"`
+targets), and the crawler files `robots.ts` / `sitemap.ts` (public in middleware; rules in `lib/seo.ts`). **Send feedback** (`components/feedback.tsx`, in both sidebars and both
 phone "More" sheets) writes through `submit_feedback()` (capped 10/hour) and is
 read only by an admin on `/admin/feedback`. Profile editing (photo, city, bio, units, time zone) is the
 shared `ProfileForm` in `components/account.tsx`, mounted on the client's
@@ -174,6 +178,9 @@ RPC, a notification, an audit row or a log. **Voinic collects no identity docume
 Coach documents are removed only by `scripts/coach-documents.mjs` (dry run by default; docs/COACH_DOCUMENTS_CLEANUP.md);
 the plan functions (`own_tier`, `effective_tier`, `paywall_on`, `user_plan_limit`) are internal since 20261120110000 —
 read the caller's plan through `my_plan`. Deploying this work: docs/DEPLOY_COACH_DISCOVERY.md.
+**`onboarding_state` is owner-read only and written only by `onboarding_mark(key, mark)`**
+(20261123100000) — not a `users` column, because connected people can read `users` rows.
+A failed read is "unknown": nobody is redirected and no tour opens by itself.
 **Calendar tokens and busy time are service-role only** (since 2026-10-08): `calendar_credentials` and
 `calendar_busy_blocks` have no grant and no policy — the coach reads status through `my_calendar_integrations()`;
 no provider adapter exists yet (`lib/calendar/provider.ts`).

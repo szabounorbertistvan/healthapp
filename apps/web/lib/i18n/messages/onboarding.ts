@@ -1,0 +1,447 @@
+// Onboarding: the welcome cards after sign-up, the setup steps, the
+// "Finish setting up" card on Today / the dashboard, and the page tours.
+// Model: lib/onboarding-model.ts. Every string here exists in both languages.
+
+type Card = { title: string; body: string; points: string[] };
+
+const en = {
+  welcome: {
+    eyebrow: "Welcome to Voinic",
+    skip: "Skip intro",
+    next: "Next",
+    back: "Back",
+    toSetup: "Set up my profile",
+    cardOf: "{n} of {total}",
+    region: "Introduction",
+    client: [
+      {
+        title: "Coach. Plan. Progress.",
+        body: "Voinic puts your training, your food and your progress in one place — instead of a chat, a spreadsheet and a tracker app that never agree.",
+        points: ["One app, on your phone and your laptop", "Romanian and English", "Your data stays yours: export it any time"],
+      },
+      {
+        title: "Your workouts, set by set",
+        body: "Open the day's workout, see each exercise with its target, and log the weight and reps as you go.",
+        points: ["Rest timer between sets", "Personal records spotted for you", "Works without signal — sets sync later"],
+      },
+      {
+        title: "Food and progress",
+        body: "Log what you eat by search or barcode and see calories, protein, carbs and fat against your target. Weight, measurements and photos show the trend over weeks.",
+        points: ["Targets from your coach's plan, or your own", "Weekly check-in in one screen", "Charts that compare with the previous period"],
+      },
+      {
+        title: "You and your coach",
+        body: "A coach builds your program and nutrition plan and sees what you log — only while you work together. End or pause it and their access to new data stops.",
+        points: ["Join with your coach's code", "Or find one in Coach Discovery", "Or train on your own — you can add a coach later"],
+      },
+      {
+        title: "Start now, discover later",
+        body: "Today shows what matters this week. The rest is there when you want it.",
+        points: ["Now: log a workout or a meal", "Later: habits, challenges, leaderboards, gyms, achievements", "Lost? “Guided tour” on a page explains it"],
+      },
+    ] as Card[],
+    coach: [
+      {
+        title: "Coach. Plan. Progress.",
+        body: "Voinic replaces “WhatsApp + Excel + a tracker app”: your clients log here, you plan and follow up here.",
+        points: ["One place for programs, plans and check-ins", "Romanian and English", "Works on phone and desktop"],
+      },
+      {
+        title: "Your clients at a glance",
+        body: "The dashboard is your morning queue: who trained, who is slipping and why, which check-ins wait for you.",
+        points: ["Weekly adherence from what clients actually log", "Check-ins to review", "Messages in one thread per client"],
+      },
+      {
+        title: "Programs and nutrition plans",
+        body: "Build a program day by day from the exercise library, and a nutrition plan with targets and meals. Publish, and the client sees it at once.",
+        points: ["Sets, reps, RIR/RPE, rest, your own cues", "Macro targets and planned meals", "Edits only while the coaching is active"],
+      },
+      {
+        title: "Get found: Coach Discovery",
+        body: "A public coach page lists your specializations, services and reviews. People search, contact you, and you accept or decline.",
+        points: ["Reviewed by an admin before it goes public", "Requests and bookings in Marketplace", "Invite clients you already have with a code"],
+      },
+      {
+        title: "Start now, discover later",
+        body: "A photo, your public profile and your first invite are enough to begin.",
+        points: ["Now: invite a client, build their program", "Later: library, challenges, share cards, availability", "Lost? “Guided tour” on a page explains it"],
+      },
+    ] as Card[],
+  },
+  setup: {
+    title: "Set up your profile",
+    stepOf: "Step {n} of {total}",
+    doneOf: "{done} of {total} done",
+    optional: "Optional — skip it if you like",
+    skip: "Skip for now",
+    continue: "Continue",
+    save: "Save and continue",
+    saving: "Saving…",
+    back: "Back",
+    later: "Finish later",
+    error: "That did not save. Check your connection and try again.",
+    stepsNav: "Setup steps",
+    status: { done: "Done", skipped: "Skipped", todo: "To do" },
+    finishTitle: "You're set",
+    finishBody: "Everything can be changed later from your account.",
+    finishPartial: "Skipped steps wait for you on Today under “Finish setting up”.",
+    finishPartialCoach: "Skipped steps wait for you on the dashboard under “Finish setting up”.",
+    finishClient: "Go to Today",
+    finishCoach: "Go to the dashboard",
+    steps: {
+      photo: {
+        title: "Add a profile photo",
+        why: "Your coach and the people you train with recognise you at a glance — in messages, the feed and leaderboards.",
+        whyCoach: "Clients choose a face. Your public coach page needs a photo before it can go live.",
+        has: "Photo added. You can change it any time.",
+      },
+      units: {
+        title: "Units and time zone",
+        why: "Weights and measurements show in the units you use, and reminders arrive at the right hour on your clock.",
+        weight: "Weight",
+        length: "Length",
+        timezone: "Time zone",
+        detected: "Use {zone} (this device)",
+        badZone: "Unknown time zone",
+      },
+      goal: {
+        title: "Your main goal",
+        why: "One line your coach sees first, before any program. Training solo? It keeps you honest about what you're after.",
+        current: "Your goal: {goal}",
+        pick: "Pick the one that fits best",
+      },
+      training: {
+        title: "How you'll train",
+        why: "With a coach, your program and nutrition plan come from them. On your own, you build your program yourself.",
+        coached: "You're training with a coach — your program and plan come from them.",
+        ready: "You're all set: your training is underway.",
+        codeTitle: "I have a coach's code",
+        findTitle: "Find a coach",
+        findBody: "Search by specialization, city or online; contact a coach and they accept or decline.",
+        findCta: "Open Coach Discovery",
+        soloTitle: "Train on my own",
+        soloBody: "Build your own program from the exercise library. A coach can join later.",
+        soloCta: "I'll train on my own",
+      },
+      public_profile: {
+        title: "Your public coach page",
+        why: "Coach Discovery shows your specializations, services and reviews. An admin reviews it before it goes public.",
+        none: "Not started yet.",
+        draft: "Draft — not submitted yet.",
+        pending_review: "Submitted — waiting for review.",
+        published: "Live in Coach Discovery.",
+        suspended: "Suspended — see the profile page.",
+        cta: "Open the profile wizard",
+      },
+      invite: {
+        title: "Invite your first client",
+        why: "Clients you already have join with a code: they enter it at sign-up or in their Coach tab.",
+        has: "You have clients or invites already. More from the Clients page.",
+      },
+      program: {
+        title: "Build a first program",
+        why: "Programs are built for a client, day by day. Publish, and it appears in their Training tab.",
+        noClients: "A program belongs to a client — this makes sense once your first client has joined.",
+        has: "You've built a program already.",
+        cta: "New program",
+      },
+    },
+  },
+  card: {
+    title: "Finish setting up",
+    progress: "{done} of {total} steps done",
+    continue: "Continue",
+    hide: "Hide",
+    hideLabel: "Hide the setup checklist",
+  },
+  help: {
+    link: "Getting started",
+  },
+  coachView: {
+    goal: "Goal:",
+  },
+  tour: {
+    button: "Guided tour",
+    stepOf: "{n} of {total}",
+    next: "Next",
+    back: "Back",
+    done: "Got it",
+    close: "Close the tour",
+    stopAll: "Don't show tips automatically",
+    region: "Guided tour",
+    tours: {
+      today: {
+        week: { title: "Your week in one number", body: "Workouts, food, habits and the check-in, combined. It is the same figure your coach sees." },
+        training: { title: "Today's training", body: "Your next workout and the last one. Open it to log sets." },
+        nutrition: { title: "Food today", body: "Calories and macros so far against your target. Tap to log a meal." },
+        coach: { title: "Coach and check-in", body: "Your weekly check-in and new messages. Training solo? Find a coach from here." },
+      },
+      workout: {
+        days: { title: "Your program", body: "Each day of your program. Open one to see its exercises, then log sets as you go." },
+        actions: { title: "Library and builder", body: "Look up an exercise's technique, or build and edit your own program when you train solo." },
+        history: { title: "History", body: "Every session you've logged, newest first." },
+      },
+      food: {
+        week: { title: "Pick a day", body: "Dots mark the days you've logged. Past days can be filled in later." },
+        summary: { title: "Calories and macros", body: "What you've eaten against your target — from your coach's plan, or your own." },
+        meals: { title: "Log by meal", body: "Add food to each meal by search, barcode or your recent foods. Planned meals from a coach appear here too." },
+      },
+      progress: {
+        range: { title: "Pick a period", body: "Every figure on this page covers the period you choose, compared with the one before." },
+        stats: { title: "The headline numbers", body: "Current weight, sessions, total volume and personal records." },
+        tabs: { title: "Body and training", body: "Body: weight, measurements and photos. Training: strength trends per exercise." },
+      },
+      account: {
+        profile: { title: "Your profile", body: "Name, photo, city, units, time zone and check-in day. Save applies only what you changed." },
+        gym: { title: "Your gym", body: "Pick where you train to see its leaderboard and the coaches who work there." },
+        email: { title: "Emails", body: "Choose which emails you get. Every email also has an unsubscribe link." },
+      },
+      discovery: {
+        search: { title: "Search coaches", body: "By name, specialization or city — or filter online and in-person." },
+        results: { title: "Open a coach", body: "A coach's page shows services, prices and reviews. “Contact” sends a request they accept or decline." },
+      },
+      dashboard: {
+        stats: { title: "Today at a glance", body: "Active clients, check-ins to review, unread messages and who is at risk. Each tile opens its section." },
+        queue: { title: "Your queue", body: "Every client with their last log and why they're flagged. Start at the top." },
+      },
+      clients: {
+        invite: { title: "Invite a client", body: "Creates a code; the client enters it at sign-up or in their Coach tab." },
+        list: { title: "Your roster", body: "Open a client for their weekly summary, fitness score and posts, or to pause or end the coaching." },
+      },
+      programs: {
+        create: { title: "New program", body: "Pick the client, then build day by day from the exercise library." },
+        list: { title: "Programs", body: "Drafts stay private; published programs appear in the client's Training tab." },
+      },
+      nutrition: {
+        create: { title: "New nutrition plan", body: "Macro targets and planned meals for one client." },
+        list: { title: "Plans", body: "Each plan's targets at a glance. Published plans show on the client's Food screen." },
+      },
+      settings: {
+        coachProfile: { title: "Your public page", body: "The Coach Discovery profile: build it, submit it for review, see its status." },
+        profile: { title: "Your account", body: "Name, photo, units and time zone — what clients see in messages." },
+      },
+    },
+  },
+};
+
+const ro: typeof en = {
+  welcome: {
+    eyebrow: "Bun venit în Voinic",
+    skip: "Sari peste prezentare",
+    next: "Înainte",
+    back: "Înapoi",
+    toSetup: "Îmi completez profilul",
+    cardOf: "{n} din {total}",
+    region: "Prezentare",
+    client: [
+      {
+        title: "Coach. Plan. Progress.",
+        body: "Voinic îți adună antrenamentele, mesele și progresul într-un singur loc — în loc de un chat, un Excel și o aplicație de tracking care nu se potrivesc între ele.",
+        points: ["O singură aplicație, pe telefon și pe laptop", "În română și în engleză", "Datele rămân ale tale: le poți exporta oricând"],
+      },
+      {
+        title: "Antrenamentele, serie cu serie",
+        body: "Deschizi antrenamentul zilei, vezi fiecare exercițiu cu ținta lui și notezi greutatea și repetările pe măsură ce lucrezi.",
+        points: ["Cronometru de pauză între serii", "Recordurile personale apar singure", "Merge și fără semnal — seriile se sincronizează după"],
+      },
+      {
+        title: "Mâncare și progres",
+        body: "Notezi ce mănânci prin căutare sau cod de bare și vezi caloriile, proteinele, carbohidrații și grăsimile față de țintă. Greutatea, măsurătorile și pozele arată tendința în timp.",
+        points: ["Ținte din planul antrenorului sau stabilite de tine", "Check-in-ul săptămânal pe un singur ecran", "Grafice comparate cu perioada anterioară"],
+      },
+      {
+        title: "Tu și antrenorul tău",
+        body: "Antrenorul îți face programul și planul de nutriție și vede ce notezi — doar cât timp lucrați împreună. Dacă încheiați sau puneți pe pauză, nu mai are acces la datele noi.",
+        points: ["Te alături cu codul primit de la antrenor", "Sau găsești unul în Coach Discovery", "Sau te antrenezi singur — poți adăuga un antrenor oricând"],
+      },
+      {
+        title: "Începi acum, descoperi pe parcurs",
+        body: "Pagina Azi îți arată ce contează săptămâna asta. Restul te așteaptă când ai nevoie.",
+        points: ["Acum: notează un antrenament sau o masă", "Mai târziu: obiceiuri, provocări, clasamente, săli, realizări", "Te-ai pierdut? „Tur ghidat” de pe pagină îți explică"],
+      },
+    ],
+    coach: [
+      {
+        title: "Coach. Plan. Progress.",
+        body: "Voinic înlocuiește „WhatsApp + Excel + o aplicație de tracking”: clienții notează aici, tu planifici și urmărești tot aici.",
+        points: ["Programe, planuri și check-in-uri într-un singur loc", "În română și în engleză", "Pe telefon și pe desktop"],
+      },
+      {
+        title: "Clienții dintr-o privire",
+        body: "Panoul e coada ta de dimineață: cine s-a antrenat, cine scapă din ritm și de ce, ce check-in-uri te așteaptă.",
+        points: ["Aderența săptămânală din ce notează clienții", "Check-in-uri de revizuit", "Mesaje, câte o conversație pe client"],
+      },
+      {
+        title: "Programe și planuri de nutriție",
+        body: "Construiești programul zi cu zi din biblioteca de exerciții și planul de nutriție cu ținte și mese. Publici, iar clientul îl vede imediat.",
+        points: ["Serii, repetări, RIR/RPE, pauză, indicațiile tale", "Ținte de macronutrienți și mese planificate", "Editezi doar cât timp colaborarea e activă"],
+      },
+      {
+        title: "Fii găsit: Coach Discovery",
+        body: "Pagina publică de antrenor îți arată specializările, serviciile și recenziile. Oamenii caută, te contactează, iar tu accepți sau refuzi.",
+        points: ["Verificată de un admin înainte să devină publică", "Cereri și programări în Marketplace", "Clienții pe care îi ai deja vin cu un cod de invitație"],
+      },
+      {
+        title: "Începi acum, descoperi pe parcurs",
+        body: "O poză, profilul public și prima invitație sunt de ajuns ca să începi.",
+        points: ["Acum: invită un client, fă-i programul", "Mai târziu: bibliotecă, provocări, carduri de distribuit, disponibilitate", "Te-ai pierdut? „Tur ghidat” de pe pagină îți explică"],
+      },
+    ],
+  },
+  setup: {
+    title: "Completează-ți profilul",
+    stepOf: "Pasul {n} din {total}",
+    doneOf: "{done} din {total} gata",
+    optional: "Opțional — poți sări peste",
+    skip: "Sari peste deocamdată",
+    continue: "Continuă",
+    save: "Salvează și continuă",
+    saving: "Se salvează…",
+    back: "Înapoi",
+    later: "Termin mai târziu",
+    error: "Nu s-a salvat. Verifică conexiunea și încearcă din nou.",
+    stepsNav: "Pașii de configurare",
+    status: { done: "Gata", skipped: "Sărit", todo: "De făcut" },
+    finishTitle: "Ești gata",
+    finishBody: "Poți schimba orice mai târziu, din contul tău.",
+    finishPartial: "Pașii săriți te așteaptă pe pagina Azi, la „Termină configurarea”.",
+    finishPartialCoach: "Pașii săriți te așteaptă în panou, la „Termină configurarea”.",
+    finishClient: "Mergi la Azi",
+    finishCoach: "Mergi la panou",
+    steps: {
+      photo: {
+        title: "Adaugă o poză de profil",
+        why: "Antrenorul și cei cu care te antrenezi te recunosc imediat — în mesaje, în feed și în clasamente.",
+        whyCoach: "Clienții aleg o față. Pagina ta publică de antrenor are nevoie de o poză ca să poată fi publicată.",
+        has: "Poza e adăugată. O poți schimba oricând.",
+      },
+      units: {
+        title: "Unități și fus orar",
+        why: "Greutățile și măsurătorile apar în unitățile pe care le folosești, iar notificările vin la ora potrivită pentru tine.",
+        weight: "Greutate",
+        length: "Lungime",
+        timezone: "Fus orar",
+        detected: "Folosește {zone} (acest dispozitiv)",
+        badZone: "Fus orar necunoscut",
+      },
+      goal: {
+        title: "Obiectivul tău principal",
+        why: "Un rând pe care antrenorul îl vede primul, înaintea oricărui program. Te antrenezi singur? Îți amintește ce urmărești.",
+        current: "Obiectivul tău: {goal}",
+        pick: "Alege-l pe cel care ți se potrivește",
+      },
+      training: {
+        title: "Cum te antrenezi",
+        why: "Cu antrenor, programul și planul de nutriție vin de la el. Singur, îți construiești tu programul.",
+        coached: "Te antrenezi cu un antrenor — programul și planul vin de la el.",
+        ready: "Totul e pregătit: antrenamentele au început.",
+        codeTitle: "Am un cod de la antrenor",
+        findTitle: "Găsește un antrenor",
+        findBody: "Caută după specializare, oraș sau online; îl contactezi, iar el acceptă sau refuză.",
+        findCta: "Deschide Coach Discovery",
+        soloTitle: "Mă antrenez singur",
+        soloBody: "Îți construiești programul din biblioteca de exerciții. Un antrenor se poate alătura mai târziu.",
+        soloCta: "Mă antrenez singur",
+      },
+      public_profile: {
+        title: "Pagina ta publică de antrenor",
+        why: "Coach Discovery îți arată specializările, serviciile și recenziile. Un admin o verifică înainte să devină publică.",
+        none: "Încă neînceput.",
+        draft: "Ciornă — netrimisă încă.",
+        pending_review: "Trimisă — așteaptă verificarea.",
+        published: "Publică în Coach Discovery.",
+        suspended: "Suspendată — vezi pagina profilului.",
+        cta: "Deschide ghidul de profil",
+      },
+      invite: {
+        title: "Invită primul client",
+        why: "Clienții pe care îi ai deja intră cu un cod: îl introduc la înregistrare sau în fila Antrenor.",
+        has: "Ai deja clienți sau invitații. Mai multe din pagina Clienți.",
+      },
+      program: {
+        title: "Construiește primul program",
+        why: "Programele se fac pentru un client, zi cu zi. Când îl publici, apare în fila lui Antrenament.",
+        noClients: "Un program aparține unui client — are sens după ce intră primul tău client.",
+        has: "Ai construit deja un program.",
+        cta: "Program nou",
+      },
+    },
+  },
+  card: {
+    title: "Termină configurarea",
+    progress: "{done} din {total} pași gata",
+    continue: "Continuă",
+    hide: "Ascunde",
+    hideLabel: "Ascunde lista de configurare",
+  },
+  help: {
+    link: "Primii pași",
+  },
+  coachView: {
+    goal: "Obiectiv:",
+  },
+  tour: {
+    button: "Tur ghidat",
+    stepOf: "{n} din {total}",
+    next: "Înainte",
+    back: "Înapoi",
+    done: "Am înțeles",
+    close: "Închide turul",
+    stopAll: "Nu mai afișa sfaturi automat",
+    region: "Tur ghidat",
+    tours: {
+      today: {
+        week: { title: "Săptămâna ta într-un număr", body: "Antrenamente, mâncare, obiceiuri și check-in, la un loc. E aceeași cifră pe care o vede antrenorul." },
+        training: { title: "Antrenamentul de azi", body: "Următorul antrenament și cel de data trecută. Deschide-l ca să notezi seriile." },
+        nutrition: { title: "Mâncarea de azi", body: "Caloriile și macronutrienții de până acum față de țintă. Apasă ca să notezi o masă." },
+        coach: { title: "Antrenor și check-in", body: "Check-in-ul săptămânal și mesajele noi. Te antrenezi singur? De aici găsești un antrenor." },
+      },
+      workout: {
+        days: { title: "Programul tău", body: "Fiecare zi din program. Deschide una ca să vezi exercițiile, apoi notezi seriile pe măsură ce lucrezi." },
+        actions: { title: "Bibliotecă și constructor", body: "Vezi tehnica unui exercițiu sau, dacă te antrenezi singur, construiește și editează-ți programul." },
+        history: { title: "Istoric", body: "Toate antrenamentele notate, cele mai noi primele." },
+      },
+      food: {
+        week: { title: "Alege ziua", body: "Punctele arată zilele în care ai notat. Zilele trecute le poți completa și mai târziu." },
+        summary: { title: "Calorii și macronutrienți", body: "Ce ai mâncat față de țintă — din planul antrenorului sau stabilită de tine." },
+        meals: { title: "Notezi pe mese", body: "Adaugi alimente la fiecare masă prin căutare, cod de bare sau cele recente. Mesele planificate de antrenor apar tot aici." },
+      },
+      progress: {
+        range: { title: "Alege perioada", body: "Toate cifrele de pe pagină acoperă perioada aleasă, comparată cu cea dinainte." },
+        stats: { title: "Cifrele principale", body: "Greutatea actuală, antrenamentele, volumul total și recordurile personale." },
+        tabs: { title: "Corp și antrenament", body: "Corp: greutate, măsurători și poze. Antrenament: evoluția forței pe fiecare exercițiu." },
+      },
+      account: {
+        profile: { title: "Profilul tău", body: "Nume, poză, oraș, unități, fus orar și ziua de check-in. Salvarea aplică doar ce ai schimbat." },
+        gym: { title: "Sala ta", body: "Alege unde te antrenezi ca să vezi clasamentul sălii și antrenorii care lucrează acolo." },
+        email: { title: "Emailuri", body: "Alegi ce emailuri primești. Fiecare email are și link de dezabonare." },
+      },
+      discovery: {
+        search: { title: "Caută antrenori", body: "După nume, specializare sau oraș — ori filtrează online și în persoană." },
+        results: { title: "Deschide un antrenor", body: "Pagina antrenorului arată servicii, prețuri și recenzii. „Contactează” trimite o cerere pe care o acceptă sau o refuză." },
+      },
+      dashboard: {
+        stats: { title: "Ziua dintr-o privire", body: "Clienți activi, check-in-uri de revizuit, mesaje necitite și cine e în risc. Fiecare casetă îți deschide secțiunea." },
+        queue: { title: "Coada ta", body: "Fiecare client cu ultima activitate și motivul pentru care e semnalat. Începe de sus." },
+      },
+      clients: {
+        invite: { title: "Invită un client", body: "Creează un cod; clientul îl introduce la înregistrare sau în fila Antrenor." },
+        list: { title: "Clienții tăi", body: "Deschide un client pentru rezumatul săptămânii, scorul de fitness și postări, sau ca să pui colaborarea pe pauză ori s-o închei." },
+      },
+      programs: {
+        create: { title: "Program nou", body: "Alegi clientul, apoi construiești zi cu zi din biblioteca de exerciții." },
+        list: { title: "Programe", body: "Ciornele rămân private; programele publicate apar în fila Antrenament a clientului." },
+      },
+      nutrition: {
+        create: { title: "Plan de nutriție nou", body: "Ținte de macronutrienți și mese planificate pentru un client." },
+        list: { title: "Planuri", body: "Țintele fiecărui plan dintr-o privire. Planurile publicate apar pe ecranul Mâncare al clientului." },
+      },
+      settings: {
+        coachProfile: { title: "Pagina ta publică", body: "Profilul din Coach Discovery: îl construiești, îl trimiți la verificare, îi vezi starea." },
+        profile: { title: "Contul tău", body: "Nume, poză, unități și fus orar — ce văd clienții în mesaje." },
+      },
+    },
+  },
+};
+
+export const onboardingMessages = { en, ro };

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
+import { PageTour } from "@/components/onboarding/tour";
 import {
   EMPTY_QUERY, QUICK_SPECIALIZATIONS, discoverySearch, listingHref, type CoachCardModel, type DiscoveryFacets, type DiscoveryQuery,
 } from "@/lib/coach-discovery";
@@ -72,7 +73,9 @@ export async function DiscoveryHome({ query, facets, recommended, near, signedIn
         <div className="relative mx-auto max-w-3xl text-center">
           <h1 className="font-display text-[30px] font-extrabold leading-[1.08] tracking-tight sm:text-[46px]">{d.title}</h1>
           <p className="mx-auto mt-3 max-w-[56ch] text-[15px] text-ink-soft sm:text-[17px]">{d.subtitle}</p>
-          <div className="mt-6 flex flex-col gap-2 text-left sm:mt-8 sm:flex-row">
+          {/* the tour is for someone with an account: its seen-mark has nowhere to live otherwise */}
+          {signedIn ? <div className="mt-3 flex justify-center"><PageTour id="discovery" steps={["search", "results"]} /></div> : null}
+          <div data-tour="discovery-search" className="mt-6 flex flex-col gap-2 text-left sm:mt-8 sm:flex-row">
             <div className="min-w-0 flex-1"><CoachSearchBox query={query} /></div>
             {facets.cities.length > 0 ? <CitySelect query={query} facets={facets} /> : null}
           </div>
@@ -101,7 +104,7 @@ export async function DiscoveryHome({ query, facets, recommended, near, signedIn
       ) : (
         <>
           {/* ---------- recommended ---------- */}
-          <section aria-labelledby="home-recommended" data-testid="home-recommended">
+          <section aria-labelledby="home-recommended" data-testid="home-recommended" data-tour="discovery-results">
             <SectionHead
               id="home-recommended" title={h.recommended} hint={h.recommendedHint}
               link={{ href: `/coaches${discoverySearch(recommended.seeAll)}`, label: recommended.total > recommended.cards.length ? fill(h.seeAllCount, { n: recommended.total }) : h.seeAll }}

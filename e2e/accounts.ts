@@ -23,6 +23,8 @@ export async function prepare(context: BrowserContext) {
   await context.addInitScript(() => {
     try {
       localStorage.setItem("bg-analytics-consent-v1", "denied"); // banner answered; no analytics in tests
+      // no page tour opens by itself over a control a spec clicks (components/onboarding/provider.tsx)
+      localStorage.setItem("voinic-tips", "off");
     } catch {}
   });
 }

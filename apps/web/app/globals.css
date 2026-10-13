@@ -709,3 +709,23 @@ body::before {
 .maplibregl-map .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--color-surface); }
 .maplibregl-map .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--color-surface); }
 .maplibregl-map .maplibregl-popup-close-button { color: var(--color-ink-soft); font-size: 18px; padding: 2px 8px; }
+
+/* The element a page tour is pointing at (components/onboarding/tour.tsx): a
+   ring outside it, so nothing inside moves and it stays clickable. Outline,
+   not box-shadow — a .glass card already uses its shadow. */
+[data-tour-active] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+  scroll-margin: 96px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-tour-active] {
+    transition: outline-offset 160ms ease-out;
+  }
+}
+
+/* A welcome card coming in (components/onboarding/flow.tsx); motion-safe only. */
+@keyframes onboarding-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}

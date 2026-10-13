@@ -3,6 +3,7 @@ import { getNutritionPlans } from "@/lib/data";
 import { Card, EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { getI18n } from "@/lib/i18n/server";
+import { PageTour } from "@/components/onboarding/tour";
 
 export default async function NutritionPage() {
   const { t } = await getI18n();
@@ -14,21 +15,25 @@ export default async function NutritionPage() {
         <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
           {n.title}
         </h1>
+        <div className="flex flex-wrap items-center gap-2">
+        <PageTour id="nutrition" steps={["create", "list"]} />
         <Link
           href="/nutrition/new"
+          data-tour="nutrition-create"
           className="inline-flex h-11 items-center gap-2 rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90"
         >
           <NavIcon d="M12 5v14M5 12h14" className="h-4 w-4 [stroke-width:2.2]" />
           {n.newPlan}
         </Link>
+        </div>
       </div>
 
       {plans.length === 0 ? (
-        <div className="mt-5 sm:mt-6">
+        <div data-tour="nutrition-list" className="mt-5 sm:mt-6">
           <EmptyState plain title={n.emptyTitle} hint={n.emptyHint} />
         </div>
       ) : (
-        <div className="mt-5 grid gap-3.5 sm:mt-6 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]">
+        <div data-tour="nutrition-list" className="mt-5 grid gap-3.5 sm:mt-6 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]">
           {plans.map((p) => (
             <Link key={p.id} href={`/nutrition/${p.id}`} className="group">
               <Card plain className="h-full sm:p-5">

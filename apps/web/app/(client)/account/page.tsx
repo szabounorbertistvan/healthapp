@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getProfile } from "@/lib/data";
 import { getI18n } from "@/lib/i18n/server";
+import { PageTour } from "@/components/onboarding/tour";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { DataExportCard, DeleteAccountCard, ProfileForm } from "@/components/account";
 import { RestTimerCard } from "@/components/rest-settings";
@@ -27,9 +28,13 @@ export default async function AccountPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">{a.title}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">{a.title}</h1>
+        <PageTour id="account" steps={["profile", "gym", "email"]} />
+      </div>
 
       <div className="mt-5 grid gap-3.5 sm:mt-6">
+        <div data-tour="account-profile">
         <ProfileForm
           role={profile.role}
           avatarUrl={profile.avatar_url}
@@ -44,12 +49,13 @@ export default async function AccountPage() {
           weightUnit={profile.weight_unit}
           lengthUnit={profile.length_unit}
         />
+        </div>
 
-        <MyGymCard my={gyms} />
+        <div data-tour="account-gym"><MyGymCard my={gyms} /></div>
 
         <RestTimerCard prefs={profile.rest_prefs} />
 
-        <EmailPrefsCard prefs={profile.email_prefs} role={profile.role} />
+        <div data-tour="account-email"><EmailPrefsCard prefs={profile.email_prefs} role={profile.role} /></div>
 
         {/* Who sees the numbers on the social profile (/people/[id]). */}
         {privacy ? <SocialPrivacyCard privacy={privacy} /> : null}

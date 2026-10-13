@@ -26,6 +26,7 @@ import {
 } from "@/components/advanced-progress";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { PageTour } from "@/components/onboarding/tour";
 import {
   bodyProgress,
   cmToDisplay,
@@ -143,7 +144,10 @@ export default async function ProgressPage({
         <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
           {t.common.nav.progress}
         </h1>
-        <RangeTabs state={state} />
+        <div className="flex flex-wrap items-center gap-2">
+          <div data-tour="progress-range"><RangeTabs state={state} /></div>
+          <PageTour id="progress" steps={["range", "stats", "tabs"]} />
+        </div>
       </div>
       <div className="mt-2">
         <ComparisonNote range={state.range} hasPrevious={windows.previous !== null} />
@@ -152,7 +156,7 @@ export default async function ProgressPage({
         ) : null}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
+      <div data-tour="progress-stats" className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
         <Stat
           icon={ICON.scale}
           label={t.clientApp.progress.currentWeight}
@@ -175,7 +179,7 @@ export default async function ProgressPage({
         <InsightsCard insights={insights} names={names} />
       </div>
 
-      <div className="mt-5 sm:mt-6">
+      <div data-tour="progress-tabs" className="mt-5 sm:mt-6">
         <SectionTabs state={state} />
       </div>
 

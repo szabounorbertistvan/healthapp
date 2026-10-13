@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { NavIcon, SheetPrefs } from "./client-nav";
 import { NavSpinner } from "./spinner";
 import { FeedbackButton } from "./feedback";
+import { HelpLink } from "./onboarding/help-link";
 import type { Dictionary } from "@/lib/i18n";
 
 type NavKey = keyof Dictionary["common"]["nav"];
@@ -188,6 +189,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
                   <span className="flex-1">{t.common.nav.myTraining}</span>
                   <NavSpinner />
                 </Link>
+                <HelpLink sheet />
                 <FeedbackButton sheet />
               </div>
               <SheetPrefs />

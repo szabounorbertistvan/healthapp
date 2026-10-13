@@ -5,7 +5,10 @@ import { getMyWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getMyStreak } from "@/lib/streak-data";
 import { getMyFitnessScore } from "@/lib/fitness-score-data";
 import { getLeaderboard } from "@/lib/leaderboard-data";
-import { hasChosenSolo } from "@/lib/onboarding";
+import { getOnboardingState, getSetupSnapshot, hasChosenSolo } from "@/lib/onboarding";
+import { audienceOf, setupProgress, shouldStartOnboarding, showSetupCard } from "@/lib/onboarding-model";
+import { PageTour } from "@/components/onboarding/tour";
+import { SetupCard } from "@/components/onboarding/setup-card";
 import { getProfile } from "@/lib/data";
 import { Card, EmptyState } from "@/components/ui";
 import { CoachCard, HabitsCard, LinkRow, NutritionCard, TrainingCard, WeekCard } from "@/components/today-dashboard";
@@ -60,10 +63,18 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   // branch would only send them in a circle. getProfile is request-cached, so
   // the layout has already paid for this read.
   const me = await getProfile();
+  // A brand-new account sees the welcome cards first, once (request-cached:
+  // the layout has already read the state). Unknown state never redirects.
+  const onboarding = await getOnboardingState();
+  if (me && shouldStartOnboarding(onboarding, me.role)) redirect("/onboarding");
   const solo = me !== null && me.role !== "client";
   if (!solo && !(await hasChosenSolo()) && (await isEmptyAccount())) redirect("/welcome");
+  // The "Finish setting up" card: its facts are read only while it can still show.
+  const setup = me && onboarding && onboarding.setup === undefined
+    ? getSetupSnapshot(me).then((s) => setupProgress(audienceOf(me.role), s.facts, onboarding))
+    : Promise.resolve(null);
 
-  const [today, challenges, weekly, recent, streakView, board, fitness] = await reads;
+  const [[today, challenges, weekly, recent, streakView, board, fitness], progress] = await Promise.all([reads, setup]);
   if (!today) {
     return <EmptyState plain title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
   }
@@ -103,42 +114,59 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   return (
     // Capped at 1600px: a dashboard of cards, three columns wide at most.
     <div className="@container mx-auto max-w-[1600px]">
-      <header>
-        <h1 className="font-display text-2xl font-extrabold tracking-tight first-letter:uppercase sm:text-[28px]">{weekday}</h1>
-        <p className="mt-1 text-[13px] text-ink-faint first-letter:uppercase">{longDate}</p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-extrabold tracking-tight first-letter:uppercase sm:text-[28px]">{weekday}</h1>
+          <p className="mt-1 text-[13px] text-ink-faint first-letter:uppercase">{longDate}</p>
+        </div>
+        <PageTour id="today" steps={["week", "training", "nutrition", "coach"]} />
       </header>
+
+      {progress && showSetupCard(onboarding, progress, me?.role) ? (
+        <div className="mt-4 sm:mt-5">
+          <SetupCard done={progress.done} total={progress.total} />
+        </div>
+      ) : null}
 
       <div className="mt-4 grid grid-cols-1 items-start gap-4 sm:mt-6 @3xl:grid-cols-2 @3xl:gap-5 @6xl:grid-cols-3 @6xl:gap-6">
         {/* ---- the scores ---- */}
         {/* Two columns wide, the two scores share one row across the top; at
             three columns they stack into the first column. */}
         <div className="grid grid-cols-1 items-start gap-4 @3xl:col-span-2 @3xl:grid-cols-2 @3xl:gap-5 @6xl:order-1 @6xl:col-span-1 @6xl:grid-cols-1 @6xl:gap-6">
-          <WeekCard
-            adherence={adherence}
-            today={todayIso}
-            workoutDays={workoutDays}
-            done={done}
-            planned={planned}
-            streak={streak}
-            nudge={nudge}
-            load={today.training_load}
-          />
+          <div data-tour="today-week">
+            <WeekCard
+              adherence={adherence}
+              today={todayIso}
+              workoutDays={workoutDays}
+              done={done}
+              planned={planned}
+              streak={streak}
+              nudge={nudge}
+              load={today.training_load}
+            />
+          </div>
 
           {fitness ? <FitnessScoreCard view={fitness} /> : null}
         </div>
 
         {/* ---- today, one card per context ---- */}
         <div className="space-y-4 @6xl:order-2">
-          <TrainingCard
-            doneToday={doneToday}
-            recent={recent}
-            next={next}
-            coached={today.has_coach}
-            streak={streakView ? <StreakRow view={streakView} /> : undefined}
-          />
-          <NutritionCard nutrition={nutrition} />
+          <div data-tour="today-training">
+            <TrainingCard
+              doneToday={doneToday}
+              recent={recent}
+              next={next}
+              coached={today.has_coach}
+              streak={streakView ? <StreakRow view={streakView} /> : undefined}
+            />
+          </div>
+          <div data-tour="today-nutrition">
+            <NutritionCard nutrition={nutrition} />
+          </div>
           <HabitsCard habits={habits} />
-          <CoachCard checkIn={checkIn} coached={today.has_coach} unread={today.unread_from_coach} />
+          <div data-tour="today-coach">
+            <CoachCard checkIn={checkIn} coached={today.has_coach} unread={today.unread_from_coach} />
+          </div>
         </div>
 
         {/* ---- everything else ---- */}

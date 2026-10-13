@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { NavSpinner } from "./spinner";
 import { FeedbackButton } from "./feedback";
+import { HelpLink } from "./onboarding/help-link";
 import { LanguageSelector } from "./language-selector";
 import { ThemeToggle } from "./theme-toggle";
 import { SignOutButton } from "./sign-out-button";
@@ -231,6 +232,7 @@ export function ClientTabBar({ coach = false, unread = 0 }: { coach?: boolean; u
               })}
               {coach ? <BackToCoaching sheet /> : null}
               <div className="mt-1 border-t border-line pt-1">
+                <HelpLink sheet />
                 <FeedbackButton sheet />
               </div>
               <SheetPrefs />

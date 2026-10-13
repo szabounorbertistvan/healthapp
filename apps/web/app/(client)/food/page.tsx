@@ -1,6 +1,7 @@
 import { getMyDayNutrition, getMyFoodDays, getMyPlanMeals, getMyQuickFoods } from "@/lib/client-data";
 import { validDay, weekDaysOf } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
+import { PageTour } from "@/components/onboarding/tour";
 import { WeekStrip } from "@/components/week-strip";
 import { NutritionSummary } from "@/components/nutrition-summary";
 import { MealCard } from "@/components/meal-card";
@@ -86,14 +87,17 @@ export default async function FoodPage({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-4">
-        <FoodViewTabs view="diary" />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1"><FoodViewTabs view="diary" /></div>
+        <PageTour id="food" steps={["week", "summary", "meals"]} />
       </div>
-      <WeekStrip selected={day} today={today} loggedDays={loggedDays} />
+      <div data-tour="food-week">
+        <WeekStrip selected={day} today={today} loggedDays={loggedDays} />
+      </div>
 
       {/* Phone: summary then meals. Desktop: summary pinned left, meals right. */}
       <div className="mt-5 grid gap-4 sm:mt-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-6">
-        <div className="lg:sticky lg:top-7">
+        <div data-tour="food-summary" className="lg:sticky lg:top-7">
           <NutritionSummary
             totals={nutrition.totals}
             target={nutrition.target}
@@ -101,7 +105,7 @@ export default async function FoodPage({
             planName={nutrition.plan_name}
           />
         </div>
-        <div className="space-y-3.5">
+        <div data-tour="food-meals" className="space-y-3.5">
           {SLOTS.map((slot) => (
             <MealCard
               key={slot}

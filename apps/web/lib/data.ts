@@ -433,3 +433,20 @@ export async function getNutritionPlan(id: string): Promise<NutritionPlanDetail 
 
 type PlanSlot = "breakfast" | "lunch" | "dinner" | "snack";
 
+
+/**
+ * A client's active goal, as they wrote it in the setup steps (onboarding's
+ * goal step writes `goals`). A coach reads it under goals_coach_read — only
+ * while the coaching is active. A failed read shows no goal rather than an error.
+ */
+export async function getClientGoal(clientId: string): Promise<string | null> {
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase
+    .from("goals").select("title").eq("user_id", clientId).eq("status", "active")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle<{ title: string }>();
+  if (error) {
+    console.error(`client goal: ${error.message}`);
+    return null;
+  }
+  return data?.title ?? null;
+}

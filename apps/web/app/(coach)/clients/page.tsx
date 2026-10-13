@@ -12,6 +12,7 @@ import { getCoachRequestInbox } from "@/lib/gym-data";
 // TIER_LABEL — Trial / Pro hidden for now (was imported from "@/lib/entitlements").
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
+import { PageTour } from "@/components/onboarding/tour";
 
 /** The 24-box icon paths this screen uses. */
 const ICON = {
@@ -53,7 +54,8 @@ export default async function ClientsPage() {
             <NavIcon d={ICON.trophy} className="h-[17px] w-[17px]" />
             {t.common.challenges.coachTitle}
           </Link>
-          <InviteButton disabled={limitReached} />
+          <PageTour id="clients" steps={["invite", "list"]} />
+          <div data-tour="clients-invite"><InviteButton disabled={limitReached} /></div>
         </div>
       </div>
 
@@ -69,7 +71,7 @@ export default async function ClientsPage() {
         </div>
       ) : null}
 
-      <div className="mt-4 sm:mt-6">
+      <div data-tour="clients-list" className="mt-4 sm:mt-6">
         {clients.length === 0 ? (
           <EmptyState plain title={t.coachApp.clients.emptyTitle} hint={t.coachApp.clients.emptyHint} />
         ) : (

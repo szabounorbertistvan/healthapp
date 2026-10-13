@@ -1,5 +1,10 @@
 import Link from "next/link";
-import { getCheckIns, getDashboard } from "@/lib/data";
+import { redirect } from "next/navigation";
+import { getCheckIns, getDashboard, getProfile } from "@/lib/data";
+import { getOnboardingState, getSetupSnapshot } from "@/lib/onboarding";
+import { audienceOf, setupProgress, shouldStartOnboarding, showSetupCard } from "@/lib/onboarding-model";
+import { PageTour } from "@/components/onboarding/tour";
+import { SetupCard } from "@/components/onboarding/setup-card";
 import { Card, SignalBadge, EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { pct, timeAgo } from "@/lib/format";
@@ -16,7 +21,15 @@ import { getCoachRequestInbox } from "@/lib/gym-data";
  */
 export default async function DashboardPage() {
   const { t, locale } = await getI18n();
-  const [rows, checkIns, plan, requests] = await Promise.all([getDashboard(), getCheckIns(), getPlan(), getCoachRequestInbox()]);
+  // A brand-new coach sees the welcome cards first, once; unknown state never redirects.
+  const [me, onboarding] = await Promise.all([getProfile(), getOnboardingState()]);
+  if (me && shouldStartOnboarding(onboarding, me.role)) redirect("/onboarding");
+  const setup = me && onboarding && onboarding.setup === undefined
+    ? getSetupSnapshot(me).then((s) => setupProgress(audienceOf(me.role), s.facts, onboarding))
+    : Promise.resolve(null);
+  const [rows, checkIns, plan, requests, progress] = await Promise.all([
+    getDashboard(), getCheckIns(), getPlan(), getCoachRequestInbox(), setup,
+  ]);
   // The adherence signal, its reason, the % and the at-risk count are Coach
   // Pro. A Starter desk keeps the roster, last log, check-ins and messages.
   const pro = plan.e.advancedAnalytics;
@@ -25,9 +38,18 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
-        {t.coachApp.dashboard.title}
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
+          {t.coachApp.dashboard.title}
+        </h1>
+        <PageTour id="dashboard" steps={["stats", "queue"]} />
+      </div>
+
+      {progress && showSetupCard(onboarding, progress, me?.role) ? (
+        <div className="mt-5 sm:mt-6">
+          <SetupCard done={progress.done} total={progress.total} />
+        </div>
+      ) : null}
 
       {/* People who found this coach at a gym (20261023100000); nothing when there are none. */}
       {requests.length > 0 ? (
@@ -36,7 +58,7 @@ export default async function DashboardPage() {
         </div>
       ) : null}
 
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-4">
+      <div data-tour="dashboard-stats" className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-4">
         {/* Each tile opens the section it counts: the figure is the summary,
             the section is where the work happens. */}
         <Stat href="/clients" icon={ICON.clients} label={t.coachApp.dashboard.activeClients} value={rows.length} />
@@ -55,7 +77,7 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <div className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
+      <div data-tour="dashboard-queue" className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
         {!pro && rows.length > 0 ? <UpgradeHint card feature="analytics" upgrade={plan.upgrade} /> : null}
         {rows.length === 0 ? (
           <EmptyState plain title={t.coachApp.dashboard.emptyTitle} hint={t.coachApp.dashboard.emptyHint} />

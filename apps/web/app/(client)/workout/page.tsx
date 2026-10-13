@@ -8,6 +8,7 @@ import { TrainingLoadBadge } from "@/components/training-load";
 import { NavIcon } from "@/components/client-nav";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { PageTour } from "@/components/onboarding/tour";
 import { getPlan, inHistory } from "@/lib/plan";
 import { UpgradeHint } from "@/components/upgrade";
 
@@ -28,6 +29,8 @@ export default async function WorkoutPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">{t.common.nav.training}</h1>
         <div className="flex flex-wrap gap-2">
+          <PageTour id="workout" steps={["days", "actions", "history"]} />
+          <div data-tour="workout-actions" className="flex flex-wrap gap-2">
           <PillLink href="/exercises" icon="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM4 4v18M8 8h6">
             {t.clientApp.library.title}
           </PillLink>
@@ -36,13 +39,14 @@ export default async function WorkoutPage() {
               {hasOwn ? t.clientApp.workout.editProgram : t.clientApp.builder.title}
             </PillLink>
           ) : null}
+          </div>
         </div>
       </div>
 
       {/* Days on the left, history on the right once the window is wide enough
           for both (2xl); below that the history follows the days. */}
       <div className="mt-5 grid gap-6 sm:mt-6 2xl:grid-cols-[minmax(0,1fr)_360px] 2xl:items-start 2xl:gap-8">
-        <div className="space-y-4">
+        <div data-tour="workout-days" className="space-y-4">
           {groups.length === 0 ? (
             <>
               <EmptyState
@@ -65,7 +69,8 @@ export default async function WorkoutPage() {
           {!coached ? <HaveACoach /> : null}
         </div>
 
-        <Card plain className="p-0 2xl:sticky 2xl:top-7">
+        <div data-tour="workout-history" className="2xl:sticky 2xl:top-7">
+        <Card plain className="p-0">
           <h2 className="px-5 pb-2 pt-4 text-sm font-bold">{t.clientApp.workout.history}</h2>
           {sessions.length === 0 ? (
             <p className="px-5 pb-4 text-sm text-ink-faint">{t.clientApp.workout.noSessions}</p>
@@ -117,6 +122,7 @@ export default async function WorkoutPage() {
             />
           ) : null}
         </Card>
+        </div>
       </div>
     </div>
   );

@@ -6,6 +6,8 @@ import { APP_NAME } from "@/lib/brand";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LoginModal } from "@/components/login-modal";
+import { getOnboardingState } from "@/lib/onboarding";
+import { OnboardingProvider } from "@/components/onboarding/provider";
 
 /**
  * The public shell for coach pages: no app sidebar, the landing page's header
@@ -13,7 +15,8 @@ import { LoginModal } from "@/components/login-modal";
  * lets /coaches through without a session.
  */
 export default async function CoachesLayout({ children }: { children: React.ReactNode }) {
-  const [{ t }, profile] = await Promise.all([getI18n(), getProfile()]);
+  // onboarding state only matters to a signed-in reader (the discovery tour); null for anyone else
+  const [{ t }, profile, onboarding] = await Promise.all([getI18n(), getProfile(), getOnboardingState()]);
   const p = t.coachProfile.publicPage;
   const appHref = profile ? (profile.role === "client" ? "/today" : "/dashboard") : null;
   const pill = "inline-flex h-10 items-center rounded-full bg-accent px-4 text-[13.5px] font-semibold text-accent-fg hover:opacity-90 sm:px-[18px]";
@@ -52,7 +55,9 @@ export default async function CoachesLayout({ children }: { children: React.Reac
           )}
         </nav>
       </header>
-      <main>{children}</main>
+      <main>
+        {profile ? <OnboardingProvider userId={profile.id} initial={onboarding}>{children}</OnboardingProvider> : children}
+      </main>
     </div>
   );
 }

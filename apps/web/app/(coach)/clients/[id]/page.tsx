@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCoachClientRelationships } from "@/lib/coaching-data";
-import { getClients } from "@/lib/data";
+import { getClientGoal, getClients } from "@/lib/data";
 import { getClientWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getClientFitnessScore } from "@/lib/fitness-score-data";
 import { getFeed } from "@/lib/social-data";
@@ -35,7 +35,7 @@ export default async function CoachClientPage({
   // The roster and the summary go out together: the summary is filtered by
   // client id and RLS answers it, so it never needed the roster first. A client
   // the coach cannot see still 404s below — the wasted summary read is empty.
-  const [clients, summary, fitness, posts, relationships] = await Promise.all([
+  const [clients, summary, fitness, posts, relationships, goal] = await Promise.all([
     getClients(),
     getClientWeeklySummary(id, choice),
     // Coach Pro. getPlan is request-cached off the layout's profile read.
@@ -46,6 +46,8 @@ export default async function CoachClientPage({
     getFeed({ author: id }),
     // the relationship itself, for its lifecycle actions (20261109110000)
     getCoachClientRelationships("current"),
+    // the goal the client picked in their setup steps (goals_coach_read)
+    getClientGoal(id),
   ]);
   const relationship = relationships.find((r) => r.client_id === id && r.status === "active") ?? null;
   const plan = await getPlan();
@@ -93,6 +95,11 @@ export default async function CoachClientPage({
           </Link>
         </div>
       </div>
+      {goal ? (
+        <p className="mt-3 text-[13.5px] text-ink-soft" data-testid="client-goal">
+          <span className="font-semibold text-ink">{t.onboarding.coachView.goal}</span> {goal}
+        </p>
+      ) : null}
 
       <div className="mt-4 space-y-4 sm:mt-6">
         {fitness ? (
