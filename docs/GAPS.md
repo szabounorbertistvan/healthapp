@@ -584,8 +584,11 @@ them the section renders a "not configured" note instead of a broken upload.
   Imported live 2026-10-13: București, Cluj-Napoca, Iași, Timișoara, Brașov,
   Constanța and the towns around them — 850 gyms. Google's results vary a little
   between runs, so a second search of a city still finds a few. **Cost to watch:**
-  the monthly refresh is one Place Details call per gym (850 a month), and the
-  photo route one Place Photo call per viewer per gym per day. Still missing: a notification when a request
+  the monthly refresh is one Place Details call per gym (850 a month). Photos no
+  longer cost per view: each Google photo is copied once to Cloudinary
+  (20261121120000, `gyms.photo_url`, "Copy photos to Cloudinary" on /admin/gyms,
+  run automatically after an import) — 757 copied 2026-10-13. A photo Google
+  changes in the monthly refresh queues again; until then the old copy shows. Still missing: a notification when a request
   arrives, a link from `gyms.city` to `cities`.
 - **Nothing shares outside the app yet.** `lib/share-payload.ts` builds the
   card data for every post kind, but no button calls it and no image is

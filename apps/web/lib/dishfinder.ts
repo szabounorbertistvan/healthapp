@@ -37,6 +37,11 @@ const BASE = (process.env.NEXT_PUBLIC_DISHFINDER_URL ?? "").replace(/\/+$/, "");
 const RECIPES_ON = process.env.NEXT_PUBLIC_DISHFINDER_RECIPES === "1";
 const enabled = () => BASE.length > 0 && RECIPES_ON;
 
+/** True when the environment points at a DishFinder deployment that serves recipes — the Today page's "recipe ideas" row keys off it. */
+export function dishfinderEnabled(): boolean {
+  return enabled();
+}
+
 /**
  * "Recipes with these ingredients". Null when there is nothing honest to link:
  * not configured, an empty meal, or **any** food without a DishFinder
