@@ -240,7 +240,9 @@ export default async function CoachPage({ params, searchParams }: Props) {
       <StartCoachingProvider profile={shown} viewer={viewer} state={state} loginParams={loginParams}
         intent={signedIn && intent?.kind === "contact" ? { kind: "contact", serviceId: intent.serviceId } : null}>
         <CoachProfileView profile={shown} follow={follow} posts={posts} programs={programs} live bookHrefs={bookHrefs}
-          reviews={reviewsSection} gate={gate} headerRating={headerRating} share={share} availability={availability} />
+          reviews={reviewsSection} gate={gate} headerRating={headerRating} share={share} availability={availability}
+          // a cut text says so where it stops, and leads to sign-up and back here
+          teaser={teaser ? { cut: teaser.cut, href: coachGateHref(profile.slug, "signup", loginParams) } : null} />
       </StartCoachingProvider>
     </>
   );

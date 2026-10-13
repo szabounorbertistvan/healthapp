@@ -201,18 +201,39 @@ export const TEASER_PROGRAMS = 3;
  * payload carries no more than it shows. Not a security boundary — all of it
  * is public through coach_public_profile() — a conversion one.
  */
-export function coachTeaser(p: CoachPublicProfile): { profile: CoachPublicProfile; aboutCut: boolean; moreServices: number } {
+export function coachTeaser(p: CoachPublicProfile): {
+  profile: CoachPublicProfile; aboutCut: boolean; moreServices: number;
+  /** Which of the coach's own texts were shortened — the page says so where each one stops. */
+  cut: TeaserCut;
+} {
   const about = p.about?.trim() ?? null;
   const cut = cutText(about, TEASER_ABOUT_CHARS);
+  const approach = p.approach?.trim() ?? null;
+  const approachCut = cutText(approach, TEASER_CONTENT_CHARS);
+  const experience = p.experience_summary?.trim() ?? null;
+  const experienceCut = cutText(experience, TEASER_CONTENT_CHARS);
   return {
     profile: {
       ...p, about: cut, services: p.services.slice(0, TEASER_SERVICES),
-      ...(p.approach !== undefined ? { approach: cutText(p.approach?.trim() ?? null, TEASER_CONTENT_CHARS) } : {}),
-      ...(p.experience_summary !== undefined ? { experience_summary: cutText(p.experience_summary?.trim() ?? null, TEASER_CONTENT_CHARS) } : {}),
+      ...(p.approach !== undefined ? { approach: approachCut } : {}),
+      ...(p.experience_summary !== undefined ? { experience_summary: experienceCut } : {}),
     },
     aboutCut: cut !== about,
     moreServices: Math.max(0, p.services.length - TEASER_SERVICES),
+    cut: { about: cut !== about, approach: approachCut !== approach, experience: experienceCut !== experience },
   };
+}
+
+export type TeaserCut = { about: boolean; approach: boolean; experience: boolean };
+
+/**
+ * The coach's photo at a size worth opening: users.avatar_url is a 256px
+ * face-cropped square (lib/cloudinary.ts avatarUrl); the same Cloudinary asset
+ * is asked for whole, up to 1200px wide. Any other address is returned as is.
+ */
+export function fullSizeAvatarUrl(url: string): string {
+  if (!/^https:\/\/res\.cloudinary\.com\//.test(url)) return url;
+  return url.replace(/(\/image\/upload\/)(?:[a-z]{1,3}_[^/]*\/)*(?=v\d+\/)/, "$1c_limit,w_1200,q_auto,f_auto/");
 }
 
 function cutText(text: string | null, max: number): string | null {

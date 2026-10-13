@@ -1,10 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Popover } from "@base-ui/react/popover";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { CoachPublicProfile, VerificationBadge } from "@/lib/coach-profile";
 import { formatPrice } from "@/lib/coach-onboarding";
-import { coachFormat, coachWhyPoints, yearsOfExperience } from "@/lib/coach-public";
+import { coachFormat, coachWhyPoints, fullSizeAvatarUrl, yearsOfExperience, type TeaserCut } from "@/lib/coach-public";
+import { gymMapHref } from "@/lib/gym-map";
 import { Avatar } from "../social";
 import { StartCoachingButton } from "./start-coaching";
 import { VerifiedBadge } from "../coach-discovery/verified-badge";
@@ -33,7 +35,7 @@ import { socialEntries } from "@/lib/coach-content";
  * → why train with them. Wide, the key facts sit in a sticky sidebar.
  */
 export function CoachProfileView({
-  profile, follow, posts, programs, live = false, bookHrefs, reviews, gate, headerRating, share, availability,
+  profile, follow, posts, programs, live = false, bookHrefs, reviews, gate, headerRating, share, availability, teaser,
 }: {
   profile: CoachPublicProfile;
   follow?: React.ReactNode;
@@ -58,6 +60,12 @@ export function CoachProfileView({
    * time. Null: no Availability section (a preview, or a database without it).
    */
   availability?: { bookable: boolean; nextSlot: string | null; zone: string | null; href: string | null } | null;
+  /**
+   * An anonymous visitor's page (coachTeaser): which own-words texts were cut
+   * on the server, and where the rest is (sign up, back to this page). Each cut
+   * text ends in a link saying so, instead of an ellipsis that leads nowhere.
+   */
+  teaser?: { cut: TeaserCut; href: string } | null;
 }) {
   const { t, locale } = useI18n();
   const p = t.coachProfile.publicPage;
@@ -89,7 +97,7 @@ export function CoachProfileView({
         <div className="relative z-10 -mt-12 px-1 @2xl:-mt-16 @2xl:px-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="rounded-full bg-bg p-1">
-              <Avatar name={profile.display_name} url={profile.avatar_url} size="h-24 w-24 @2xl:h-32 @2xl:w-32" />
+              <ProfilePhoto name={profile.display_name} url={profile.avatar_url} />
             </div>
             <div className="hidden flex-wrap items-center gap-2 @2xl:flex">
               {follow}
@@ -156,17 +164,14 @@ export function CoachProfileView({
       {/* ---------- body: main + sidebar ---------- */}
       <div className="mt-10 grid gap-10 @4xl:grid-cols-[minmax(0,1fr)_320px] @4xl:gap-12">
         <div className="min-w-0 space-y-12">
-          <About profile={profile} live={live} />
+          <About profile={profile} live={live} teaser={teaser ?? null} />
 
           {profile.specializations.length > 0 || (profile.client_goals?.length ?? 0) > 0 ? (
             <Section title={p.specializations} id="specializations">
               <ul className="flex flex-wrap gap-2">
                 {profile.specializations.map((sp) => (
-                  <li
-                    key={sp.slug}
-                    className={`rounded-full px-3.5 py-1.5 text-[13.5px] font-semibold ${sp.is_primary ? "bg-accent text-accent-fg" : "bg-surface text-ink"}`}
-                  >
-                    {local(sp)}
+                  <li key={sp.slug}>
+                    <SpecializationChip slug={sp.slug} name={local(sp)} primary={sp.is_primary} />
                   </li>
                 ))}
               </ul>
@@ -185,7 +190,7 @@ export function CoachProfileView({
             </Section>
           ) : null}
 
-          <Approach profile={profile} />
+          <Approach profile={profile} teaser={teaser ?? null} />
 
           {profile.services.length > 0 ? (
             <Section title={p.services} id="services">
@@ -360,7 +365,7 @@ function VerifiedDetailText({ profile }: { profile: CoachPublicProfile }) {
  * How they coach and what they have done — the coach's own words, said so:
  * nothing here is checked by Voinic (credentials and the badge are, above).
  */
-function Approach({ profile }: { profile: CoachPublicProfile }) {
+function Approach({ profile, teaser }: { profile: CoachPublicProfile; teaser: { cut: TeaserCut; href: string } | null }) {
   const { t } = useI18n();
   const p = t.coachProfile.publicPage;
   const approach = profile.approach?.trim();
@@ -369,11 +374,17 @@ function Approach({ profile }: { profile: CoachPublicProfile }) {
   return (
     <Section title={p.approachTitle} id="approach">
       <div className="grid gap-5" data-testid="coach-approach">
-        {approach ? <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">{approach}</p> : null}
+        {approach ? (
+          <div>
+            <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">{approach}</p>
+            {teaser?.cut.approach ? <GatedMore href={teaser.href} /> : null}
+          </div>
+        ) : null}
         {experience ? (
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{p.experienceTitle}</h3>
             <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">{experience}</p>
+            {teaser?.cut.experience ? <GatedMore href={teaser.href} /> : null}
           </div>
         ) : null}
         <p className="text-[12.5px] text-ink-faint">{fill(p.ownWords, { name: profile.display_name })}</p>
@@ -417,7 +428,7 @@ function Availability({ profile, availability }: {
 }
 
 /** About, folded after a few lines so a long story does not push Services off the screen. */
-function About({ profile, live }: { profile: CoachPublicProfile; live: boolean }) {
+function About({ profile, live, teaser }: { profile: CoachPublicProfile; live: boolean; teaser: { cut: TeaserCut; href: string } | null }) {
   const { t } = useI18n();
   const p = t.coachProfile.publicPage;
   const [open, setOpen] = useState(false);
@@ -431,7 +442,9 @@ function About({ profile, live }: { profile: CoachPublicProfile; live: boolean }
           <p className={`whitespace-pre-line text-[15px] leading-relaxed text-ink-soft ${long && !open ? "line-clamp-5" : ""}`}>
             {text}
           </p>
-          {long ? (
+          {teaser?.cut.about ? (
+            <GatedMore href={teaser.href} />
+          ) : long ? (
             <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
               className="mt-2 text-[13.5px] font-semibold text-accent-ink hover:underline">
               {open ? p.readLess : p.readMore}
@@ -494,7 +507,25 @@ function Facts({ profile, formats, years }: { profile: CoachPublicProfile; forma
           {profile.locations.map((l) => (
             <li key={l.city_slug}>
               {locale === "ro" ? l.city : l.city_en}
-              {l.gym_name ? <span className="text-ink-faint"> — {l.gym_name}</span> : null}
+              {l.gym_name ? (
+                <>
+                  <span className="text-ink-faint"> — </span>
+                  {/* a maps search for the gym in its city: a link out, no maps API (lib/gym-map.ts) */}
+                  <a
+                    href={gymMapHref({ name: l.gym_name, city: l.city })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={fill(p.openInMaps, { gym: l.gym_name })}
+                    data-testid="coach-gym-map"
+                    className="inline-flex items-center gap-1 font-semibold text-accent-ink hover:underline"
+                  >
+                    {l.gym_name}
+                    <svg viewBox="0 0 24 24" aria-hidden className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5" />
+                    </svg>
+                  </a>
+                </>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -587,5 +618,98 @@ function WhyCoach({ profile, follow }: { profile: CoachPublicProfile; follow?: R
         {follow}
       </div>
     </section>
+  );
+}
+
+/**
+ * "Read the rest — free account": where an anonymous visitor's text was cut on
+ * the server (coachTeaser), so the ellipsis leads somewhere — sign up, then
+ * back to this page with the whole profile.
+ */
+function GatedMore({ href }: { href: string }) {
+  const { t } = useI18n();
+  return (
+    <a href={href} data-testid="coach-read-more-gated" className="mt-2 inline-block text-[13.5px] font-semibold text-accent-ink hover:underline">
+      {t.coachProfile.publicPage.readMoreGated}
+    </a>
+  );
+}
+
+/**
+ * The coach's photo, opened whole on a click: a native modal <dialog> (top
+ * layer, focus trapped, Escape and a click outside close it, focus goes back to
+ * the photo). The stored avatar is a 256px face crop; the dialog asks the same
+ * Cloudinary asset for the full picture. No photo: just the initial, nothing to open.
+ */
+function ProfilePhoto({ name, url }: { name: string; url: string | null }) {
+  const { t } = useI18n();
+  const p = t.coachProfile.publicPage;
+  const ref = useRef<HTMLDialogElement>(null);
+  const size = "h-24 w-24 @2xl:h-32 @2xl:w-32";
+  if (!url) return <Avatar name={name} url={null} size={size} />;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => ref.current?.showModal()}
+        aria-label={p.photoOpen}
+        aria-haspopup="dialog"
+        data-testid="coach-photo-open"
+        className="block cursor-zoom-in rounded-full outline-none ring-accent/60 focus-visible:ring-4"
+      >
+        <Avatar name={name} url={url} size={size} />
+      </button>
+      <dialog
+        ref={ref}
+        aria-label={name}
+        onClick={(e) => { if (e.target === e.currentTarget) ref.current?.close(); }}
+        className="m-auto max-h-[90vh] max-w-[min(92vw,900px)] overflow-visible bg-transparent p-0 backdrop:bg-black/80"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={fullSizeAvatarUrl(url)} alt={name} className="max-h-[80vh] w-auto max-w-full rounded-3xl object-contain shadow-2xl" />
+        <form method="dialog" className="mt-3 flex justify-center">
+          <button className="inline-flex h-10 items-center rounded-full bg-surface px-5 text-[13.5px] font-semibold text-ink hover:bg-bg">
+            {p.photoClose}
+          </button>
+        </form>
+      </dialog>
+    </>
+  );
+}
+
+/**
+ * A specialization chip that explains itself: hovered (desktop) or tapped /
+ * pressed from the keyboard (phone, keyboard), a small card says what it means
+ * and links to every coach listed under it. Base UI's Popover: portalled,
+ * kept inside the screen, Escape and a click outside close it.
+ */
+function SpecializationChip({ slug, name, primary }: { slug: string; name: string; primary: boolean }) {
+  const { t } = useI18n();
+  const p = t.coachProfile.publicPage;
+  const info = p.specInfo[slug];
+  return (
+    <Popover.Root>
+      <Popover.Trigger
+        openOnHover
+        delay={150}
+        data-testid="coach-specialization"
+        className={`inline-flex cursor-help rounded-full px-3.5 py-1.5 text-[13.5px] font-semibold outline-none ring-accent/60 focus-visible:ring-2 ${
+          primary ? "bg-accent text-accent-fg" : "bg-surface text-ink hover:bg-accent-soft/60"
+        }`}
+      >
+        {name}
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner sideOffset={8} collisionPadding={16} className="z-50">
+          <Popover.Popup className="w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-4 text-left shadow-2xl outline-none">
+            <Popover.Title className="font-display text-[15px] font-bold tracking-tight text-ink">{name}</Popover.Title>
+            {info ? <Popover.Description className="mt-1 text-[13px] leading-relaxed text-ink-soft">{info}</Popover.Description> : null}
+            <a href={`/coaches/specialization/${slug}`} className="mt-3 inline-block text-[13px] font-semibold text-accent-ink hover:underline">
+              {fill(p.specMore, { name })}
+            </a>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }

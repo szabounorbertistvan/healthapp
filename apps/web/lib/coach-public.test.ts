@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CoachPublicProfile, CoachViewerState } from "./coach-profile";
 import {
   attributionParams, coachFormat, coachGateHref, coachIndexable, coachJsonLd, coachPageDescription, coachPageJsonLd, coachPageTitle, coachTeaser,
-  coachPageMetadata, coachWhyPoints, socialImage, startCoachingState, yearsOfExperience, TEASER_ABOUT_CHARS, TEASER_CONTENT_CHARS,
+  coachPageMetadata, coachWhyPoints, fullSizeAvatarUrl, socialImage, startCoachingState, yearsOfExperience, TEASER_ABOUT_CHARS, TEASER_CONTENT_CHARS,
 } from "./coach-public";
 
 const profile: CoachPublicProfile = {
@@ -227,6 +227,11 @@ describe("own-words content in the teaser and the structured data (2026111110000
     expect(t.experience_summary).toBe("Eight years in a gym in Cluj.");
     expect(t.client_goals).toEqual(["strength", "beginners"]);
   });
+  it("says which own-words texts were cut, so the page can say so where each one stops", () => {
+    expect(coachTeaser(withContent).cut).toEqual({ about: false, approach: true, experience: false });
+    expect(coachTeaser({ ...withContent, about: "word ".repeat(200).trim() }).cut.about).toBe(true);
+    expect(coachTeaser(profile).cut).toEqual({ about: false, approach: false, experience: false });
+  });
   it("a profile from before the migration stays as it was", () => {
     expect(coachTeaser(profile).profile).not.toHaveProperty("approach");
   });
@@ -266,5 +271,17 @@ describe("social previews and metadata", () => {
   it("never puts a private field in the metadata", () => {
     const m = JSON.stringify(coachPageMetadata({ ...profile, user_id: "secret-user-id" }, { siteUrl: "https://s", appName: "V", locale: "en" }));
     expect(m).not.toContain("secret-user-id");
+  });
+});
+
+describe("the coach photo, opened whole", () => {
+  it("asks Cloudinary for the uncropped picture instead of the 256px face crop", () => {
+    const stored = "https://res.cloudinary.com/demo/image/upload/c_fill,f_auto,g_face,h_256,q_auto,w_256/v1712/voinic/avatars/u1/avatar";
+    expect(fullSizeAvatarUrl(stored)).toBe("https://res.cloudinary.com/demo/image/upload/c_limit,w_1200,q_auto,f_auto/v1712/voinic/avatars/u1/avatar");
+  });
+  it("adds the size to an address without a transformation, and leaves anything else alone", () => {
+    expect(fullSizeAvatarUrl("https://res.cloudinary.com/demo/image/upload/v1/a/b"))
+      .toBe("https://res.cloudinary.com/demo/image/upload/c_limit,w_1200,q_auto,f_auto/v1/a/b");
+    expect(fullSizeAvatarUrl("https://lh3.googleusercontent.com/a/photo=s96")).toBe("https://lh3.googleusercontent.com/a/photo=s96");
   });
 });
