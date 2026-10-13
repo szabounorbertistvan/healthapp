@@ -4,7 +4,8 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { adminActor } from "@/lib/admin/guard";
 import { uuidOf } from "@/lib/admin/params";
 import { isMapsHost, parseMapsUrl, type MapsLinkFacts } from "@/lib/gym-map";
-import { findPlace, placeDetails, searchGymsInCity, type PlaceFacts } from "@/lib/google-places";
+import { findPlace, placeDetails, placePhotoUri, searchGymsInCity, type PlaceFacts } from "@/lib/google-places";
+import { cloudinaryConfigured, destroyGymPhoto, uploadGymPhoto } from "@/lib/cloudinary";
 import type { ActionResult } from "./actions";
 
 /**
@@ -101,7 +102,10 @@ export async function approveGym(id: string): Promise<ActionResult> {
 export async function deleteGym(id: string, _reason: string): Promise<ActionResult> {
   const gym = uuidOf(id);
   if (!gym) return { ok: false, message: "Invalid id" };
-  return call("admin_delete_gym", { p_id: gym });
+  const r = await call("admin_delete_gym", { p_id: gym });
+  // Its copied photo goes with it (20261121120000). Best effort.
+  if (r.ok && cloudinaryConfigured()) await destroyGymPhoto(gym);
+  return r;
 }
 
 /**
@@ -164,15 +168,20 @@ export type GoogleGymHit = {
 };
 
 /** A city's gyms on Google, marked when they are already on our list. */
-export async function searchGoogleGyms(city: string): Promise<{ ok: boolean; message?: string; hits?: GoogleGymHit[] }> {
+export async function searchGoogleGyms(city: string): Promise<{
+  ok: boolean; message?: string; hits?: GoogleGymHit[]; calls?: number; capped?: boolean;
+}> {
   if (!(await adminActor())) return { ok: false, message: "Admins only" };
-  const places = await searchGymsInCity(String(city ?? ""));
-  if (places === null) return { ok: false, message: "GOOGLE_UNAVAILABLE" };
+  const search = await searchGymsInCity(String(city ?? ""));
+  if (search === null) return { ok: false, message: "GOOGLE_UNAVAILABLE" };
+  const places = search.places;
   const supabase = await supabaseServer();
   const { data } = await supabase.rpc("admin_known_place_ids", { p_ids: places.map((p) => p.placeId) });
   const known = new Set((data ?? []) as string[]);
   return {
     ok: true,
+    calls: search.calls,
+    capped: search.capped,
     hits: places.map((p) => ({
       raw: p.raw, placeId: p.placeId, name: p.name, address: p.address,
       rating: p.rating, ratingsTotal: p.ratingsTotal, known: known.has(p.placeId),
@@ -185,11 +194,55 @@ export async function importGoogleGyms(
   city: string, places: Record<string, unknown>[],
 ): Promise<{ ok: boolean; message?: string; imported?: number; skipped?: number }> {
   if (!(await adminActor())) return { ok: false, message: "Admins only" };
-  if (!Array.isArray(places) || places.length === 0 || places.length > 100) return { ok: false, message: "GYM_IMPORT" };
+  if (!Array.isArray(places) || places.length === 0 || places.length > 1000) return { ok: false, message: "GYM_IMPORT" };
   const supabase = await supabaseServer();
-  const { data, error } = await supabase.rpc("admin_import_gyms", { p_places: places, p_city: String(city ?? "").trim().slice(0, 80) });
-  if (error) return { ok: false, message: error.message };
+  let imported = 0;
+  let skipped = 0;
+  // admin_import_gyms takes up to 200 a call.
+  for (let i = 0; i < places.length; i += 150) {
+    const { data, error } = await supabase.rpc("admin_import_gyms", {
+      p_places: places.slice(i, i + 150), p_city: String(city ?? "").trim().slice(0, 80),
+    });
+    if (error) return { ok: false, message: error.message, imported, skipped };
+    const r = (data ?? {}) as { imported?: number; skipped?: number };
+    imported += r.imported ?? 0;
+    skipped += r.skipped ?? 0;
+  }
   for (const p of [...PATHS, "/gyms"]) revalidatePath(p);
-  const r = (data ?? {}) as { imported?: number; skipped?: number };
-  return { ok: true, imported: r.imported ?? 0, skipped: r.skipped ?? 0 };
+  return { ok: true, imported, skipped };
+}
+
+// ---------- gym photos into Cloudinary (20261121120000) ----------
+
+/**
+ * Copy the next few Google photos into Cloudinary: ask Google for each
+ * photo's short-lived URL, let Cloudinary fetch it, record the result. One
+ * call does up to 10, five at a time; the admin screen calls again until
+ * `remaining` is 0. A photo Google refuses is recorded as none so the queue
+ * moves on.
+ */
+export async function cacheGymPhotos(): Promise<{ ok: boolean; message?: string; done?: number; failed?: number; remaining?: number }> {
+  if (!(await adminActor())) return { ok: false, message: "Admins only" };
+  if (!cloudinaryConfigured()) return { ok: false, message: "CLOUDINARY_UNAVAILABLE" };
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("admin_gym_photo_queue", { p_limit: 10 });
+  if (error) return { ok: false, message: error.message };
+  const queue = (data ?? { remaining: 0, gyms: [] }) as { remaining: number; gyms: { id: string; photo_name: string }[] };
+  let done = 0;
+  let failed = 0;
+  for (let i = 0; i < queue.gyms.length; i += 5) {
+    await Promise.all(queue.gyms.slice(i, i + 5).map(async (g) => {
+      let url: string | null = null;
+      try {
+        const source = await placePhotoUri(g.photo_name, 1200);
+        if (source) url = await uploadGymPhoto(g.id, source);
+      } catch (e) {
+        console.error("cacheGymPhotos:", g.id, (e as Error).message);
+      }
+      const { error: setError } = await supabase.rpc("admin_set_gym_photo", { p_id: g.id, p_url: url, p_source: g.photo_name });
+      if (url && !setError) done++; else failed++;
+    }));
+  }
+  revalidatePath("/gyms", "layout");
+  return { ok: true, done, failed, remaining: Math.max(0, queue.remaining - queue.gyms.length) };
 }

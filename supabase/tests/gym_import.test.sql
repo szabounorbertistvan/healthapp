@@ -4,7 +4,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(11);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -46,6 +46,11 @@ select is(public.admin_import_gyms((select j from places), 'Cluj-Napoca'), '{"im
   'importing again duplicates nothing');
 select is(public.admin_known_place_ids(array['ChIJ_one', 'ChIJ_nope']), array['ChIJ_one'], 'the known ids');
 select throws_ok($$ select public.admin_import_gyms('[]'::jsonb, '') $$, '22023', null, 'a city is required');
+select is(public.admin_import_gyms($j$[{"id": "ChIJ_floresti", "displayName": {"text": "Gym Floresti"},
+  "addressComponents": [{"longText": "Florești", "types": ["locality", "political"]}, {"longText": "Cluj", "types": ["administrative_area_level_1"]}]},
+  {"id": "ChIJ_plain", "displayName": {"text": "Gym Plain"}}]$j$::jsonb, 'Cluj-Napoca') ->> 'imported', '2', 'two more');
+select is((select array_agg(city order by name) from public.gyms where google_place_id in ('ChIJ_floresti', 'ChIJ_plain')),
+  array['Florești', 'Cluj-Napoca'], 'a gym''s own town from Google, else the city searched (20261121110000)');
 
 select * from finish();
 rollback;

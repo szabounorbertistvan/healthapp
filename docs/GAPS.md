@@ -575,7 +575,17 @@ them the section renders a "not configured" note instead of a broken upload.
   `/api/gyms/[id]/photo`), parsed in SQL by `gym_apply_google()`; refreshed by
   a button and monthly by pg_cron + pg_net (`gym-google-refresh` /
   `gym-google-collect`), which do nothing until the key is also in Vault as
-  `google_places_api_key`. Still missing: a notification when a request
+  `google_places_api_key`. An admin can also import a whole city's gyms from Google
+  at once on `/admin/gyms` (`admin_import_gyms`, 20261121100000; Text Search, type
+  `gym`, known place ids skipped). Text Search stops at 60 results, so a city is
+  searched as a grid (20261121110000, `lib/google-places.ts`): the city's viewport,
+  a full rectangle split in four and searched again, types `gym` and
+  `fitness_center`; each gym's town comes from Google's addressComponents.
+  Imported live 2026-10-13: București, Cluj-Napoca, Iași, Timișoara, Brașov,
+  Constanța and the towns around them — 850 gyms. Google's results vary a little
+  between runs, so a second search of a city still finds a few. **Cost to watch:**
+  the monthly refresh is one Place Details call per gym (850 a month), and the
+  photo route one Place Photo call per viewer per gym per day. Still missing: a notification when a request
   arrives, a link from `gyms.city` to `cities`.
 - **Nothing shares outside the app yet.** `lib/share-payload.ts` builds the
   card data for every post kind, but no button calls it and no image is

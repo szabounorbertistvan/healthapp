@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { importGoogleGyms, searchGoogleGyms, type GoogleGymHit } from "@/app/admin-gym-actions";
+import { cacheGymPhotos, importGoogleGyms, searchGoogleGyms, type GoogleGymHit } from "@/app/admin-gym-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -21,6 +21,8 @@ export function AdminGymImport() {
   const [hits, setHits] = useState<GoogleGymHit[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [note, setNote] = useState<string | null>(null);
+  const [stats, setStats] = useState<{ calls: number; capped: boolean } | null>(null);
+  const [photoNote, setPhotoNote] = useState<string | null>(null);
   const [busy, start] = useTransition();
 
   function search(e: React.FormEvent) {
@@ -35,6 +37,7 @@ export function AdminGymImport() {
       }
       setSearched(city.trim());
       setHits(r.hits);
+      setStats({ calls: r.calls ?? 0, capped: Boolean(r.capped) });
       setPicked(new Set(r.hits.filter((h) => !h.known).map((h) => h.placeId)));
     });
   }
@@ -43,16 +46,46 @@ export function AdminGymImport() {
     if (!hits) return;
     const places = hits.filter((h) => picked.has(h.placeId)).map((h) => h.raw);
     start(async () => {
-      const r = await importGoogleGyms(searched, places);
-      if (!r.ok) {
-        setNote(t.gyms.errors.generic);
-        return;
+      // Server Actions take at most 1 MB a call and a Google place object is
+      // a few KB: a big city goes in batches, with progress shown.
+      let imported = 0;
+      let skipped = 0;
+      for (let i = 0; i < places.length; i += 40) {
+        setNote(fill(m.progress, { done: i, total: places.length }));
+        const r = await importGoogleGyms(searched, places.slice(i, i + 40));
+        if (!r.ok) {
+          setNote(`${fill(m.done, { n: imported, s: skipped })} ${t.gyms.errors.generic}`);
+          router.refresh();
+          return;
+        }
+        imported += r.imported ?? 0;
+        skipped += r.skipped ?? 0;
       }
-      setNote(fill(m.done, { n: r.imported ?? 0, s: r.skipped ?? 0 }));
+      setNote(fill(m.done, { n: imported, s: skipped }));
       setHits((cur) => cur?.map((h) => (picked.has(h.placeId) ? { ...h, known: true } : h)) ?? null);
       setPicked(new Set());
       router.refresh();
+      // New gyms come with a Google photo: copy them to Cloudinary right away.
+      if (imported > 0) await copyPhotos();
     });
+  }
+
+  /** Copy every waiting Google photo into Cloudinary, ten a call, with progress. */
+  async function copyPhotos() {
+    let copied = 0;
+    let failed = 0;
+    for (let guard = 0; guard < 200; guard++) {
+      const r = await cacheGymPhotos();
+      if (!r.ok) {
+        setPhotoNote(r.message === "CLOUDINARY_UNAVAILABLE" ? m.photosNoCloudinary : t.gyms.errors.generic);
+        return;
+      }
+      copied += r.done ?? 0;
+      failed += r.failed ?? 0;
+      setPhotoNote(fill(m.photosProgress, { n: copied, f: failed, r: r.remaining ?? 0 }));
+      if ((r.remaining ?? 0) === 0 || (r.done ?? 0) + (r.failed ?? 0) === 0) break;
+    }
+    setPhotoNote(fill(m.photosDone, { n: copied, f: failed }));
   }
 
   const toggle = (id: string) =>
@@ -74,8 +107,16 @@ export function AdminGymImport() {
         </button>
       </form>
       <p className="mt-1 text-[11.5px] leading-relaxed text-ink-faint">{m.hint}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <button type="button" disabled={busy} onClick={() => start(copyPhotos)}
+          className="h-9 rounded-xl bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50">
+          {m.photos}
+        </button>
+        {photoNote ? <span className="text-[12.5px] text-ink-soft">{photoNote}</span> : null}
+      </div>
       {note ? <p className="mt-2 text-[12.5px] font-semibold text-accent-ink">{note}</p> : null}
 
+      {stats?.capped ? <p className="mt-2 text-[12.5px] font-semibold text-warn">{m.capped}</p> : null}
       {hits ? (
         hits.length === 0 ? (
           <p className="mt-3 text-[13px] text-ink-faint">{m.none}</p>
@@ -84,6 +125,7 @@ export function AdminGymImport() {
             <div className="flex flex-wrap items-center gap-3">
               <p className="text-[12.5px] text-ink-soft">
                 {fill(m.found, { n: hits.length, k: hits.filter((h) => h.known).length, city: searched })}
+                {stats ? ` · ${fill(m.calls, { n: stats.calls })}` : null}
               </p>
               <button type="button" disabled={busy || picked.size === 0} onClick={importPicked}
                 className="h-9 rounded-xl bg-accent px-4 text-[12.5px] font-bold text-accent-fg hover:opacity-90 disabled:opacity-50">

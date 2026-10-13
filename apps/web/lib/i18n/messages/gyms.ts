@@ -86,6 +86,8 @@ const en = {
     active: "{n} trained here in the last 30 days",
     rating: "{r} on Google",
     list: "All gyms",
+    listIn: "Gyms in {city}",
+    listTop: "Best rated gyms",
     myGym: "My gym",
   },
   tops: {
@@ -209,7 +211,9 @@ const en = {
     edit: "Edit",
     import: {
       title: "Import a city's gyms from Google",
-      hint: "Searches Google for places of type “gym” in that city (up to 60). Untick anything that is not a gym; gyms already on the list are skipped. Imported gyms are active at once.",
+      hint: "Searches Google for gyms and fitness centres across the whole city, area by area (Google returns at most 60 per search, so a busy area is split and searched again). Untick anything that is not a gym; gyms already on the list are skipped. Each gym gets its own town from Google. Imported gyms are active at once.",
+      calls: "{n} Google searches",
+      capped: "The search stopped at its call limit before covering the whole city. Import these, then search again: gyms already on the list are skipped.",
       city: "City",
       search: "Search Google",
       searching: "Searching…",
@@ -218,6 +222,11 @@ const en = {
       importN: "Import {n}",
       known: "already on the list",
       done: "Imported {n}, skipped {s}.",
+      progress: "Importing… {done} of {total}",
+      photos: "Copy photos to Cloudinary",
+      photosProgress: "Photos: {n} copied, {f} unavailable, {r} left…",
+      photosDone: "Photos done: {n} copied, {f} unavailable.",
+      photosNoCloudinary: "Cloudinary is not configured.",
       noKey: "Google is not configured (GOOGLE_PLACES_API_KEY).",
     },
     form: {
@@ -332,6 +341,8 @@ const ro: typeof en = {
     active: "{n} s-au antrenat aici în ultimele 30 de zile",
     rating: "{r} pe Google",
     list: "Toate sălile",
+    listIn: "Săli în {city}",
+    listTop: "Cele mai bine cotate săli",
     myGym: "Sala mea",
   },
   tops: {
@@ -455,7 +466,9 @@ const ro: typeof en = {
     edit: "Editează",
     import: {
       title: "Importă sălile unui oraș din Google",
-      hint: "Caută în Google locurile de tip „sală de fitness” din orașul ăla (maximum 60). Debifează ce nu e sală; sălile deja în listă se sar. Sălile importate sunt active imediat.",
+      hint: "Caută în Google sălile și centrele de fitness din tot orașul, zonă cu zonă (Google dă cel mult 60 pe căutare, așa că o zonă plină se împarte și se caută din nou). Debifează ce nu e sală; sălile deja în listă se sar. Fiecare sală primește orașul ei real de la Google. Sălile importate sunt active imediat.",
+      calls: "{n} căutări Google",
+      capped: "Căutarea s-a oprit la limita de cereri înainte să acopere tot orașul. Importă ce a găsit, apoi caută din nou: sălile deja în listă se sar.",
       city: "Oraș",
       search: "Caută în Google",
       searching: "Caut…",
@@ -464,6 +477,11 @@ const ro: typeof en = {
       importN: "Importă {n}",
       known: "deja în listă",
       done: "Importate {n}, sărite {s}.",
+      progress: "Import… {done} din {total}",
+      photos: "Copiază pozele în Cloudinary",
+      photosProgress: "Poze: {n} copiate, {f} indisponibile, {r} rămase…",
+      photosDone: "Poze gata: {n} copiate, {f} indisponibile.",
+      photosNoCloudinary: "Cloudinary nu e configurat.",
       noKey: "Google nu e configurat (GOOGLE_PLACES_API_KEY).",
     },
     form: {

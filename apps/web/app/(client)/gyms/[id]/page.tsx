@@ -6,6 +6,7 @@ import {
 } from "@/lib/gym-data";
 import { getProfile } from "@/lib/data";
 import { GymRecords } from "@/components/gym-records";
+import { GymPhoto } from "@/components/gym-photo";
 import { gymMapHref, gymWhere } from "@/lib/gym-map";
 import { gymOpenState } from "@healthapp/shared";
 import { CountBars, SetHomeGymButton } from "@/components/gym-stats";
@@ -66,13 +67,7 @@ export default async function GymPage({
       <Link href="/gyms" className="text-[12.5px] font-semibold text-ink-faint hover:text-ink">← {s.back}</Link>
 
       {g.has_photo ? (
-        <figure className="overflow-hidden rounded-3xl bg-surface">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/api/gyms/${g.id}/photo`} alt={g.name} className="h-[clamp(160px,30vw,300px)] w-full object-cover" />
-          {g.photo_attribution ? (
-            <figcaption className="px-4 py-1.5 text-[11px] text-ink-faint">{fill(s.photoBy, { name: g.photo_attribution })}</figcaption>
-          ) : null}
-        </figure>
+        <GymPhoto gymId={g.id} alt={g.name} caption={g.photo_attribution ? fill(s.photoBy, { name: g.photo_attribution }) : null} />
       ) : null}
 
       <header className="flex flex-wrap items-start justify-between gap-3">
