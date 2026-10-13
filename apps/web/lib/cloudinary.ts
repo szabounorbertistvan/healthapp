@@ -451,3 +451,39 @@ export async function destroyCoachDocument(publicId: string): Promise<void> {
   const client = configured();
   await client.uploader.destroy(publicId, { type: "authenticated", resource_type: "image", invalidate: true });
 }
+
+// ---------- gym photos (20261121120000) ----------
+// A gym's Google photo, copied once so a page view is never a paid Google
+// call. Public like a coach cover (a gym page is meant to be seen). One fixed
+// public_id per gym: a re-copy after Google's photo changed replaces it.
+
+export function gymPhotoPublicId(gymId: string): string {
+  return `voinic/gyms/${gymId}/photo`;
+}
+
+/**
+ * Upload from a URL Cloudinary fetches itself (Google's short-lived
+ * googleusercontent link — no key in it) and return the delivery URL stored
+ * in gyms.photo_url: width-capped, auto format and quality, versioned.
+ */
+export async function uploadGymPhoto(gymId: string, sourceUrl: string): Promise<string> {
+  const client = configured();
+  const r = await client.uploader.upload(sourceUrl, {
+    public_id: gymPhotoPublicId(gymId),
+    overwrite: true,
+    invalidate: true,
+    resource_type: "image",
+  });
+  return client.url(r.public_id, {
+    type: "upload",
+    secure: true,
+    version: r.version,
+    transformation: [{ width: 1200, crop: "limit", quality: "auto", fetch_format: "auto" }],
+  });
+}
+
+/** Best effort, when a gym is deleted. */
+export async function destroyGymPhoto(gymId: string): Promise<void> {
+  const client = configured();
+  await client.uploader.destroy(gymPhotoPublicId(gymId), { invalidate: true }).catch(() => {});
+}

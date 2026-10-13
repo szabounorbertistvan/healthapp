@@ -6,7 +6,8 @@ import {
 } from "@/lib/gym-data";
 import { getProfile } from "@/lib/data";
 import { GymRecords } from "@/components/gym-records";
-import { gymMapHref } from "@/lib/gym-map";
+import { GymPhoto } from "@/components/gym-photo";
+import { gymMapHref, gymWhere } from "@/lib/gym-map";
 import { gymOpenState } from "@healthapp/shared";
 import { CountBars, SetHomeGymButton } from "@/components/gym-stats";
 import { Avatar } from "@/components/social";
@@ -66,19 +67,13 @@ export default async function GymPage({
       <Link href="/gyms" className="text-[12.5px] font-semibold text-ink-faint hover:text-ink">← {s.back}</Link>
 
       {g.has_photo ? (
-        <figure className="overflow-hidden rounded-3xl bg-surface">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/api/gyms/${g.id}/photo`} alt={g.name} className="h-[clamp(160px,30vw,300px)] w-full object-cover" />
-          {g.photo_attribution ? (
-            <figcaption className="px-4 py-1.5 text-[11px] text-ink-faint">{fill(s.photoBy, { name: g.photo_attribution })}</figcaption>
-          ) : null}
-        </figure>
+        <GymPhoto gymId={g.id} alt={g.name} caption={g.photo_attribution ? fill(s.photoBy, { name: g.photo_attribution }) : null} />
       ) : null}
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">{g.name}</h1>
-          <p className="mt-1 text-[13.5px] text-ink-soft">{[g.address, g.city].filter(Boolean).join(", ")}</p>
+          <p className="mt-1 text-[13.5px] text-ink-soft">{gymWhere(g.address, g.city)}</p>
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px]">
             <a href={gymMapHref(g)} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent-ink hover:underline">{s.openMap} ↗</a>
             {g.google_rating != null ? (

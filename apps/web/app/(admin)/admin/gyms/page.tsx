@@ -9,6 +9,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 import { ConfirmAction } from "@/components/admin/confirm-action";
 import { AdminGymApprove, AdminGymEdit, AdminGymForm } from "@/components/admin/gym-form";
+import { AdminGymImport } from "@/components/admin/gym-import";
 import {
   AdminHeader, FilterButtons, Kpi, KpiGrid, Note, Pager, Pill, SearchInput, Section, Select, Table, Td, Th, fmtDate, fmtNum,
 } from "@/components/admin/ui";
@@ -116,6 +117,12 @@ export default async function AdminGymsPage({ searchParams }: { searchParams: Pr
               ))}
             </Table>
           )}
+        </Section>
+      </div>
+
+      <div className="mt-4">
+        <Section title={m.import.title}>
+          <AdminGymImport />
         </Section>
       </div>
 

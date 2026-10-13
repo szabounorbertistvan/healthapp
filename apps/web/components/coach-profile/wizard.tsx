@@ -24,6 +24,7 @@ import { Card, Chip, Switch } from "../ui";
 import { SpecializationChips } from "../specialization-chips";
 import { CertificationsStep, ServicesStep } from "./lists";
 import { searchGyms } from "@/app/gym-actions";
+import { gymWhere } from "@/lib/gym-map";
 import type { GymHit } from "@/lib/gym-data";
 import { CoachProfilePreview } from "./preview";
 import {
@@ -687,7 +688,7 @@ function WhereStep({ draft, setDraft, catalog }: StepProps & { catalog: CoachCat
                         onClick={() => { setGym(h.name); setGymId(h.id); setGymHits([]); }}
                       >
                         <span className="font-semibold">{h.name}</span>
-                        <span className="text-ink-faint"> · {[h.address, h.city].filter(Boolean).join(", ")}</span>
+                        <span className="text-ink-faint"> · {gymWhere(h.address, h.city)}</span>
                       </button>
                     </li>
                   ))}

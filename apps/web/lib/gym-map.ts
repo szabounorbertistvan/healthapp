@@ -65,3 +65,12 @@ export function parseMapsUrl(raw: string): MapsLinkFacts {
   }
   return { name, lat: null, lng: null };
 }
+
+/** "Street, City" — without the city twice when the address (Google's) already names it. */
+export function gymWhere(address: string | null | undefined, city: string | null | undefined): string {
+  const a = address?.trim() ?? "";
+  const c = city?.trim() ?? "";
+  if (!a) return c;
+  if (!c || a.toLocaleLowerCase("ro").includes(c.toLocaleLowerCase("ro"))) return a;
+  return `${a}, ${c}`;
+}

@@ -165,3 +165,126 @@ export async function placePhotoUri(photoName: string, maxWidth = 900): Promise<
     return null;
   }
 }
+
+// ---------- a whole city, for the admin's bulk import ----------
+// Text Search stops at 60 results (3 pages of 20), so one query per city
+// silently drops the rest — Cluj-Napoca alone has more than 60 gyms. The city
+// is searched as a grid instead: its viewport (from Google's own "locality"
+// result) is one rectangle; a rectangle whose search comes back full is split
+// in four and searched again, down to MAX_DEPTH. Two passes, type "gym" and
+// type "fitness_center", because Google tags some clubs with only one of them.
+// Every page returns the full field list, so a call yields up to 20 complete
+// gyms (the cheapest way to fill the list) — and MAX_CALLS caps the bill.
+
+type Rect = { low: { latitude: number; longitude: number }; high: { latitude: number; longitude: number } };
+const GYM_TYPES = ["gym", "fitness_center"] as const;
+const MAX_DEPTH = 4;
+const MAX_CALLS = 160;
+
+async function cityViewport(key: string, city: string): Promise<Rect | null> {
+  const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: { "content-type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.viewport,places.types" },
+    body: JSON.stringify({ textQuery: city, includedType: "locality", languageCode: "ro", regionCode: "RO", pageSize: 1 }),
+    signal: AbortSignal.timeout(10000),
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const json = (await res.json()) as { places?: { viewport?: Rect }[] };
+  const v = json.places?.[0]?.viewport;
+  return v?.low && v?.high ? v : null;
+}
+
+function quarters(r: Rect): Rect[] {
+  const midLat = (r.low.latitude + r.high.latitude) / 2;
+  const midLng = (r.low.longitude + r.high.longitude) / 2;
+  return [
+    { low: { latitude: r.low.latitude, longitude: r.low.longitude }, high: { latitude: midLat, longitude: midLng } },
+    { low: { latitude: r.low.latitude, longitude: midLng }, high: { latitude: midLat, longitude: r.high.longitude } },
+    { low: { latitude: midLat, longitude: r.low.longitude }, high: { latitude: r.high.latitude, longitude: midLng } },
+    { low: { latitude: midLat, longitude: midLng }, high: { latitude: r.high.latitude, longitude: r.high.longitude } },
+  ];
+}
+
+export type CitySearch = { places: PlaceFacts[]; calls: number; capped: boolean };
+
+/**
+ * Every gym Google lists inside a city's viewport. Null without a key or
+ * when Google does not know the city; `capped` when MAX_CALLS stopped the
+ * grid before it was complete (search again: known gyms are skipped).
+ */
+export async function searchGymsInCity(city: string): Promise<CitySearch | null> {
+  const key = process.env.GOOGLE_PLACES_API_KEY;
+  if (!key) return null;
+  const name = city.trim().slice(0, 80);
+  if (!name) return { places: [], calls: 0, capped: false };
+  const found = new Map<string, PlaceFacts>();
+  let calls = 0;
+  let capped = false;
+  try {
+    const viewport = await cityViewport(key, name);
+    calls++;
+    if (!viewport) return null;
+
+    // One rectangle, one type: up to three pages. Full = Google had more.
+    async function searchRect(rect: Rect, type: string): Promise<boolean> {
+      let pageToken: string | undefined;
+      let count = 0;
+      for (let page = 0; page < 3; page++) {
+        if (calls >= MAX_CALLS) { capped = true; return false; }
+        calls++;
+        const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "X-Goog-Api-Key": key as string,
+            "X-Goog-FieldMask": [...FIELDS.map((f) => `places.${f}`), "places.addressComponents", "nextPageToken"].join(","),
+          },
+          body: JSON.stringify({
+            textQuery: "sală de fitness",
+            includedType: type,
+            strictTypeFiltering: true,
+            locationRestriction: { rectangle: rect },
+            languageCode: "ro",
+            regionCode: "RO",
+            pageSize: 20,
+            ...(pageToken ? { pageToken } : {}),
+          }),
+          signal: AbortSignal.timeout(10000),
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          console.error("places:searchText (grid) failed:", res.status);
+          return false;
+        }
+        const json = (await res.json()) as { places?: ApiPlace[]; nextPageToken?: string };
+        for (const p of json.places ?? []) {
+          const f = factsOf(p);
+          if (f) { f.raw = { ...p }; found.set(f.placeId, f); }
+        }
+        count += json.places?.length ?? 0;
+        pageToken = json.nextPageToken;
+        // Google's third page carries no token even when more exist: 60 means full.
+        if (!pageToken) break;
+      }
+      return count >= 60;
+    }
+
+    for (const type of GYM_TYPES) {
+      // Breadth-first over the quadtree, four rectangles at a time.
+      let level: Rect[] = [viewport];
+      for (let depth = 0; level.length > 0 && !capped; depth++) {
+        const next: Rect[] = [];
+        for (let i = 0; i < level.length && !capped; i += 4) {
+          const batch = level.slice(i, i + 4);
+          const full = await Promise.all(batch.map((r) => searchRect(r, type)));
+          batch.forEach((r, j) => { if (full[j] && depth < MAX_DEPTH) next.push(...quarters(r)); });
+        }
+        level = next;
+      }
+    }
+  } catch (e) {
+    console.error("places:searchText (grid) error:", (e as Error).message);
+  }
+  return { places: [...found.values()], calls, capped };
+}

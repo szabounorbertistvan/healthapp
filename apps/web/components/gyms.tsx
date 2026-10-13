@@ -6,7 +6,7 @@ import {
   requestCoach, respondCoachRequest, searchGyms, setHomeGym, suggestGym, withdrawCoachRequest, type GymResult,
 } from "@/app/gym-actions";
 import type { GymCoach, GymHit, GymRef, InboxRequest, MyCoachRequest, MyGyms } from "@/lib/gym-data";
-import { gymMapHref } from "@/lib/gym-map";
+import { gymMapHref, gymWhere } from "@/lib/gym-map";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { Avatar } from "./social";
@@ -85,7 +85,7 @@ function GymSearch({
                   <span className="min-w-0">
                     <span className="block truncate text-[14px] font-semibold text-ink">{g.name}</span>
                     <span className="block truncate text-[12.5px] text-ink-faint">
-                      {[g.address, g.city].filter(Boolean).join(", ")}
+                      {gymWhere(g.address, g.city)}
                     </span>
                   </span>
                   <span className="shrink-0 text-right text-[12px] text-ink-faint">

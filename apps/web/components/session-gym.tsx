@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { searchGyms, setSessionGym } from "@/app/gym-actions";
 import type { GymHit, GymRef } from "@/lib/gym-data";
+import { gymWhere } from "@/lib/gym-map";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { SuggestGym } from "./gyms";
@@ -100,7 +101,7 @@ export function SessionGymPicker({ sessionId, current, home, recent }: {
                       <button type="button" disabled={busy} onClick={() => pick({ id: h.id, name: h.name, city: h.city })}
                         className="w-full rounded-2xl bg-bg px-3.5 py-2.5 text-left hover:bg-accent-soft/40">
                         <span className="block text-[14px] font-semibold">{h.name}</span>
-                        <span className="block text-[12.5px] text-ink-faint">{[h.address, h.city].filter(Boolean).join(", ")}</span>
+                        <span className="block text-[12.5px] text-ink-faint">{gymWhere(h.address, h.city)}</span>
                       </button>
                     </li>
                   ))}
