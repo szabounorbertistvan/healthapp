@@ -31,4 +31,25 @@ test.describe("Cristina", () => {
     await expect(clientLinks(page).filter({ hasText: "Alex Dinu" }).first()).toBeVisible();
     await expect(page.locator("main").getByText("Maria Client")).toHaveCount(0);
   });
+
+  // The roster hides Maria; her detail page must too, when the id is typed in
+  // rather than clicked. Her id comes from Andrei's roster (seed ids are random).
+  test("cannot open Andrei's client by putting her id in the URL", async ({ page, browser }) => {
+    const andrei = await browser.newContext({ storageState: authFile("coach") });
+    const andreiPage = await andrei.newPage();
+    await andreiPage.goto("/clients");
+    const href = await clientLinks(andreiPage).filter({ hasText: "Maria Client" }).first().getAttribute("href");
+    await andrei.close();
+    expect(href).toMatch(/^\/clients\/[0-9a-f-]{36}$/);
+
+    await page.goto(href!);
+    await expect(page.getByText("This page could not be found")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Maria/ })).toHaveCount(0);
+  });
+
+  test("a malformed client id is a 404, not a crash", async ({ page }) => {
+    await page.goto("/clients/not-a-uuid");
+    await expect(page.getByText("This page could not be found")).toBeVisible();
+    await expect(page.getByText("Something went wrong on this screen")).toHaveCount(0);
+  });
 });

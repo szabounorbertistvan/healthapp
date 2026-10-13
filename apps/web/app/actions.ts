@@ -2,6 +2,9 @@
 import { revalidatePath } from "next/cache";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { notSignedIn, type PlanErrorCode } from "@/lib/action-result";
+import { mutated } from "@/lib/supabase/mutate";
+import { id, parseInput, text } from "@/lib/validate";
+import { z } from "zod";
 import type { RpcErrorCode } from "@healthapp/api";
 import type { CoachProfileErrorCode } from "@/lib/coach-profile";
 import type { BookingErrorCode } from "@/lib/booking";
@@ -47,10 +50,25 @@ export async function reviewCheckIn(
   clientId: string,
   feedback: string,
 ): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, text(4000)]), [checkInId, clientId, feedback]);
+  if (!parsed.ok) return parsed.result;
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
 
+  // Marking it first proves the pairing: the update is scoped to this client,
+  // and checkins_coach_review only reaches a client the caller actively
+  // coaches. An RLS-filtered update answers success with zero rows, which
+  // mutated() turns into an error — before, feedback could be filed against
+  // another person's check-in id, or a review of a hidden row answered ok.
+  const failed = await mutated(
+    await supabase
+      .from("check_ins")
+      .update({ coach_reviewed_at: new Date().toISOString() }, { count: "exact" })
+      .eq("id", checkInId)
+      .eq("user_id", clientId),
+  );
+  if (failed) return failed;
   if (feedback.trim()) {
     const { error: fbError } = await supabase.from("coach_feedback").insert({
       coach_id: userId,
@@ -61,11 +79,6 @@ export async function reviewCheckIn(
     });
     if (fbError) return { ok: false, message: fbError.message };
   }
-  const { error } = await supabase
-    .from("check_ins")
-    .update({ coach_reviewed_at: new Date().toISOString() })
-    .eq("id", checkInId);
-  if (error) return { ok: false, message: error.message };
   revalidatePath("/check-ins");
   revalidatePath("/dashboard");
   return { ok: true };

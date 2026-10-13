@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
-  DEFAULT_MACRO_SPLIT, gramsFromSplit, portionMacros, rebalanceSplit, splitFromGrams, sumMacros,
+  DEFAULT_MACRO_SPLIT, MAX_KCAL_TARGET, MAX_MACRO_TARGET_G, MIN_KCAL_TARGET, gramsFromSplit, isValidDailyTargets,
+  portionMacros, rebalanceSplit, splitFromGrams, sumMacros,
 } from "./macros";
 
 // Foods are stored per 100 g (plan §4, "Nutrition calc rules: per-100g base,
@@ -113,5 +114,43 @@ describe("splitFromGrams", () => {
 
   test("falls back to the default when there are no grams", () => {
     expect(splitFromGrams({ protein: 0, carbs: 0, fat: 0 })).toEqual(DEFAULT_MACRO_SPLIT);
+  });
+});
+
+describe("isValidDailyTargets", () => {
+  const ok = { kcal: 1800, protein: 150, carbs: 160, fat: 55 };
+
+  test("accepts a real plan and the edges of every range", () => {
+    expect(isValidDailyTargets(ok)).toBe(true);
+    expect(isValidDailyTargets({ kcal: MIN_KCAL_TARGET, protein: 0, carbs: 0, fat: 0 })).toBe(true);
+    expect(isValidDailyTargets({ kcal: MAX_KCAL_TARGET, protein: MAX_MACRO_TARGET_G, carbs: MAX_MACRO_TARGET_G, fat: MAX_MACRO_TARGET_G })).toBe(true);
+  });
+
+  test("refuses a negative macro, which the column itself never checked", () => {
+    expect(isValidDailyTargets({ ...ok, protein: -50 })).toBe(false);
+    expect(isValidDailyTargets({ ...ok, fat: -1 })).toBe(false);
+  });
+
+  test("refuses an emptied field (NaN), which slipped past `kcal < 500 || kcal > 10000`", () => {
+    expect(isValidDailyTargets({ ...ok, kcal: NaN })).toBe(false);
+    expect(isValidDailyTargets({ ...ok, carbs: NaN })).toBe(false);
+    expect(isValidDailyTargets({ ...ok, protein: Infinity })).toBe(false);
+  });
+
+  test("refuses fractions the integer columns would reject with a raw Postgres error", () => {
+    expect(isValidDailyTargets({ ...ok, protein: 150.5 })).toBe(false);
+    expect(isValidDailyTargets({ ...ok, kcal: 1800.2 })).toBe(false);
+  });
+
+  test("refuses values outside the ranges", () => {
+    expect(isValidDailyTargets({ ...ok, kcal: MIN_KCAL_TARGET - 1 })).toBe(false);
+    expect(isValidDailyTargets({ ...ok, kcal: MAX_KCAL_TARGET + 1 })).toBe(false);
+    expect(isValidDailyTargets({ ...ok, carbs: MAX_MACRO_TARGET_G + 1 })).toBe(false);
+  });
+
+  test("accepts whatever gramsFromSplit derives for any kcal in range", () => {
+    for (const kcal of [MIN_KCAL_TARGET, 1234, 2600, MAX_KCAL_TARGET]) {
+      expect(isValidDailyTargets(gramsFromSplit(kcal, DEFAULT_MACRO_SPLIT))).toBe(true);
+    }
   });
 });

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { getLocale } from "@/lib/i18n/server";
-import { isPlanLimitError } from "@healthapp/shared";
+import { isPlanLimitError, isValidDailyTargets, MAX_KCAL_TARGET, MAX_MACRO_TARGET_G, MIN_KCAL_TARGET } from "@healthapp/shared";
 import type { ActionResult } from "./actions";
 import { notSignedIn, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
@@ -161,8 +161,13 @@ export async function createNutritionPlan(input: {
   if (!parsed.ok) return parsed.result;
   const name = input.name.trim();
   if (!name) return { ok: false, message: "Give the plan a name" };
-  if (input.kcal < 500 || input.kcal > 10000) {
-    return { ok: false, message: "Daily calories must be between 500 and 10000" };
+  if (!Number.isInteger(input.kcal) || input.kcal < MIN_KCAL_TARGET || input.kcal > MAX_KCAL_TARGET) {
+    return { ok: false, message: `Daily calories must be between ${MIN_KCAL_TARGET} and ${MAX_KCAL_TARGET}` };
+  }
+  // NaN (an emptied field) and negatives passed the kcal check above; macro
+  // targets had no check at all, here or in the column.
+  if (!isValidDailyTargets(input)) {
+    return { ok: false, message: `Macro targets must be whole grams between 0 and ${MAX_MACRO_TARGET_G}` };
   }
 
 

@@ -21,6 +21,24 @@ export function isValidPortionGrams(grams: number): boolean {
 }
 
 /**
+ * A plan's daily targets, as `nutrition_plans` stores them: whole kcal within
+ * the column's own check (500..10 000), and each macro a whole number of grams
+ * from 0 to MAX_MACRO_TARGET_G (mirrored by nutrition_plans_macro_targets_check,
+ * 20261121100000). The coach types the grams freely, so a negative, empty (NaN)
+ * or absurd value must be refused before it becomes a target every progress
+ * bar divides by.
+ */
+export const MIN_KCAL_TARGET = 500;
+export const MAX_KCAL_TARGET = 10000;
+export const MAX_MACRO_TARGET_G = 1000;
+
+export function isValidDailyTargets(t: Macros): boolean {
+  const whole = (n: number, min: number, max: number) => Number.isInteger(n) && n >= min && n <= max;
+  return whole(t.kcal, MIN_KCAL_TARGET, MAX_KCAL_TARGET)
+    && MACRO_KEYS.every((k) => whole(t[k], 0, MAX_MACRO_TARGET_G));
+}
+
+/**
  * Scale per-100g values to a portion. The result is what gets denormalized into
  * food_logs: external food data can change, logged history must not.
  */
