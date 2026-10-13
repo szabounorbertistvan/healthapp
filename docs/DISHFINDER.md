@@ -34,6 +34,14 @@
   with the search so its admin Insights tab lists plan-driven ingredient sets
   that had no, thin or only partial recipes — the "recipes to write" list. Nothing is rendered without
   `NEXT_PUBLIC_DISHFINDER_URL`; the URL carries ingredients only.
+- **Scanned products link too** (2026-10-13): `supabase/functions/_shared/off-dishfinder.ts`
+  maps Open Food Facts `categories_tags` to a DishFinder ingredient id for products
+  that *are* one ingredient (rolled oats, greek yogurt, chicken breast, olive oil…);
+  flavoured / prepared tags (`NOT_PLAIN`) block the link. Both edge functions set
+  `dishfinder_ingredient_id` at cache time; `scripts/backfill-off-dishfinder.mjs`
+  re-asks OFF for products cached earlier and writes `seed/off-dishfinder-backfill.sql`
+  (184 of 839 linked on the first pass; the run prints the unmapped tags to grow
+  the map from). Vitest covers the mapper.
 - The generated `seed/dishfinder-names.sql` is **gitignored**: the name list is
   applied to the live project directly and never committed (relu, 2026-10-01).
   And the table is no longer listable (migration `20261019120000`): `foods_select`

@@ -4,6 +4,7 @@
 // GET /functions/v1/food-search?q=chicken&locale=ro
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { portionsFromOff } from "../_shared/portions.ts";
+import { dishfinderIdFromOff } from "../_shared/off-dishfinder.ts";
 
 const OFF_USER_AGENT = "HealthApp/0.1 (relu.plesciuc@sfappworks.com)"; // required by OFF API policy
 
@@ -84,6 +85,8 @@ Deno.serve(async (req) => {
           carbs_100g: round2(n.carbohydrates_100g ?? 0),
           fat_100g: round2(n.fat_100g ?? 0),
           portions: portionsFromOff(p),
+          // Same rule as barcode-lookup: only a plain ingredient carries the key.
+          ...(dishfinderIdFromOff(p.categories_tags, name) ? { dishfinder_ingredient_id: dishfinderIdFromOff(p.categories_tags, name) } : {}),
         };
         // cache for next time; ignore conflicts from concurrent searches
         const { data: cached } = await supabase

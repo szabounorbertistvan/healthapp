@@ -4,6 +4,7 @@
 // GET /functions/v1/barcode-lookup?code=5941234567890
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { portionsFromOff } from "../_shared/portions.ts";
+import { dishfinderIdFromOff } from "../_shared/off-dishfinder.ts";
 
 const OFF_USER_AGENT = "HealthApp/0.1 (relu.plesciuc@sfappworks.com)";
 
@@ -64,6 +65,10 @@ Deno.serve(async (req) => {
       carbs_100g: round2(p.nutriments.carbohydrates_100g ?? 0),
       fat_100g: round2(p.nutriments.fat_100g ?? 0),
       portions: portionsFromOff(p),
+      // A plain-ingredient product (oats, yogurt, chicken breast) gets its DishFinder
+      // id from the OFF categories; a prepared one gets no key, so a value an
+      // admin set by hand is never overwritten with null.
+      ...(dishfinderIdFromOff(p.categories_tags, p.product_name) ? { dishfinder_ingredient_id: dishfinderIdFromOff(p.categories_tags, p.product_name) } : {}),
     };
     const { data: inserted } = await supabase
       .from("foods")
