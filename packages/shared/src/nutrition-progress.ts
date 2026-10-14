@@ -17,6 +17,7 @@
 //   3. No target, no comparison with one. A target of 0 for a macro means the
 //      person has no target for it.
 import { macroScore } from "./adherence";
+import { longestRun } from "./achievements";
 import { splitFromGrams, type Macros, type MacroSplit } from "./macros";
 import { periodChange, windowDays, type PeriodChange, type ProgressWindow, type ProgressWindows } from "./progress";
 import { weekStartOf } from "./weekly-series";
@@ -104,18 +105,53 @@ export type NutritionPeriod = {
   /** By calories; only when at least two days were logged. */
   highest: NutritionDay | null;
   lowest: NutritionDay | null;
+  /**
+   * Days of the window the diary could have been kept: from the first day
+   * anything was ever logged (or the window start, whichever is later) to the
+   * window end. A window reaching back before someone started is not "empty".
+   */
+  tracked_days: number;
+  /** tracked_days − days_logged: no data, never zero calories. */
+  unlogged_days: number;
+  /** Logged days with at most PARTIAL_DAY_MAX_MEALS meal slot — likely incomplete. Today is never one: it is still going. */
+  partial_days: number;
+  /** Longest run of consecutive logged days inside the window. */
+  longest_run: number;
 };
+
+/** Context a period needs to tell "not started yet" and "still today" from missing data. */
+export type NutritionContext = { firstDay?: string | null; today?: string | null };
+
+/** A logged day with this many meal slots or fewer is counted as possibly incomplete. */
+export const PARTIAL_DAY_MAX_MEALS = 1;
 
 function inWindow(day: string, w: ProgressWindow): boolean {
   return day >= w.start && day <= w.end;
 }
 
-export function nutritionPeriod(days: readonly NutritionDay[], window: ProgressWindow, target: Macros | null): NutritionPeriod {
+/** Days of `window` from `firstDay` on; the whole window without one, 0 when it ends before it. */
+export function trackedDays(window: ProgressWindow, firstDay: string | null | undefined): number {
+  if (!firstDay || firstDay <= window.start) return windowDays(window);
+  if (firstDay > window.end) return 0;
+  return windowDays({ start: firstDay, end: window.end });
+}
+
+export function nutritionPeriod(
+  days: readonly NutritionDay[],
+  window: ProgressWindow,
+  target: Macros | null,
+  context: NutritionContext = {},
+): NutritionPeriod {
   const logged = days.filter((d) => inWindow(d.day, window) && isLoggedDay(d));
   const n = logged.length;
+  const tracked = Math.max(trackedDays(window, context.firstDay), n);
   const empty: NutritionPeriod = {
     window, window_days: windowDays(window), days_logged: n, avg: null, adherence: null,
     kcal_score: null, days_reached: null, days_within: null, highest: null, lowest: null,
+    tracked_days: tracked,
+    unlogged_days: tracked - n,
+    partial_days: logged.filter((d) => d.day !== context.today && d.meals <= PARTIAL_DAY_MAX_MEALS).length,
+    longest_run: longestRun(logged.map((d) => d.day)),
   };
   if (n === 0) return empty;
 
@@ -158,13 +194,19 @@ export type NutritionProgress = {
     carbs: PeriodChange | null;
     fat: PeriodChange | null;
     days_logged: PeriodChange | null;
+    partial_days: PeriodChange | null;
   } | null;
 };
 
-export function nutritionProgress(days: readonly NutritionDay[], windows: ProgressWindows, target: Macros | null): NutritionProgress {
-  const current = nutritionPeriod(days, windows.current, target);
+export function nutritionProgress(
+  days: readonly NutritionDay[],
+  windows: ProgressWindows,
+  target: Macros | null,
+  context: NutritionContext = {},
+): NutritionProgress {
+  const current = nutritionPeriod(days, windows.current, target, context);
   if (windows.previous === null) return { current, previous: null, changes: null };
-  const previous = nutritionPeriod(days, windows.previous, target);
+  const previous = nutritionPeriod(days, windows.previous, target, context);
   const avgChange = (k: MacroKeyAll) => periodChange(current.avg?.[k], previous.avg?.[k]);
   return {
     current,
@@ -175,6 +217,7 @@ export function nutritionProgress(days: readonly NutritionDay[], windows: Progre
       carbs: avgChange("carbs"),
       fat: avgChange("fat"),
       days_logged: periodChange(current.days_logged, previous.days_logged),
+      partial_days: periodChange(current.partial_days, previous.partial_days),
     },
   };
 }
@@ -282,7 +325,8 @@ export function nutritionInsights(p: NutritionProgress): NutritionInsight[] {
   if (cur.adherence?.protein.target != null && cur.days_reached) {
     out.push({ key: "protein_reached", days: cur.days_reached.protein, logged: cur.days_logged });
   }
-  out.push({ key: "logging", days: cur.days_logged, window_days: cur.window_days });
+  // out of the days the diary could have been kept — not days before the first log
+  out.push({ key: "logging", days: cur.days_logged, window_days: cur.tracked_days });
 
   if (p.previous && p.previous.days_logged >= MIN_INSIGHT_DAYS && p.changes) {
     const big = (c: PeriodChange | null) => c !== null && c.pct !== null && Math.abs(c.pct) >= NUTRITION_CHANGE_PCT;
@@ -290,4 +334,141 @@ export function nutritionInsights(p: NutritionProgress): NutritionInsight[] {
     if (big(p.changes.protein)) out.push({ key: "protein_change", pct: p.changes.protein!.pct! });
   }
   return out;
+}
+
+// ---------- single entries: meals and label nutrients ----------
+
+/** The diary's meal slots (the meal_slot enum), in the diary's order. */
+export const NUTRITION_SLOTS = ["breakfast", "lunch", "dinner", "snack"] as const;
+export type NutritionSlot = (typeof NUTRITION_SLOTS)[number];
+
+/** Label nutrients the food library can carry (20261019100000) — the only ones it has. */
+export const LABEL_NUTRIENTS = ["saturated_fat", "sugar", "salt"] as const;
+export type LabelNutrient = (typeof LABEL_NUTRIENTS)[number];
+
+/**
+ * One food_logs row. The four macros are the snapshot taken when it was
+ * logged; the label nutrients are NOT snapshotted (food_logs has no column for
+ * them) — they are the linked food's per-100 g value × grams today, and null
+ * when the food has no value for it or the entry has no food link.
+ */
+export type NutritionEntry = {
+  day: string;
+  slot: NutritionSlot;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  saturated_fat: number | null;
+  sugar: number | null;
+  salt: number | null;
+};
+
+/** Logged days of a window, by the same rule as the day totals: the day's entries add up to some calories. */
+function loggedEntries(entries: readonly NutritionEntry[], window: ProgressWindow): { list: NutritionEntry[]; days: Set<string> } {
+  const kcalByDay = new Map<string, number>();
+  for (const e of entries) {
+    if (!inWindow(e.day, window)) continue;
+    kcalByDay.set(e.day, (kcalByDay.get(e.day) ?? 0) + clean(e.kcal));
+  }
+  const days = new Set([...kcalByDay].filter(([, kcal]) => kcal > 0).map(([d]) => d));
+  return { list: entries.filter((e) => days.has(e.day)), days };
+}
+
+export type SlotStats = {
+  /** Logged days on which this slot has at least one entry. */
+  days: number;
+  /** Logged days without it — not "skipped", only not logged. */
+  days_missing: number;
+  /** Share of the window's logged calories, 0..100; null with no calories at all. */
+  kcal_share: number | null;
+  /** Mean per day the slot WAS logged; null when it never was. */
+  avg: Macros | null;
+};
+
+export type MealDistribution = { logged_days: number; slots: Record<NutritionSlot, SlotStats> };
+
+/**
+ * How the logged food spreads over the diary's four slots. Averages are per
+ * day the slot was logged, so a breakfast nobody wrote down does not drag
+ * "breakfast" towards zero; how often it was missing is its own number.
+ */
+export function mealDistribution(entries: readonly NutritionEntry[], window: ProgressWindow): MealDistribution {
+  const { list, days } = loggedEntries(entries, window);
+  const totalKcal = list.reduce((s, e) => s + clean(e.kcal), 0);
+  const slots = {} as Record<NutritionSlot, SlotStats>;
+  for (const slot of NUTRITION_SLOTS) {
+    const mine = list.filter((e) => e.slot === slot);
+    const slotDays = new Set(mine.map((e) => e.day)).size;
+    const sum = (k: keyof Macros) => mine.reduce((s, e) => s + clean(e[k]), 0);
+    slots[slot] = {
+      days: slotDays,
+      days_missing: days.size - slotDays,
+      kcal_share: totalKcal > 0 ? (sum("kcal") / totalKcal) * 100 : null,
+      avg: slotDays === 0 ? null : {
+        kcal: sum("kcal") / slotDays,
+        protein: sum("protein") / slotDays,
+        carbs: sum("carbs") / slotDays,
+        fat: sum("fat") / slotDays,
+      },
+    };
+  }
+  return { logged_days: days.size, slots };
+}
+
+/** Below this share of logged calories carrying a value, a nutrient's average is not shown as one. */
+export const LABEL_COVERAGE_MIN = 90;
+
+/**
+ * EU reference intakes for an average adult (8400 kJ / 2000 kcal), Regulation
+ * (EU) No 1169/2011, Annex XIII Part B — the figures behind "% RI" on a food
+ * label. A general labelling reference, not a personal target or a limit.
+ */
+export const EU_REFERENCE_INTAKE_G: Record<LabelNutrient, number> = { saturated_fat: 20, sugar: 90, salt: 6 };
+
+export type LabelNutrientStats = {
+  /** Sum of the entries that HAVE a value — a floor when coverage is incomplete. */
+  known_total: number;
+  /** known_total ÷ logged days; null with no logged day. */
+  avg_known: number | null;
+  /** Share of logged calories from entries with a value, 0..100; null with no calories. */
+  coverage_pct: number | null;
+  /** coverage_pct ≥ LABEL_COVERAGE_MIN: the average can be read as one. */
+  complete: boolean;
+};
+
+export type LabelNutrientPeriod = { logged_days: number; nutrients: Record<LabelNutrient, LabelNutrientStats> };
+
+/**
+ * Saturated fat, sugar and salt over the logged days. A food without a value
+ * is unknown, not zero: it lowers the coverage and leaves the total a floor.
+ * Coverage is weighted by calories, so a glass of water with no sugar figure
+ * does not make a week look incomplete.
+ */
+export function labelNutrients(entries: readonly NutritionEntry[], window: ProgressWindow): LabelNutrientPeriod {
+  const { list, days } = loggedEntries(entries, window);
+  const totalKcal = list.reduce((s, e) => s + clean(e.kcal), 0);
+  const nutrients = {} as Record<LabelNutrient, LabelNutrientStats>;
+  for (const key of LABEL_NUTRIENTS) {
+    const known = list.filter((e) => typeof e[key] === "number" && Number.isFinite(e[key]));
+    const known_total = known.reduce((s, e) => s + Math.max(0, e[key] as number), 0);
+    const knownKcal = known.reduce((s, e) => s + clean(e.kcal), 0);
+    const coverage_pct = totalKcal > 0 ? (knownKcal / totalKcal) * 100 : null;
+    nutrients[key] = {
+      known_total,
+      avg_known: days.size === 0 ? null : known_total / days.size,
+      coverage_pct,
+      complete: coverage_pct !== null && coverage_pct >= LABEL_COVERAGE_MIN,
+    };
+  }
+  return { logged_days: days.size, nutrients };
+}
+
+/** This period's average against the previous one — only when both are complete enough to be averages. */
+export function labelNutrientChange(
+  current: LabelNutrientStats,
+  previous: LabelNutrientStats | null | undefined,
+): PeriodChange | null {
+  if (!previous || !current.complete || !previous.complete) return null;
+  return periodChange(current.avg_known, previous.avg_known);
 }

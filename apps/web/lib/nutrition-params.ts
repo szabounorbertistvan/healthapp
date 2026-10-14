@@ -4,8 +4,8 @@
 import type { ProgressRange } from "@healthapp/shared";
 
 export type FoodView = "diary" | "trends";
-export type NutritionChart = "kcal" | "protein" | "macros";
-export const NUTRITION_CHARTS: readonly NutritionChart[] = ["kcal", "protein", "macros"];
+export type NutritionChart = "kcal" | "protein" | "carbs" | "fat" | "macros";
+export const NUTRITION_CHARTS: readonly NutritionChart[] = ["kcal", "protein", "carbs", "fat", "macros"];
 
 export type FoodState = { view: FoodView; range: ProgressRange; chart: NutritionChart };
 

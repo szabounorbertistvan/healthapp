@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getMyMeasurements, getMyPrs, getMySessions } from "@/lib/client-data";
+import { getMyMeasurements, getMyProgramDays, getMyPrs, getMySessions } from "@/lib/client-data";
 import { getProfile } from "@/lib/data";
 import { getMyPhotos } from "@/lib/photos-data";
 import { getPlan, inHistory } from "@/lib/plan";
@@ -20,6 +20,7 @@ import {
   ConsistencyOverview,
   ExerciseProgress,
   InsightsCard,
+  MeasurementCompare,
   RangeTabs,
   SectionTabs,
   StrengthOverview,
@@ -29,10 +30,14 @@ import { getI18n } from "@/lib/i18n/server";
 import { PageTour } from "@/components/onboarding/tour";
 import {
   bodyProgress,
+  calendarWeekWorkouts,
   cmToDisplay,
+  compareMeasurements,
   exerciseStats,
   formatWeight,
   kgToDisplay,
+  liftComparison,
+  localDay,
   periodBuckets,
   progressInsights,
   progressWindows,
@@ -67,7 +72,7 @@ export default async function ProgressPage({
   const { tab } = state;
   // One wave: everything the headline and insights need, plus whatever the
   // open tab alone needs — a closed tab costs no query.
-  const [{ t, locale }, profile, plan, allMeasurements, allPrs, sessions, training, allPhotos, fitness, streak] =
+  const [{ t, locale }, profile, plan, allMeasurements, allPrs, sessions, training, allPhotos, fitness, streak, programDays] =
     await Promise.all([
       getI18n(),
       getProfile(),
@@ -82,6 +87,8 @@ export default async function ProgressPage({
       tab === "body" ? getMyPhotos() : Promise.resolve([]),
       tab === "strength" ? getMyFitnessScore() : Promise.resolve(null),
       tab === "consistency" ? getMyStreak() : Promise.resolve(null),
+      // The program followed now — what Today counts as planned sessions a week.
+      tab === "consistency" ? getMyProgramDays() : Promise.resolve(null),
     ]);
   if (!training) {
     return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
@@ -111,13 +118,41 @@ export default async function ProgressPage({
         : firstMeasurement
       : (training.firstDay ?? firstMeasurement);
   const windows = progressWindows(training.today, state.range, earliest);
-  const body = bodyProgress(
-    allMeasurements.map((m) => ({ day: m.taken_on, weight_kg: m.weight_kg, circumferences: m.circumferences })),
-    windows,
-  );
+  const measurementRows = allMeasurements.map((m) => ({
+    day: m.taken_on,
+    weight_kg: m.weight_kg,
+    circumferences: m.circumferences,
+  }));
+  const body = bodyProgress(measurementRows, windows);
   const trainingNow = trainingProgress(training.sessions, windows);
   const highlights = strengthHighlights(training.sessions, windows);
-  const insights = progressInsights({ training: trainingNow, strength: highlights, body });
+  const thisWeek = calendarWeekWorkouts(training.sessions, training.today);
+  const insights = progressInsights({
+    training: trainingNow,
+    strength: highlights,
+    body,
+    // On the 7-day range the period sentence already says it.
+    week: state.range === 7 ? null : thisWeek,
+  });
+
+  // ---- two weigh-in dates side by side ----
+  // Offered from the rows this plan shows (the same list as the table below);
+  // without a choice in the URL, the first and last weigh-in of the period,
+  // or the last two ever when the period holds fewer than two.
+  const measuredDays = [...new Set(measurements.map((m) => m.taken_on))].sort();
+  const periodDays = measuredDays.filter((d) => d >= windows.current.start && d <= windows.current.end);
+  const [defaultFrom, defaultTo] =
+    periodDays.length >= 2 ? [periodDays[0]!, periodDays.at(-1)!] : [measuredDays.at(-2) ?? null, measuredDays.at(-1) ?? null];
+  const compareFrom = state.from && measuredDays.includes(state.from) ? state.from : defaultFrom;
+  const compareTo = state.to && measuredDays.includes(state.to) ? state.to : defaultTo;
+  const comparison =
+    tab === "body" && compareFrom && compareTo
+      ? compareMeasurements(
+          measurementRows.filter((m) => measuredDays.includes(m.day)),
+          compareFrom,
+          compareTo,
+        )
+      : null;
   const buckets = periodBuckets(training.sessions, windows.current);
 
   // Lift names come off the PR list the page already reads: a loaded lift's
@@ -133,7 +168,24 @@ export default async function ProgressPage({
 
   // The one read that has to wait: which lift is shown depends on the sessions.
   const history = tab === "strength" && selected ? await getExerciseHistory(selected) : null;
-  const liftSessions = (history?.sessions ?? []).filter((s) => s.at.slice(0, 10) >= windows.current.start);
+  // Windows are local days; a session's `at` is UTC, so it is placed on the
+  // person's own calendar first (an 00:30 set in Bucharest is not yesterday's).
+  const liftDays = (history?.sessions ?? []).map((s) => ({ s, day: localDay(s.at, training.timezone) }));
+  const liftSessions = liftDays
+    .filter(({ day }) => day >= windows.current.start && day <= windows.current.end)
+    .map(({ s }) => s);
+  const liftCompare = liftComparison(
+    liftDays.map(({ s, day }) => ({
+      day,
+      top_weight_kg: s.top_weight_kg,
+      top_reps: s.top_reps,
+      volume_kg: s.volume_kg,
+      best_1rm: s.best_1rm,
+    })),
+    windows,
+  );
+  // The newest session of the lift at all, in or before the period.
+  const liftLastDay = liftDays.map(({ day }) => day).filter((d) => d <= windows.current.end).sort().at(-1) ?? null;
 
   const latest = body.weight.latest;
   const totalVolume = sessions.reduce((sum, s) => sum + s.volume_exact_kg, 0);
@@ -189,6 +241,8 @@ export default async function ProgressPage({
 
           <div className="space-y-4">
             <MeasurementForm />
+
+            <MeasurementCompare state={state} days={measuredDays} from={compareFrom} to={compareTo} comparison={comparison} />
 
             {/* Photos sit with the weigh-in, not in a gallery of their own: they
                 answer the same question the scale does, on the weeks it lies. */}
@@ -272,6 +326,8 @@ export default async function ProgressPage({
             selected={selected}
             sessions={liftSessions}
             stats={exerciseStats(liftSessions)}
+            comparison={liftCompare}
+            lastDay={liftLastDay}
             todayIso={training.today}
             chartsLocked={chartsLocked}
           />
@@ -327,6 +383,8 @@ export default async function ProgressPage({
           <ConsistencyOverview
             training={trainingNow}
             streak={streak ? { current: streak.summary.current, longest: streak.summary.longest } : null}
+            plannedPerWeek={programDays && programDays.length > 0 ? programDays.length : null}
+            thisWeek={thisWeek.current}
             buckets={buckets}
             chartsLocked={chartsLocked}
           />

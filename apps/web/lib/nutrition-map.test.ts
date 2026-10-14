@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toNutritionDays } from "./nutrition-map";
+import { toNutritionDays, toNutritionEntries, type NutritionEntryRow } from "./nutrition-map";
 import { foodHref, parseFoodParams } from "./nutrition-params";
 
 describe("toNutritionDays", () => {
@@ -49,5 +49,44 @@ describe("foodHref", () => {
     const state = { view: "trends" as const, range: 7 as const, chart: "protein" as const };
     const params = Object.fromEntries(new URL(foodHref(state), "http://x").searchParams);
     expect(parseFoodParams(params)).toEqual(state);
+  });
+});
+
+describe("toNutritionEntries", () => {
+  const row = (over: Partial<NutritionEntryRow> = {}): NutritionEntryRow => ({
+    date: "2026-09-20",
+    slot: "lunch",
+    grams: 150,
+    kcal: "264",
+    protein_g: 30.5,
+    carbs_g: null,
+    fat_g: "8.2",
+    food: { saturated_fat_100g: "2", sugar_100g: null, salt_100g: 0.5 },
+    ...over,
+  });
+
+  it("keeps the snapshot macros and scales label nutrients to the logged grams", () => {
+    const [e] = toNutritionEntries([row()]);
+    expect(e).toEqual({
+      day: "2026-09-20", slot: "lunch", kcal: 264, protein: 30.5, carbs: 0, fat: 8.2,
+      saturated_fat: 3, sugar: null, salt: 0.75,
+    });
+  });
+
+  it("an entry without a food link has unknown label nutrients, not zero", () => {
+    const [e] = toNutritionEntries([row({ food: null })]);
+    expect(e!.saturated_fat).toBeNull();
+    expect(e!.salt).toBeNull();
+  });
+
+  it("drops a row whose slot is not one of the diary's four", () => {
+    expect(toNutritionEntries([row({ slot: "brunch" })])).toEqual([]);
+  });
+});
+
+describe("the per-macro charts", () => {
+  it("accepts carbs and fat as charts", () => {
+    expect(parseFoodParams({ view: "trends", chart: "carbs" }).chart).toBe("carbs");
+    expect(parseFoodParams({ view: "trends", chart: "fat" }).chart).toBe("fat");
   });
 });

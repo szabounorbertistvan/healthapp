@@ -40,7 +40,7 @@ export const getMyProgressTraining = cache(async (range: ProgressRange): Promise
 
   let sessionsQuery = supabase
     .from("logged_sessions")
-    .select(`id, started_at, completed_at, logged_sets(${PROGRESS_SET_SELECT})`)
+    .select(`id, started_at, completed_at, program_day_id, logged_sets(${PROGRESS_SET_SELECT})`)
     .eq("user_id", userId)
     .not("completed_at", "is", null)
     .order("started_at", { ascending: false })

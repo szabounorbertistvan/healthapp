@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { macroScore } from "./adherence";
 import {
   isLoggedDay,
+  labelNutrientChange,
+  labelNutrients,
+  LABEL_COVERAGE_MIN,
+  mealDistribution,
+  PARTIAL_DAY_MAX_MEALS,
+  trackedDays,
+  type NutritionEntry,
   macroAdherence,
   macroDistribution,
   macroLine,
@@ -291,5 +298,153 @@ describe("nutritionInsights", () => {
     const prev = ["2026-09-13", "2026-09-14", "2026-09-15"].map((d) => day(d, { kcal: 2000 }));
     const i = nutritionInsights(nutritionProgress([...prev, ...logged(3, { kcal: 2040 })], windows, TARGET));
     expect(i.some((x) => x.key === "kcal_change")).toBe(false);
+  });
+});
+
+// ---------- logging completeness ----------
+
+describe("completeness of the diary", () => {
+  const window = { start: "2026-09-01", end: "2026-09-30" };
+
+  it("counts days from the first log only, and the rest as no data — never zero calories", () => {
+    const p = nutritionPeriod([day("2026-09-21"), day("2026-09-22"), day("2026-09-25")], window, null, { firstDay: "2026-09-21" });
+    expect(p.window_days).toBe(30);
+    expect(p.tracked_days).toBe(10); // 21st..30th
+    expect(p.days_logged).toBe(3);
+    expect(p.unlogged_days).toBe(7);
+    // the average is over the three logged days, not over ten or thirty
+    expect(p.avg!.kcal).toBe(2000);
+  });
+
+  it("without a first day the whole window is tracked; a window entirely before it tracks none", () => {
+    expect(trackedDays(window, null)).toBe(30);
+    expect(trackedDays(window, "2026-08-15")).toBe(30);
+    expect(trackedDays(window, "2026-10-02")).toBe(0);
+  });
+
+  it("flags one-meal days as possibly incomplete, but never today", () => {
+    const p = nutritionPeriod(
+      [day("2026-09-28", { meals: 1 }), day("2026-09-29", { meals: 3 }), day("2026-09-30", { meals: 1 })],
+      window,
+      null,
+      { today: "2026-09-30" },
+    );
+    expect(PARTIAL_DAY_MAX_MEALS).toBe(1);
+    expect(p.partial_days).toBe(1);
+  });
+
+  it("finds the longest run of consecutive logged days, ignoring zero-calorie days", () => {
+    const p = nutritionPeriod(
+      [day("2026-09-02"), day("2026-09-03"), day("2026-09-04", { kcal: 0 }), day("2026-09-10"), day("2026-09-11"), day("2026-09-12")],
+      window,
+      null,
+    );
+    expect(p.longest_run).toBe(3);
+  });
+
+  it("compares days logged and partial days with the previous period", () => {
+    const w = progressWindows("2026-09-30", 7, "2026-01-01");
+    const p = nutritionProgress(
+      [day("2026-09-17"), day("2026-09-20", { meals: 1 }), day("2026-09-25"), day("2026-09-26"), day("2026-09-27")],
+      w,
+      null,
+      { firstDay: "2026-01-01", today: "2026-09-30" },
+    );
+    expect(p.changes!.days_logged).toMatchObject({ current: 3, previous: 2 });
+    expect(p.changes!.partial_days).toMatchObject({ current: 0, previous: 1 });
+  });
+
+  it("reports logging against the tracked days, not the days before the first log", () => {
+    const w = progressWindows("2026-09-30", 30, "2026-09-26");
+    const p = nutritionProgress(
+      [day("2026-09-26"), day("2026-09-27"), day("2026-09-28"), day("2026-09-29")],
+      w,
+      null,
+      { firstDay: "2026-09-26", today: "2026-09-30" },
+    );
+    expect(nutritionInsights(p)).toContainEqual({ key: "logging", days: 4, window_days: 5 });
+  });
+});
+
+// ---------- entries: meals and label nutrients ----------
+
+function entry(d: string, slot: NutritionEntry["slot"], over: Partial<NutritionEntry> = {}): NutritionEntry {
+  return { day: d, slot, kcal: 500, protein: 30, carbs: 50, fat: 15, saturated_fat: 4, sugar: 10, salt: 1, ...over };
+}
+
+describe("mealDistribution", () => {
+  const window = { start: "2026-09-01", end: "2026-09-30" };
+
+  it("shares logged calories between slots and averages each over the days it was logged", () => {
+    const m = mealDistribution(
+      [
+        entry("2026-09-01", "breakfast", { kcal: 400 }),
+        entry("2026-09-01", "lunch", { kcal: 800 }),
+        entry("2026-09-02", "lunch", { kcal: 600 }),
+        entry("2026-09-02", "lunch", { kcal: 200 }),
+      ],
+      window,
+    );
+    expect(m.logged_days).toBe(2);
+    expect(m.slots.breakfast).toMatchObject({ days: 1, days_missing: 1 });
+    expect(m.slots.breakfast.kcal_share).toBe(20);
+    expect(m.slots.lunch.days).toBe(2);
+    expect(m.slots.lunch.avg!.kcal).toBe(800); // (800 + 800) / 2 days, not / 3 entries
+    expect(m.slots.dinner).toEqual({ days: 0, days_missing: 2, kcal_share: 0, avg: null });
+  });
+
+  it("leaves out entries outside the window and days with no calories", () => {
+    const m = mealDistribution(
+      [entry("2026-08-31", "dinner"), entry("2026-09-05", "snack", { kcal: 0 })],
+      window,
+    );
+    expect(m.logged_days).toBe(0);
+    expect(m.slots.snack).toEqual({ days: 0, days_missing: 0, kcal_share: null, avg: null });
+  });
+});
+
+describe("labelNutrients", () => {
+  const window = { start: "2026-09-01", end: "2026-09-30" };
+
+  it("averages over logged days when nearly all calories carry a value", () => {
+    const l = labelNutrients(
+      [entry("2026-09-01", "lunch", { salt: 2 }), entry("2026-09-02", "lunch", { salt: 3 })],
+      window,
+    );
+    expect(l.nutrients.salt).toEqual({ known_total: 5, avg_known: 2.5, coverage_pct: 100, complete: true });
+  });
+
+  it("treats a missing value as unknown: lower coverage, a floor rather than an average", () => {
+    const l = labelNutrients(
+      [entry("2026-09-01", "lunch", { kcal: 600, sugar: 12 }), entry("2026-09-01", "dinner", { kcal: 400, sugar: null })],
+      window,
+    );
+    expect(l.nutrients.sugar.known_total).toBe(12);
+    expect(l.nutrients.sugar.coverage_pct).toBe(60);
+    expect(l.nutrients.sugar.complete).toBe(false);
+  });
+
+  it("weights coverage by calories, so a zero-calorie drink without a value does not count against it", () => {
+    const l = labelNutrients(
+      [entry("2026-09-01", "lunch", { kcal: 900 }), entry("2026-09-01", "snack", { kcal: 0, sugar: null })],
+      window,
+    );
+    expect(l.nutrients.sugar.coverage_pct).toBe(100);
+    expect(LABEL_COVERAGE_MIN).toBe(90);
+  });
+
+  it("compares two periods only when both are complete", () => {
+    const now = labelNutrients([entry("2026-09-10", "lunch", { salt: 3 })], window).nutrients.salt;
+    const before = labelNutrients([entry("2026-08-10", "lunch", { salt: 2 })], { start: "2026-08-01", end: "2026-08-31" }).nutrients.salt;
+    expect(labelNutrientChange(now, before)).toMatchObject({ current: 3, previous: 2, delta: 1 });
+    const partial = labelNutrients([entry("2026-08-10", "lunch", { salt: null })], { start: "2026-08-01", end: "2026-08-31" }).nutrients.salt;
+    expect(labelNutrientChange(now, partial)).toBeNull();
+    expect(labelNutrientChange(now, null)).toBeNull();
+  });
+
+  it("is empty with no logged day", () => {
+    const l = labelNutrients([], window);
+    expect(l.logged_days).toBe(0);
+    expect(l.nutrients.salt).toEqual({ known_total: 0, avg_known: null, coverage_pct: null, complete: false });
   });
 });

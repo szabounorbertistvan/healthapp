@@ -2,7 +2,7 @@
 // type. Split out of progress-data.ts ("server-only", untestable) so the rules
 // worth pinning — completed sessions only, exact volume, the local day, the
 // shared load score — can be tested.
-import { localDay, totalVolume, type ProgressSession } from "@healthapp/shared";
+import { localDay, sessionDurationMin, totalVolume, type ProgressSession } from "@healthapp/shared";
 import { loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 
 /** What each set needs: the load inputs plus the PR flag. */
@@ -12,6 +12,8 @@ export type ProgressSessionJoin = {
   id: string;
   started_at: string;
   completed_at: string | null;
+  /** Null = an ad-hoc workout; set = logged against a program day. */
+  program_day_id?: string | null;
   logged_sets: (LoadSetJoin & { is_pr: boolean | null })[] | null;
 };
 
@@ -36,6 +38,8 @@ export function toProgressSessions(rows: readonly ProgressSessionJoin[], timeZon
       lifts: sets
         .filter((x): x is typeof x & { exercise_id: string } => x.exercise_id !== null)
         .map((x) => ({ exercise_id: x.exercise_id, weight_kg: x.weight_kg ?? 0, reps: x.reps ?? 0 })),
+      duration_min: sessionDurationMin(r.started_at, r.completed_at),
+      from_program: Boolean(r.program_day_id),
     });
   }
   return out;

@@ -1,13 +1,22 @@
 "use client";
 import Link from "next/link";
 import {
+  EU_REFERENCE_INTAKE_G,
+  LABEL_COVERAGE_MIN,
+  LABEL_NUTRIENTS,
+  labelNutrientChange,
   macroAdherence,
   macroDistribution,
+  NUTRITION_SLOTS,
+  PARTIAL_DAY_MAX_MEALS,
   periodChange,
   splitFromGrams,
+  type LabelNutrientPeriod,
   type MacroLine,
   type Macros,
+  type MealDistribution,
   type NutritionBucket,
+  type NutritionDay,
   type NutritionInsight,
   type NutritionPeriod,
   type NutritionProgress,
@@ -89,6 +98,11 @@ export function NutritionTrends({
   week,
   plan,
   truncated,
+  meals,
+  label,
+  labelPrevious,
+  days,
+  todayIso,
 }: {
   state: FoodState;
   today: { totals: Macros; target: Macros | null; meals: number };
@@ -98,6 +112,13 @@ export function NutritionTrends({
   week: { current: NutritionPeriod; previous: NutritionPeriod };
   plan: { name: string; owner: "coach" | "self"; plannedKcal: number | null; plannedMeals: number } | null;
   truncated: boolean;
+  /** Null when the bounded entry read did not reach the whole period. */
+  meals: MealDistribution | null;
+  label: LabelNutrientPeriod | null;
+  labelPrevious: LabelNutrientPeriod | null;
+  /** The period's logged days, newest first. */
+  days: NutritionDay[];
+  todayIso: string;
 }) {
   const f = useFormat();
   return (
@@ -109,21 +130,21 @@ export function NutritionTrends({
       </div>
 
       <div className="grid gap-4 @3xl:grid-cols-2 @3xl:items-start">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <TodayCard totals={today.totals} target={today.target} meals={today.meals} />
           <InsightList insights={insights} />
           <PeriodCard progress={progress} hasTarget={today.target !== null} />
+          <LoggingCard progress={progress} />
+          <MealsCard meals={meals} />
         </div>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <ChartsCard state={state} series={series} target={today.target} avg={progress.current.avg} />
           <WeekCard week={week} hasTarget={today.target !== null} />
           {plan ? <PlanCard plan={plan} target={today.target} /> : null}
-          <Card plain>
-            <Eyebrow>{f.n.micronutrients}</Eyebrow>
-            <p className="mt-2 text-[13px] text-ink-faint">{f.n.micronutrientsUnavailable}</p>
-          </Card>
+          <LabelNutrientsCard label={label} previous={labelPrevious} />
         </div>
       </div>
+      <HistoryCard days={days} todayIso={todayIso} target={today.target} />
     </div>
   );
 }
@@ -309,19 +330,21 @@ function ChartsCard({
 }) {
   const f = useFormat();
   const n = f.n;
-  const label: Record<NutritionChart, string> = { kcal: n.chartKcal, protein: n.chartProtein, macros: n.chartMacros };
+  const label: Record<NutritionChart, string> = {
+    kcal: n.chartKcal, protein: n.chartProtein, carbs: n.chartCarbs, fat: n.chartFat, macros: n.chartMacros,
+  };
   const unitLabel = series.unit === "day" ? n.perDay : series.unit === "week" ? n.perWeek : n.perMonth;
   return (
     <Card plain>
       <Eyebrow>{n.charts}</Eyebrow>
-      <nav className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-bg p-1" aria-label={n.charts}>
+      <nav className="mt-3 flex gap-1 overflow-x-auto rounded-xl bg-bg p-1 [scrollbar-width:none]" aria-label={n.charts}>
         {NUTRITION_CHARTS.map((c) => (
           <Link
             key={c}
             href={foodHref({ ...state, chart: c })}
             scroll={false}
             aria-current={c === state.chart ? "page" : undefined}
-            className={`rounded-lg py-1.5 text-center text-[12px] font-semibold ${
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-center text-[12px] font-semibold ${
               c === state.chart ? "bg-surface text-ink shadow-sm" : "text-ink-soft hover:text-ink"
             }`}
           >
@@ -335,10 +358,12 @@ function ChartsCard({
         ) : (
           <TargetBars
             items={series.items}
-            value={(b) => (state.chart === "kcal" ? b.kcal : b.protein)}
-            target={state.chart === "kcal" ? target?.kcal ?? null : target?.protein ?? null}
+            value={(b) => b[state.chart as Exclude<NutritionChart, "macros">]}
+            target={target?.[state.chart as Exclude<NutritionChart, "macros">] ?? null}
             format={state.chart === "kcal" ? f.kcal : f.g}
             caption={unitLabel}
+            // a day bar opens that day in the diary, where its entries are
+            linkDays={series.unit === "day"}
           />
         )}
       </div>
@@ -356,12 +381,14 @@ function TargetBars({
   target,
   format,
   caption,
+  linkDays = false,
 }: {
   items: NutritionBucket[];
   value: (b: NutritionBucket) => number | null;
   target: number | null;
   format: (v: number) => string;
   caption: string;
+  linkDays?: boolean;
 }) {
   const f = useFormat();
   const values = items.map(value);
@@ -377,16 +404,26 @@ function TargetBars({
         <div className="flex h-full items-end gap-[2px]">
           {items.map((b, i) => {
             const v = values[i];
-            return (
+            const text = `${f.date(b.start)} · ${v === null ? f.n.notLogged : format(v)}`;
+            const bar = (
               <div
+                className={`w-full rounded-t-[3px] ${v === null ? "bg-line" : t !== null && v > t * 1.1 ? "bg-warn" : "bg-accent"}`}
+                style={{ height: v === null ? "2px" : `${Math.max((v / scale) * 100, 2)}%` }}
+              />
+            );
+            return linkDays ? (
+              <Link
                 key={b.start}
-                className="flex h-full flex-1 items-end"
-                title={`${f.date(b.start)} · ${v === null ? f.n.notLogged : format(v)}`}
+                href={`/food?day=${b.start}`}
+                className="flex h-full flex-1 items-end rounded-t-[3px] outline-none ring-accent/60 hover:opacity-80 focus-visible:ring-2"
+                title={text}
+                aria-label={fill(f.n.openDay, { day: text })}
               >
-                <div
-                  className={`w-full rounded-t-[3px] ${v === null ? "bg-line" : t !== null && v > t * 1.1 ? "bg-warn" : "bg-accent"}`}
-                  style={{ height: v === null ? "2px" : `${Math.max((v / scale) * 100, 2)}%` }}
-                />
+                {bar}
+              </Link>
+            ) : (
+              <div key={b.start} className="flex h-full flex-1 items-end" title={text}>
+                {bar}
               </div>
             );
           })}
@@ -513,6 +550,253 @@ function PlanCard({
       <Link href="/food" className="mt-3 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
         {n.openDiary} →
       </Link>
+    </Card>
+  );
+}
+
+// ---------- logging consistency ----------
+
+/**
+ * How completely the diary was kept — counts, not a score. Days with nothing
+ * logged are "no data" and stay out of every average; a day with a single
+ * meal is flagged as possibly incomplete, never corrected.
+ */
+function LoggingCard({ progress }: { progress: NutritionProgress }) {
+  const f = useFormat();
+  const n = f.n;
+  const cur = progress.current;
+  const c = progress.changes;
+  const share = cur.tracked_days > 0 ? (cur.days_logged / cur.tracked_days) * 100 : null;
+  return (
+    <Card plain>
+      <Eyebrow>{n.logging}</Eyebrow>
+      {cur.tracked_days === 0 ? (
+        <p className="mt-2.5 text-[13px] text-ink-faint">{n.noData}</p>
+      ) : (
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-2.5">
+            <Figure
+              label={n.daysWithLog}
+              value={fill(n.daysOf, { days: cur.days_logged, total: cur.tracked_days })}
+              change={c?.days_logged}
+              format={f.count}
+              hint={share === null ? undefined : fill(n.loggedShare, { pct: f.count(share) })}
+            />
+            <Figure label={n.noDataDays} value={f.count(cur.unlogged_days)} hint={n.noDataHint} />
+            <Figure label={n.longestRun} value={fill(n.daysValue, { days: cur.longest_run })} />
+            <Figure
+              label={n.partialDays}
+              value={f.count(cur.partial_days)}
+              change={c?.partial_days}
+              format={f.count}
+              hint={fill(n.partialHint, { meals: PARTIAL_DAY_MAX_MEALS })}
+            />
+          </div>
+          {cur.tracked_days < cur.window_days ? (
+            <p className="mt-2 text-[11px] text-ink-faint">{fill(n.trackedNote, { days: cur.tracked_days })}</p>
+          ) : null}
+        </>
+      )}
+    </Card>
+  );
+}
+
+// ---------- meals ----------
+
+const SLOT_TONE = ["bg-accent", "bg-warn", "bg-ink-soft", "bg-ink-faint"] as const;
+
+function MealsCard({ meals }: { meals: MealDistribution | null }) {
+  const f = useFormat();
+  const n = f.n;
+  const slotName = f.t.clientApp.food as Record<string, string>;
+  return (
+    <Card plain>
+      <Eyebrow>{n.meals}</Eyebrow>
+      {meals === null ? (
+        <p className="mt-2.5 text-[13px] text-ink-faint">{n.detailTooLong}</p>
+      ) : meals.logged_days === 0 ? (
+        <p className="mt-2.5 text-[13px] text-ink-faint">{n.noData}</p>
+      ) : (
+        <>
+          <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-bg" aria-hidden>
+            {NUTRITION_SLOTS.map((slot, i) => {
+              const share = meals.slots[slot].kcal_share ?? 0;
+              return share > 0 ? (
+                <div key={slot} className={SLOT_TONE[i]} style={{ width: `${share}%` }} title={`${slotName[slot]} ${f.count(share)}%`} />
+              ) : null;
+            })}
+          </div>
+          <table className="mt-3 w-full text-[12.5px] tabular-nums">
+            <caption className="sr-only">{n.mealsCaption}</caption>
+            <thead>
+              <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-faint">
+                <th scope="col" className="pb-1.5 font-semibold">{n.meal}</th>
+                <th scope="col" className="pb-1.5 text-right font-semibold">{n.shareOfKcal}</th>
+                <th scope="col" className="pb-1.5 text-right font-semibold">{n.avgWhenLogged}</th>
+                <th scope="col" className="pb-1.5 text-right font-semibold">{n.loggedOn}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line/60">
+              {NUTRITION_SLOTS.map((slot, i) => {
+                const s = meals.slots[slot];
+                return (
+                  <tr key={slot}>
+                    <th scope="row" className="py-2 text-left font-semibold">
+                      <span aria-hidden className={`mr-2 inline-block h-2 w-2 rounded-full ${SLOT_TONE[i]}`} />
+                      {slotName[slot]}
+                    </th>
+                    <td className="py-2 text-right">{s.kcal_share === null ? "—" : `${f.count(s.kcal_share)}%`}</td>
+                    <td className="py-2 text-right">
+                      {s.avg === null ? (
+                        "—"
+                      ) : (
+                        <>
+                          {f.kcal(s.avg.kcal)}
+                          <span className="block text-[10.5px] text-ink-faint">
+                            {f.m.protein} {f.g(s.avg.protein)}
+                          </span>
+                        </>
+                      )}
+                    </td>
+                    <td className="py-2 text-right">{fill(n.daysOf, { days: s.days, total: meals.logged_days })}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[11px] text-ink-faint">{n.mealsNote}</p>
+        </>
+      )}
+    </Card>
+  );
+}
+
+// ---------- label nutrients ----------
+
+/**
+ * Saturated fat, sugar and salt — the only nutrients past the macros the food
+ * library carries. Shown as an average only when nearly all logged calories
+ * came from foods with a value; otherwise as a floor with its coverage. A
+ * general EU labelling reference is quoted for orientation, never as a verdict.
+ */
+function LabelNutrientsCard({ label, previous }: { label: LabelNutrientPeriod | null; previous: LabelNutrientPeriod | null }) {
+  const f = useFormat();
+  const n = f.n;
+  const name: Record<(typeof LABEL_NUTRIENTS)[number], string> = {
+    saturated_fat: n.saturatedFat,
+    sugar: n.sugar,
+    salt: n.salt,
+  };
+  return (
+    <Card plain>
+      <Eyebrow>{n.micronutrients}</Eyebrow>
+      {label === null ? (
+        <p className="mt-2.5 text-[13px] text-ink-faint">{n.detailTooLong}</p>
+      ) : label.logged_days === 0 ? (
+        <p className="mt-2.5 text-[13px] text-ink-faint">{n.noData}</p>
+      ) : (
+        <>
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {LABEL_NUTRIENTS.map((key) => {
+              const s = label.nutrients[key];
+              const value = s.avg_known === null ? "—" : `${s.complete ? "" : "≥ "}${f.g(s.avg_known)}`;
+              return (
+                <Figure
+                  key={key}
+                  label={`${name[key]} · ${n.perDay}`}
+                  value={value}
+                  change={labelNutrientChange(s, previous?.nutrients[key])}
+                  format={f.g}
+                  hint={
+                    s.coverage_pct === null
+                      ? undefined
+                      : s.complete
+                        ? fill(n.coverage, { pct: f.count(s.coverage_pct) })
+                        : fill(n.coverageLow, { pct: f.count(s.coverage_pct) })
+                  }
+                />
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-faint">
+            {fill(n.labelNote, {
+              min: LABEL_COVERAGE_MIN,
+              satfat: EU_REFERENCE_INTAKE_G.saturated_fat,
+              sugar: EU_REFERENCE_INTAKE_G.sugar,
+              salt: EU_REFERENCE_INTAKE_G.salt,
+            })}
+          </p>
+          <p className="mt-1 text-[11px] text-ink-faint">{n.vitaminsAbsent}</p>
+        </>
+      )}
+    </Card>
+  );
+}
+
+// ---------- the days behind the numbers ----------
+
+/** How many logged days the list shows; older ones are in the diary's week strip. */
+const HISTORY_ROWS = 31;
+
+function HistoryCard({ days, todayIso, target }: { days: NutritionDay[]; todayIso: string; target: Macros | null }) {
+  const f = useFormat();
+  const n = f.n;
+  const shown = days.slice(0, HISTORY_ROWS);
+  return (
+    <Card plain className="overflow-hidden p-0">
+      <div className="px-5 pb-1 pt-[18px]">
+        <Eyebrow>{n.history}</Eyebrow>
+        <p className="mt-1 text-[12px] text-ink-faint">{n.historyHint}</p>
+      </div>
+      {shown.length === 0 ? (
+        <p className="px-5 pb-[18px] pt-2 text-[13px] text-ink-faint">{n.noData}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12.5px] tabular-nums">
+            <caption className="sr-only">{n.historyCaption}</caption>
+            <thead>
+              <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-faint">
+                <th scope="col" className="px-5 py-2 font-semibold">{n.day}</th>
+                <th scope="col" className="px-2 py-2 text-right font-semibold">kcal</th>
+                <th scope="col" className="px-2 py-2 text-right font-semibold">{f.m.protein}</th>
+                <th scope="col" className="hidden px-2 py-2 text-right font-semibold sm:table-cell">{f.m.carbs}</th>
+                <th scope="col" className="hidden px-2 py-2 text-right font-semibold sm:table-cell">{f.m.fat}</th>
+                <th scope="col" className="px-5 py-2 text-right font-semibold">{n.mealsShort}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line/60">
+              {shown.map((d) => {
+                const over = target !== null && target.kcal > 0 && d.kcal > target.kcal * 1.1;
+                return (
+                  <tr key={d.day}>
+                    <th scope="row" className="px-5 py-2 text-left font-semibold">
+                      <Link href={`/food?day=${d.day}`} className="text-accent-ink underline-offset-2 hover:underline">
+                        {f.date(d.day)}
+                      </Link>
+                      {d.day === todayIso ? (
+                        <span className="ml-1.5 text-[10.5px] font-normal text-ink-faint">{n.inProgress}</span>
+                      ) : null}
+                    </th>
+                    <td className={`px-2 py-2 text-right ${over ? "text-warn" : ""}`}>{f.count(d.kcal)}</td>
+                    <td className="px-2 py-2 text-right">{f.g(d.protein)}</td>
+                    <td className="hidden px-2 py-2 text-right sm:table-cell">{f.g(d.carbs)}</td>
+                    <td className="hidden px-2 py-2 text-right sm:table-cell">{f.g(d.fat)}</td>
+                    <td className="px-5 py-2 text-right">
+                      {d.meals}
+                      {d.day !== todayIso && d.meals <= PARTIAL_DAY_MAX_MEALS ? (
+                        <span className="ml-1 text-[10.5px] text-ink-faint">· {n.partialTag}</span>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {days.length > shown.length ? (
+        <p className="px-5 pb-4 pt-2 text-[11.5px] text-ink-faint">{fill(n.historyMore, { count: days.length - shown.length })}</p>
+      ) : null}
     </Card>
   );
 }
