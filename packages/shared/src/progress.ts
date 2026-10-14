@@ -98,6 +98,10 @@ export type ProgressSession = {
   prs: number;
   /** Every set with a library exercise, for strength. */
   lifts: { exercise_id: string; weight_kg: number; reps: number }[];
+  /** training-load sessionDurationMin(): null when the session was not plausibly timed. */
+  duration_min?: number | null;
+  /** Logged against a program day (planned), as opposed to an ad-hoc workout. */
+  from_program?: boolean;
 };
 
 export type PeriodTrainingStats = {
@@ -112,12 +116,26 @@ export type PeriodTrainingStats = {
   avg_load: number | null;
   /** Workouts divided by the window's length in weeks. */
   workouts_per_week: number;
+  /** Calendar weeks (Monday start) the window touches, partial ones included. */
+  weeks: number;
+  /** Of those, the weeks with at least one workout. */
+  active_weeks: number;
+  /** Workouts logged against a program day; the rest were ad hoc. */
+  from_program: number;
+  /** Sessions with a plausible duration — the median below is over these only. */
+  timed: number;
+  /** Median minutes of the timed sessions; null when none was timed. */
+  median_minutes: number | null;
 };
 
 export function trainingStats(sessions: readonly ProgressSession[], window: ProgressWindow): PeriodTrainingStats {
   const inside = sessions.filter((s) => inWindow(s.day, window));
   const workouts = inside.length;
   const total_load = inside.reduce((sum, s) => sum + finite(s.load), 0);
+  const minutes = inside
+    .map((s) => s.duration_min)
+    .filter((m): m is number => typeof m === "number" && Number.isFinite(m))
+    .sort((a, b) => a - b);
   return {
     workouts,
     active_days: new Set(inside.map((s) => s.day)).size,
@@ -127,13 +145,34 @@ export function trainingStats(sessions: readonly ProgressSession[], window: Prog
     total_load,
     avg_load: workouts === 0 ? null : total_load / workouts,
     workouts_per_week: workouts / (windowDays(window) / 7),
+    weeks: weeksIn(window),
+    active_weeks: new Set(inside.map((s) => weekStartOf(s.day))).size,
+    from_program: inside.filter((s) => s.from_program === true).length,
+    timed: minutes.length,
+    median_minutes: median(minutes),
   };
+}
+
+/** Calendar weeks (Monday start) a window touches. */
+export function weeksIn(window: ProgressWindow): number {
+  const first = weekStartOf(window.start);
+  const last = weekStartOf(window.end);
+  // windowDays is inclusive: Monday to the next Monday is 8 days, one week apart
+  return (windowDays({ start: first, end: last }) - 1) / 7 + 1;
+}
+
+function median(sorted: readonly number[]): number | null {
+  if (sorted.length === 0) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 export type TrainingChanges = {
   workouts: PeriodChange | null;
   active_days: PeriodChange | null;
   workouts_per_week: PeriodChange | null;
+  active_weeks: PeriodChange | null;
+  median_minutes: PeriodChange | null;
   volume_kg: PeriodChange | null;
   sets: PeriodChange | null;
   prs: PeriodChange | null;
@@ -158,6 +197,8 @@ export function trainingProgress(sessions: readonly ProgressSession[], windows: 
       workouts: periodChange(current.workouts, previous.workouts),
       active_days: periodChange(current.active_days, previous.active_days),
       workouts_per_week: periodChange(current.workouts_per_week, previous.workouts_per_week),
+      active_weeks: periodChange(current.active_weeks, previous.active_weeks),
+      median_minutes: periodChange(current.median_minutes, previous.median_minutes),
       volume_kg: periodChange(current.volume_kg, previous.volume_kg),
       sets: periodChange(current.sets, previous.sets),
       prs: periodChange(current.prs, previous.prs),
@@ -276,6 +317,12 @@ export type BodyMetric = {
   latest: BodyPoint | null;
   /** Latest value of the current window against the latest of the previous one. */
   change: PeriodChange | null;
+  /**
+   * The last value inside the current window against the first one inside it
+   * — "since the start of the period". Null with fewer than two records in
+   * the window: one record is a value, not a change.
+   */
+  within: PeriodChange | null;
 };
 
 export type BodyProgress = {
@@ -290,10 +337,13 @@ function bodyMetric(points: BodyPoint[], windows: ProgressWindows): BodyMetric {
   const latestIn = (w: ProgressWindow | null) =>
     w === null ? null : sorted.filter((p) => inWindow(p.day, w)).at(-1) ?? null;
   const latest = sorted.filter((p) => p.day <= windows.current.end).at(-1) ?? null;
+  const first = series[0];
+  const last = series.at(-1);
   return {
     series,
     latest,
     change: periodChange(latestIn(windows.current)?.value, latestIn(windows.previous)?.value),
+    within: first && last && first.day !== last.day ? periodChange(last.value, first.value) : null,
   };
 }
 
@@ -317,6 +367,130 @@ export function bodyProgress(measurements: readonly ProgressMeasurement[], windo
   return { weight: bodyMetric(weight, windows), circumferences };
 }
 
+/** One metric on two chosen dates. */
+export type MeasurementDelta = { key: "weight" | string; from: number; to: number; change: PeriodChange };
+
+export type MeasurementComparison = {
+  from: string;
+  to: string;
+  /** Weight first, then circumferences alphabetically — only metrics recorded on BOTH dates. */
+  deltas: MeasurementDelta[];
+  /** Metrics recorded on only one of the two dates: named, never compared against a zero. */
+  oneSided: string[];
+};
+
+/**
+ * Two weigh-in dates side by side. Only days that have a measurement row are
+ * valid; a metric missing on either day is listed as one-sided instead of
+ * being compared with nothing. Null when either day has no row or they are
+ * the same day.
+ */
+export function compareMeasurements(
+  measurements: readonly ProgressMeasurement[],
+  from: string,
+  to: string,
+): MeasurementComparison | null {
+  if (from === to) return null;
+  const [a, b] = from < to ? [from, to] : [to, from];
+  // the newest row of a day wins, as it would on the chart
+  const rowOf = (day: string) => measurements.filter((m) => m.day === day).at(-1);
+  const ra = rowOf(a);
+  const rb = rowOf(b);
+  if (!ra || !rb) return null;
+  const valueOf = (m: ProgressMeasurement, key: string): number | null => {
+    const v = key === "weight" ? m.weight_kg : (m.circumferences ?? {})[key];
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  };
+  const keys = [
+    "weight",
+    ...[...new Set([...Object.keys(ra.circumferences ?? {}), ...Object.keys(rb.circumferences ?? {})])].sort(),
+  ];
+  const deltas: MeasurementDelta[] = [];
+  const oneSided: string[] = [];
+  for (const key of keys) {
+    const va = valueOf(ra, key);
+    const vb = valueOf(rb, key);
+    if (va === null && vb === null) continue;
+    const change = periodChange(vb, va);
+    if (change === null) oneSided.push(key);
+    else deltas.push({ key, from: va as number, to: vb as number, change });
+  }
+  return { from: a, to: b, deltas, oneSided };
+}
+
+// ---------- one lift, two periods ----------
+
+/** What the lift comparison reads per session — ExerciseSessionEntry already has it. */
+export type LiftSession = {
+  /** Local day of the session. */
+  day: string;
+  top_weight_kg: number;
+  top_reps: number;
+  volume_kg: number;
+  best_1rm: number | null;
+};
+
+export type LiftPeriod = {
+  sessions: number;
+  best_weight_kg: number | null;
+  best_reps: number | null;
+  best_1rm: number | null;
+  volume_kg: number;
+  /** Day of the newest session in the period. */
+  last_day: string | null;
+};
+
+export type LiftComparison = {
+  current: LiftPeriod;
+  previous: LiftPeriod | null;
+  best_weight_kg: PeriodChange | null;
+  best_reps: PeriodChange | null;
+  best_1rm: PeriodChange | null;
+  volume_kg: PeriodChange | null;
+  /**
+   * The two periods were trained differently — loaded in one, bodyweight
+   * only in the other — so weights are not compared, only reps.
+   */
+  mixed: boolean;
+};
+
+function liftPeriod(sessions: readonly LiftSession[], window: ProgressWindow): LiftPeriod {
+  const inside = sessions.filter((s) => inWindow(s.day, window));
+  const loaded = inside.filter((s) => s.top_weight_kg > 0);
+  const best = (xs: number[]) => (xs.length === 0 ? null : Math.max(...xs));
+  const oneRms = inside.map((s) => s.best_1rm).filter((v): v is number => v !== null && Number.isFinite(v));
+  return {
+    sessions: inside.length,
+    best_weight_kg: best(loaded.map((s) => s.top_weight_kg)),
+    best_reps: best(inside.map((s) => s.top_reps).filter((r) => r > 0)),
+    best_1rm: best(oneRms),
+    volume_kg: inside.reduce((sum, s) => sum + finite(s.volume_kg), 0),
+    last_day: inside.map((s) => s.day).sort().at(-1) ?? null,
+  };
+}
+
+/**
+ * The selected lift in this period against the previous one. Every figure is
+ * compared only when it exists on both sides; a period with no session of the
+ * lift compares nothing. Weights are not compared across a bodyweight period
+ * and a loaded one — different exercises in practice.
+ */
+export function liftComparison(sessions: readonly LiftSession[], windows: ProgressWindows): LiftComparison {
+  const current = liftPeriod(sessions, windows.current);
+  const previous = windows.previous ? liftPeriod(sessions, windows.previous) : null;
+  const both = previous !== null && previous.sessions > 0 && current.sessions > 0;
+  const mixed = both && (current.best_weight_kg === null) !== (previous!.best_weight_kg === null);
+  return {
+    current,
+    previous,
+    best_weight_kg: both && !mixed ? periodChange(current.best_weight_kg, previous!.best_weight_kg) : null,
+    best_reps: both ? periodChange(current.best_reps, previous!.best_reps) : null,
+    best_1rm: both && !mixed ? periodChange(current.best_1rm, previous!.best_1rm) : null,
+    volume_kg: both && !mixed && previous!.volume_kg > 0 ? periodChange(current.volume_kg, previous!.volume_kg) : null,
+    mixed,
+  };
+}
+
 // ---------- insights ----------
 
 /** A factual observation; the UI turns the key into a sentence. */
@@ -325,7 +499,9 @@ export type ProgressInsight =
   | { key: "volume_change"; pct: number }
   | { key: "load_change"; pct: number }
   | { key: "active_days"; current: number; previous: number }
-  | { key: "weight_change"; delta_kg: number }
+  | { key: "week_workouts"; current: number; previous: number }
+  /** within = first to last weigh-in of this period; previous = against the previous period's last. */
+  | { key: "weight_change"; delta_kg: number; basis: "within" | "previous" }
   | { key: "prs"; count: number };
 
 /** Relative changes under this many percent are not worth a sentence. */
@@ -342,6 +518,8 @@ export function progressInsights(input: {
   training: TrainingProgress;
   strength: readonly StrengthHighlight[];
   body: BodyProgress;
+  /** This calendar week against the last one (calendarWeekWorkouts); left out where it would repeat the period. */
+  week?: { current: number; previous: number } | null;
 }): ProgressInsight[] {
   const out: ProgressInsight[] = [];
   const significant = (pct: number | null): pct is number => pct !== null && Math.abs(pct) >= MIN_INSIGHT_PCT;
@@ -369,11 +547,33 @@ export function progressInsights(input: {
     }
   }
 
-  const weight = input.body.weight.change;
-  if (weight && weight.delta !== 0) out.push({ key: "weight_change", delta_kg: weight.delta });
+  if (input.week && input.week.current + input.week.previous > 0) {
+    out.push({ key: "week_workouts", current: input.week.current, previous: input.week.previous });
+  }
+
+  // Within the period when it holds two weigh-ins, else against the period before.
+  const within = input.body.weight.within;
+  const across = input.body.weight.change;
+  if (within && within.delta !== 0) out.push({ key: "weight_change", delta_kg: within.delta, basis: "within" });
+  else if (!within && across && across.delta !== 0) out.push({ key: "weight_change", delta_kg: across.delta, basis: "previous" });
 
   if (current.prs > 0) out.push({ key: "prs", count: current.prs });
   return out;
+}
+
+/** Workouts in the calendar week (Monday start) holding `today`, and in the week before. */
+export function calendarWeekWorkouts(sessions: readonly ProgressSession[], today: string): { current: number; previous: number } {
+  const monday = weekStartOf(today);
+  const lastMonday = shiftDays(monday, -7);
+  let current = 0;
+  let previous = 0;
+  for (const s of sessions) {
+    if (s.day > today) continue;
+    const week = weekStartOf(s.day);
+    if (week === monday) current += 1;
+    else if (week === lastMonday) previous += 1;
+  }
+  return { current, previous };
 }
 
 function finite(n: number): number {

@@ -11,13 +11,17 @@ import { getPlan, inHistory } from "@/lib/plan";
 import { UpgradeHint } from "@/components/upgrade";
 import { FoodViewTabs, NutritionTrends } from "@/components/nutrition-trends";
 import { EmptyState } from "@/components/ui";
-import { getMyNutritionTrends } from "@/lib/nutrition-data";
+import { getMyNutritionEntries, getMyNutritionTrends } from "@/lib/nutrition-data";
 import { parseFoodParams, type FoodState } from "@/lib/nutrition-params";
 import {
+  isLoggedDay,
+  labelNutrients,
+  mealDistribution,
   nutritionInsights,
   nutritionProgress,
   nutritionSeries,
   progressWindows,
+  shiftDays,
   sumMacros,
   weekNutrition,
 } from "@healthapp/shared";
@@ -135,10 +139,14 @@ export default async function FoodPage({
  */
 async function TrendsView({ state }: { state: FoodState }) {
   const { t } = await getI18n();
-  const [trends, nutrition, planMeals] = await Promise.all([
+  // Single entries, for what the day totals cannot say: which meal the food
+  // was in, and the label nutrients — for the range and the one before it,
+  // read alongside the rest (the same calendar as the diary: isoDay()).
+  const [trends, nutrition, planMeals, detail] = await Promise.all([
     getMyNutritionTrends(state.range),
     getMyDayNutrition(),
     getMyPlanMeals(),
+    getMyNutritionEntries(state.range === null ? null : shiftDays(isoDay(), -(2 * state.range - 1))),
   ]);
   if (!trends) {
     return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
@@ -146,8 +154,18 @@ async function TrendsView({ state }: { state: FoodState }) {
   // No published plan resolves to zeros; zeros are "no target", not a target of 0.
   const target = nutrition.target.kcal > 0 ? nutrition.target : null;
   const windows = progressWindows(trends.today, state.range, trends.firstDay);
-  const progress = nutritionProgress(trends.days, windows, target);
+  const context = { firstDay: trends.firstDay, today: trends.today };
+  const progress = nutritionProgress(trends.days, windows, target, context);
   const plannedFoods = planMeals.flatMap((m) => m.foods.map((f) => f.macros));
+
+  // A window the bounded entry read did not fully reach is shown as not
+  // available, never as a smaller number.
+  const covered = (w: { start: string } | null) =>
+    w !== null && detail !== null && (detail.completeFrom === null || w.start >= detail.completeFrom);
+  const entries = detail?.entries ?? [];
+  const meals = covered(windows.current) ? mealDistribution(entries, windows.current) : null;
+  const label = covered(windows.current) ? labelNutrients(entries, windows.current) : null;
+  const labelPrevious = covered(windows.previous) ? labelNutrients(entries, windows.previous!) : null;
 
   return (
     <div className="@container mx-auto max-w-[1600px]">
@@ -177,6 +195,13 @@ async function TrendsView({ state }: { state: FoodState }) {
             : null
         }
         truncated={trends.truncated}
+        meals={meals}
+        label={label}
+        labelPrevious={labelPrevious}
+        days={trends.days
+          .filter((d) => d.day >= windows.current.start && d.day <= windows.current.end && isLoggedDay(d))
+          .reverse()}
+        todayIso={trends.today}
       />
     </div>
   );

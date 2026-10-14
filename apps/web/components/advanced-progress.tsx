@@ -9,6 +9,8 @@ import {
   type BodyProgress,
   type ExerciseSessionEntry,
   type ExerciseStats,
+  type LiftComparison,
+  type MeasurementComparison,
   type PeriodBucket,
   type PeriodChange,
   type ProgressInsight,
@@ -20,6 +22,7 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { progressHref, PROGRESS_TABS, type ProgressState, type ProgressTab } from "@/lib/progress-params";
+import { FIELD, SMALL_BUTTON } from "@/lib/form-classes";
 import type { FitnessScoreView } from "@/lib/fitness-score-data";
 import { MetricChart, PointsChart } from "./exercise-analytics";
 import { Card } from "./ui";
@@ -242,8 +245,10 @@ export function InsightsCard({ insights, names }: { insights: ProgressInsight[];
         return fill(i.pct > 0 ? a.insightLoadUp : a.insightLoadDown, { pct: f.pct(i.pct) });
       case "active_days":
         return fill(a.insightActiveDays, { current: i.current, previous: i.previous });
+      case "week_workouts":
+        return fill(a.insightWeekWorkouts, { current: i.current, previous: i.previous });
       case "weight_change":
-        return fill(a.insightWeight, {
+        return fill(i.basis === "within" ? a.insightWeightWithin : a.insightWeight, {
           delta: `${i.delta_kg > 0 ? "+" : "−"}${f.one(Math.abs(f.u.weightValue(i.delta_kg)))}`,
           unit: f.u.weightUnit,
         });
@@ -319,6 +324,12 @@ function BodyCard({
         format={format}
         hint={metric.latest ? fill(f.a.latestWeighIn, { date: f.date(metric.latest.day) }) : f.a.noWeighIns}
       />
+      {metric.within && metric.series[0] ? (
+        <p className="px-1 text-[12px] tabular-nums text-ink-soft">
+          {fill(f.a.sinceStart, { date: f.date(metric.series[0].day) })}{" "}
+          <b className="font-semibold text-ink">{signed(metric.within, format, f.pct)}</b>
+        </p>
+      ) : null}
       {chartsLocked ?? (
         <PointsChart title={title} unit={unit} points={metric.series.map((p) => ({ day: p.day, value: toUnit(p.value) }))} />
       )}
@@ -382,6 +393,23 @@ export function StrengthOverview({
         ) : null}
       </div>
 
+      {/* What the two scores are and are not — the formulas themselves are
+          spelled out, component by component, on /fitness-score. */}
+      <details className="group rounded-2xl bg-surface px-4 py-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold [&::-webkit-details-marker]:hidden">
+          {a.aboutScores}
+          <span aria-hidden className="text-ink-faint transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-2 space-y-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+          <p>{a.aboutLoad}</p>
+          <p>{fill(a.aboutFitness, { count: FITNESS_SCORE_MIN_WORKOUTS })}</p>
+          <p>{a.aboutRecovery}</p>
+          <Link href="/fitness-score" className="inline-block font-semibold text-accent-ink hover:underline">
+            {a.fitnessBreakdown} →
+          </Link>
+        </div>
+      </details>
+
       <Card plain className="overflow-hidden p-0">
         <div className="px-5 pb-1 pt-[18px]">
           <Eyebrow>{a.mainLifts}</Eyebrow>
@@ -433,6 +461,8 @@ export function ExerciseProgress({
   selected,
   sessions,
   stats,
+  comparison,
+  lastDay,
   todayIso,
   chartsLocked,
 }: {
@@ -442,6 +472,10 @@ export function ExerciseProgress({
   /** The chosen lift's sessions inside the period. */
   sessions: ExerciseSessionEntry[];
   stats: ExerciseStats;
+  /** The lift in this period against the previous one (liftComparison). */
+  comparison: LiftComparison;
+  /** Local day of the newest session of the lift, in or before the period. */
+  lastDay: string | null;
   todayIso: string;
   chartsLocked: ReactNode;
 }) {
@@ -479,13 +513,43 @@ export function ExerciseProgress({
           );
         })}
       </div>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{a.inThisPeriod}</p>
-      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        <Figure label={d.bestWeight} value={stats.best_weight_kg === null ? "—" : f.kg(stats.best_weight_kg)} />
-        <Figure label={d.bestReps} value={stats.best_reps === null ? "—" : String(stats.best_reps)} />
-        <Figure label={d.estimated1rm} value={stats.best_1rm === null ? "—" : f.kg(stats.best_1rm)} />
-        <Figure label={d.totalVolume} value={f.bigKg(stats.total_volume_kg)} />
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{a.inThisPeriod}</p>
+        <p className="text-[11.5px] text-ink-faint">
+          {lastDay ? fill(a.lastPerformed, { date: f.date(lastDay) }) : a.notPerformed}
+        </p>
       </div>
+      {stats.sessions === 0 ? <p className="text-[13px] text-ink-faint">{a.liftNotInPeriod}</p> : null}
+      {/* Each figure is compared with the previous period only when the lift
+          was done in both, and weights only when both were done with load. */}
+      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <Figure
+          label={d.bestWeight}
+          value={stats.best_weight_kg === null ? "—" : f.kg(stats.best_weight_kg)}
+          change={comparison.best_weight_kg}
+          format={f.kg}
+        />
+        <Figure
+          label={d.bestReps}
+          value={stats.best_reps === null ? "—" : String(stats.best_reps)}
+          change={comparison.best_reps}
+          format={f.count}
+        />
+        <Figure
+          label={d.estimated1rm}
+          value={stats.best_1rm === null ? "—" : f.kg(stats.best_1rm)}
+          change={comparison.best_1rm}
+          format={f.kg}
+          hint={a.estimatedNotTested}
+        />
+        <Figure
+          label={d.totalVolume}
+          value={f.bigKg(stats.total_volume_kg)}
+          change={comparison.volume_kg}
+          format={f.bigKg}
+        />
+      </div>
+      {comparison.mixed ? <p className="text-[12px] text-ink-faint">{a.liftMixed}</p> : null}
       {chartsLocked ?? (
         <div className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
           {stats.bodyweight ? (
@@ -494,6 +558,7 @@ export function ExerciseProgress({
             <>
               <MetricChart title={d.chart1rm} metric="one_rm" sessions={sessions} range={state.range} todayIso={todayIso} hint={fill(d.oneRmHint, { reps: ONE_RM_MAX_REPS })} />
               <MetricChart title={d.chartWeight} metric="weight" sessions={sessions} range={state.range} todayIso={todayIso} />
+              <MetricChart title={d.maxReps} metric="reps" sessions={sessions} range={state.range} todayIso={todayIso} hint={a.repsAnyLoad} />
               <MetricChart title={d.chartVolume} metric="volume" sessions={sessions} range={state.range} todayIso={todayIso} />
             </>
           )}
@@ -508,11 +573,17 @@ export function ExerciseProgress({
 export function ConsistencyOverview({
   training,
   streak,
+  plannedPerWeek,
+  thisWeek,
   buckets,
   chartsLocked,
 }: {
   training: TrainingProgress;
   streak: { current: number; longest: number } | null;
+  /** Days in the program followed now; null without one — then nothing is "missed". */
+  plannedPerWeek: number | null;
+  /** Workouts logged in the current calendar week. */
+  thisWeek: number;
   buckets: { unit: "week" | "month"; items: PeriodBucket[] };
   chartsLocked: ReactNode;
 }) {
@@ -520,12 +591,52 @@ export function ConsistencyOverview({
   const a = f.a;
   const c = training.changes;
   const cur = training.current;
+  const adHoc = cur.workouts - cur.from_program;
   return (
     <div className="space-y-4">
+      {/* The current program's week, never applied to past weeks: an older
+          program may have planned a different number, and weeks before any
+          program planned nothing — so nothing in the period counts as missed. */}
+      <Card plain>
+        <Eyebrow>{a.thisWeek}</Eyebrow>
+        <p className="mt-1.5 font-display text-[22px] font-extrabold tabular-nums leading-tight">
+          {plannedPerWeek === null
+            ? fill(thisWeek === 1 ? a.thisWeekOne : a.thisWeekMany, { count: thisWeek })
+            : fill(a.thisWeekOfPlan, { done: thisWeek, planned: plannedPerWeek })}
+        </p>
+        <p className="mt-1 text-[12px] text-ink-faint">
+          {plannedPerWeek === null ? a.noProgramTarget : fill(a.planTargetHint, { planned: plannedPerWeek })}
+        </p>
+      </Card>
+
       <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
         <Figure label={a.workouts} value={f.count(cur.workouts)} change={c?.workouts} format={f.count} />
         <Figure label={a.workoutsPerWeek} value={f.one(cur.workouts_per_week)} change={c?.workouts_per_week} format={f.one} />
+        <Figure
+          label={a.activeWeeks}
+          value={fill(a.weeksOf, { active: cur.active_weeks, weeks: cur.weeks })}
+          change={c?.active_weeks}
+          format={f.count}
+        />
         <Figure label={a.activeDays} value={f.count(cur.active_days)} change={c?.active_days} format={f.count} />
+        <Figure
+          label={a.medianDuration}
+          value={cur.median_minutes === null ? "—" : `${f.count(cur.median_minutes)} min`}
+          change={c?.median_minutes}
+          format={(v) => `${f.count(v)} min`}
+          hint={
+            cur.workouts === 0
+              ? undefined
+              : cur.timed < cur.workouts
+                ? fill(a.timedOf, { timed: cur.timed, workouts: cur.workouts })
+                : undefined
+          }
+        />
+        <Figure
+          label={a.fromProgram}
+          value={f.count(cur.from_program)}
+          hint={cur.workouts > 0 ? fill(a.adHocCount, { count: adHoc }) : undefined}
+        />
         <Figure label={a.prsInPeriod} value={f.count(cur.prs)} change={c?.prs} format={f.count} />
         {streak ? (
           <>
@@ -541,6 +652,117 @@ export function ConsistencyOverview({
         {a.streakCalendar} →
       </Link>
     </div>
+  );
+}
+
+/**
+ * "+1.2 kg (+1.5%)": the delta in the reader's unit, the percentage only when
+ * there is one (periodChange leaves it null against a zero) and the delta is
+ * not nothing.
+ */
+function signed(change: PeriodChange, format: (v: number) => string, pct: (v: number) => string): string {
+  const sign = change.delta > 0 ? "+" : change.delta < 0 ? "−" : "±";
+  const p = change.pct !== null && change.delta !== 0 ? ` (${sign}${pct(change.pct)}%)` : "";
+  return `${sign}${format(Math.abs(change.delta))}${p}`;
+}
+
+// ---------- two dates ----------
+
+/**
+ * Two weigh-in days side by side. A plain GET form over the page's own URL
+ * state, so it works before the page hydrates and the choice survives a
+ * reload. Only days with a measurement are offered; a metric recorded on one
+ * of the two days alone is named, never compared against nothing.
+ */
+export function MeasurementCompare({
+  state,
+  days,
+  from,
+  to,
+  comparison,
+}: {
+  state: ProgressState;
+  /** Every day with a measurement this plan shows, oldest first. */
+  days: string[];
+  from: string | null;
+  to: string | null;
+  comparison: MeasurementComparison | null;
+}) {
+  const f = useFormat();
+  const a = f.a;
+  const circ = a.circ as Record<string, string>;
+  const labelOf = (key: string) => (key === "weight" ? a.bodyWeight : (circ[key] ?? key));
+  if (days.length < 2) {
+    return (
+      <Card plain>
+        <Eyebrow>{a.compareDates}</Eyebrow>
+        <p className="mt-2.5 text-[13px] text-ink-faint">{a.compareNeedsTwo}</p>
+      </Card>
+    );
+  }
+  const newestFirst = [...days].reverse();
+  return (
+    <Card plain>
+      <Eyebrow>{a.compareDates}</Eyebrow>
+      <form method="get" action="/progress" className="mt-3 grid grid-cols-[1fr_1fr] items-end gap-2.5 sm:grid-cols-[1fr_1fr_auto]">
+        {state.range !== 30 ? <input type="hidden" name="range" value={state.range === null ? "all" : String(state.range)} /> : null}
+        {state.exercise ? <input type="hidden" name="exercise" value={state.exercise} /> : null}
+        <label className="text-[12px] font-semibold text-ink-soft">
+          {a.compareFrom}
+          <select name="from" defaultValue={from ?? undefined} className={`${FIELD} mt-1`}>
+            {newestFirst.map((d) => (
+              <option key={d} value={d}>{f.date(d)}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-[12px] font-semibold text-ink-soft">
+          {a.compareTo}
+          <select name="to" defaultValue={to ?? undefined} className={`${FIELD} mt-1`}>
+            {newestFirst.map((d) => (
+              <option key={d} value={d}>{f.date(d)}</option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" className={`${SMALL_BUTTON} col-span-2 h-11 sm:col-span-1`}>{a.compareButton}</button>
+      </form>
+      {comparison === null ? (
+        <p className="mt-3 text-[13px] text-ink-faint">{a.compareSameDay}</p>
+      ) : comparison.deltas.length === 0 ? (
+        <p className="mt-3 text-[13px] text-ink-faint">{a.compareNothingShared}</p>
+      ) : (
+        <table className="mt-3.5 w-full text-[13px] tabular-nums">
+          <caption className="sr-only">
+            {fill(a.compareCaption, { from: f.date(comparison.from), to: f.date(comparison.to) })}
+          </caption>
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-wider text-ink-faint">
+              <th scope="col" className="pb-1.5 font-semibold" />
+              <th scope="col" className="pb-1.5 text-right font-semibold">{f.date(comparison.from)}</th>
+              <th scope="col" className="pb-1.5 text-right font-semibold">{f.date(comparison.to)}</th>
+              <th scope="col" className="pb-1.5 text-right font-semibold">{a.compareChange}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/60">
+            {comparison.deltas.map((d) => {
+              const format = d.key === "weight" ? f.kg : f.cm;
+              return (
+                <tr key={d.key}>
+                  <th scope="row" className="py-2 text-left font-semibold">{labelOf(d.key)}</th>
+                  <td className="py-2 text-right text-ink-soft">{format(d.from)}</td>
+                  <td className="py-2 text-right text-ink-soft">{format(d.to)}</td>
+                  <td className="py-2 text-right font-semibold">{signed(d.change, format, f.pct)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+      {comparison && comparison.oneSided.length > 0 ? (
+        <p className="mt-2 text-[11.5px] text-ink-faint">
+          {fill(a.compareOneSided, { list: comparison.oneSided.map(labelOf).join(", ") })}
+        </p>
+      ) : null}
+    </Card>
   );
 }
 

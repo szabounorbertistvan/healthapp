@@ -58,3 +58,20 @@ describe("toProgressSessions", () => {
     expect(s).toMatchObject({ volume_kg: 0, sets: 0, prs: 0, load: 0, lifts: [] });
   });
 });
+
+describe("duration and plan", () => {
+  it("carries the timed duration and whether the session came from a program day", () => {
+    const [s] = toProgressSessions([row({ program_day_id: "day-1" })], "Europe/Bucharest");
+    expect(s!.duration_min).toBe(60);
+    expect(s!.from_program).toBe(true);
+  });
+
+  it("an ad-hoc session is not from a program, and an implausible span has no duration", () => {
+    const [s] = toProgressSessions(
+      [row({ program_day_id: null, completed_at: "2026-09-21T08:00:20Z" })],
+      "Europe/Bucharest",
+    );
+    expect(s!.from_program).toBe(false);
+    expect(s!.duration_min).toBeNull();
+  });
+});

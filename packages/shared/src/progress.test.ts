@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   bodyProgress,
+  calendarWeekWorkouts,
+  compareMeasurements,
+  liftComparison,
+  weeksIn,
+  type LiftSession,
   MIN_INSIGHT_PCT,
   periodBuckets,
   periodChange,
@@ -112,6 +117,8 @@ describe("trainingStats", () => {
     expect(s).toEqual({
       workouts: 0, active_days: 0, volume_kg: 0, sets: 0, prs: 0,
       total_load: 0, avg_load: null, workouts_per_week: 0,
+      // Sunday 20th to Saturday 26th touches two Monday-start weeks
+      weeks: 2, active_weeks: 0, from_program: 0, timed: 0, median_minutes: null,
     });
   });
 
@@ -333,7 +340,7 @@ describe("bodyProgress", () => {
 
   it("is empty with no measurements", () => {
     const b = bodyProgress([], windows);
-    expect(b.weight).toEqual({ series: [], latest: null, change: null });
+    expect(b.weight).toEqual({ series: [], latest: null, change: null, within: null });
     expect(b.circumferences).toEqual({});
   });
 });
@@ -419,5 +426,204 @@ describe("progressInsights", () => {
       session("2026-09-22", { volume_kg: 1500, load: 60, prs: 1, lifts: [{ exercise_id: squat, weight_kg: 110, reps: 5 }] }),
     ];
     expect(build(sessions)).toEqual(build([...sessions].reverse()));
+  });
+});
+
+// ---------- consistency ----------
+
+describe("consistency figures", () => {
+  const window = { start: "2026-09-01", end: "2026-09-30" };
+
+  it("counts the calendar weeks a window touches and the ones with a workout", () => {
+    expect(weeksIn(window)).toBe(5); // Tue 1st .. Wed 30th: weeks of Aug 31, Sep 7, 14, 21, 28
+    expect(weeksIn({ start: "2026-09-21", end: "2026-09-27" })).toBe(1); // exactly one Monday-start week
+    const s = trainingStats([session("2026-09-01"), session("2026-09-02"), session("2026-09-22")], window);
+    expect(s.active_weeks).toBe(2);
+    expect(s.weeks).toBe(5);
+  });
+
+  it("separates workouts from a program from ad-hoc ones, without counting a missing flag as either", () => {
+    const s = trainingStats(
+      [session("2026-09-02", { from_program: true }), session("2026-09-03", { from_program: false }), session("2026-09-04")],
+      window,
+    );
+    expect(s.workouts).toBe(3);
+    expect(s.from_program).toBe(1);
+  });
+
+  it("takes the median duration over timed sessions only — an untimed one is not a zero", () => {
+    const s = trainingStats(
+      [
+        session("2026-09-02", { duration_min: 40 }),
+        session("2026-09-03", { duration_min: 60 }),
+        session("2026-09-04", { duration_min: null }),
+        session("2026-09-05", { duration_min: 90 }),
+      ],
+      window,
+    );
+    expect(s.timed).toBe(3);
+    expect(s.median_minutes).toBe(60);
+    expect(
+      trainingStats([session("2026-09-02", { duration_min: 30 }), session("2026-09-03", { duration_min: 50 })], window)
+        .median_minutes,
+    ).toBe(40);
+    expect(trainingStats([session("2026-09-02")], window).median_minutes).toBeNull();
+  });
+
+  it("compares active weeks and median duration with the previous period", () => {
+    const w = progressWindows("2026-09-26", 7, "2026-01-01");
+    const p = trainingProgress(
+      [session("2026-09-15", { duration_min: 50 }), session("2026-09-22", { duration_min: 60 })],
+      w,
+    );
+    expect(p.changes!.median_minutes).toEqual({ current: 60, previous: 50, delta: 10, pct: 20 });
+    expect(p.changes!.active_weeks!.current).toBe(1);
+  });
+
+  it("counts this calendar week against the last, ignoring anything older or in the future", () => {
+    // 2026-09-26 is a Saturday; its week starts Monday 21st
+    const sessions = [
+      session("2026-09-21"), session("2026-09-23"), session("2026-09-25"),
+      session("2026-09-16"), session("2026-09-14"),
+      session("2026-09-10"),
+      session("2026-09-27"),
+    ];
+    expect(calendarWeekWorkouts(sessions, "2026-09-26")).toEqual({ current: 3, previous: 2 });
+    expect(calendarWeekWorkouts([], "2026-09-26")).toEqual({ current: 0, previous: 0 });
+  });
+});
+
+// ---------- body, within and between dates ----------
+
+describe("body change within the period", () => {
+  const windows = progressWindows(TODAY, 30, "2026-01-01");
+
+  it("is the last weigh-in of the period against the first one", () => {
+    const b = bodyProgress([weigh("2026-09-01", 82.4), weigh("2026-09-10", 81.9), weigh("2026-09-25", 81.2)], windows);
+    expect(b.weight.within).toEqual(periodChange(81.2, 82.4));
+  });
+
+  it("needs two different days in the period — one weigh-in is not a change", () => {
+    expect(bodyProgress([weigh("2026-09-20", 80)], windows).weight.within).toBeNull();
+    expect(bodyProgress([weigh("2026-08-01", 82), weigh("2026-09-20", 80)], windows).weight.within).toBeNull();
+  });
+
+  it("works for all time, which has no previous period", () => {
+    const all = progressWindows(TODAY, null, "2026-03-01");
+    const b = bodyProgress([weigh("2026-03-01", 90), weigh("2026-09-20", 84)], all);
+    expect(b.weight.change).toBeNull();
+    expect(b.weight.within!.delta).toBe(-6);
+  });
+});
+
+describe("compareMeasurements", () => {
+  const rows = [
+    weigh("2026-08-01", 84, { waist: 92, chest: 104 }),
+    weigh("2026-09-01", null, { waist: 90 }),
+    weigh("2026-09-20", 82.5, { waist: 88.5, hips: 99 }),
+  ];
+
+  it("compares only what was recorded on both days, oldest to newest whatever the order asked", () => {
+    const c = compareMeasurements(rows, "2026-09-20", "2026-08-01")!;
+    expect(c.from).toBe("2026-08-01");
+    expect(c.to).toBe("2026-09-20");
+    expect(c.deltas.map((d) => [d.key, d.from, d.to, d.change.delta])).toEqual([
+      ["weight", 84, 82.5, -1.5],
+      ["waist", 92, 88.5, -3.5],
+    ]);
+    expect(c.oneSided).toEqual(["chest", "hips"]);
+  });
+
+  it("never compares a missing weight with zero", () => {
+    const c = compareMeasurements(rows, "2026-08-01", "2026-09-01")!;
+    expect(c.deltas.map((d) => d.key)).toEqual(["waist"]);
+    expect(c.oneSided).toContain("weight");
+  });
+
+  it("is null for the same day or a day with no measurement", () => {
+    expect(compareMeasurements(rows, "2026-09-20", "2026-09-20")).toBeNull();
+    expect(compareMeasurements(rows, "2026-09-20", "2026-07-01")).toBeNull();
+  });
+});
+
+// ---------- one lift, two periods ----------
+
+describe("liftComparison", () => {
+  const windows = progressWindows(TODAY, 30, "2026-01-01");
+  const lift = (day: string, w: number, reps: number, volume: number, oneRm: number | null): LiftSession => ({
+    day,
+    top_weight_kg: w,
+    top_reps: reps,
+    volume_kg: volume,
+    best_1rm: oneRm,
+  });
+
+  it("compares bests and volume when the lift was done in both periods, and dates the last session", () => {
+    const c = liftComparison(
+      [lift("2026-08-10", 100, 5, 2000, 116.67), lift("2026-09-05", 102.5, 6, 2500, 123), lift("2026-09-20", 105, 5, 2600, 122.5)],
+      windows,
+    );
+    expect(c.current).toMatchObject({ sessions: 2, best_weight_kg: 105, best_reps: 6, best_1rm: 123, volume_kg: 5100, last_day: "2026-09-20" });
+    expect(c.best_weight_kg).toEqual(periodChange(105, 100));
+    expect(c.volume_kg).toEqual(periodChange(5100, 2000));
+    expect(c.mixed).toBe(false);
+  });
+
+  it("compares nothing when the lift is missing from either period", () => {
+    const c = liftComparison([lift("2026-09-20", 105, 5, 2600, 122.5)], windows);
+    expect(c.best_weight_kg).toBeNull();
+    expect(c.best_reps).toBeNull();
+    expect(c.current.sessions).toBe(1);
+  });
+
+  it("does not compare weights between a bodyweight period and a loaded one — reps only", () => {
+    const c = liftComparison([lift("2026-08-10", 0, 12, 0, null), lift("2026-09-20", 10, 10, 300, 13.33)], windows);
+    expect(c.mixed).toBe(true);
+    expect(c.best_weight_kg).toBeNull();
+    expect(c.best_1rm).toBeNull();
+    expect(c.volume_kg).toBeNull();
+    expect(c.best_reps).toEqual(periodChange(10, 12));
+  });
+
+  it("has no previous period for all time", () => {
+    const c = liftComparison([lift("2026-09-20", 105, 5, 2600, 122.5)], progressWindows(TODAY, null, "2026-09-20"));
+    expect(c.previous).toBeNull();
+    expect(c.best_1rm).toBeNull();
+  });
+});
+
+// ---------- the added insights ----------
+
+describe("weekly and weight insights", () => {
+  const windows = progressWindows(TODAY, 30, "2026-01-01");
+  const build = (
+    sessions: ProgressSession[],
+    measurements: ProgressMeasurement[],
+    week?: { current: number; previous: number } | null,
+  ) =>
+    progressInsights({
+      training: trainingProgress(sessions, windows),
+      strength: strengthHighlights(sessions, windows),
+      body: bodyProgress(measurements, windows),
+      week,
+    });
+
+  it("states this week against last week when either has a workout", () => {
+    expect(build([], [], { current: 4, previous: 3 })).toContainEqual({ key: "week_workouts", current: 4, previous: 3 });
+    expect(build([], [], { current: 0, previous: 0 }).some((i) => i.key === "week_workouts")).toBe(false);
+    expect(build([], [], null).some((i) => i.key === "week_workouts")).toBe(false);
+  });
+
+  it("prefers the change within the period, and says it once", () => {
+    const i = build([], [weigh("2026-08-20", 84), weigh("2026-09-02", 83), weigh("2026-09-24", 81.8)]);
+    const weight = i.filter((x) => x.key === "weight_change");
+    expect(weight).toHaveLength(1);
+    expect(weight[0]).toMatchObject({ basis: "within" });
+    expect((weight[0] as { delta_kg: number }).delta_kg).toBeCloseTo(-1.2, 10);
+  });
+
+  it("stays quiet when the weight did not move within the period", () => {
+    const i = build([], [weigh("2026-08-20", 84), weigh("2026-09-02", 82), weigh("2026-09-24", 82)]);
+    expect(i.some((x) => x.key === "weight_change")).toBe(false);
   });
 });
