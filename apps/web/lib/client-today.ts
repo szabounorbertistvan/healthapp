@@ -1,7 +1,9 @@
 // Today aggregate and the coach thread.
-import { daysAgoIso, mondayOf } from "./dates";
+import { daysAgoIso } from "./dates";
+import { myCalendar } from "./my-today";
 import "server-only";
-import { adherenceOf, foldActivity, type WeekActivity } from "./live-adherence";
+import { adherenceOf } from "./live-adherence";
+import { foldActivity, type WeekActivity } from "./week-activity";
 import { currentActorId } from "./actor";
 import { liveUser } from "./supabase/server";
 import { displayName, getProfile } from "./data";
@@ -41,7 +43,6 @@ export async function getToday(): Promise<ClientToday | null> {
   const clientId = await currentActorId();
   if (!clientId) return null;
 
-  const weekStart = mondayOf(0);
 
   // One wave: activity, streak and profile do not depend on the other reads.
   const [days, nutrition, habits, checkIn, training_load, activity, streak, profile, unreadFromCoach, coachId] =
@@ -51,7 +52,7 @@ export async function getToday(): Promise<ClientToday | null> {
       getMyHabits(),
       getMyCheckInState(),
       getMyTrainingLoad(),
-      liveActivity(weekStart),
+      liveActivity(),
       getWorkoutStreak(clientId),
       getProfile(),
       unreadCoachMessages(clientId),
@@ -124,7 +125,8 @@ async function unreadCoachMessages(clientId: string): Promise<number> {
   return count ?? 0;
 }
 
-async function liveActivity(weekStart: string): Promise<WeekActivity> {
+/** This week on the client's own calendar (lib/my-today) — the coach folds the same rows on the same one. */
+async function liveActivity(): Promise<WeekActivity> {
   const empty: WeekActivity = {
     completedSessions: 0,
     daysLogged: 0,
@@ -175,7 +177,8 @@ async function liveActivity(weekStart: string): Promise<WeekActivity> {
       habitLogs: (habitLogs.data ?? []) as unknown as HabitRow[],
       setStamps: ((lastSet.data ?? []) as { received_at: string }[]).map((s) => s.received_at),
     },
-    weekStart,
+    // the profile behind it is already being read alongside (getToday), so no extra wave
+    await myCalendar(),
   );
 }
 

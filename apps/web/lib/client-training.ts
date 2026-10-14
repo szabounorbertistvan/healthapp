@@ -1,13 +1,17 @@
 // Client training reads: programs, days, sessions, PRs, training load.
-import { daysAgoIso, isoDay, mondayOf } from "./dates";
+import { daysAgoIso, isoDay } from "./dates";
+import { myCalendar } from "./my-today";
 import "server-only";
 import { cache } from "react";
 import {
   dailyLoad,
   isExerciseMeasure,
+  localDay,
   loadTrend,
   pickProgram,
+  shiftDays,
   sumLoad,
+  weekStartOf,
   type SelectableProgram,
 } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
@@ -338,28 +342,25 @@ export async function getMySessions(limit = 12): Promise<SessionSummaryRow[]> {
  * adherence and the check-in.
  */
 export async function getMyTrainingLoad(): Promise<TrainingLoadSummary> {
-  const days14 = Array.from({ length: 14 }, (_, i) => daysAgoIso(13 - i));
-  const entries = await liveLoadEntries();
-  const today = isoDay();
-  const thisMonday = mondayOf(0);
-  const lastMonday = mondayOf(1);
-  const this_week = sumLoad(entries, thisMonday, today);
-  const last_week = sumLoad(entries, lastMonday, shiftIso(thisMonday, -1));
+  // On the person's own calendar (lib/my-today): their today, their Monday,
+  // and each session on the local day it started — as the streak counts it.
+  const [entries, { today, timeZone }] = await Promise.all([liveLoadEntries(), myCalendar()]);
+  const days = entries.map((e) => ({ day: localDay(e.started_at, timeZone), load: e.load }));
+  const days14 = Array.from({ length: 14 }, (_, i) => shiftDays(today, -(13 - i)));
+  const thisMonday = weekStartOf(today);
+  const lastMonday = shiftDays(thisMonday, -7);
+  const this_week = sumLoad(days, thisMonday, today);
+  const last_week = sumLoad(days, lastMonday, shiftDays(thisMonday, -1));
   return {
     this_week,
     last_week,
-    last_7_days: sumLoad(entries, daysAgoIso(6), today),
+    last_7_days: sumLoad(days, shiftDays(today, -6), today),
     trend: loadTrend(this_week, last_week),
-    daily: dailyLoad(entries, days14),
+    daily: dailyLoad(days, days14),
   };
 }
 
-function shiftIso(day: string, days: number): string {
-  const [y, m, d] = day.split("-").map(Number);
-  return isoDay(new Date(y, m - 1, d + days));
-}
-
-async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
+async function liveLoadEntries(): Promise<{ started_at: string; load: number }[]> {
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -371,7 +372,7 @@ async function liveLoadEntries(): Promise<{ day: string; load: number }[]> {
     .gte("started_at", `${daysAgoIso(20)}T00:00:00`);
   type Row = { started_at: string; completed_at: string | null; logged_sets: LoadSetJoin[] | null };
   return ((data ?? []) as unknown as Row[]).map((s) => ({
-    day: s.started_at.slice(0, 10),
+    started_at: s.started_at,
     load: loadOf((s.logged_sets ?? []).map(toLoadSet), s.started_at, s.completed_at).score,
   }));
 }

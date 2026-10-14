@@ -23,8 +23,9 @@ import { pct, timeAgo } from "@/lib/format";
 import { parseDay } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
-import { daysSince, isoDay } from "@/lib/dates";
-import { atRiskCause } from "@healthapp/shared";
+import { daysSince } from "@/lib/dates";
+import { myCalendar } from "@/lib/my-today";
+import { atRiskCause, localDay } from "@healthapp/shared";
 
 /**
  * Today. Three columns once there is room, one on a phone, in this order: the
@@ -90,11 +91,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     adherence, next_workout: next, nutrition, habits, check_in: checkIn,
     sessions_done: done, sessions_planned: planned, streak_days: streak, last_activity: last,
   } = today;
-  const todayIso = isoDay();
+  // The person's own calendar (lib/my-today), not the server's: at 00:30 in
+  // Bucharest the header already says the new day. The profile it reads is
+  // the one fetched above, so this costs no round trip.
+  const { today: todayIso, timeZone } = await myCalendar();
   const todayDate = parseDay(todayIso);
   const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(todayDate);
   const longDate = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(todayDate);
-  const doneToday = recent.find((s) => s.at.slice(0, 10) === todayIso) ?? null;
+  const doneToday = recent.find((s) => localDay(s.at, timeZone) === todayIso) ?? null;
   const workoutDays = today.training_load.daily.filter((x) => x.load > 0).map((x) => x.day);
   const activeChallenges = challenges.filter((c) => c.joined && c.status === "active").length;
   // At risk has two causes and they need different words (BUG-10): a stalled

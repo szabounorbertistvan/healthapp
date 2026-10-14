@@ -3,12 +3,14 @@
 // measurements, habit logs, the followed program, the published plan — and
 // @healthapp/shared does every calculation. The client's Today and the
 // coach's client page both come through here, so the two never disagree.
-import { daysAgoIso, isoDay } from "./dates";
+import { daysAgoIso } from "./dates";
 import "server-only";
 import {
   compareWeeks,
+  localDay,
   pickProgram,
   previousWeek,
+  todayIn,
   weekOf,
   weekStats,
   type SelectableProgram,
@@ -21,7 +23,7 @@ import {
 import { liveUser, supabaseServer } from "./supabase/server";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
 import { activeCoachId } from "./client-training";
-import { getWorkoutStreak } from "./streak-data";
+import { getWorkoutStreak, userTimezone } from "./streak-data";
 import { loadOf } from "./training-load";
 import type { LoggedSetRow } from "./types";
 
@@ -46,16 +48,15 @@ export async function getClientWeeklySummary(clientId: string, choice: WeekChoic
 }
 
 async function summaryFor(userId: string, choice: WeekChoice): Promise<WeeklySummary | null> {
-  const thisWeek = weekOf(isoDay());
-  const week = choice === "current" ? thisWeek : previousWeek(thisWeek);
-  const prev = previousWeek(week);
+  // Which week is "this week" is the CLIENT's calendar (their users.timezone),
+  // whoever is looking — so the coach and the client see the same week.
   // The workout streak (lib/streak-data): the same number Today and the streak
   // page show. It only decorates the input, so it does not gate the row reads:
   // the streak RPC (the slowest single call on Today) and the seven row queries
   // go out together instead of one waiting for the other.
   const [streak, [current, previous]] = await Promise.all([
     getWorkoutStreak(userId),
-    liveInputs(userId, week, prev),
+    liveInputs(userId, choice),
   ]);
   if (!current || !previous) return null;
   const streak_days = streak.current;
@@ -66,10 +67,11 @@ async function summaryFor(userId: string, choice: WeekChoice): Promise<WeeklySum
 }
 
 /** A session row → the shape weekStats folds over. */
-function toWeeklySession(started_at: string, completed_at: string | null, sets: LoggedSetRow[]): WeeklySession {
+function toWeeklySession(started_at: string, completed_at: string | null, sets: LoggedSetRow[], timeZone: string): WeeklySession {
   const load = loadOf(sets, started_at, completed_at);
   return {
-    day: started_at.slice(0, 10),
+    // the local day it started on, as the streak and Today count it
+    day: localDay(started_at, timeZone),
     duration_min: load.duration_min,
     load: load.score,
     volume_kg: load.volume_kg,
@@ -84,12 +86,12 @@ function toWeeklySession(started_at: string, completed_at: string | null, sets: 
 /** A WeeklyInput before the streak is attached — everything that comes from rows. */
 type WeeklyRows = Omit<WeeklyInput, "streak_days">;
 
-async function liveInputs(userId: string, week: Week, prev: Week): Promise<[WeeklyRows, WeeklyRows] | [null, null]> {
+async function liveInputs(userId: string, choice: WeekChoice): Promise<[WeeklyRows, WeeklyRows] | [null, null]> {
   const supabase = await supabaseServer();
-  // The two weeks, plus a little history for the load trend.
-  const since = daysAgoIso(59);
-  const from = prev.start < since ? prev.start : since;
-  const [sessions, foods, habitLogs, measurements, plans, programs, coach] = await Promise.all([
+  // The two weeks, plus a little history for the load trend. Sixty days covers
+  // both weeks on any calendar, so the reads need not wait for the zone.
+  const from = daysAgoIso(59);
+  const [sessions, foods, habitLogs, measurements, plans, programs, coach, timeZone] = await Promise.all([
     supabase
       .from("logged_sessions")
       .select(`started_at, completed_at, logged_sets(${LOGGED_SET_SELECT})`)
@@ -98,7 +100,7 @@ async function liveInputs(userId: string, week: Week, prev: Week): Promise<[Week
       .gte("started_at", `${from}T00:00:00`),
     supabase.from("food_logs").select("date, kcal, protein_g, carbs_g, fat_g").eq("user_id", userId).gte("date", from),
     supabase.from("habit_logs").select("date").eq("user_id", userId).gte("date", from),
-    supabase.from("measurements").select("date, weight_kg, circumferences").eq("user_id", userId).gte("date", prev.start),
+    supabase.from("measurements").select("date, weight_kg, circumferences").eq("user_id", userId).gte("date", from),
     supabase
       .from("nutrition_plans")
       .select("id, coach_id, updated_at, kcal_target, protein_target_g, carbs_target_g, fat_target_g")
@@ -111,7 +113,12 @@ async function liveInputs(userId: string, week: Week, prev: Week): Promise<[Week
       .eq("status", "published"),
     // Request-cached: Today has already asked this for the same client.
     activeCoachId(userId),
+    // Request-cached too: the streak read beside this asks the same.
+    userTimezone(userId),
   ]);
+  const thisWeek = weekOf(todayIn(timeZone));
+  const week: Week = choice === "current" ? thisWeek : previousWeek(thisWeek);
+  const prev = previousWeek(week);
   if (sessions.error) return [null, null];
 
   type SessionRow = { started_at: string; completed_at: string | null; logged_sets: SetJoin[] | null };
@@ -121,7 +128,7 @@ async function liveInputs(userId: string, week: Week, prev: Week): Promise<[Week
   type ProgramRow = SelectableProgram & { program_days: { id: string }[] | null };
 
   const weeklySessions = ((sessions.data ?? []) as unknown as SessionRow[]).map((s) =>
-    toWeeklySession(s.started_at, s.completed_at, (s.logged_sets ?? []).map(toLoggedSetRow)),
+    toWeeklySession(s.started_at, s.completed_at, (s.logged_sets ?? []).map(toLoggedSetRow), timeZone),
   );
 
   const byDay = new Map<string, { kcal: number; protein: number; carbs: number; fat: number }>();
@@ -141,7 +148,8 @@ async function liveInputs(userId: string, week: Week, prev: Week): Promise<[Week
   for (const h of (habitLogs.data ?? []) as { date: string }[]) active.add(h.date);
   for (const s of weeklySessions) active.add(s.day);
 
-  const measured: WeeklyMeasurement[] = ((measurements.data ?? []) as MeasureRow[]).map((m) => ({
+  // From the previous week on, as before the read widened to cover any calendar.
+  const measured: WeeklyMeasurement[] = ((measurements.data ?? []) as MeasureRow[]).filter((m) => m.date >= prev.start).map((m) => ({
     day: m.date,
     weight_kg: m.weight_kg === null ? null : Number(m.weight_kg),
     circumferences: Object.fromEntries(

@@ -1,12 +1,14 @@
 // Client progress reads: habits, measurements, check-ins.
-import { isoDay, mondayOf } from "./dates";
 import "server-only";
+import { weekStartOf } from "@healthapp/shared";
+import { myToday } from "./my-today";
 import { liveUser } from "./supabase/server";
 import type { ClientCheckInState, ClientHabitRow, ClientMeasurementRow } from "./types";
 
 export async function getMyHabits(): Promise<ClientHabitRow[]> {
-  const today = isoDay();
-  const weekStart = mondayOf(0);
+  // Ticked today / this week on the person's own calendar, as toggleHabit writes it.
+  const today = await myToday();
+  const weekStart = weekStartOf(today);
   const live = await liveUser();
   if (!live) return [];
   const { supabase, userId } = live;
@@ -57,7 +59,8 @@ export async function getMyMeasurements(limit = 12): Promise<ClientMeasurementRo
 }
 
 export async function getMyCheckInState(): Promise<ClientCheckInState> {
-  const weekStart = mondayOf(0);
+  // This week = the person's Monday, as submitCheckIn writes it.
+  const weekStart = weekStartOf(await myToday());
   const live = await liveUser();
   if (!live) return { week_start: weekStart, submitted: false, last: null };
   const { supabase, userId } = live;

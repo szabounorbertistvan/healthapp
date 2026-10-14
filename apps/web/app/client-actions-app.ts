@@ -6,12 +6,12 @@
 // connection can never duplicate a row (supabase/README.md, offline
 // idempotency).
 import type { MealSlot } from "@/lib/types";
-import { isoDay, mondayOf } from "@/lib/dates";
+import { isoDay } from "@/lib/dates";
 import { myToday } from "@/lib/my-today";
 import { revalidatePath } from "next/cache";
 import {
   estimated1RM, gramsFromSplit, isPersonalRecord, isValidPortionGrams, MACRO_KEYS, MAX_PORTION_GRAMS, MAX_SET_REPS, MAX_SET_SECONDS, MAX_SET_WEIGHT_KG, portionMacros,
-  recomputePrFlags, validateSetEdit, type Macros, type MacroSplit, type SetEdit, type SetEditError,
+  recomputePrFlags, validateSetEdit, weekStartOf, type Macros, type MacroSplit, type SetEdit, type SetEditError,
 } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
@@ -515,7 +515,9 @@ export async function deleteFoodLog(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function toggleHabit(habitId: string, day = isoDay()): Promise<ActionResult> {
+export async function toggleHabit(habitId: string, requested?: string): Promise<ActionResult> {
+  // Today on the person's own calendar — what getMyHabits reads as "done today".
+  const day = requested ?? (await myToday());
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
@@ -630,7 +632,8 @@ export async function submitCheckIn(input: {
   recovery: number;
   note: string;
 }): Promise<ActionResult> {
-  const weekStart = mondayOf(0);
+  // The person's Monday — the week getMyCheckInState and the coach's adherence read.
+  const weekStart = weekStartOf(await myToday());
 
   const live = await liveUser();
   if (!live) return notSignedIn;

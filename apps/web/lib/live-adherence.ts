@@ -9,58 +9,17 @@
 // "Last activity today". Now both sides fold the same rows with the same
 // function into computeAdherence (@healthapp/shared), so they cannot disagree.
 import "server-only";
-import { computeAdherence, macroScore, pickProgram, type AdherenceResult, type SelectableProgram } from "@healthapp/shared";
-import { daysAgoIso, daysSince, mondayOf } from "./dates";
+import {
+  computeAdherence, DEFAULT_TIMEZONE, macroScore, pickProgram, shiftDays, todayIn, weekStartOf,
+  type AdherenceResult, type SelectableProgram,
+} from "@healthapp/shared";
+import { daysAgoIso, daysSince, isoDay } from "./dates";
+import { foldActivity, type Calendar, type WeekActivity } from "./week-activity";
+
 import type { supabaseServer } from "./supabase/server";
 
 type Supabase = Awaited<ReturnType<typeof supabaseServer>>;
 
-/** The raw rows the week is folded from. */
-export type ActivityRows = {
-  sessions: readonly { program_day_id: string | null; completed_at: string | null; started_at: string }[];
-  foods: readonly { date: string; kcal: number | null; received_at: string | null }[];
-  habitLogs: readonly { received_at: string | null }[];
-  /** received_at of logged sets — the newest is enough. */
-  setStamps: readonly (string | null)[];
-};
-
-/** Everything the adherence engine and the Today header need about the week. */
-export type WeekActivity = {
-  completedSessions: number;
-  daysLogged: number;
-  weekKcal: { kcal: number }[];
-  lastActivity: string | null;
-  /** Program days already trained this week, by id. */
-  doneDays: Set<string>;
-};
-
-/** The week's activity from its rows. Pure; the window each caller fetched only has to cover the week. */
-export function foldActivity(rows: ActivityRows, weekStart = mondayOf(0)): WeekActivity {
-  const done = rows.sessions.filter((s) => s.completed_at !== null && s.completed_at >= weekStart);
-
-  // kcal per day over the last 7, days with nothing logged left out — the
-  // shape macroScore() expects.
-  const weekFrom = daysAgoIso(6);
-  const kcalByDay = new Map<string, number>();
-  for (const f of rows.foods) {
-    if (f.date < weekFrom) continue;
-    kcalByDay.set(f.date, (kcalByDay.get(f.date) ?? 0) + Number(f.kcal ?? 0));
-  }
-
-  const stamps = [
-    ...rows.foods.map((f) => f.received_at),
-    ...rows.habitLogs.map((h) => h.received_at),
-    ...rows.setStamps,
-  ].filter((s): s is string => Boolean(s));
-
-  return {
-    completedSessions: done.length,
-    daysLogged: kcalByDay.size,
-    weekKcal: [...kcalByDay.values()].filter((kcal) => kcal > 0).map((kcal) => ({ kcal })),
-    lastActivity: stamps.length > 0 ? (stamps.sort().at(-1) ?? null) : null,
-    doneDays: new Set(done.map((s) => s.program_day_id).filter((id): id is string => id !== null)),
-  };
-}
 
 /** What the week is measured against. */
 export type AdherenceTargets = {
@@ -111,23 +70,31 @@ export async function liveAdherenceFor(
   clientIds: readonly string[],
   fallbackLast: ReadonlyMap<string, string | null> = new Map(),
 ): Promise<Map<string, AdherenceResult>> {
-  const weekStart = mondayOf(0);
-  const from = daysAgoIso(7);
+  // Each client is folded on their own calendar (their zone is read with the
+  // rest of the chunk). Their Monday is within a day of the server's, so the
+  // reads cover every Monday a client can be on and the fold picks theirs.
+  const serverToday = isoDay();
+  const mondays = [...new Set([-1, 0, 1].map((d) => weekStartOf(shiftDays(serverToday, d))))].sort();
+  const weekStart = mondays[0]!;
+  const from = daysAgoIso(8);
   const chunks: string[][] = [];
   for (let i = 0; i < clientIds.length; i += CHUNK) chunks.push(clientIds.slice(i, i + CHUNK));
 
-  const results = await Promise.all(chunks.map((ids) => chunkAdherence(supabase, ids, weekStart, from, fallbackLast)));
+  const results = await Promise.all(chunks.map((ids) => chunkAdherence(supabase, ids, weekStart, mondays, from, fallbackLast)));
   return new Map(results.flat());
 }
 
 async function chunkAdherence(
   supabase: Supabase,
   ids: string[],
+  /** The earliest Monday any client can be on — the lower bound of the week's reads. */
   weekStart: string,
+  /** Every Monday a client can be on right now. */
+  mondays: readonly string[],
   from: string,
   fallbackLast: ReadonlyMap<string, string | null>,
 ): Promise<[string, AdherenceResult][]> {
-  const [sessions, foods, habitLogs, habits, programs, plans, checkIns] = await Promise.all([
+  const [sessions, foods, habitLogs, habits, programs, plans, checkIns, zones] = await Promise.all([
     supabase
       .from("logged_sessions")
       .select("user_id, program_day_id, started_at, completed_at, logged_sets(received_at)")
@@ -152,7 +119,9 @@ async function chunkAdherence(
       .select("client_id, coach_id, updated_at, kcal_target")
       .in("client_id", ids)
       .eq("status", "published"),
-    supabase.from("check_ins").select("user_id").in("user_id", ids).eq("week_start", weekStart),
+    supabase.from("check_ins").select("user_id, week_start").in("user_id", ids).in("week_start", [...mondays]),
+    // users rows of the coach's own clients are readable (users_select → is_connected_to)
+    supabase.from("users").select("id, timezone").in("id", ids),
   ]);
   const failed = [sessions, foods, habitLogs, habits, programs, plans, checkIns].find((r) => r.error)?.error;
   if (failed) {
@@ -182,10 +151,18 @@ async function chunkAdherence(
   const habitsBy = group((habits.data ?? []) as unknown as HabitRow[], (r) => r.user_id);
   const programsBy = group((programs.data ?? []) as unknown as ProgramRow[], (r) => r.client_id);
   const plansBy = group((plans.data ?? []) as unknown as PlanRow[], (r) => r.client_id);
-  const checkedIn = new Set(((checkIns.data ?? []) as { user_id: string }[]).map((r) => r.user_id));
+  const zoneOf = new Map(((zones.data ?? []) as { id: string; timezone: string | null }[]).map((r) => [r.id, r.timezone]));
+  const calendarOf = (id: string): Calendar => {
+    // a failed zone read falls back to the app default, as todayIn would for a bad name
+    const timeZone = zoneOf.get(id) || DEFAULT_TIMEZONE;
+    return { today: todayIn(timeZone), timeZone };
+  };
+  const checkInRows = (checkIns.data ?? []) as { user_id: string; week_start: string }[];
 
   return ids.map((id) => {
     const userSessions = sessionsBy.get(id) ?? [];
+    const calendar = calendarOf(id);
+    const monday = weekStartOf(calendar.today);
     const activity = foldActivity(
       {
         sessions: userSessions,
@@ -193,7 +170,7 @@ async function chunkAdherence(
         habitLogs: habitLogsBy.get(id) ?? [],
         setStamps: userSessions.flatMap((s) => (s.logged_sets ?? []).map((x) => x.received_at)),
       },
-      weekStart,
+      calendar,
     );
     // These are the coach's active clients, so the coach's program and plan
     // win — pickProgram(…, true), the same choice their Today makes.
@@ -206,9 +183,9 @@ async function chunkAdherence(
         kcalTarget: Number(plan?.kcal_target ?? 0),
         habits: (habitsBy.get(id) ?? []).map((h) => ({
           target_per_week: h.weekdays?.length ?? 7,
-          done_this_week: (h.habit_logs ?? []).filter((l) => l.date >= weekStart).length,
+          done_this_week: (h.habit_logs ?? []).filter((l) => l.date >= monday).length,
         })),
-        checkinSubmitted: checkedIn.has(id),
+        checkinSubmitted: checkInRows.some((c) => c.user_id === id && c.week_start === monday),
       },
       activity.lastActivity ?? fallbackLast.get(id) ?? null,
     );
