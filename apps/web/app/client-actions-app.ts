@@ -7,6 +7,7 @@
 // idempotency).
 import type { MealSlot } from "@/lib/types";
 import { isoDay, mondayOf } from "@/lib/dates";
+import { myToday } from "@/lib/my-today";
 import { revalidatePath } from "next/cache";
 import {
   estimated1RM, gramsFromSplit, isPersonalRecord, isValidPortionGrams, MACRO_KEYS, MAX_PORTION_GRAMS, MAX_SET_REPS, MAX_SET_SECONDS, MAX_SET_WEIGHT_KG, portionMacros,
@@ -362,7 +363,8 @@ export async function logFood(input: {
   if (!isValidPortionGrams(input.grams)) {
     return { ok: false, message: fill((await getI18n()).t.clientWidgets.foodLogger.gramsRange, { max: MAX_PORTION_GRAMS }) };
   }
-  const day = input.day ?? isoDay();
+  // The person's own calendar, not the server's: a meal at 00:30 in Bucharest is today's.
+  const day = input.day ?? (await myToday());
   // Snapshot the macros now: the food row may change, this log must not.
   const macros = portionMacros(input.per100g, input.grams);
 
@@ -400,7 +402,7 @@ export async function logFood(input: {
  * retry on a flaky connection — into a no-op rather than a second dinner.
  */
 export async function logPlannedMeal(slot: MealSlot, day?: string): Promise<ActionResult> {
-  const date = day ?? isoDay();
+  const date = day ?? (await myToday());
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;

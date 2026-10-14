@@ -11,6 +11,7 @@ import "server-only";
 import { cache } from "react";
 import { shiftDays, type NutritionDay, type NutritionEntry, type ProgressRange } from "@healthapp/shared";
 import { isoDay } from "./dates";
+import { myToday } from "./my-today";
 import {
   NUTRITION_ENTRY_SELECT, toNutritionDays, toNutritionEntries, type DailyTotalRow, type NutritionEntryRow,
 } from "./nutrition-map";
@@ -25,7 +26,7 @@ export type NutritionTrends = {
   days: NutritionDay[];
   /** First day with a food log, or null. */
   firstDay: string | null;
-  /** The diary's calendar: food_logs.date is written with isoDay(). */
+  /** The diary's calendar: today in the person's own zone (lib/my-today), the day food is logged on. */
   today: string;
   truncated: boolean;
 };
@@ -34,14 +35,16 @@ export const getMyNutritionTrends = cache(async (range: ProgressRange): Promise<
   const live = await liveUser();
   if (!live) return null;
   const { supabase, userId } = live;
-  const today = isoDay();
   // The range and the equally long one before it, and never less than the
-  // two weeks the weekly card needs.
-  const from = range === null ? null : shiftDays(today, -Math.max(2 * range - 1, WEEK_LOOKBACK_DAYS));
+  // two weeks the weekly card needs. Started from the server's day so it can
+  // run alongside the zone lookup; the extra day covers any offset, and the
+  // windows built on `today` decide what counts.
+  const from = range === null ? null : shiftDays(isoDay(), -(Math.max(2 * range - 1, WEEK_LOOKBACK_DAYS) + 1));
 
-  const [{ data, error }, { data: firstRow }] = await Promise.all([
+  const [{ data, error }, { data: firstRow }, today] = await Promise.all([
     supabase.rpc("food_daily_totals", { p_from: from }),
     supabase.from("food_logs").select("date").eq("user_id", userId).order("date", { ascending: true }).limit(1).maybeSingle(),
+    myToday(),
   ]);
   // Empty is a legitimate answer for a new account; a failed read (the
   // migration not applied yet, say) must not be dressed up as one.

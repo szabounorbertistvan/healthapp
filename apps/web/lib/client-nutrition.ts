@@ -1,5 +1,5 @@
 // Client nutrition reads: today's log, the week strip, the published plan.
-import { isoDay } from "./dates";
+import { myToday } from "./my-today";
 import { portionsFor } from "./food-portions";
 import "server-only";
 import {
@@ -17,7 +17,9 @@ import type { ClientDayNutrition, MealSlot, QuickFood, QuickFoods } from "./type
 
 const ZERO: Macros = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
 
-export async function getMyDayNutrition(day = isoDay()): Promise<ClientDayNutrition> {
+/** One day of the diary; without a day, today on the person's own calendar (lib/my-today). */
+export async function getMyDayNutrition(requested?: string): Promise<ClientDayNutrition> {
+  const day = requested ?? (await myToday());
 
   const live = await liveUser();
   if (!live) return { day, plan_name: null, plan_owner: null, target: ZERO, totals: ZERO, entries: [] };
@@ -150,7 +152,7 @@ export async function getMyPlanMeals(day?: string): Promise<
   // the same food. mealsForWeekday resolves it the same way everywhere.
   return mealsForWeekday(
     (data.planned_meals as unknown as MealJoin[]) ?? [],
-    isoWeekday(day ?? isoDay()),
+    isoWeekday(day ?? (await myToday())),
   )
     .map((m) => ({
       id: m.id,
