@@ -40,6 +40,22 @@ export async function reactivateUser(userId: string): Promise<ActionResult> {
     ["/admin", "/admin/users", `/admin/users/${id}`, "/admin/activity"]);
 }
 
+/** The RPC names its refusals; the dialog turns the two a person can fix into copy. */
+export async function setUsername(userId: string, username: string): Promise<ActionResult> {
+  const id = uuidOf(userId);
+  if (!id) return { ok: false, message: "Invalid id" };
+  if (!(await adminActor())) return { ok: false, message: "Admins only" };
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc("admin_set_username", { p_user: id, p_username: username.trim() });
+  if (error) {
+    if (error.message.includes("USERNAME_TAKEN")) return { ok: false, errorCode: "USERNAME_TAKEN" };
+    if (error.message.includes("USERNAME_FORMAT")) return { ok: false, errorCode: "USERNAME_FORMAT" };
+    return { ok: false, message: error.message };
+  }
+  for (const p of ["/admin/users", `/admin/users/${id}`, "/admin/activity"]) revalidatePath(p);
+  return { ok: true };
+}
+
 export async function revokeInvitation(invitationId: string): Promise<ActionResult> {
   const id = uuidOf(invitationId);
   if (!id) return { ok: false, message: "Invalid id" };

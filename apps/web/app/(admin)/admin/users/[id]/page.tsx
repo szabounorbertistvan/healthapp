@@ -12,6 +12,7 @@ import { Avatar } from "@/components/social";
 import { FitnessScoreCoachCard } from "@/components/fitness-score";
 import { ConfirmAction } from "@/components/admin/confirm-action";
 import { Timeline } from "@/components/admin/timeline";
+import { UsernameEdit } from "@/components/admin/username-edit";
 import { WeightLine } from "@/components/admin/charts";
 import { Breakdown, Facts, Kpi, KpiGrid, Note, Pill, Section, Table, Td, Th, UserCell, fmtDate, fmtDateTime, fmtNum } from "@/components/admin/ui";
 import { reactivateUser, removePushSubscription, suspendUser } from "@/app/admin-actions";
@@ -66,6 +67,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`/people/${p.id}`} className="inline-flex h-9 items-center rounded-xl bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink">{m.actions.viewSocial}</Link>
+          <UsernameEdit userId={p.id} current={p.username} />
           {p.role === "admin" ? <Note>{m.actions.cannotSuspendAdmin}</Note>
             : p.id === me.id ? <Note>{m.actions.cannotSuspendSelf}</Note>
             : p.suspended_at
