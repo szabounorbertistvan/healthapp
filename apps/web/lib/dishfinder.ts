@@ -103,3 +103,13 @@ export function dishfinderMacrosUrl(meal: MealTotals): string | null {
   const params = new URLSearchParams({ ...band, ref: "voinic-macros" });
   return `${BASE}/cooking?${params}`;
 }
+
+/**
+ * The recipe finder itself, empty — the recipes card's "Discover recipes"
+ * (components/onboarding/recipes-card.tsx), for someone with no meal to start
+ * from yet. ref=voinic-tip tells it apart from the two meal links in Insights.
+ */
+export function dishfinderRecipesUrl(): string | null {
+  if (!enabled()) return null;
+  return `${BASE}/cooking?${new URLSearchParams({ ref: "voinic-tip" })}`;
+}

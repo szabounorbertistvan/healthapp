@@ -3,6 +3,7 @@ import {
   CLIENT_STEPS, COACH_STEPS, ONBOARDING_KEY, TOUR_IDS, audienceOf, isOnboardingKey, mergeStates, openingStep,
   parseOnboardingState, parseStepParam, pendingSync, placePopover, setupProgress, shouldAutoOpenTour,
   shouldStartOnboarding, showSetupCard, stepStatus, tourEndMark, tourKey, type OnboardingState,
+  RECIPES_LATER_DAYS, RECIPES_TIP_KEY, shouldShowRecipesTip,
 } from "./onboarding-model";
 
 const NEW: OnboardingState = {};
@@ -226,5 +227,39 @@ describe("tour card placement", () => {
       // a target taller than the space either side is the only case allowed to overlap
       if (top >= 200 && top <= 600) expect(fits).toBe(true);
     }
+  });
+});
+
+describe("the DishFinder recipes card", () => {
+  const on = { enabled: true, later: false };
+
+  it("shows for a new account once past the welcome cards, and for an existing one", () => {
+    expect(shouldShowRecipesTip(NEW, "client", on)).toBe(false); // welcome cards first
+    expect(shouldShowRecipesTip({ welcome: "skipped" }, "client", on)).toBe(true);
+    expect(shouldShowRecipesTip(EXISTING, "client", on)).toBe(true);
+    expect(shouldShowRecipesTip(EXISTING, "coach", on)).toBe(true);
+    expect(shouldShowRecipesTip(EXISTING, "both", on)).toBe(true);
+  });
+
+  it("never comes back once recipes were opened, the steps read, or it was closed", () => {
+    expect(shouldShowRecipesTip({ ...EXISTING, [RECIPES_TIP_KEY]: "done" }, "client", on)).toBe(false);
+    expect(shouldShowRecipesTip({ ...EXISTING, [RECIPES_TIP_KEY]: "dismissed" }, "client", on)).toBe(false);
+  });
+
+  it("waits while Later holds, and returns when it has expired", () => {
+    expect(shouldShowRecipesTip(EXISTING, "client", { enabled: true, later: true })).toBe(false);
+    expect(shouldShowRecipesTip(EXISTING, "client", { enabled: true, later: false })).toBe(true);
+  });
+
+  it("is not shown without a recipe destination, to admins, or on unknown state", () => {
+    expect(shouldShowRecipesTip(EXISTING, "client", { enabled: false, later: false })).toBe(false);
+    expect(shouldShowRecipesTip(EXISTING, "admin", on)).toBe(false);
+    expect(shouldShowRecipesTip(null, "client", on)).toBe(false);
+  });
+
+  it("is a key onboarding_mark() already accepts, and the tips switch does not mute it", () => {
+    expect(isOnboardingKey(RECIPES_TIP_KEY)).toBe(true);
+    expect(shouldShowRecipesTip({ ...EXISTING, tips: "dismissed" }, "client", on)).toBe(true);
+    expect(RECIPES_LATER_DAYS).toBe(7);
   });
 });

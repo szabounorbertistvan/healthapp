@@ -12,6 +12,8 @@ import { FoodLogger } from "./food-logger";
 import { logPlannedMeal } from "@/app/client-actions-app";
 import { dishfinderIngredientsUrl, dishfinderMacrosUrl } from "@/lib/dishfinder";
 import { DishFinderMark } from "./dishfinder-mark";
+import { useOnboarding } from "./onboarding/provider";
+import { RECIPES_TIP_KEY } from "@/lib/onboarding-model";
 
 /** A 24-box icon per slot: a cup, the midday sun, a moon, a piece of fruit. */
 const SLOT_ICON: Record<MealSlot, string> = {
@@ -47,6 +49,11 @@ export function MealCard({
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [logging, startLogging] = useTransition();
+  const onboarding = useOnboarding();
+  // Opening any recipe link means the recipes card (onboarding/recipes-card.tsx) has nothing left to teach.
+  const recipesFound = () => {
+    if (onboarding.state?.[RECIPES_TIP_KEY] !== "done") void onboarding.mark(RECIPES_TIP_KEY, "done");
+  };
   const kcal = Math.round(entries.reduce((sum, e) => sum + e.macros.kcal, 0));
   // Two DishFinder links (lib/dishfinder.ts) for whatever this meal *is* right
   // now: what the client logged when the slot has entries, otherwise what the
@@ -71,13 +78,13 @@ export function MealCard({
     // on purpose: a dish out changes the grams this list promises.
     <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] font-semibold" title={f.dishfinderHint}>
       {ingredientsUrl ? (
-        <a href={ingredientsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-accent-ink hover:underline">
+        <a href={ingredientsUrl} target="_blank" rel="noopener noreferrer" onClick={recipesFound} className="inline-flex items-center gap-1.5 text-accent-ink hover:underline">
           <DishFinderMark />
           {f.cookThis} ↗
         </a>
       ) : null}
       {macrosUrl ? (
-        <a href={macrosUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-accent-ink hover:underline">
+        <a href={macrosUrl} target="_blank" rel="noopener noreferrer" onClick={recipesFound} className="inline-flex items-center gap-1.5 text-accent-ink hover:underline">
           <DishFinderMark />
           {f.sameMacros} ↗
         </a>

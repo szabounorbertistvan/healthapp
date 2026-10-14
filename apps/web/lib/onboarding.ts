@@ -29,6 +29,17 @@ export async function hasChosenSolo(): Promise<boolean> {
   return jar.get(ONBOARDING_COOKIE)?.value === "solo";
 }
 
+// "Later" on the recipes card (components/onboarding/recipes-card.tsx): the
+// marks map has no dates, so the snooze is a cookie that expires by itself.
+// Its value is the account id, so another account on the same browser is not
+// snoozed with it. Per device, like the solo choice above.
+export const RECIPES_LATER_COOKIE = "bg_recipes_later";
+
+export async function recipesTipLater(userId: string): Promise<boolean> {
+  const jar = await cookies();
+  return jar.get(RECIPES_LATER_COOKIE)?.value === userId;
+}
+
 // The welcome cards, setup steps and page tours, by contrast, follow the
 // person across devices: their marks live in onboarding_state (20261123100000);
 // the model is lib/onboarding-model.ts.

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCheckIns, getDashboard, getProfile } from "@/lib/data";
-import { getOnboardingState, getSetupSnapshot } from "@/lib/onboarding";
-import { audienceOf, setupProgress, shouldStartOnboarding, showSetupCard } from "@/lib/onboarding-model";
+import { getOnboardingState, getSetupSnapshot, recipesTipLater } from "@/lib/onboarding";
+import { audienceOf, setupProgress, shouldShowRecipesTip, shouldStartOnboarding, showSetupCard } from "@/lib/onboarding-model";
+import { dishfinderRecipesUrl } from "@/lib/dishfinder";
+import { RecipesCard } from "@/components/onboarding/recipes-card";
 import { PageTour } from "@/components/onboarding/tour";
 import { SetupCard } from "@/components/onboarding/setup-card";
 import { Card, SignalBadge, EmptyState } from "@/components/ui";
@@ -27,9 +29,12 @@ export default async function DashboardPage() {
   const setup = me && onboarding && onboarding.setup === undefined
     ? getSetupSnapshot(me).then((s) => setupProgress(audienceOf(me.role), s.facts, onboarding))
     : Promise.resolve(null);
-  const [rows, checkIns, plan, requests, progress] = await Promise.all([
+  const recipesUrl = dishfinderRecipesUrl();
+  const [rows, checkIns, plan, requests, progress, later] = await Promise.all([
     getDashboard(), getCheckIns(), getPlan(), getCoachRequestInbox(), setup,
+    me ? recipesTipLater(me.id) : Promise.resolve(false),
   ]);
+  const showRecipes = me !== null && shouldShowRecipesTip(onboarding, me.role, { enabled: recipesUrl !== null, later });
   // The adherence signal, its reason, the % and the at-risk count are Coach
   // Pro. A Starter desk keeps the roster, last log, check-ins and messages.
   const pro = plan.e.advancedAnalytics;
@@ -76,6 +81,13 @@ export default async function DashboardPage() {
           <Stat href={plan.upgrade.href} icon={ICON.risk} label={t.coachApp.dashboard.atRisk} value="—" />
         )}
       </div>
+
+      {/* After the numbers, before the queue: the coach's work comes first. */}
+      {showRecipes && recipesUrl && me ? (
+        <div className="mt-4 sm:mt-6">
+          <RecipesCard audience={audienceOf(me.role)} url={recipesUrl} />
+        </div>
+      ) : null}
 
       <div data-tour="dashboard-queue" className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
         {!pro && rows.length > 0 ? <UpgradeHint card feature="analytics" upgrade={plan.upgrade} /> : null}

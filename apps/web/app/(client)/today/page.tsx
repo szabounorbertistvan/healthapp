@@ -5,8 +5,10 @@ import { getMyWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getMyStreak } from "@/lib/streak-data";
 import { getMyFitnessScore } from "@/lib/fitness-score-data";
 import { getLeaderboard } from "@/lib/leaderboard-data";
-import { getOnboardingState, getSetupSnapshot, hasChosenSolo } from "@/lib/onboarding";
-import { audienceOf, setupProgress, shouldStartOnboarding, showSetupCard } from "@/lib/onboarding-model";
+import { getOnboardingState, getSetupSnapshot, hasChosenSolo, recipesTipLater } from "@/lib/onboarding";
+import { audienceOf, setupProgress, shouldShowRecipesTip, shouldStartOnboarding, showSetupCard } from "@/lib/onboarding-model";
+import { dishfinderRecipesUrl } from "@/lib/dishfinder";
+import { RecipesCard } from "@/components/onboarding/recipes-card";
 import { PageTour } from "@/components/onboarding/tour";
 import { SetupCard } from "@/components/onboarding/setup-card";
 import { getProfile } from "@/lib/data";
@@ -74,7 +76,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     ? getSetupSnapshot(me).then((s) => setupProgress(audienceOf(me.role), s.facts, onboarding))
     : Promise.resolve(null);
 
-  const [[today, challenges, weekly, recent, streakView, board, fitness], progress] = await Promise.all([reads, setup]);
+  const recipesUrl = dishfinderRecipesUrl();
+  const [[today, challenges, weekly, recent, streakView, board, fitness], progress, later] = await Promise.all([
+    reads, setup, me ? recipesTipLater(me.id) : Promise.resolve(false),
+  ]);
+  const showRecipes = me !== null && shouldShowRecipesTip(onboarding, me.role, { enabled: recipesUrl !== null, later });
   if (!today) {
     return <EmptyState plain title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
   }
@@ -163,6 +169,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           <div data-tour="today-nutrition">
             <NutritionCard nutrition={nutrition} />
           </div>
+          {/* Next to the food it is about; it waits on the page, nothing pops up. */}
+          {showRecipes && recipesUrl && me ? <RecipesCard audience={audienceOf(me.role)} url={recipesUrl} /> : null}
           <HabitsCard habits={habits} />
           <div data-tour="today-coach">
             <CoachCard checkIn={checkIn} coached={today.has_coach} unread={today.unread_from_coach} />

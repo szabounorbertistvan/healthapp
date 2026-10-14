@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { isLengthUnit, isWeightUnit, type LengthUnit, type WeightUnit } from "@healthapp/shared";
 import { liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
@@ -8,8 +9,9 @@ import { getProfile } from "@/lib/data";
 import { getI18n } from "@/lib/i18n/server";
 import { CLIENT_GOALS, type ClientGoal } from "@/lib/coach-content";
 import {
-  isOnboardingKey, isOnboardingMark, parseOnboardingState, type OnboardingMark, type OnboardingState,
+  RECIPES_LATER_DAYS, isOnboardingKey, isOnboardingMark, parseOnboardingState, type OnboardingMark, type OnboardingState,
 } from "@/lib/onboarding-model";
+import { RECIPES_LATER_COOKIE } from "@/lib/onboarding";
 import { chooseSoloTraining } from "./client-actions";
 import { updateAccount } from "./profile-actions";
 import type { ActionResult } from "./actions";
@@ -36,6 +38,23 @@ export async function markOnboarding(key: string, mark: OnboardingMark | "reset"
   // redirects and the setup card on Today / the dashboard.
   if (!key.startsWith("tour:")) revalidatePath("/", "layout");
   return { ok: true, state: parseOnboardingState(data) };
+}
+
+/**
+ * "Later" on the recipes card: hidden on this device for RECIPES_LATER_DAYS,
+ * then it comes back by itself. Nothing is marked, so nothing is lost.
+ */
+export async function snoozeRecipesTip(): Promise<ActionResult> {
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const jar = await cookies();
+  jar.set(RECIPES_LATER_COOKIE, live.userId, {
+    maxAge: RECIPES_LATER_DAYS * 24 * 60 * 60,
+    path: "/",
+    sameSite: "lax",
+    httpOnly: true,
+  });
+  return { ok: true };
 }
 
 /**

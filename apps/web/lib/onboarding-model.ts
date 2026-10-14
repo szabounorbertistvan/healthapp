@@ -216,3 +216,37 @@ export function placePopover(
   const left = Math.max(gutter, Math.min(target.left + target.width / 2 - popover.width / 2, maxLeft));
   return { top: Math.round(top), left: Math.round(left), side };
 }
+
+// ---------- the recipes tip (DishFinder) ----------
+
+/**
+ * The card that shows where DishFinder's recipes are (under every meal on the
+ * Nutrition page) and how to use them. Its mark rides on the tour namespace,
+ * which onboarding_mark() already accepts — no migration:
+ *   done       recipes were opened (from the card or from any meal's link),
+ *              or the steps were read to the end
+ *   dismissed  "Don't show again"
+ * "Later" is not a mark: a marks map has no dates, so it is the cookie
+ * RECIPES_LATER_COOKIE in lib/onboarding.ts, which simply expires after
+ * RECIPES_LATER_DAYS — per device, like the solo choice.
+ */
+export const RECIPES_TIP_KEY = "tour:recipes";
+export const RECIPES_LATER_DAYS = 7;
+
+/**
+ * Whether the recipes card shows: only where a deployment actually serves
+ * recipes, only for someone whose state is known and who is past the welcome
+ * cards, never for admins, never once opened / read / dismissed, and not while
+ * "Later" holds on this device. Not muted by the tips switch: that one is
+ * about tours opening by themselves; this card waits on the page.
+ */
+export function shouldShowRecipesTip(
+  state: OnboardingState | null,
+  role: Role,
+  { enabled, later }: { enabled: boolean; later: boolean },
+): boolean {
+  if (!enabled || later || state === null) return false;
+  if (role === "admin") return false;
+  if (state.welcome === undefined) return false; // the welcome cards come first
+  return state[RECIPES_TIP_KEY] === undefined;
+}
