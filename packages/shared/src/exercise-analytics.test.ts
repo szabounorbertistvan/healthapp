@@ -284,6 +284,15 @@ describe("metricSeries / defaultRange", () => {
     expect(metricSeries(sessions, "one_rm", 90, today)[0]?.value).toBeCloseTo(139.3333, 4);
   });
 
+  it("plots a session on the person's own day when a time zone is given", () => {
+    // 23:30 UTC on the 20th is already the 21st in Bucharest
+    const late = exerciseSessions(benchSession("s-late", "2026-09-20T23:30:00Z"), "Europe/Bucharest");
+    expect(late[0]?.day).toBe("2026-09-21");
+    expect(metricSeries(late, "volume", 7, today).map((p) => p.day)).toEqual(["2026-09-21"]);
+    // without a zone the UTC date stands, as before
+    expect(metricSeries(exerciseSessions(benchSession("s-late", "2026-09-20T23:30:00Z")), "volume", 7, today).map((p) => p.day)).toEqual(["2026-09-20"]);
+  });
+
   it("drops sessions with nothing to plot rather than plotting a zero", () => {
     const bodyweight = exerciseSessions([
       set({ session_id: "bw", session_at: "2026-09-20T10:00:00Z", weight_kg: 0, reps: 15 }),

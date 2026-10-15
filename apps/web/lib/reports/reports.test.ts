@@ -231,6 +231,18 @@ describe("progress report model", () => {
     expect(r.body.keys).toEqual(["hips", "waist"]);
   });
 
+  it("nutrition: a failed or partial label-nutrient read is said, never passed off as 'too few values'", () => {
+    const fine = buildProgressReport(full());
+    if (!fine.nutrition.available) throw new Error("expected nutrition");
+    expect(fine.nutrition.labelsMissing).toBeNull();
+    const failed = buildProgressReport({ ...full(), nutritionEntries: null, nutritionEntriesMissing: "failed" });
+    if (!failed.nutrition.available) throw new Error("expected nutrition");
+    expect(failed.nutrition.labelsMissing).toBe("failed");
+    const partial = buildProgressReport({ ...full(), nutritionEntries: null });
+    if (!partial.nutrition.available) throw new Error("expected nutrition");
+    expect(partial.nutrition.labelsMissing).toBe("incomplete");
+  });
+
   it("nutrition: compared with the target only when one is set; label nutrients only with enough coverage", () => {
     const withTarget = buildProgressReport(full());
     if (!withTarget.nutrition.available) throw new Error("expected nutrition");

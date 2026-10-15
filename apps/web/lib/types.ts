@@ -276,6 +276,8 @@ export type LoggedSetRow = {
   notes: string | null;
   is_pr: boolean;
   at: string;
+  /** Logged against a warm-up prescription — no volume (totalVolume's rule). Absent when not read. */
+  warmup?: boolean;
 };
 
 /** One training day as the client sees it: the plan, plus what is already logged. */

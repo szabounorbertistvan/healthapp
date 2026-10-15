@@ -161,6 +161,11 @@ export type ReportInputs = {
   nutritionDays: NutritionDay[];
   /** Single entries for the label nutrients; null when that read was not complete for the period. */
   nutritionEntries: NutritionEntry[] | null;
+  /**
+   * Why nutritionEntries is null, so the report says it instead of passing a
+   * failed read off as "too few foods carry these values". Absent = read fine.
+   */
+  nutritionEntriesMissing?: "failed" | "incomplete";
   nutritionFirstDay: string | null;
   /** The diary's current target; null without one. */
   nutritionTarget: Macros | null;
@@ -239,6 +244,8 @@ export type ProgressReport = {
     target: Macros | null;
     /** Only the nutrients whose coverage is high enough to be an average (LABEL_COVERAGE_MIN). */
     labels: { key: LabelNutrient; stats: LabelNutrientStats }[];
+    /** Set when the label nutrients could not be read (or not all of them) — said, never hidden. */
+    labelsMissing: "failed" | "incomplete" | null;
   } | Unavailable);
 };
 
@@ -387,5 +394,6 @@ function nutritionSection(i: ReportInputs, current: ProgressWindow): ProgressRep
     previous: previous && previous.days_logged > 0 ? previous : null,
     target: i.nutritionTarget,
     labels,
+    labelsMissing: i.nutritionEntries === null ? (i.nutritionEntriesMissing ?? "incomplete") : null,
   };
 }

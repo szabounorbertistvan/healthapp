@@ -102,6 +102,9 @@ export type ExerciseHistory = {
   progression: ProgressionAnalysis;
   /** True when the cap was hit, so the page can say the totals are a floor. */
   truncated: boolean;
+  /** The reader's today and time zone — the charts' window and every date on the page. */
+  today: string;
+  timeZone: string;
 };
 
 /** Every completed set of one exercise, grouped into sessions and summed. */
@@ -111,6 +114,7 @@ export async function getExerciseHistory(exerciseId: string): Promise<ExerciseHi
   const blank: ExerciseHistory = {
     sessions: [], stats: exerciseStats([]), records: [], truncated: false,
     progression: analyzeProgression([], calendar.today),
+    today: calendar.today, timeZone: calendar.timeZone,
   };
   if (!live) return blank;
   const { supabase, userId } = live;
@@ -128,7 +132,7 @@ export async function getExerciseHistory(exerciseId: string): Promise<ExerciseHi
   }
   const rows = (data ?? []) as unknown as AnalyticsSetJoin[];
   const sets = toAnalyticsSets(rows);
-  const sessions = exerciseSessions(sets);
+  const sessions = exerciseSessions(sets, calendar.timeZone);
   return {
     sessions,
     stats: exerciseStats(sessions),
@@ -137,6 +141,7 @@ export async function getExerciseHistory(exerciseId: string): Promise<ExerciseHi
     // reflected the moment the page renders again; nothing derived is stored.
     progression: analyzeProgression(toProgressionSessions(sets, calendar.timeZone), calendar.today),
     truncated: rows.length >= HISTORY_POOL,
+    today: calendar.today, timeZone: calendar.timeZone,
   };
 }
 

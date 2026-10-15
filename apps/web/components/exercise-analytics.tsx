@@ -42,6 +42,7 @@ export function ExerciseAnalytics({
   records,
   initialRange,
   todayIso,
+  timeZone,
   truncated,
   historySessions = sessions,
   chartsLocked = null,
@@ -54,6 +55,8 @@ export function ExerciseAnalytics({
   initialRange: ExerciseRangeDays;
   /** Passed from the server so the window is the reader's day, not the browser's. */
   todayIso: string;
+  /** The reader's zone, so a session is dated on their day on the server render and in the browser alike. */
+  timeZone?: string;
   truncated: boolean;
   /** The sessions the history list shows — the plan's window of `sessions`. */
   historySessions?: ExerciseSessionEntry[];
@@ -105,7 +108,7 @@ export function ExerciseAnalytics({
                 </>
               )}
             </div>
-            {records.length > 0 ? <RepRecords records={records} /> : null}
+            {records.length > 0 ? <RepRecords records={records} timeZone={timeZone} /> : null}
           </>
         )}
       </section>
@@ -113,7 +116,7 @@ export function ExerciseAnalytics({
       <section className="mt-6">
         <h2 className="font-display text-lg font-bold tracking-tight">{d.history}</h2>
         <p className="mt-1 text-[12.5px] text-ink-faint">{d.historyHint} {d.warmupNote}</p>
-        <SessionHistory sessions={historySessions} />
+        <SessionHistory sessions={historySessions} timeZone={timeZone} />
         {historyLocked ? <div className="mt-3">{historyLocked}</div> : null}
       </section>
     </>
@@ -343,12 +346,12 @@ function LineChart({
 }
 
 /** Chronological list: date, day, every set, volume and the session's best estimate. */
-function SessionHistory({ sessions }: { sessions: ExerciseSessionEntry[] }) {
+function SessionHistory({ sessions, timeZone }: { sessions: ExerciseSessionEntry[]; timeZone?: string }) {
   const { t, locale } = useI18n();
   const u = useUnits();
   const d = t.clientApp.exerciseDetail;
   const fmt = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", {
-    day: "numeric", month: "short", year: "numeric",
+    day: "numeric", month: "short", year: "numeric", timeZone,
   });
 
   return (
@@ -392,11 +395,11 @@ function SessionHistory({ sessions }: { sessions: ExerciseSessionEntry[] }) {
  * Heaviest load for at least N reps. A run of rep counts sharing one weight
  * from one session reads as one row ("1–3 RM · 80 kg"), not three.
  */
-function RepRecords({ records }: { records: RepRecord[] }) {
+function RepRecords({ records, timeZone }: { records: RepRecord[]; timeZone?: string }) {
   const { t, locale } = useI18n();
   const u = useUnits();
   const d = t.clientApp.exerciseDetail;
-  const fmt = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const fmt = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "short", year: "numeric", timeZone });
   const runs = records.reduce<{ from: number; to: number; weight_kg: number; at: string }[]>((acc, r) => {
     const last = acc.at(-1);
     if (last && last.weight_kg === r.weight_kg && last.at === r.at && last.to === r.reps - 1) last.to = r.reps;

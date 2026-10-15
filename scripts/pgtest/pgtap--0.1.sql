@@ -45,18 +45,31 @@ begin
 end;
 $$;
 
-create or replace function throws_ok(text, text default null, text default '') returns text language plpgsql as $$
-declare n int; state text;
+-- Read the way real pgTAP reads it (2026-10-15: 14 checks passed here and
+-- failed in CI). The second argument is an error code only when it looks like
+-- one (five characters, a SQLSTATE); otherwise it is the expected message.
+-- And with a code, the THIRD argument is the expected message, not a
+-- description: throws_ok(sql, '23514', 'my description') demands that exact
+-- error text. Write throws_ok(sql, code, null, description) for a description.
+create or replace function throws_ok(text, text default null, text default null) returns text language plpgsql as $$
+declare n int; state text; msg text; want_code text; want_msg text; descr text;
 begin
   n := nextval('extensions.pgtap_seq');
+  if $2 is null or $2 ~ '^[0-9A-Z]{5}$' then
+    want_code := $2; want_msg := $3; descr := coalesce($3, '');
+  else
+    want_code := null; want_msg := $2; descr := coalesce($3, '');
+  end if;
   begin
     execute $1;
   exception when others then
-    get stacked diagnostics state = returned_sqlstate;
-    if $2 is null or state = $2 then return 'ok ' || n || ' - ' || coalesce($3, ''); end if;
-    return 'not ok ' || n || ' - ' || coalesce($3, '') || ' (sqlstate ' || state || ')';
+    get stacked diagnostics state = returned_sqlstate, msg = message_text;
+    if (want_code is null or state = want_code) and (want_msg is null or msg = want_msg) then
+      return 'ok ' || n || ' - ' || descr;
+    end if;
+    return 'not ok ' || n || ' - ' || descr || ' (sqlstate ' || state || ', msg ' || msg || ')';
   end;
-  return 'not ok ' || n || ' - ' || coalesce($3, '') || ' (no exception raised)';
+  return 'not ok ' || n || ' - ' || descr || ' (no exception raised)';
 end;
 $$;
 

@@ -15,6 +15,7 @@
 //      rounding is a display decision and belongs to the component.
 
 import { estimated1RMExact } from "./prs";
+import { localDay } from "./streaks";
 
 /**
  * One logged set as analytics reads it. `session_at` is the session's
@@ -76,6 +77,11 @@ export type PreviousWorkout = {
 export type ExerciseSessionEntry = {
   session_id: string;
   at: string;
+  /**
+   * The calendar day the session belongs to, in the person's time zone. Absent
+   * when no zone was given, and readers then fall back to the UTC date of `at`.
+   */
+  day?: string;
   name: string | null;
   sets: PerformedSetRow[];
   /** Sum of weight x reps, exact. */
@@ -139,9 +145,14 @@ export function relevantOneRm(weight_kg: number, reps: number): number | null {
   return estimated1RMExact(weight_kg, reps);
 }
 
-/** Sum of weight x reps over a list of sets, exact. */
-export function totalVolume(sets: readonly { weight_kg: number; reps: number }[]): number {
-  return sets.reduce((sum, s) => sum + setVolume(s.weight_kg, s.reps), 0);
+/**
+ * Sum of weight x reps over a list of sets, exact. A warm-up is not working
+ * volume and is left out — the one volume rule for every surface (sessions,
+ * the exercise page, Progress, reports, the progression engine), so no two
+ * screens disagree on the same workout.
+ */
+export function totalVolume(sets: readonly { weight_kg: number; reps: number; warmup?: boolean }[]): number {
+  return sets.reduce((sum, s) => (s.warmup ? sum : sum + setVolume(s.weight_kg, s.reps)), 0);
 }
 
 function toRow(s: AnalyticsSet): PerformedSetRow {
@@ -223,13 +234,14 @@ export function previousFor(
 }
 
 /** Every completed session of one exercise, newest first, each already summed. */
-export function exerciseSessions(rows: readonly AnalyticsSet[]): ExerciseSessionEntry[] {
+export function exerciseSessions(rows: readonly AnalyticsSet[], timeZone?: string): ExerciseSessionEntry[] {
   const bySession = new Map<string, ExerciseSessionEntry>();
   for (const s of rows) {
     let entry = bySession.get(s.session_id);
     if (!entry) {
       entry = {
         session_id: s.session_id, at: s.session_at, name: s.session_name,
+        ...(timeZone ? { day: localDay(s.session_at, timeZone) } : {}),
         sets: [], volume_kg: 0, top_weight_kg: 0, top_reps: 0, best_1rm: null,
       };
       bySession.set(s.session_id, entry);
@@ -343,7 +355,7 @@ export function metricSeries(
   const from = range === null ? null : shiftIsoDay(todayIso, -(range - 1));
   const points: MetricPoint[] = [];
   for (const s of sessions) {
-    const day = s.at.slice(0, 10);
+    const day = s.day ?? s.at.slice(0, 10);
     if (from !== null && day < from) continue;
     const value =
       metric === "weight" ? s.top_weight_kg

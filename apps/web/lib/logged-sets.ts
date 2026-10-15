@@ -2,13 +2,15 @@ import type { LoggedSetRow } from "./types";
 
 /** The columns a logged set is read with, live. */
 export const LOGGED_SET_SELECT =
-  "id, program_exercise_id, exercise_id, set_index, weight_kg, reps, duration_seconds, rpe, rir, notes, is_pr, received_at, exercise:exercises(name_en, name_ro)";
+  "id, program_exercise_id, exercise_id, set_index, weight_kg, reps, duration_seconds, rpe, rir, notes, is_pr, received_at, exercise:exercises(name_en, name_ro), prescribed:program_exercises(set_type)";
 
 export type SetJoin = {
   id: string; program_exercise_id: string | null; exercise_id?: string | null; set_index: number;
   weight_kg: number | null; reps: number | null; duration_seconds?: number | null; rpe: number | null; rir: number | null;
   notes: string | null; is_pr: boolean | null; received_at: string;
   exercise: { name_en: string; name_ro: string | null } | null;
+  /** Optional: a reader with its own select may leave it out. */
+  prescribed?: { set_type: string | null } | null;
 };
 
 export function toLoggedSetRow(s: SetJoin): LoggedSetRow {
@@ -26,5 +28,7 @@ export function toLoggedSetRow(s: SetJoin): LoggedSetRow {
     notes: s.notes,
     is_pr: Boolean(s.is_pr),
     at: s.received_at,
+    // Only on a warm-up, so every other row keeps the shape it always had.
+    ...(s.prescribed?.set_type === "warmup" ? { warmup: true } : {}),
   };
 }

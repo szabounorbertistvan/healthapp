@@ -11,6 +11,7 @@ import {
   pickProgram,
   shiftDays,
   sumLoad,
+  totalVolume,
   weekStartOf,
   type SelectableProgram,
 } from "@healthapp/shared";
@@ -288,7 +289,7 @@ function summarizeSession(
     id,
     at: completed_at ?? started_at,
     sets: sets.length,
-    volume_kg: Math.round(sets.reduce((sum, x) => sum + x.weight_kg * x.reps, 0)),
+    volume_kg: Math.round(totalVolume(sets)),
     prs: sets.filter((x) => x.is_pr).length,
     load: loadOf(sets, started_at, completed_at),
     exercises: groupByExercise(sets),

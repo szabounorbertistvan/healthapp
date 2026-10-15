@@ -55,7 +55,12 @@ local check, and it differs in ways that matter:
   `cmp_ok`, `set_eq`, `has_table`, `has_column`, `has_function`, `finish`) are
   reimplemented in plpgsql with the same names, argument orders and TAP output.
   A suite that reaches for an assertion not implemented here fails with
-  `function <name>(...) does not exist` — add it to that file.
+  `function <name>(...) does not exist` — add it to that file. (No
+  `results_eq`: compare rows as text with `is(format(...), '...')`.) The stub
+  must read arguments the way pgTAP does, not more kindly: until 2026-10-15
+  it took `throws_ok(sql, '23514', 'description')` as a description, while
+  pgTAP takes a third argument after a code as the **expected message** — 14
+  checks passed here and failed in CI. Use `throws_ok(sql, code, null, 'description')`.
 - **`bootstrap.sql` is a stand-in for the Supabase auth schema.** `auth.users`
   carries only the columns the migrations and the admin panel actually read,
   and `auth.uid()` reads `request.jwt.claims` the way the real one does. There

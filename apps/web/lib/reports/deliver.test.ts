@@ -26,6 +26,16 @@ describe("fetching a report", () => {
       .toEqual({ ok: false, error: "network", message: null });
   });
 
+  it("an expired session (redirected to the login page) is 'signed out', never a saved file", async () => {
+    const loginPage = new Response("<!doctype html><title>Sign in</title>", { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+    expect(await fetchReport("/x", "f.pdf", (async () => loginPage) as unknown as typeof fetch))
+      .toEqual({ ok: false, error: "REPORT_SIGNED_OUT", message: null });
+    const redirected = okResponse("%PDF", "application/pdf", 'attachment; filename="a.pdf"');
+    Object.defineProperty(redirected, "redirected", { value: true });
+    expect(await fetchReport("/x", "f.pdf", (async () => redirected) as unknown as typeof fetch))
+      .toMatchObject({ ok: false, error: "REPORT_SIGNED_OUT" });
+  });
+
   it("reads the file name from Content-Disposition, else the fallback", () => {
     expect(fileNameFrom('attachment; filename="a.pdf"', "b.pdf")).toBe("a.pdf");
     expect(fileNameFrom(null, "b.pdf")).toBe("b.pdf");

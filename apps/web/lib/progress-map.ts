@@ -3,10 +3,10 @@
 // worth pinning — completed sessions only, exact volume, the local day, the
 // shared load score — can be tested.
 import { localDay, sessionDurationMin, totalVolume, type ProgressSession } from "@healthapp/shared";
-import { loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
+import { isWarmupJoin, LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 
 /** What each set needs: the load inputs plus the PR flag. */
-export const PROGRESS_SET_SELECT = "weight_kg, reps, rpe, rir, exercise_id, is_pr";
+export const PROGRESS_SET_SELECT = `${LOAD_SET_SELECT}, is_pr`;
 
 export type ProgressSessionJoin = {
   id: string;
@@ -27,7 +27,7 @@ export function toProgressSessions(rows: readonly ProgressSessionJoin[], timeZon
   for (const r of rows) {
     if (r.completed_at === null) continue;
     const sets = r.logged_sets ?? [];
-    const numeric = sets.map((x) => ({ weight_kg: x.weight_kg ?? 0, reps: x.reps ?? 0 }));
+    const numeric = sets.map((x) => ({ weight_kg: x.weight_kg ?? 0, reps: x.reps ?? 0, warmup: isWarmupJoin(x) }));
     out.push({
       id: r.id,
       day: localDay(r.started_at, timeZone),

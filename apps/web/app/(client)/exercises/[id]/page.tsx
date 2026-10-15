@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { defaultRange } from "@healthapp/shared";
 import { getExerciseHistory, getExerciseProfile } from "@/lib/exercise-analytics-data";
 import { getPlan, inHistory } from "@/lib/plan";
-import { isoDay } from "@/lib/dates";
 import { Card } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { ExerciseAnalytics } from "@/components/exercise-analytics";
@@ -49,7 +48,8 @@ export default async function ExerciseDetailPage({
   const name = (locale === "ro" ? profile.name_ro : null) ?? profile.name_en;
   const instructions = (locale === "ro" ? profile.instructions_ro : null) ?? profile.instructions_en;
   const steps = (instructions ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const today = isoDay();
+  // the person's day, not the server's (UTC): the charts' window ends on it
+  const today = history.today;
   const facts: { label: string; value: string }[] = [
     { label: d.equipment, value: profile.equipment ?? "" },
     { label: d.level, value: profile.level ?? "" },
@@ -100,6 +100,7 @@ export default async function ExerciseDetailPage({
         records={history.records}
         initialRange={defaultRange(history.sessions, today)}
         todayIso={today}
+        timeZone={history.timeZone}
         truncated={history.truncated}
         historySessions={historySessions}
         progression={history.progression}

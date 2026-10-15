@@ -18,6 +18,8 @@ export type LoadSet = {
   rpe?: number | null;
   /** Reps in reserve as typed in an RIR program, if logged. */
   rir?: number | null;
+  /** Logged against a warm-up prescription: counts as a set, adds no volume (totalVolume's rule). */
+  warmup?: boolean;
 };
 
 export type TrainingLoadInput = {
@@ -73,7 +75,7 @@ export function effectiveRpe(set: Pick<LoadSet, "rpe" | "rir">): number | null {
 
 export function trainingLoad(input: TrainingLoadInput): TrainingLoad {
   const sets = input.sets.filter((s) => Number.isFinite(s.reps) && s.reps > 0);
-  const volume = sets.reduce((sum, s) => sum + Math.max(0, s.weight_kg || 0) * s.reps, 0);
+  const volume = sets.reduce((sum, s) => (s.warmup ? sum : sum + Math.max(0, s.weight_kg || 0) * s.reps), 0);
 
   const rpes = sets.map(effectiveRpe).filter((r): r is number => r !== null);
   const intensity = rpes.length > 0 ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;

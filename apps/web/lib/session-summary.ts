@@ -5,7 +5,7 @@
 // sessions drifts a kilogram or two from the exact figure the Progress tabs
 // show beside it.
 import { totalVolume } from "@healthapp/shared";
-import { loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
+import { isWarmupJoin, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import type { SessionSummaryRow } from "./types";
 
 export type SessionSummaryJoin = {
@@ -19,7 +19,7 @@ export type SessionSummaryJoin = {
 
 export function toSessionSummary(s: SessionSummaryJoin): SessionSummaryRow {
   const sets = s.logged_sets ?? [];
-  const exact = totalVolume(sets.map((x) => ({ weight_kg: x.weight_kg ?? 0, reps: x.reps ?? 0 })));
+  const exact = totalVolume(sets.map((x) => ({ weight_kg: x.weight_kg ?? 0, reps: x.reps ?? 0, warmup: isWarmupJoin(x) })));
   return {
     id: s.id,
     day_id: s.program_day_id,

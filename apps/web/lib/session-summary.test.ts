@@ -32,6 +32,19 @@ describe("toSessionSummary", () => {
     expect(sessions.reduce((s, x) => s + x.volume_kg, 0)).toBe(1022);
   });
 
+  it("leaves a warm-up out of volume and load volume, but still counts it as a set", () => {
+    const warm = row({
+      logged_sets: [
+        { weight_kg: 40, reps: 10, rpe: null, rir: null, exercise_id: "dl", is_pr: false, prescribed: { set_type: "warmup" } },
+        { weight_kg: 72.5, reps: 5, rpe: null, rir: 2, exercise_id: "dl", is_pr: false, prescribed: { set_type: "normal" } },
+      ],
+    });
+    const s = toSessionSummary(warm);
+    expect(s.volume_exact_kg).toBe(362.5);
+    expect(s.load.volume_kg).toBe(363); // the load reports whole kilograms
+    expect(s.sets).toBe(2);
+  });
+
   it("maps the rest unchanged: name, time, sets, PR flags", () => {
     const s = toSessionSummary(row());
     expect(s).toMatchObject({ id: "s1", day_id: "d1", day_name: "Lower B", at: "2026-09-12T09:00:00Z", sets: 2, prs: 1 });

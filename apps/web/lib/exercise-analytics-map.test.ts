@@ -96,7 +96,7 @@ describe("warm-ups and the progression input", () => {
     expect(bare).not.toHaveProperty("warmup"); // no prescription: a working set, shape unchanged
   });
 
-  it("the history list shows the warm-up flag, but the existing totals still count every set", () => {
+  it("the history list shows the warm-up flag, and volume counts working sets only", () => {
     const sets = toAnalyticsSets([
       join({ id: "w", set_index: 1, weight_kg: 60, reps: 10, session: completed, prescribed: { set_type: "warmup", target_reps: null } }),
       join({ id: "n", set_index: 2, weight_kg: 100, reps: 5, session: completed }),
@@ -104,8 +104,10 @@ describe("warm-ups and the progression input", () => {
     const [session] = exerciseSessions(sets);
     expect(session!.sets[0]).toMatchObject({ warmup: true });
     expect(session!.sets[1]).not.toHaveProperty("warmup");
-    // the page's totals are unchanged by this work: 60×10 + 100×5
-    expect(exerciseStats([session!]).total_volume_kg).toBe(1100);
+    // one volume rule everywhere (totalVolume): 100×5, the 60×10 warm-up left out
+    expect(session!.volume_kg).toBe(500);
+    expect(exerciseStats([session!]).total_volume_kg).toBe(500);
+    expect(exerciseStats([session!]).total_sets).toBe(2); // still listed and counted as a set
   });
 
   it("groups one exercise's sets into sessions on the person's own day, warm-ups flagged", () => {

@@ -202,7 +202,9 @@ training (`programs` → `program_days` → `program_exercises`, logged as
 coaching (`conversations`, `messages`, `coach_feedback`) → engagement (`habits`,
 `streaks`, `badges`) → billing (`subscriptions`, Stripe).
 
-Two deliberate denormalizations: **`food_logs` snapshots macros at log time**
+Two deliberate denormalizations: **`food_logs` snapshots macros at log time** (and, since
+20261126100000, the label nutrients `saturated_fat_g` / `sugar_g` / `salt_g`, written only by the
+`food_logs_label_snapshot` trigger)
 (external food data changes; history must not), and `foods.portions` is a jsonb
 serving list guarded by a check constraint because an edge function parsing
 third-party text writes it.

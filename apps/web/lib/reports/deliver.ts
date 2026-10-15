@@ -37,6 +37,12 @@ export async function fetchReport(url: string, fallbackName: string, fetcher: ty
       return { ok: false, error: res.status === 401 ? "REPORT_SIGNED_OUT" : "REPORT_FAILED", message: null };
     }
   }
+  // A signed-out request never reaches the route: middleware answers it with a
+  // redirect to /login, which fetch follows to a 200 HTML page. Saving that
+  // would hand the person the login page as their "report"; no report is HTML.
+  if (res.redirected || (res.headers.get("Content-Type") ?? "").startsWith("text/html")) {
+    return { ok: false, error: "REPORT_SIGNED_OUT", message: null };
+  }
   try {
     const blob = await res.blob();
     return { ok: true, blob, fileName: fileNameFrom(res.headers.get("Content-Disposition"), fallbackName) };

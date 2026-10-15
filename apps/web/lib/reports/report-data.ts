@@ -231,12 +231,19 @@ export async function loadProgressReportInputs(viewer: ReportViewer, period: Rep
     supabase.rpc("food_daily_totals", { p_from: period.previous.start }),
     supabase.from("food_logs").select("date").eq("user_id", viewer.userId).order("date", { ascending: true }).limit(1).maybeSingle<{ date: string }>(),
     getMyDayNutrition(),
-    getMyNutritionEntries(period.from).catch(() => null),
+    // a failed read is reported in the file (labelsMissing), never passed off as "no data"
+    getMyNutritionEntries(period.from).catch((e: unknown) => {
+      console.error(`report nutrition entries: ${e instanceof Error ? e.message : String(e)}`);
+      return "failed" as const;
+    }),
     readGoals(),
     supabase.from("progress_photos").select("id", { count: "exact", head: true })
       .eq("user_id", viewer.userId).gte("date", period.from).lte("date", period.to),
   ]);
   if (totals.error) throw new Error(`report nutrition: ${totals.error.message}`);
+  if (nutritionFirst.error) console.error(`report nutrition first day: ${nutritionFirst.error.message}`);
+  const entriesRead = entries === "failed" ? null : entries;
+  const entriesComplete = entriesRead !== null && (entriesRead.completeFrom === null || entriesRead.completeFrom <= period.from);
   const nutritionDays = toNutritionDays((totals.data ?? []) as DailyTotalRow[]).filter((d) => d.day <= period.to);
   const t = day.target;
   const target: Macros | null = t.kcal > 0 || t.protein > 0 || t.carbs > 0 || t.fat > 0 ? t : null;
@@ -251,7 +258,8 @@ export async function loadProgressReportInputs(viewer: ReportViewer, period: Rep
     measurements,
     nutritionDays,
     // label nutrients only when every entry of the period was read
-    nutritionEntries: entries && (entries.completeFrom === null || entries.completeFrom <= period.from) ? entries.entries : null,
+    nutritionEntries: entriesComplete ? entriesRead.entries : null,
+    ...(entries === "failed" ? { nutritionEntriesMissing: "failed" as const } : entriesComplete ? {} : { nutritionEntriesMissing: "incomplete" as const }),
     nutritionFirstDay: nutritionFirst.data?.date ?? null,
     nutritionTarget: target,
     goals: goals?.active ?? null,

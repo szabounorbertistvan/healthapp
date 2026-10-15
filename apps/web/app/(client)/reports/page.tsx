@@ -20,7 +20,9 @@ const TYPES: readonly ReportType[] = ["progress", ...CSV_KINDS];
  * person's own data, nothing to hydrate but the two buttons.
  *
  * The preview is the same buildProgressReport() the PDF is made from, for the
- * same period, so what it says is in the file is what is in the file.
+ * same period, so what it says is in the file is what is in the file. It is
+ * built only for the PDF: a CSV is one table read on download, and reading the
+ * whole progress report to preview it would load every section for nothing.
  */
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ t, locale }, raw, viewer] = await Promise.all([getI18n(), searchParams, reportViewer()]);
@@ -34,7 +36,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const custom = period?.preset === "custom" || (!parsed.ok && (raw.from !== undefined || raw.to !== undefined));
 
   const lang = locale === "ro" ? "ro" : "en";
-  const report = period ? buildProgressReport(await loadProgressReportInputs(viewer, period, lang)) : null;
+  const report = period && type === "progress" ? buildProgressReport(await loadProgressReportInputs(viewer, period, lang)) : null;
 
   const query = (over: Record<string, string>) => {
     const q = new URLSearchParams();
@@ -125,14 +127,16 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </fieldset>
       </Card>
 
-      {period && report ? (
+      {period ? (
         <Card plain className="mt-4 space-y-4 sm:p-5">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{r.previewTitle}</p>
             <p className="mt-1 font-display text-lg font-bold">{r.types[type]}</p>
             <p className="text-[12.5px] text-ink-soft">{fill(r.previewPeriod, { from: fmt(period.from), to: fmt(period.to), days: period.days })}</p>
           </div>
-          {nothing ? (
+          {!report ? (
+            <p className="text-[12.5px] leading-relaxed text-ink-soft">{r.previewCsv}</p>
+          ) : nothing ? (
             <p className="rounded-2xl bg-warn-soft px-3.5 py-2.5 text-[12.5px] font-semibold text-warn">{r.previewNoData}</p>
           ) : (
             <div>
@@ -145,6 +149,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                   </li>
                 ))}
               </ul>
+              {report.nutrition.available && report.nutrition.labelsMissing ? (
+                <p role="status" className="mt-2 rounded-xl bg-warn-soft px-3 py-2 text-[12px] font-semibold text-warn">
+                  {report.nutrition.labelsMissing === "failed" ? r.pdf.labelsFailed : r.pdf.labelsIncomplete}
+                </p>
+              ) : null}
             </div>
           )}
           {fileUrl ? <ReportExport url={fileUrl} fileName={fileName} type={type === "progress" ? "application/pdf" : "text/csv"} /> : null}

@@ -577,7 +577,9 @@ async function render(report: ProgressReport, ctx: PdfContext): Promise<Uint8Arr
       L.text(s.unloggedNote, { size: 8, color: FAINT, gapAfter: 4 });
     }
     L.subheading(s.labelsTitle);
-    if (n.labels.length === 0) L.text(s.labelsNone, { size: 8.5, color: FAINT });
+    if (n.labelsMissing === "failed") L.text(s.labelsFailed, { size: 8.5, color: FAINT });
+    else if (n.labelsMissing === "incomplete") L.text(s.labelsIncomplete, { size: 8.5, color: FAINT });
+    else if (n.labels.length === 0) L.text(s.labelsNone, { size: 8.5, color: FAINT });
     else L.table(
       [{ label: s.nutrientCol, width: 3 }, { label: s.avgPerDay, width: 2, align: "right" }],
       n.labels.map((l) => [s.labels[l.key as LabelNutrient], l.stats.avg_known !== null ? `${f.n1.format(l.stats.avg_known)} ${s.gUnit}` : "—"]),

@@ -61,11 +61,13 @@ describe("toNutritionEntries", () => {
     protein_g: 30.5,
     carbs_g: null,
     fat_g: "8.2",
-    food: { saturated_fat_100g: "2", sugar_100g: null, salt_100g: 0.5 },
+    saturated_fat_g: "3.00",
+    sugar_g: null,
+    salt_g: 0.75,
     ...over,
   });
 
-  it("keeps the snapshot macros and scales label nutrients to the logged grams", () => {
+  it("keeps the snapshot macros and the snapshot label nutrients, as logged", () => {
     const [e] = toNutritionEntries([row()]);
     expect(e).toEqual({
       day: "2026-09-20", slot: "lunch", kcal: 264, protein: 30.5, carbs: 0, fat: 8.2,
@@ -73,8 +75,8 @@ describe("toNutritionEntries", () => {
     });
   });
 
-  it("an entry without a food link has unknown label nutrients, not zero", () => {
-    const [e] = toNutritionEntries([row({ food: null })]);
+  it("a label nutrient that was not measured is unknown, not zero", () => {
+    const [e] = toNutritionEntries([row({ saturated_fat_g: null, salt_g: null })]);
     expect(e!.saturated_fat).toBeNull();
     expect(e!.salt).toBeNull();
   });
