@@ -40,6 +40,68 @@ create a program for a client, add a day, add an exercise from the 888-row
 library, set sets/reps/RIR/rest, publish, and confirm it reaches the client's
 Today. RLS and column grants all held; `mutated()` guards every update/delete.
 
+### Reports & export (added 2026-10-15, no migration)
+
+`/reports` (linked from Progress): pick a report type and a period (7 / 30 / 90 /
+365 days or custom, ≤ 1100 days), see a preview, then download or share. Files
+come from `GET /api/reports/progress.pdf` and `GET /api/reports/<kind>.csv`
+(`workouts`, `exercise-progress`, `body`, `nutrition`, `goals`) with `?range=` or
+`?from=&to=` — made on request from the session's own rows (no user id in the
+URL; every read filtered by the signed-in user and answered by RLS), never
+stored, `Cache-Control: no-store`. The report model (`lib/reports/report-model.ts`)
+reuses `trainingProgress`, `periodBuckets`, `loadOf`, `fitnessScore` (28 days ending
+on the period's last day), `sessionPerformance`, `estimated1RM`,
+`compareMeasurements`, `nutritionPeriod`, `labelNutrients` and the Goal dashboard —
+no formula of its own; an empty section says so. PDF: `pdf-lib` + `@pdf-lib/fontkit`
+on the server (no external service), DejaVu Sans Condensed embedded
+(`lib/reports/fonts`, traced via `outputFileTracingIncludes`) for ș/ț. CSV
+(`lib/reports/csv.ts`): UTF-8 BOM, RFC 4180 quoting, CRLF, dot decimals, empty =
+missing, formula injection neutralised with a leading apostrophe. Progress photos
+are never put in a file (counted only). Reads are paged and capped; a CSV past a
+cap answers 413 instead of silently losing rows.
+
+### Progressive overload & possible plateaus (added 2026-10-15, no migration)
+
+`packages/shared/src/exercise-progression.ts` judges one exercise at a time from
+its completed sessions: **progress / relatively stable / possible plateau /
+possible regression / not enough data**, always with the reason, the sessions and
+dates analysed, latest vs best, the latest session vs the one before, the change
+over 7 / 30 / 90 / 365 days / all, and a cautious suggestion (never a program
+change). Performance = `relevantOneRm` of the best working set (falls back to the
+best single set past 12 reps, or reps for bodyweight); volume = weight × reps over
+working sets. A set logged against a `set_type = 'warmup'` prescription is a
+warm-up and is left out (the existing page totals still count every set).
+Variants are separate exercise rows and are never merged. Thresholds are
+`PROGRESSION_RULES` — operational, overridable, tested: ≥ 4 sessions over ≥ 21
+days, median gap ≤ 21 days, latest ≤ 42 days old; ±2.5 % is noise; plateau = 4
+sessions and 28+ days without beating the last best by more than the noise;
+regression = 3 of the last 4 sessions > 5 % under the earlier median.
+Reads: `getExerciseHistory` (exercise page card) and `getProgressionOverview`
+(Progress → Strength, one query for all offered lifts); `ANALYTICS_SET_SELECT` now
+embeds `prescribed:program_exercises(set_type, target_reps)`. Nothing is stored —
+an edited or deleted set changes the verdict on the next render. UI:
+`components/exercise-progression.tsx`. pgTAP: `exercise_progression.test.sql`.
+
+### Program activation (added 2026-10-15, migration 20261125100000 — local only, not applied live)
+
+Which program the next workout comes from is now said, not guessed:
+`programs.activated_at`, stamped by **Set as active** (`activateProgram`, builder
+header and Training list) and by publishing. `pickProgram`
+(`packages/shared/src/programs.ts`) takes the last *activated* program on each
+side and falls back to the newest `updated_at` only where nothing was ever
+activated — so existing accounts read exactly as before, and editing an older
+block no longer makes it the followed one. Every reader that feeds `pickProgram`
+selects the column (`client-training.ts`, `live-adherence.ts`, `weekly-data.ts`);
+a new one must too. Update-only column grant (programs is column-granted since
+20260930100000). Activation writes no session/day/set; `copy_program` leaves the
+copy unactivated. `getProgramActivation` (data.ts) answers Draft / Active /
+Not active for both builders (`components/program-activation.tsx`); Training marks
+the next day with `nextWorkoutDay` (`lib/week-activity.ts`), the same rule as
+Today's card. Both create forms take goal / level / description (weeks too, for
+the solo one), and the routine page's "Edit details" now edits the length in weeks.
+pgTAP: `program_activation.test.sql` (also covers history surviving edits and
+deletes, duplicate independence, reorder).
+
 ### Social v2 (added 2026-09-24)
 
 | | |
@@ -614,6 +676,25 @@ only the fallback when those live reads fail — reading it as "now" is what mad
 the dashboard say "no logs for 13 days" about a client who trained that morning
 (BUG-17). On Today, `atRiskCause()` separates a stalled week from an active one
 with a low % so the nudge says the true reason (BUG-10).
+
+### Goal dashboard (added 2026-10-15, migration 20261125110000 — local only, not applied live)
+
+Progress → **Goals** tab (`?tab=goals`, `components/goals.tsx`). Measurable goals
+live in the existing `goals` table, extended with `metric`, `direction`,
+`start_value`, `start_date`, `exercise_id`, `measure_key`, `achieved_at`,
+`closed_at`; `metric is null` is the setup step's words-only main goal, which keeps
+working (its three reads now filter `metric is null`). Metrics: body weight,
+circumference, heaviest lift, workouts a week, weeks trained (consistency), days on
+calorie target, daily protein — all computed on read in
+`packages/shared/src/goals.ts` from measurements, completed sessions and
+`food_daily_totals` (`lib/goals-data.ts`); nothing about progress is stored.
+Missing data stays missing (never 0), a start is never invented, direction is
+explicit, percentages are clamped to 0..100, and "target reached" only *offers*
+Mark achieved. Writes: `app/goal-actions.ts` (create / update / close / delete),
+mirrored by check constraints, one active goal per source (unique index) and
+`goals_guard()` (≤ 12 active, no private exercise of someone else). The coach still
+reads goals under `goals_coach_read`; no coach screen shows the measurable ones yet.
+pgTAP: `goal_metrics.test.sql`.
 
 ---
 

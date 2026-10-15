@@ -96,9 +96,9 @@ export function RangeLinks({ value, hrefFor }: { value: ProgressRange; hrefFor: 
 
 export function SectionTabs({ state }: { state: ProgressState }) {
   const { a } = useFormat();
-  const label: Record<ProgressTab, string> = { body: a.tabBody, strength: a.tabStrength, consistency: a.tabConsistency };
+  const label: Record<ProgressTab, string> = { body: a.tabBody, strength: a.tabStrength, consistency: a.tabConsistency, goals: a.tabGoals };
   return (
-    <nav className="grid grid-cols-3 gap-1 rounded-2xl bg-surface p-1" aria-label={a.tabsLabel}>
+    <nav className="grid grid-cols-4 gap-1 rounded-2xl bg-surface p-1" aria-label={a.tabsLabel}>
       {PROGRESS_TABS.map((tab) => {
         const on = tab === state.tab;
         return (
@@ -107,7 +107,7 @@ export function SectionTabs({ state }: { state: ProgressState }) {
             href={progressHref({ ...state, tab })}
             scroll={false}
             aria-current={on ? "page" : undefined}
-            className={`rounded-xl py-2.5 text-center text-[13px] font-semibold ${
+            className={`truncate rounded-xl px-1 py-2.5 text-center text-[12px] font-semibold sm:text-[13px] ${
               on ? "bg-bg text-ink shadow-sm" : "text-ink-soft hover:text-ink"
             }`}
           >

@@ -108,7 +108,7 @@ async function liveInputs(userId: string, choice: WeekChoice): Promise<[WeeklyRo
       .eq("status", "published"),
     supabase
       .from("programs")
-      .select("id, coach_id, updated_at, program_days(id)")
+      .select("id, coach_id, updated_at, activated_at, program_days(id)")
       .eq("client_id", userId)
       .eq("status", "published"),
     // Request-cached: Today has already asked this for the same client.

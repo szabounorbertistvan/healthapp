@@ -3,7 +3,7 @@ import { daysAgoIso } from "./dates";
 import { myCalendar } from "./my-today";
 import "server-only";
 import { adherenceOf } from "./live-adherence";
-import { foldActivity, type WeekActivity } from "./week-activity";
+import { foldActivity, nextWorkoutDay, type WeekActivity } from "./week-activity";
 import { currentActorId } from "./actor";
 import { liveUser } from "./supabase/server";
 import { displayName, getProfile } from "./data";
@@ -73,11 +73,9 @@ export async function getToday(): Promise<ClientToday | null> {
     checkinSubmitted: checkIn.submitted,
   });
 
-  // Next workout = the first day with nothing logged this week.
-  const next =
-    days.find((d) => !activity.doneDays.has(d.day_id) && !activity.doneDays.has(d.day_name)) ??
-    days[0] ??
-    null;
+  // Next workout = the first day with nothing logged this week (nextWorkoutDay,
+  // the same rule the Training list marks).
+  const next = nextWorkoutDay(days, activity.doneDays);
 
   return {
     client_id: clientId,
@@ -95,6 +93,41 @@ export async function getToday(): Promise<ClientToday | null> {
     unread_from_coach: unreadFromCoach,
     training_load,
   };
+}
+
+/**
+ * The day the next workout comes from, for the Training list's "next" marker:
+ * the followed program's days (request-cached — the page already reads the
+ * groups) folded against this week's completed sessions on the person's own
+ * calendar, by the same foldActivity + nextWorkoutDay Today uses. One small
+ * read: this week's sessions only, no food or habit rows.
+ */
+export async function getMyNextWorkoutDayId(): Promise<string | null> {
+  const live = await liveUser();
+  if (!live) return null;
+  const { supabase, userId } = live;
+  const [days, calendar, { data, error }] = await Promise.all([
+    getMyProgramDays(),
+    myCalendar(),
+    supabase
+      .from("logged_sessions")
+      .select("program_day_id, completed_at, started_at")
+      .eq("user_id", userId)
+      .not("completed_at", "is", null)
+      .gte("started_at", `${daysAgoIso(8)}T00:00:00`),
+  ]);
+  if (days.length === 0) return null;
+  // A failed read marks nothing rather than guessing a day.
+  if (error) {
+    console.error(`next workout read failed: ${error.message}`);
+    return null;
+  }
+  type SessionRow = { program_day_id: string | null; completed_at: string | null; started_at: string };
+  const week = foldActivity(
+    { sessions: (data ?? []) as SessionRow[], foods: [], habitLogs: [], setStamps: [] },
+    calendar,
+  );
+  return nextWorkoutDay(days, week.doneDays)?.day_id ?? null;
 }
 
 /**

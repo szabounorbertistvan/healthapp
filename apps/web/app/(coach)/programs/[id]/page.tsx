@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getActiveClientNames, getProgram } from "@/lib/data";
+import { getActiveClientNames, getProgram, getProgramActivation } from "@/lib/data";
 import { exerciseFacets } from "@/lib/exercise-library";
 import { NavIcon } from "@/components/client-nav";
 import { ProgramBuilder } from "@/components/program-builder";
 import { getI18n } from "@/lib/i18n/server";
 import { canEdit } from "@/lib/can-edit";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
+import { ProgramActivation } from "@/components/program-activation";
 
 export default async function ProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const { t } = await getI18n();
   const { id } = await params;
-  const [program, clients, access] = await Promise.all([getProgram(id), getActiveClientNames(), canEdit("can_edit_program", { p_program: id })]);
+  const [program, clients, access, activation] = await Promise.all([
+    getProgram(id), getActiveClientNames(), canEdit("can_edit_program", { p_program: id }), getProgramActivation(id),
+  ]);
   if (!program) notFound();
 
   const facets = exerciseFacets();
@@ -45,6 +48,18 @@ export default async function ProgramPage({ params }: { params: Promise<{ id: st
       </div>
       {access === "edit" ? null
         : <ReadOnlyNotice text={access === "read-only" ? t.coachApp.programBuilderPage.readOnly : t.common.actions.editUnverified} />}
+      {/* Which of this client's programs the next workout comes from. Duplicate
+          and assign stay on the routine page (linked above). */}
+      <div className="mt-4">
+        <ProgramActivation
+          programId={program.id}
+          programName={program.name}
+          activation={activation}
+          canActivate={access === "edit"}
+          detailsHref={`/routines/${id}`}
+          forCoach
+        />
+      </div>
       {/* Disabled, not hidden: the coach keeps reading what they wrote; the
           database refuses the writes anyway (20261122100000). Editable only on
           a confirmed yes — a check that failed is read-only too (lib/edit-access.ts). */}

@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { DEFAULT_TARGETS, isExerciseMeasure, isPlanLimitError, isSetType, swapNeighbour, validateTargets, type ExerciseTargets } from "@healthapp/shared";
+import { DEFAULT_TARGETS, isExerciseMeasure, isPlanLimitError, isRoutineGoal, isRoutineLevel, isSetType, swapNeighbour, validateTargets, type ExerciseTargets } from "@healthapp/shared";
+import { getI18n } from "@/lib/i18n/server";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { inserted, mutated } from "@/lib/supabase/mutate";
 import type { ActionResult } from "./actions";
@@ -34,12 +35,34 @@ const targetsShape = z.object({
 
 // An empty clientId / exerciseId is let through on purpose: the action answers
 // it with "Pick a client" / "Pick an exercise".
+/**
+ * The optional description fields a program can be born with — the same
+ * columns the routine page's "Edit details" writes (updateRoutineDetails), so
+ * a program described at creation and one described later look the same.
+ * An unknown level or goal is dropped to null rather than refused, as there.
+ */
+const ProgramDetailsInput = z.object({
+  description: text(2000).nullable().optional(),
+  level: text(40).nullable().optional(),
+  goal: text(40).nullable().optional(),
+});
+type ProgramDetails = z.infer<typeof ProgramDetailsInput>;
+
+function detailColumns(d: ProgramDetails | undefined) {
+  return {
+    description: d?.description?.trim().slice(0, 2000) || null,
+    level: isRoutineLevel(d?.level) ? d!.level : null,
+    goal: isRoutineGoal(d?.goal) ? d!.goal : null,
+  };
+}
+
 const CreateProgramInput = z.object({
   name: text(),
   clientId: id.or(z.literal("")),
   clientName: text(),
   weeks: z.number().int().min(1).max(52),
   intensityMode,
+  details: ProgramDetailsInput.optional(),
 });
 
 const AddExerciseInput = z.object({
@@ -82,6 +105,7 @@ export async function createProgram(input: {
   clientName: string;
   weeks: number;
   intensityMode: "rpe" | "rir" | "simple";
+  details?: ProgramDetails;
 }): Promise<ActionResult & { id?: string }> {
   const parsed = await parseInput(CreateProgramInput, input);
   if (!parsed.ok) return parsed.result;
@@ -101,6 +125,7 @@ export async function createProgram(input: {
       name,
       weeks: input.weeks,
       intensity_mode: input.intensityMode,
+      ...detailColumns(input.details),
       status: "draft",
     })
     .select("id")
@@ -472,7 +497,14 @@ export async function copyProgramToClient(
   return { ok: true, id: (data as string | null) ?? undefined };
 }
 
-/** Publish makes the program visible to the client and fires Plan updated. */
+/**
+ * Publish makes the program visible to the client and fires Plan updated.
+ *
+ * It also makes it the program to follow (activated_at, 20261125100000): a
+ * block that was just published is the one the next workout should come
+ * from — which is what the old "newest edit wins" rule did by accident, now
+ * said on purpose so a later edit to an older program cannot take it back.
+ */
 export async function publishProgram(programId: string): Promise<ActionResult> {
   const parsed = await parseInput(id, programId);
   if (!parsed.ok) return parsed.result;
@@ -480,15 +512,65 @@ export async function publishProgram(programId: string): Promise<ActionResult> {
   const failed = await mutated(
     await supabase
       .from("programs")
-      .update({ status: "published" }, { count: "exact" })
+      .update({ status: "published", activated_at: new Date().toISOString() }, { count: "exact" })
       .eq("id", programId),
   );
   if (failed) return failed;
+  activationTouched(programId);
+  return { ok: true };
+}
+
+/** Every surface that reads which program is followed: Today, Training, Progress, the coach's views. */
+function activationTouched(programId: string) {
   revalidatePath(`/programs/${programId}`);
   revalidatePath("/programs");
+  revalidatePath(`/routines/${programId}`);
   revalidatePath("/workout/build");
   revalidatePath("/workout");
-  return { ok: true };
+  revalidatePath("/today");
+  revalidatePath("/progress");
+  revalidatePath("/dashboard");
+  revalidatePath("/clients", "layout");
+}
+
+/**
+ * Make a published program the one the next workout comes from.
+ *
+ * Writes one timestamp and nothing else — no session, no day, no set — so it
+ * can be pressed twice without creating anything twice, and logged history is
+ * never touched. Only a published program can be followed (the client's reads
+ * list published programs only), so a draft is refused with a sentence rather
+ * than activated into nowhere.
+ *
+ * Who may press it is who may edit the program, by policy, not here: the solo
+ * owner while uncoached (programs_solo_update) or the coach while coaching
+ * (programs_coach_update). A coached client cannot re-point their coach's plan
+ * — the update matches no row and mutated() says so.
+ */
+export async function activateProgram(programId: string): Promise<ActionResult> {
+  const parsed = await parseInput(id, programId);
+  if (!parsed.ok) return parsed.result;
+  const { t } = await getI18n();
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase } = live;
+
+  const { data: row, error: readError } = await supabase
+    .from("programs").select("status").eq("id", programId).maybeSingle<{ status: string }>();
+  if (readError) return { ok: false, message: readError.message };
+  if (!row) return { ok: false, errorCode: "NO_ROWS", message: t.common.actions.nothingChanged };
+  if (row.status !== "published") return { ok: false, errorCode: "NOT_PUBLISHED", message: t.clientApp.builder.activateDraft };
+
+  const failed = await mutated(
+    await supabase
+      .from("programs")
+      .update({ activated_at: new Date().toISOString() }, { count: "exact" })
+      .eq("id", programId)
+      .eq("status", "published"),
+  );
+  if (failed) return failed;
+  activationTouched(programId);
+  return { ok: true, message: t.clientApp.builder.activated };
 }
 
 
@@ -504,8 +586,13 @@ export async function publishProgram(programId: string): Promise<ActionResult> {
 export async function createSoloProgram(input: {
   name: string;
   intensityMode: "rpe" | "rir" | "simple";
+  weeks?: number;
+  details?: ProgramDetails;
 }): Promise<ActionResult & { id?: string }> {
-  const parsed = await parseInput(z.object({ name: text(), intensityMode }), input);
+  const parsed = await parseInput(
+    z.object({ name: text(), intensityMode, weeks: z.number().int().min(1).max(52).optional(), details: ProgramDetailsInput.optional() }),
+    input,
+  );
   if (!parsed.ok) return parsed.result;
   const name = input.name.trim();
   if (!name) return { ok: false, message: "Give the program a name" };
@@ -520,8 +607,9 @@ export async function createSoloProgram(input: {
       coach_id: null,
       client_id: userId,
       name,
-      weeks: 1,
+      weeks: input.weeks ?? 1,
       intensity_mode: input.intensityMode,
+      ...detailColumns(input.details),
       status: "draft",
     })
     .select("id")

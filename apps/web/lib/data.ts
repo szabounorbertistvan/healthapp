@@ -2,7 +2,7 @@
 import "server-only";
 import { cache } from "react";
 import { liveUser, supabaseServer } from "./supabase/server";
-import { effectiveTier, emailPrefsState, isExerciseMeasure, isLengthUnit, isWeightUnit, normalizeRestPrefs, portionMacros, sumMacros } from "@healthapp/shared";
+import { effectiveTier, emailPrefsState, isExerciseMeasure, isLengthUnit, isWeightUnit, normalizeRestPrefs, pickProgram, portionMacros, sumMacros } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { liveAdherenceFor } from "./live-adherence";
 import type {
@@ -243,6 +243,42 @@ export async function getPrograms(): Promise<ProgramRow[]> {
   }));
 }
 
+/**
+ * Is this program the one its person follows — the one the next workout comes
+ * from? The same pickProgram() Today runs, over the programs on the same side
+ * that the reader can see: the solo owner's own published programs, or, for a
+ * coach, the published programs they wrote for that client (an earlier
+ * coach's leftovers are invisible to them, and lose to anything this coach
+ * published, which stamps activated_at). A failed read answers "unknown"
+ * (null) so the builder offers nothing it cannot back up.
+ */
+export async function getProgramActivation(programId: string): Promise<{ published: boolean; followed: boolean } | null> {
+  const supabase = await supabaseServer();
+  const { data: program, error } = await supabase
+    .from("programs").select("id, client_id, coach_id, status").eq("id", programId)
+    .maybeSingle<{ id: string; client_id: string; coach_id: string | null; status: string }>();
+  if (error || !program) return null;
+  if (program.status !== "published") return { published: false, followed: false };
+  let siblings = supabase
+    .from("programs").select("id, coach_id, updated_at, activated_at")
+    .eq("client_id", program.client_id).eq("status", "published");
+  siblings = program.coach_id === null ? siblings.is("coach_id", null) : siblings.not("coach_id", "is", null);
+  // A coach's program is followed only while that coaching is active: a paused
+  // or ended client's Today reads their own programs (pickProgram with no coach).
+  const [{ data: rows, error: siblingsError }, coaching] = await Promise.all([
+    siblings,
+    program.coach_id === null
+      ? Promise.resolve({ data: null, error: null })
+      : supabase.from("trainer_clients").select("id").eq("coach_id", program.coach_id)
+          .eq("client_id", program.client_id).eq("status", "active").maybeSingle(),
+  ]);
+  if (siblingsError || coaching.error) return null;
+  if (program.coach_id !== null && !coaching.data) return { published: true, followed: false };
+  type Row = { id: string; coach_id: string | null; updated_at: string; activated_at: string | null };
+  const followed = pickProgram((rows ?? []) as Row[], program.coach_id !== null);
+  return { published: true, followed: followed?.id === programId };
+}
+
 export async function getProgram(id: string): Promise<ProgramDetail | null> {
   const supabase = await supabaseServer();
   const { data, error } = await supabase
@@ -442,7 +478,7 @@ type PlanSlot = "breakfast" | "lunch" | "dinner" | "snack";
 export async function getClientGoal(clientId: string): Promise<string | null> {
   const supabase = await supabaseServer();
   const { data, error } = await supabase
-    .from("goals").select("title").eq("user_id", clientId).eq("status", "active")
+    .from("goals").select("title").eq("user_id", clientId).eq("status", "active").is("metric", null)
     .order("created_at", { ascending: false }).limit(1).maybeSingle<{ title: string }>();
   if (error) {
     console.error(`client goal: ${error.message}`);

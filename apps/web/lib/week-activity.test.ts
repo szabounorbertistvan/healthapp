@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { foldActivity, type ActivityRows } from "./week-activity";
+import { foldActivity, nextWorkoutDay, type ActivityRows } from "./week-activity";
 
 const BUCHAREST = "Europe/Bucharest";
 
@@ -62,5 +62,30 @@ describe("foldActivity on the client's calendar", () => {
     const calendar = { today: "2026-10-12", timeZone: BUCHAREST };
     expect(foldActivity(input, calendar)).toEqual(foldActivity(input, { ...calendar }));
     expect(foldActivity(input, calendar).lastActivity).toBe("2026-10-12T05:30:00Z");
+  });
+});
+
+describe("nextWorkoutDay", () => {
+  const days = [{ day_id: "a" }, { day_id: "b" }, { day_id: "c" }];
+
+  it("is the first day with nothing completed this week", () => {
+    expect(nextWorkoutDay(days, new Set(["a"]))?.day_id).toBe("b");
+  });
+
+  it("skips any done day, not only a prefix", () => {
+    expect(nextWorkoutDay(days, new Set(["a", "b"]))?.day_id).toBe("c");
+    expect(nextWorkoutDay(days, new Set(["b"]))?.day_id).toBe("a");
+  });
+
+  it("starts over at the first day once the whole week is done", () => {
+    expect(nextWorkoutDay(days, new Set(["a", "b", "c"]))?.day_id).toBe("a");
+  });
+
+  it("is null without a program", () => {
+    expect(nextWorkoutDay([], new Set())).toBeNull();
+  });
+
+  it("a session against a day of another program does not move it", () => {
+    expect(nextWorkoutDay(days, new Set(["other-program-day"]))?.day_id).toBe("a");
   });
 });

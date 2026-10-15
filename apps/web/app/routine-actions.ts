@@ -136,13 +136,19 @@ export async function updateRoutineDetails(input: {
   goal?: string | null;
   trainingStyle?: string | null;
   visibility?: string | null;
+  /** The program's length in weeks (1..52) — descriptive; the days repeat each week. */
+  weeks?: number;
 }): Promise<ActionResult> {
   const { t } = await getI18n();
   const r = t.clientApp.routines;
   const live = await liveUser();
   if (!live) return notSignedIn;
 
-  const patch: Record<string, string | null> = {};
+  const patch: Record<string, string | number | null> = {};
+  if (input.weeks !== undefined) {
+    if (!Number.isInteger(input.weeks) || input.weeks < 1 || input.weeks > 52) return { ok: false, message: r.weeksRange };
+    patch.weeks = input.weeks;
+  }
   if (input.name !== undefined) {
     const name = input.name.trim();
     if (name.length < 2) return { ok: false, message: r.nameRequired };

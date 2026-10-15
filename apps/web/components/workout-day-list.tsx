@@ -3,7 +3,7 @@ import { settle } from "@/lib/settle-action";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { removeProgramDay } from "@/app/builder-actions";
+import { activateProgram, removeProgramDay } from "@/app/builder-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { ClientProgramGroup, ClientWorkoutDay, Sex } from "@/lib/types";
@@ -19,10 +19,21 @@ import { Athlete } from "./athlete";
  */
 /** `editable` is false for a coached client: their own old programs stay listed but cannot be changed (can_edit_program). */
 /** `sex` picks the athlete on each card (users.sex; null → stable pick per day). */
-export function WorkoutDayList({ groups, sex, editable = true }: { groups: ClientProgramGroup[]; sex: Sex | null; editable?: boolean }) {
+/** `nextDayId` marks the day the next workout comes from (getMyNextWorkoutDayId — Today's rule); null marks nothing. */
+export function WorkoutDayList({
+  groups,
+  sex,
+  editable = true,
+  nextDayId = null,
+}: {
+  groups: ClientProgramGroup[];
+  sex: Sex | null;
+  editable?: boolean;
+  nextDayId?: string | null;
+}) {
   const { t } = useI18n();
   const router = useRouter();
-  const [, startTransition] = useTransition();
+  const [activating, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const w = t.clientApp.workout;
 
@@ -35,6 +46,16 @@ export function WorkoutDayList({ groups, sex, editable = true }: { groups: Clien
         router.refresh();
         resolve();
       });
+    });
+  }
+
+  /** Make one of the client's own published programs the one to follow. */
+  function activate(group: ClientProgramGroup) {
+    startTransition(async () => {
+      setError(null);
+      const result = await settle(() => activateProgram(group.program_id), t.common.actions.unreachable);
+      if (!result.ok) setError(result.message ?? t.clientApp.builder.activateFailed);
+      router.refresh();
     });
   }
 
@@ -58,6 +79,19 @@ export function WorkoutDayList({ groups, sex, editable = true }: { groups: Clien
                 {w.followed}
               </span>
             ) : null}
+            {/* Another of the client's own programs is followed: one tap moves
+                the next workout here. Not offered on a coach's program or to a
+                coached client — the coach decides then (pickProgram). */}
+            {!group.followed && group.is_own && editable && groups.length > 1 ? (
+              <button
+                type="button"
+                disabled={activating}
+                onClick={() => activate(group)}
+                className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-soft hover:text-accent-ink disabled:opacity-50"
+              >
+                {t.clientApp.builder.setActive}
+              </button>
+            ) : null}
           </div>
 
           {/* As many columns as fit, never a card under 380px — one on a phone,
@@ -71,10 +105,10 @@ export function WorkoutDayList({ groups, sex, editable = true }: { groups: Clien
                   confirmText={fill(w.deleteDayConfirm, { name: day.day_name })}
                   onDelete={() => remove(day)}
                 >
-                  <DayCard day={day} sex={sex} />
+                  <DayCard day={day} sex={sex} next={day.day_id === nextDayId} />
                 </SwipeToDelete>
               ) : (
-                <DayCard key={day.day_id} day={day} sex={sex} />
+                <DayCard key={day.day_id} day={day} sex={sex} next={day.day_id === nextDayId} />
               ),
             )}
 
@@ -104,7 +138,7 @@ export function WorkoutDayList({ groups, sex, editable = true }: { groups: Clien
  * tile is a fixed size, so the figure looks the same whether the day has
  * three exercises or nine, and names no longer truncate against it.
  */
-function DayCard({ day, sex }: { day: ClientWorkoutDay; sex: Sex | null }) {
+function DayCard({ day, sex, next = false }: { day: ClientWorkoutDay; sex: Sex | null; next?: boolean }) {
   const { t } = useI18n();
   const w = t.clientApp.workout;
   return (
@@ -126,6 +160,10 @@ function DayCard({ day, sex }: { day: ClientWorkoutDay; sex: Sex | null }) {
             {day.logged.length > 0 ? (
               <span className="mb-1.5 inline-block rounded-full bg-warn-soft px-2.5 py-0.5 text-[11px] font-bold text-warn">
                 {w.inProgress}
+              </span>
+            ) : next ? (
+              <span className="mb-1.5 inline-block rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent-ink">
+                {w.nextUp}
               </span>
             ) : null}
             <h3 className="truncate font-display text-xl font-bold leading-tight tracking-tight">{day.day_name}</h3>

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createProgram } from "@/app/builder-actions";
 import { useI18n } from "@/lib/i18n/client";
+import { ROUTINE_GOALS, ROUTINE_LEVELS } from "@healthapp/shared";
 
 export function NewProgramForm({
   roster,
@@ -26,6 +27,10 @@ export function NewProgramForm({
   const [weeks, setWeeks] = useState(6);
   // RIR is the default per the plan's open decision: "both — coach chooses per client".
   const [intensityMode, setIntensityMode] = useState<"rir" | "rpe" | "simple">("rir");
+  // Optional description fields, the same ones the routine page edits later.
+  const [goal, setGoal] = useState("");
+  const [level, setLevel] = useState("");
+  const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -40,6 +45,7 @@ export function NewProgramForm({
         clientName: client?.name ?? "—",
         weeks,
         intensityMode,
+        details: { goal: goal || null, level: level || null, description: description || null },
       }), t.common.actions.unreachable);
       if (result.ok && "id" in result && result.id) router.push(`/programs/${result.id}`);
       else setError(result.message ?? m.createError);
@@ -119,6 +125,35 @@ export function NewProgramForm({
             <option value="rpe">{m.intensityRpe}</option>
             <option value="simple">{m.intensitySimple}</option>
           </select>
+        </div>
+
+        <div>
+          <label className={legend} htmlFor="new-program-goal">{t.clientApp.builder.goalLabel}</label>
+          <select id="new-program-goal" value={goal} onChange={(e) => setGoal(e.target.value)} className={field}>
+            <option value="">—</option>
+            {ROUTINE_GOALS.map((g) => <option key={g} value={g}>{t.clientApp.routines.goal[g]}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className={legend} htmlFor="new-program-level">{t.clientApp.builder.levelLabel}</label>
+          <select id="new-program-level" value={level} onChange={(e) => setLevel(e.target.value)} className={field}>
+            <option value="">—</option>
+            {ROUTINE_LEVELS.map((l) => <option key={l} value={l}>{t.clientApp.routines.level[l]}</option>)}
+          </select>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className={legend} htmlFor="new-program-description">{t.clientApp.routines.descriptionLabel}</label>
+          <textarea
+            id="new-program-description"
+            value={description}
+            maxLength={2000}
+            rows={2}
+            placeholder={t.clientApp.routines.descriptionPlaceholder}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent"
+          />
         </div>
       </div>
 

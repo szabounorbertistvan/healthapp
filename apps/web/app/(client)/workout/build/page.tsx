@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getProgram } from "@/lib/data";
+import { getProgram, getProgramActivation } from "@/lib/data";
 import { hasActiveCoach } from "@/lib/client-data";
 import { exerciseFacets } from "@/lib/exercise-library";
 import { getMySoloPrograms } from "@/app/builder-actions";
@@ -46,7 +46,9 @@ export default async function BuildProgramPage({
   // recently touched. An id that is not theirs simply falls back — the reader
   // only ever returns this client's own rows, so there is nothing to leak.
   const openId = programs.find((p) => p.id === params.program)?.id ?? programs[0]?.id ?? null;
-  const program = openId ? await getProgram(openId) : null;
+  const [program, activation] = openId
+    ? await Promise.all([getProgram(openId), getProgramActivation(openId)])
+    : [null, null];
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -66,6 +68,7 @@ export default async function BuildProgramPage({
           program={program}
           programs={programs}
           equipment={exerciseFacets().equipment}
+          activation={activation}
         />
       </div>
     </div>

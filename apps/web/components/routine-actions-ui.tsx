@@ -222,9 +222,15 @@ export function RoutineDetailsForm({
     goal: card.goal ?? "",
     style: card.training_style ?? "",
     visibility: card.visibility,
+    weeks: String(card.weeks ?? 1),
   });
 
   function save() {
+    const weeks = Number(form.weeks);
+    if (!Number.isInteger(weeks) || weeks < 1 || weeks > 52) {
+      setError(r.weeksRange);
+      return;
+    }
     startTransition(async () => {
       setError(null);
       const result = await settle(() => updateRoutineDetails({
@@ -235,6 +241,7 @@ export function RoutineDetailsForm({
         goal: form.goal || null,
         trainingStyle: form.style || null,
         visibility: canPublish ? form.visibility : undefined,
+        weeks,
       }), t.common.actions.unreachable);
       if (!result.ok) { setError(result.message ?? r.couldNotSave); return; }
       setSaved(true);
@@ -284,6 +291,19 @@ export function RoutineDetailsForm({
           options={(["strength", "hypertrophy", "fat_loss", "endurance", "general"] as const).map((g) => ({ value: g, label: r.goal[g] }))} />
         <Field label={r.styleLabel} value={form.style} onChange={(v) => setForm({ ...form, style: v })}
           options={TRAINING_STYLES.map((st) => ({ value: st, label: r.style[st] }))} />
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{r.weeksLabel}</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={52}
+            value={form.weeks}
+            aria-invalid={error === r.weeksRange}
+            onChange={(e) => setForm({ ...form, weeks: e.target.value })}
+            className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none focus:border-accent"
+          />
+        </label>
         {canPublish ? (
           <label className="flex flex-col gap-1.5 sm:col-span-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">

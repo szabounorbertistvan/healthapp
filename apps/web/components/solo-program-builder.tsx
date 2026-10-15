@@ -14,18 +14,22 @@ import { useI18n } from "@/lib/i18n/client";
 import type { ProgramDetail } from "@/lib/types";
 import { usePlan } from "@/lib/plan-client";
 import { UpgradeHint } from "@/components/upgrade";
-import { atLimit, isPlanLimitError } from "@healthapp/shared";
+import { atLimit, isPlanLimitError, ROUTINE_GOALS, ROUTINE_LEVELS } from "@healthapp/shared";
+import { ProgramActivation } from "@/components/program-activation";
 
 /** `equipment` is the library's facet list, so "create exercise" suggests the same gear names the coach sees. */
 export function SoloProgramBuilder({
   program,
   programs = [],
   equipment = [],
+  activation = null,
 }: {
   program: ProgramDetail | null;
   /** Every program this client owns, so they can switch between them. */
   programs?: { id: string; name: string; status: string; days: number }[];
   equipment?: string[];
+  /** Whether the open program is published / the followed one (getProgramActivation); null = unknown. */
+  activation?: { published: boolean; followed: boolean } | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -34,6 +38,9 @@ export function SoloProgramBuilder({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [name, setName] = useState("");
+  // Optional at creation, editable later on the routine page ("Edit details").
+  const [showDetails, setShowDetails] = useState(false);
+  const [details, setDetails] = useState({ description: "", goal: "", level: "", weeks: "1" });
   // The create form is always reachable, not only when there are no programs.
   const [creating, setCreating] = useState(false);
   const [dayName, setDayName] = useState("");
@@ -58,24 +65,97 @@ export function SoloProgramBuilder({
     <UpgradeHint card feature="ownPrograms" upgrade={upgrade} values={{ limit: plan.maxOwnPrograms ?? 0 }} />
   ) : (
     <Card plain className="space-y-3 sm:p-5">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t.clientApp.builder.namePlaceholder}
-          className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
-        />
+        <label className="block">
+          <span className="sr-only">{t.clientApp.routines.nameLabel}</span>
+          <input
+            value={name}
+            maxLength={120}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t.clientApp.builder.namePlaceholder}
+            className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
+          />
+        </label>
+        {showDetails ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="flex flex-col gap-1.5 sm:col-span-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientApp.routines.descriptionLabel}</span>
+              <textarea
+                value={details.description}
+                maxLength={2000}
+                rows={2}
+                placeholder={t.clientApp.routines.descriptionPlaceholder}
+                onChange={(e) => setDetails({ ...details, description: e.target.value })}
+                className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientApp.builder.goalLabel}</span>
+              <select
+                value={details.goal}
+                onChange={(e) => setDetails({ ...details, goal: e.target.value })}
+                className="h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+              >
+                <option value="">—</option>
+                {ROUTINE_GOALS.map((g) => <option key={g} value={g}>{t.clientApp.routines.goal[g]}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientApp.builder.levelLabel}</span>
+              <select
+                value={details.level}
+                onChange={(e) => setDetails({ ...details, level: e.target.value })}
+                className="h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+              >
+                <option value="">—</option>
+                {ROUTINE_LEVELS.map((l) => <option key={l} value={l}>{t.clientApp.routines.level[l]}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientApp.routines.weeksLabel}</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={52}
+                value={details.weeks}
+                onChange={(e) => setDetails({ ...details, weeks: e.target.value })}
+                className="h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+              />
+            </label>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowDetails(true)}
+            className="text-[12.5px] font-semibold text-ink-faint hover:text-ink"
+          >
+            {t.clientApp.builder.addDetails}
+          </button>
+        )}
       <button
         type="button"
         disabled={pending || !name.trim()}
         onClick={() =>
           run(async () => {
-            const result = await createSoloProgram({ name, intensityMode: "rir" });
+            const weeks = Number(details.weeks);
+            if (showDetails && (!Number.isInteger(weeks) || weeks < 1 || weeks > 52)) {
+              return { ok: false, message: t.clientApp.routines.weeksRange };
+            }
+            const result = await createSoloProgram({
+              name,
+              intensityMode: "rir",
+              ...(showDetails
+                ? { weeks, details: { description: details.description || null, goal: details.goal || null, level: details.level || null } }
+                : {}),
+            });
             if (isPlanLimitError(result.message)) {
               setLimitHit(true);
               return { ok: true };
             }
             if (result.ok) {
               setName("");
+              setDetails({ description: "", goal: "", level: "", weeks: "1" });
+              setShowDetails(false);
               setCreating(false);
               // Open the one just made rather than leaving the old program on
               // screen, which would read as "nothing happened".
@@ -146,6 +226,15 @@ export function SoloProgramBuilder({
           {t.clientApp.builder.newProgram}
         </button>
       )}
+
+      <ProgramActivation
+        programId={program.id}
+        programName={program.name}
+        activation={activation}
+        canActivate
+        detailsHref={`/routines/${program.id}`}
+        duplicateHref={limited ? undefined : (id) => `/workout/build?program=${id}`}
+      />
 
       {program.days.length === 0 ? (
         <p className="text-sm text-ink-faint">{t.clientApp.builder.noDays}</p>

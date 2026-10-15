@@ -27,4 +27,4 @@ export {
 } from "./client-training";
 export { getMyDayNutrition, getMyFoodDays, getMyPlanMeals, getMyQuickFoods } from "./client-nutrition";
 export { getMyHabits, getMyMeasurements, getMyCheckInState } from "./client-progress";
-export { isEmptyAccount, getToday, getMyCoachThread, hasActiveCoach } from "./client-today";
+export { isEmptyAccount, getToday, getMyCoachThread, hasActiveCoach, getMyNextWorkoutDayId } from "./client-today";

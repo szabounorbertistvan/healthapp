@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getMyProgramGroups, getMySessions, hasActiveCoach } from "@/lib/client-data";
+import { getMyNextWorkoutDayId, getMyProgramGroups, getMySessions, hasActiveCoach } from "@/lib/client-data";
 import { getProfile } from "@/lib/data";
 import { HaveACoach } from "@/components/solo-program-builder";
 import { Card, EmptyState } from "@/components/ui";
@@ -15,7 +15,9 @@ import { UpgradeHint } from "@/components/upgrade";
 export default async function WorkoutPage() {
   const { t, locale } = await getI18n();
   // getProfile is request-cached (the layout already read it); its sex picks the athlete on each card.
-  const [groups, allSessions, coached, profile, plan] = await Promise.all([getMyProgramGroups(), getMySessions(), hasActiveCoach(), getProfile(), getPlan()]);
+  const [groups, allSessions, coached, profile, plan, nextDayId] = await Promise.all([
+    getMyProgramGroups(), getMySessions(), hasActiveCoach(), getProfile(), getPlan(), getMyNextWorkoutDayId(),
+  ]);
 
   // Every published program the client holds is listed — the coach's and their
   // own — so nothing they built disappears when a coach's program arrives.
@@ -62,7 +64,7 @@ export default async function WorkoutPage() {
               </Link>
             </>
           ) : (
-            <WorkoutDayList groups={groups} sex={profile?.sex ?? null} editable={!coached} />
+            <WorkoutDayList groups={groups} sex={profile?.sex ?? null} editable={!coached} nextDayId={nextDayId} />
           )}
 
           {/* A solo client can connect to a coach later — the same invitation code flow as onboarding. */}

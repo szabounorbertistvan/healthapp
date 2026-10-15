@@ -90,7 +90,7 @@ export const getSetupSnapshot = cache(async (profile: Profile): Promise<SetupSna
 
   if (audienceOf(profile.role) === "client") {
     const [goal, accountEmpty, solo, coachId] = await Promise.all([
-      supabase.from("goals").select("title").eq("user_id", userId).eq("status", "active")
+      supabase.from("goals").select("title").eq("user_id", userId).eq("status", "active").is("metric", null)
         .order("created_at", { ascending: false }).limit(1).maybeSingle<{ title: string }>(),
       isEmptyAccount().catch((e: unknown) => {
         console.error(`onboarding facts: ${e instanceof Error ? e.message : String(e)}`);

@@ -67,7 +67,7 @@ export const getMyProgramGroups = cache(async (): Promise<ClientProgramGroup[]> 
   const [{ data: rows, error }, coachId, recentSessions, linkRows] = await Promise.all([
     supabase
       .from("programs")
-      .select(`id, name, intensity_mode, coach_id, updated_at,
+      .select(`id, name, intensity_mode, coach_id, updated_at, activated_at,
         program_days(id, name, week_index, day_index, muscle_groups,
           program_exercises(id, exercise_id, position, target_sets, target_reps, target_weight_kg, target_rpe, rest_seconds, circuit, measure, notes,
             exercise:exercises(name_en, name_ro, primary_muscles, category, video_url)))`)

@@ -41,6 +41,14 @@ export type AnalyticsSet = {
   /** Reps in reserve as typed (RIR programs). */
   rir: number | null;
   is_pr: boolean;
+  /**
+   * Logged against a row prescribed as a warm-up (program_exercises.set_type).
+   * Absent = a working set, or no prescription to tell. Optional: only the
+   * exercise-history read carries it.
+   */
+  warmup?: boolean;
+  /** program_exercises.target_reps of that row ("8", "8-10"), when there is one. */
+  target_reps?: string | null;
 };
 
 /** A set as the logger and the history list show it back. */
@@ -53,6 +61,8 @@ export type PerformedSetRow = {
   rpe: number | null;
   rir: number | null;
   is_pr: boolean;
+  /** Present (true) only on a set logged against a warm-up prescription. */
+  warmup?: true;
 };
 
 export type PreviousWorkout = {
@@ -140,6 +150,8 @@ function toRow(s: AnalyticsSet): PerformedSetRow {
     // Only on a timed set, so a reps set keeps the shape it always had.
     ...(s.duration_seconds ? { duration_seconds: s.duration_seconds } : {}),
     rpe: s.rpe, rir: s.rir, is_pr: s.is_pr,
+    // Only on a warm-up, so every other row keeps the shape it always had.
+    ...(s.warmup ? { warmup: true as const } : {}),
   };
 }
 

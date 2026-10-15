@@ -111,7 +111,7 @@ export async function saveSetupGoal(goal: ClientGoal): Promise<OnboardingResult>
   const row = { type: GOAL_TYPE[goal] ?? "other", title: t.coachProfile.expertise.goals[goal] };
 
   const { data: current, error: readError } = await supabase
-    .from("goals").select("id").eq("user_id", userId).eq("status", "active")
+    .from("goals").select("id").eq("user_id", userId).eq("status", "active").is("metric", null)
     .order("created_at", { ascending: false }).limit(1).maybeSingle<{ id: string }>();
   if (readError) return { ok: false, message: readError.message };
 

@@ -5,9 +5,12 @@ import { getMyPhotos } from "@/lib/photos-data";
 import { getPlan, inHistory } from "@/lib/plan";
 import { getMyProgressTraining } from "@/lib/progress-data";
 import { parseProgressParams } from "@/lib/progress-params";
-import { getExerciseHistory } from "@/lib/exercise-analytics-data";
+import { getExerciseHistory, getProgressionOverview } from "@/lib/exercise-analytics-data";
+import { ProgressionOverview } from "@/components/exercise-progression";
 import { getMyFitnessScore } from "@/lib/fitness-score-data";
 import { getMyStreak } from "@/lib/streak-data";
+import { getMyGoalDashboard } from "@/lib/goals-data";
+import { GoalsPanel } from "@/components/goals";
 import { UpgradeHint } from "@/components/upgrade";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { ProgressPhotos } from "@/components/progress-photos";
@@ -72,7 +75,7 @@ export default async function ProgressPage({
   const { tab } = state;
   // One wave: everything the headline and insights need, plus whatever the
   // open tab alone needs — a closed tab costs no query.
-  const [{ t, locale }, profile, plan, allMeasurements, allPrs, sessions, training, allPhotos, fitness, streak, programDays] =
+  const [{ t, locale }, profile, plan, allMeasurements, allPrs, sessions, training, allPhotos, fitness, streak, programDays, goals] =
     await Promise.all([
       getI18n(),
       getProfile(),
@@ -89,6 +92,8 @@ export default async function ProgressPage({
       tab === "consistency" ? getMyStreak() : Promise.resolve(null),
       // The program followed now — what Today counts as planned sessions a week.
       tab === "consistency" ? getMyProgramDays() : Promise.resolve(null),
+      // Goals: progress computed from the same rows as the other tabs (lib/goals-data).
+      tab === "goals" ? getMyGoalDashboard() : Promise.resolve(null),
     ]);
   if (!training) {
     return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
@@ -166,8 +171,15 @@ export default async function ProgressPage({
   const selected = state.exercise && names[state.exercise] ? state.exercise : (options[0]?.id ?? null);
   if (selected && !options.some((o) => o.id === selected)) options.unshift({ id: selected, name: names[selected]! });
 
-  // The one read that has to wait: which lift is shown depends on the sessions.
-  const history = tab === "strength" && selected ? await getExerciseHistory(selected) : null;
+  // The reads that have to wait: which lifts are shown depends on the sessions.
+  // One wave: the chosen lift's history and the verdict for every lift offered
+  // (one query for all of them — getProgressionOverview).
+  const [history, overview] = tab === "strength"
+    ? await Promise.all([
+        selected ? getExerciseHistory(selected) : Promise.resolve(null),
+        getProgressionOverview(options.map((o) => o.id)),
+      ])
+    : [null, null];
   // Windows are local days; a session's `at` is UTC, so it is placed on the
   // person's own calendar first (an 00:30 set in Bucharest is not yesterday's).
   const liftDays = (history?.sessions ?? []).map((s) => ({ s, day: localDay(s.at, training.timezone) }));
@@ -197,6 +209,13 @@ export default async function ProgressPage({
           {t.common.nav.progress}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/reports"
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink"
+          >
+            <NavIcon d="M12 3v12M7 10l5 5 5-5M5 21h14" className="h-4 w-4" />
+            {t.clientApp.reports.link}
+          </Link>
           <div data-tour="progress-range"><RangeTabs state={state} /></div>
           <PageTour id="progress" steps={["range", "stats", "tabs"]} />
         </div>
@@ -320,6 +339,14 @@ export default async function ProgressPage({
             buckets={buckets}
             chartsLocked={chartsLocked}
           />
+          {overview ? (
+            <ProgressionOverview
+              items={options.flatMap((o) => {
+                const analysis = overview.get(o.id);
+                return analysis ? [{ id: o.id, name: o.name, analysis }] : [];
+              })}
+            />
+          ) : null}
           <ExerciseProgress
             state={state}
             options={options}
@@ -375,6 +402,16 @@ export default async function ProgressPage({
               />
             ) : null}
           </Card>
+        </div>
+      ) : null}
+
+      {tab === "goals" ? (
+        <div className="mt-4 sm:mt-5">
+          {goals ? (
+            <GoalsPanel dashboard={goals} />
+          ) : (
+            <EmptyState plain title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />
+          )}
         </div>
       ) : null}
 

@@ -4,8 +4,8 @@
 // can be tested without a request.
 import type { ProgressRange } from "@healthapp/shared";
 
-export type ProgressTab = "body" | "strength" | "consistency";
-export const PROGRESS_TABS: readonly ProgressTab[] = ["body", "strength", "consistency"];
+export type ProgressTab = "body" | "strength" | "consistency" | "goals";
+export const PROGRESS_TABS: readonly ProgressTab[] = ["body", "strength", "consistency", "goals"];
 
 export type ProgressState = {
   range: ProgressRange;

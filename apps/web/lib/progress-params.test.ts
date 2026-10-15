@@ -17,6 +17,11 @@ describe("parseProgressParams", () => {
     expect(parseProgressParams({ range: "12", tab: "admin" })).toEqual({ range: 30, tab: "body", exercise: null, from: null, to: null });
   });
 
+  it("knows the goals tab and links to it", () => {
+    expect(parseProgressParams({ tab: "goals" }).tab).toBe("goals");
+    expect(progressHref({ range: 30, tab: "goals", exercise: null, from: null, to: null })).toBe("/progress?tab=goals");
+  });
+
   it("accepts only a uuid as the exercise", () => {
     expect(parseProgressParams({ exercise: ID }).exercise).toBe(ID);
     expect(parseProgressParams({ exercise: "x' or 1=1" }).exercise).toBeNull();

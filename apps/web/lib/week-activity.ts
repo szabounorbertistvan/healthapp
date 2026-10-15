@@ -61,3 +61,13 @@ export function foldActivity(rows: ActivityRows, calendar: Calendar): WeekActivi
     doneDays: new Set(done.map((s) => s.program_day_id).filter((id): id is string => id !== null)),
   };
 }
+
+/**
+ * The next workout of the followed program: the first day, in program order,
+ * with no completed session this week — or the first day again once all of
+ * them are done. One rule for Today's "next workout" card and the Training
+ * list's "next" marker, so the two never point at different days.
+ */
+export function nextWorkoutDay<T extends { day_id: string }>(days: readonly T[], doneDays: ReadonlySet<string>): T | null {
+  return days.find((d) => !doneDays.has(d.day_id)) ?? days[0] ?? null;
+}

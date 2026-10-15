@@ -111,7 +111,7 @@ async function chunkAdherence(
       .gte("habit_logs.date", weekStart),
     supabase
       .from("programs")
-      .select("client_id, coach_id, updated_at, program_days(id)")
+      .select("client_id, coach_id, updated_at, activated_at, program_days(id)")
       .in("client_id", ids)
       .eq("status", "published"),
     supabase

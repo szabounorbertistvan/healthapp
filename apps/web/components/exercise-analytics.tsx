@@ -11,12 +11,14 @@ import {
   type ExerciseSessionEntry,
   type ExerciseStats,
   type MetricPoint,
+  type ProgressionAnalysis,
   type RepRecord,
 } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { Card } from "./ui";
+import { ProgressionCard } from "./exercise-progression";
 
 /**
  * The numbers behind one lift: what you last did, your bests, the
@@ -44,6 +46,7 @@ export function ExerciseAnalytics({
   historySessions = sessions,
   chartsLocked = null,
   historyLocked = null,
+  progression = null,
 }: {
   sessions: ExerciseSessionEntry[];
   stats: ExerciseStats;
@@ -58,6 +61,8 @@ export function ExerciseAnalytics({
   chartsLocked?: ReactNode;
   /** Rendered under the history when the plan's window held sessions back. */
   historyLocked?: ReactNode;
+  /** The progression verdict (packages/shared/exercise-progression); null = not shown. */
+  progression?: ProgressionAnalysis | null;
 }) {
   const { t } = useI18n();
   const d = t.clientApp.exerciseDetail;
@@ -75,6 +80,8 @@ export function ExerciseAnalytics({
   return (
     <>
       <PerformanceSummary stats={stats} truncated={truncated} />
+
+      {progression ? <ProgressionCard analysis={progression} chartsLocked={chartsLocked !== null} /> : null}
 
       <section className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -365,6 +372,7 @@ function SessionHistory({ sessions }: { sessions: ExerciseSessionEntry[] }) {
                   {set.rir !== null ? ` · ${t.clientWidgets.setLogger.rir} ${set.rir}` : ""}
                   {set.rir === null && set.rpe !== null ? ` · ${set.rpe}/10` : ""}
                   {set.is_pr ? <span className="ml-1 text-[10px] font-bold uppercase">{d.pr}</span> : null}
+                  {set.warmup ? <span className="ml-1 text-[10px] font-semibold uppercase text-ink-faint">{d.warmup}</span> : null}
                 </li>
               ))}
             </ul>

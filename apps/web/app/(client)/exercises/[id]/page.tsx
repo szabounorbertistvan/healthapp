@@ -102,6 +102,7 @@ export default async function ExerciseDetailPage({
         todayIso={today}
         truncated={history.truncated}
         historySessions={historySessions}
+        progression={history.progression}
         chartsLocked={plan.e.progressCharts ? null : <UpgradeHint card feature="charts" upgrade={plan.upgrade} />}
         historyLocked={
           historySessions.length < history.sessions.length ? (

@@ -21,6 +21,7 @@
 import "server-only";
 import { cache } from "react";
 import {
+  analyzeProgression,
   exerciseSessions,
   exerciseStats,
   previousWorkouts,
@@ -29,9 +30,11 @@ import {
   type ExerciseStats,
   type ExerciseVideoSource,
   type PreviousWorkout,
+  type ProgressionAnalysis,
   type RepRecord,
 } from "@healthapp/shared";
-import { ANALYTICS_SET_SELECT, toAnalyticsSets, type AnalyticsSetJoin } from "./exercise-analytics-map";
+import { ANALYTICS_SET_SELECT, toAnalyticsSets, toProgressionSessions, type AnalyticsSetJoin } from "./exercise-analytics-map";
+import { myCalendar } from "./my-today";
 import { liveUser } from "./supabase/server";
 import { activeCoachId } from "./client-training";
 import { fetchVideoLinks, resolveVideo, videoLinksFor } from "./exercise-video-links";
@@ -95,6 +98,8 @@ export type ExerciseHistory = {
   records: RepRecord[];
   sessions: ExerciseSessionEntry[];
   stats: ExerciseStats;
+  /** Progress / stable / possible plateau / possible regression / not enough data, with its reasons. */
+  progression: ProgressionAnalysis;
   /** True when the cap was hit, so the page can say the totals are a floor. */
   truncated: boolean;
 };
@@ -102,7 +107,11 @@ export type ExerciseHistory = {
 /** Every completed set of one exercise, grouped into sessions and summed. */
 export async function getExerciseHistory(exerciseId: string): Promise<ExerciseHistory> {
   const live = await liveUser();
-  const blank: ExerciseHistory = { sessions: [], stats: exerciseStats([]), records: [], truncated: false };
+  const calendar = await myCalendar();
+  const blank: ExerciseHistory = {
+    sessions: [], stats: exerciseStats([]), records: [], truncated: false,
+    progression: analyzeProgression([], calendar.today),
+  };
   if (!live) return blank;
   const { supabase, userId } = live;
 
@@ -118,8 +127,59 @@ export async function getExerciseHistory(exerciseId: string): Promise<ExerciseHi
     throw new Error(`Failed to load history for exercise ${exerciseId}: ${error.message}`);
   }
   const rows = (data ?? []) as unknown as AnalyticsSetJoin[];
-  const sessions = exerciseSessions(toAnalyticsSets(rows));
-  return { sessions, stats: exerciseStats(sessions), records: repRecords(sessions), truncated: rows.length >= HISTORY_POOL };
+  const sets = toAnalyticsSets(rows);
+  const sessions = exerciseSessions(sets);
+  return {
+    sessions,
+    stats: exerciseStats(sessions),
+    records: repRecords(sessions),
+    // Computed from the same rows on every read — an edited or deleted set is
+    // reflected the moment the page renders again; nothing derived is stored.
+    progression: analyzeProgression(toProgressionSessions(sets, calendar.timeZone), calendar.today),
+    truncated: rows.length >= HISTORY_POOL,
+  };
+}
+
+/** How far back the overview reads: enough for PROGRESSION_RULES' window and staleness on any lift. */
+const OVERVIEW_DAYS = 180;
+/** Rows the overview reads at most, across all its lifts. */
+const OVERVIEW_POOL = 4000;
+
+/**
+ * The progression verdict for several lifts at once — the Progress page's
+ * strength tab. One query for all of them (never one per exercise), the same
+ * select and the same mapping as the exercise page, so the verdict there and
+ * here is one computation. Returns a map by exercise id; a lift with no rows
+ * gets the "not enough data" answer like any new exercise.
+ */
+export async function getProgressionOverview(exerciseIds: readonly string[]): Promise<Map<string, ProgressionAnalysis>> {
+  const ids = [...new Set(exerciseIds)].filter(Boolean);
+  const out = new Map<string, ProgressionAnalysis>();
+  if (ids.length === 0) return out;
+  const [live, calendar] = await Promise.all([liveUser(), myCalendar()]);
+  if (!live) return out;
+  const { supabase, userId } = live;
+  const since = new Date(Date.now() - OVERVIEW_DAYS * 86_400_000).toISOString();
+  const { data, error } = await supabase
+    .from("logged_sets")
+    .select(ANALYTICS_SET_SELECT)
+    .eq("user_id", userId)
+    .in("exercise_id", ids)
+    .gte("received_at", since)
+    .not("session.completed_at", "is", null)
+    .order("received_at", { ascending: false })
+    .limit(OVERVIEW_POOL);
+  // A failed read shows no verdicts rather than "not enough data" for everything.
+  if (error) {
+    console.error(`[exercise-analytics] progression overview: ${error.message}`);
+    return out;
+  }
+  const sets = toAnalyticsSets((data ?? []) as unknown as AnalyticsSetJoin[]);
+  for (const id of ids) {
+    const mine = sets.filter((x) => x.exercise_id === id);
+    out.set(id, analyzeProgression(toProgressionSessions(mine, calendar.timeZone), calendar.today));
+  }
+  return out;
 }
 
 export type ExerciseProfile = {
