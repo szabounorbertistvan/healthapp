@@ -8,7 +8,7 @@ import type { Upgrade } from "@/lib/plan-client";
 export type PlanFeature =
   | "history" | "charts" | "prs" | "fitnessTrend" | "photoCompare" | "share"
   | "barcode" | "favorites" | "customExercises" | "ownPrograms" | "videos"
-  | "analytics" | "clientScore" | "programCopy" | "ingredientPlans";
+  | "analytics" | "clientScore" | "programCopy" | "ingredientPlans" | "progressionAdvice" | "adaptiveTargets";
 
 const LOCK = "M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5zM12 15v2";
 

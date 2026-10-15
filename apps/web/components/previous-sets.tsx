@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
-import { formatSetDuration, kgToDisplay, type PreviousWorkout, type Progression } from "@healthapp/shared";
+import { formatSetDuration, kgToDisplay, type PreviousWorkout, type Progression, type SetAdvice } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { timeAgo } from "@/lib/format";
+import { usePlan } from "@/lib/plan-client";
 import { NavIcon } from "./client-nav";
 
 /**
@@ -101,5 +102,49 @@ export function ProgressionNote({ progression }: { progression: Progression | nu
     <p className={`mt-2 text-[11.5px] font-semibold tabular-nums ${tone}`} role="status">
       {arrow} {text}
     </p>
+  );
+}
+
+/**
+ * The Premium "try this next" line under the previous sets: a load and reps
+ * worked out from the same set last time (nextSetAdvice), with the reason in
+ * plain words and a button that puts it in the boxes. The boxes themselves
+ * keep opening on last time, so ignoring this changes nothing. On a plan
+ * without it, one quiet line says where it lives.
+ */
+export function NextSetAdvice({ advice, onUse }: { advice: SetAdvice | null; onUse: (a: SetAdvice) => void }) {
+  const { t } = useI18n();
+  const u = useUnits();
+  const { e: plan, upgrade } = usePlan();
+  const m = t.clientWidgets.setLogger;
+  if (!advice) return null;
+  if (!plan.progressionAdvice) {
+    return (
+      <Link href={upgrade.href} className="mt-2 inline-flex items-center gap-1 text-[11.5px] text-ink-faint hover:text-ink-soft">
+        <NavIcon d="M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5z" className="h-3 w-3" />
+        {fill(m.adviceLocked, { plan: upgrade.label })}
+      </Link>
+    );
+  }
+  const set = advice.weight_kg > 0
+    ? `${kgToDisplay(advice.weight_kg, u.weightUnit)} ${u.weightUnit} × ${advice.reps}`
+    : `× ${advice.reps}`;
+  const why = {
+    add_weight: m.adviceAddWeight,
+    add_rep: m.adviceAddRep,
+    hold_missed: m.adviceHoldMissed,
+    hold_hard: m.adviceHoldHard,
+  }[advice.reason];
+  return (
+    <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-accent-soft/40 py-1.5 pl-2.5 pr-1.5">
+      <p className="min-w-0 text-[11.5px] leading-snug">
+        <span className="font-semibold tabular-nums text-accent-ink">{fill(m.adviceTry, { set })}</span>
+        <span className="text-ink-soft"> · {why}</span>
+      </p>
+      <button type="button" onClick={() => onUse(advice)}
+        className="shrink-0 rounded-lg bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-ink-soft hover:text-ink">
+        {m.adviceUse}
+      </button>
+    </div>
   );
 }

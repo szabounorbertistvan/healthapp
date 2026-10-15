@@ -12,9 +12,11 @@ import { getPlan, inHistory } from "@/lib/plan";
 import { UpgradeHint } from "@/components/upgrade";
 import { FoodViewTabs, NutritionTrends } from "@/components/nutrition-trends";
 import { EmptyState } from "@/components/ui";
-import { getMyNutritionEntries, getMyNutritionTrends } from "@/lib/nutrition-data";
+import { getMyAdaptiveInputs, getMyNutritionEntries, getMyNutritionTrends } from "@/lib/nutrition-data";
+import { AdaptiveTargets } from "@/components/adaptive-targets";
 import { parseFoodParams, type FoodState } from "@/lib/nutrition-params";
 import {
+  adaptiveEstimate,
   isLoggedDay,
   labelNutrients,
   mealDistribution,
@@ -74,13 +76,16 @@ export default async function FoodPage({
     );
   }
 
-  const [nutrition, planMeals, loggedDays, quick] = await Promise.all([
+  const dayBefore = shiftDays(day, -1);
+  const [nutrition, planMeals, loggedDays, quick, before] = await Promise.all([
     getMyDayNutrition(day),
     // The plan for the day being shown, not for today: browsing back to
     // Saturday must show Saturday's meals.
     getMyPlanMeals(day),
     getMyFoodDays(week[0], week[6]),
     getMyQuickFoods(),
+    // The day before, for "same as yesterday" on each empty meal.
+    getMyDayNutrition(dayBefore),
   ]);
 
   const slotLabel: Record<MealSlot, string> = {
@@ -120,6 +125,12 @@ export default async function FoodPage({
               entries={nutrition.entries.filter((e) => e.slot === slot)}
               planned={planMeals.find((m) => m.slot === slot)?.foods ?? null}
               quick={quick}
+              previousDay={(() => {
+                const prior = before.entries.filter((e) => e.slot === slot);
+                return prior.length > 0
+                  ? { day: dayBefore, items: prior.length, kcal: prior.reduce((sum, e) => sum + e.macros.kcal, 0) }
+                  : null;
+              })()}
             />
           ))}
         </div>
@@ -136,7 +147,7 @@ export default async function FoodPage({
  * the target, today's totals and the plan are the diary's own reads, so the
  * two views can never disagree about them.
  *
- * Not gated: what becomes Premium is decided with billing, separately.
+ * Not gated, except the adaptive-targets card above it (Premium).
  */
 async function TrendsView({ state }: { state: FoodState }) {
   const { t } = await getI18n();
@@ -145,11 +156,12 @@ async function TrendsView({ state }: { state: FoodState }) {
   // read alongside the rest. The server's day stands in for the person's here
   // only to start the read; one day of slack covers any zone, and the windows
   // (on the person's calendar) decide what counts.
-  const [trends, nutrition, planMeals, detail] = await Promise.all([
+  const [trends, nutrition, planMeals, detail, adaptive] = await Promise.all([
     getMyNutritionTrends(state.range),
     getMyDayNutrition(),
     getMyPlanMeals(),
     getMyNutritionEntries(state.range === null ? null : shiftDays(isoDay(), -(2 * state.range))),
+    getMyAdaptiveInputs(),
   ]);
   if (!trends) {
     return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
@@ -175,6 +187,13 @@ async function TrendsView({ state }: { state: FoodState }) {
       <h1 className="sr-only">{t.clientApp.nutritionTrends.trends}</h1>
       <div className="mb-4">
         <FoodViewTabs view="trends" />
+      </div>
+      <div className="mb-4">
+        <AdaptiveTargets
+          estimate={adaptive ? adaptiveEstimate(adaptive) : null}
+          target={nutrition.target}
+          planOwner={nutrition.plan_owner}
+        />
       </div>
       <NutritionTrends
         state={state}

@@ -27,6 +27,15 @@ describe("entitlementsFor", () => {
     expect(entitlementsFor("premium").photoCompare).toBe(true);
   });
 
+  test("puts next-set suggestions and adaptive targets behind Premium", () => {
+    expect(entitlementsFor("free").progressionAdvice).toBe(false);
+    expect(entitlementsFor("free").adaptiveTargets).toBe(false);
+    expect(entitlementsFor("coach_free").progressionAdvice).toBe(false);
+    expect(entitlementsFor("premium").progressionAdvice).toBe(true);
+    expect(entitlementsFor("premium").adaptiveTargets).toBe(true);
+    expect(entitlementsFor("coach_pro").adaptiveTargets).toBe(true);
+  });
+
   test("keeps a Starter coach's own training on the free set", () => {
     const starter = entitlementsFor("coach_free");
     expect(starter.historyDays).toBe(ENTITLEMENTS.free.historyDays);

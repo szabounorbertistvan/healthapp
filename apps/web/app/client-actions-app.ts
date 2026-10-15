@@ -8,6 +8,7 @@
 import type { MealSlot } from "@/lib/types";
 import { isoDay } from "@/lib/dates";
 import { myToday } from "@/lib/my-today";
+import { validDay } from "@/lib/week";
 import { revalidatePath } from "next/cache";
 import {
   estimated1RM, gramsFromSplit, isPersonalRecord, isValidPortionGrams, MACRO_KEYS, MAX_PORTION_GRAMS, MAX_SET_REPS, MAX_SET_SECONDS, MAX_SET_WEIGHT_KG, portionMacros,
@@ -425,6 +426,54 @@ export async function logPlannedMeal(slot: MealSlot, day?: string): Promise<Acti
       carbs_g: f.macros.carbs,
       fat_g: f.macros.fat,
       client_generated_id: uuidFrom(`planned:${userId}:${date}:${slot}:${i}`),
+      client_ts: new Date().toISOString(),
+    })),
+    { onConflict: "client_generated_id", ignoreDuplicates: true },
+  );
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/food");
+  revalidatePath("/today");
+  return { ok: true };
+}
+
+/**
+ * "Same as yesterday" for one meal: every food logged in `slot` on `fromDay`,
+ * logged again on `toDay` with the same grams and the same macro snapshot.
+ * The rows are re-read on the server (RLS: only the caller's own), never
+ * posted from the browser, and each copy's client_generated_id is derived
+ * from the source row and the target day, so a double tap is a no-op rather
+ * than a second breakfast.
+ */
+export async function copyMealFromDay(slot: MealSlot, fromDay: string, toDay: string): Promise<ActionResult> {
+  const from = validDay(fromDay);
+  const to = validDay(toDay);
+  if (!from || !to || from === to) return { ok: false, errorCode: "INVALID_INPUT" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const { data, error: readError } = await supabase
+    .from("food_logs")
+    .select("id, food_id, food_name, grams, kcal, protein_g, carbs_g, fat_g")
+    .eq("user_id", userId)
+    .eq("date", from)
+    .eq("slot", slot);
+  if (readError) return { ok: false, message: readError.message };
+  type Row = { id: string; food_id: string | null; food_name: string; grams: number; kcal: number; protein_g: number; carbs_g: number; fat_g: number };
+  const rows = (data ?? []) as Row[];
+  if (rows.length === 0) return { ok: false, message: "Nothing logged in that meal" };
+  const { error } = await supabase.from("food_logs").upsert(
+    rows.map((r) => ({
+      user_id: userId,
+      date: to,
+      slot,
+      food_id: r.food_id,
+      food_name: r.food_name,
+      grams: r.grams,
+      kcal: r.kcal,
+      protein_g: r.protein_g,
+      carbs_g: r.carbs_g,
+      fat_g: r.fat_g,
+      client_generated_id: uuidFrom(`copy:${userId}:${r.id}:${to}`),
       client_ts: new Date().toISOString(),
     })),
     { onConflict: "client_generated_id", ignoreDuplicates: true },

@@ -9,7 +9,7 @@
 // (getMyDayNutrition, getMyPlanMeals) — one source for "the target".
 import "server-only";
 import { cache } from "react";
-import { shiftDays, type NutritionDay, type NutritionEntry, type ProgressRange } from "@healthapp/shared";
+import { ADAPTIVE_WINDOW_DAYS, shiftDays, type NutritionDay, type NutritionEntry, type ProgressRange } from "@healthapp/shared";
 import { isoDay } from "./dates";
 import { myToday } from "./my-today";
 import {
@@ -104,4 +104,32 @@ export const getMyNutritionEntries = cache(async (from: string | null): Promise<
   // completeness starts the day after it.
   const oldest = rows.at(-1)?.date;
   return { entries: toNutritionEntries(rows), completeFrom: oldest ? shiftDays(oldest, 1) : null };
+});
+
+/**
+ * What the adaptive-target estimate reads (packages/shared/adaptive-targets):
+ * the diary's day totals and the weigh-ins of the last four weeks, in one
+ * wave. A day of slack on the server's calendar covers any zone; the estimate
+ * itself windows on the person's own `today`.
+ */
+export const getMyAdaptiveInputs = cache(async (): Promise<{
+  today: string;
+  days: { day: string; kcal: number }[];
+  weights: { day: string; weight_kg: number }[];
+} | null> => {
+  const live = await liveUser();
+  if (!live) return null;
+  const { supabase, userId } = live;
+  const from = shiftDays(isoDay(), -(ADAPTIVE_WINDOW_DAYS + 1));
+  const [{ data: totals, error }, { data: weighIns }, today] = await Promise.all([
+    supabase.rpc("food_daily_totals", { p_from: from }),
+    supabase.from("measurements").select("date, weight_kg").eq("user_id", userId).gte("date", from).not("weight_kg", "is", null),
+    myToday(),
+  ]);
+  if (error) return null;
+  return {
+    today,
+    days: toNutritionDays((totals ?? []) as DailyTotalRow[]).map((d) => ({ day: d.day, kcal: d.kcal })),
+    weights: ((weighIns ?? []) as { date: string; weight_kg: number }[]).map((w) => ({ day: w.date, weight_kg: Number(w.weight_kg) })),
+  };
 });

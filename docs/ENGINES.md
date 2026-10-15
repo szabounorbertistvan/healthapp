@@ -1331,6 +1331,21 @@ assertions, run live inside a rolled-back transaction before applying).
   program builder: `copyProgramToClient`), ingredient-based meal plans
   (`addPlanFood`). Headline counts (sessions, volume, PRs) always count
   everything, so the coach's and client's numbers never disagree.
+- *Premium perks added 2026-10-14* (client-side gates, no SQL — they only read
+  the person's own rows): **next-set suggestion** (`progressionAdvice`) — the
+  logger's "Try 62.5 kg × 8" line under the previous sets, double progression
+  from the same set number last time (`packages/shared/src/progression-advice.ts`:
+  top of the coach's rep range without a max effort → +2.5 kg / +1 kg under
+  20 kg / +5 lb and back to the bottom; inside the range → +1 rep; a miss or an
+  RPE 10 / RIR 0 set → hold), a "Use" button fills the boxes, the boxes still
+  open on last time; **adaptive targets** (`adaptiveTargets`) — the card on
+  `/food?view=trends`: maintenance = mean intake − weight slope × 7,700 over 28
+  days (`adaptive-targets.ts`; ≥ 10 logged days, ≥ 4 weigh-ins over ≥ 10 days,
+  half-logged days dropped, never under 1,200 kcal or a deficit over 25%), a
+  target per goal, "Set" writes the person's own targets through
+  `setMyNutritionTargets` keeping the split; read by `getMyAdaptiveInputs`.
+  Free on every plan, same day: **"same as the day before"** on an empty meal
+  (`copyMealFromDay`, derived ids so a double tap is a no-op).
 - To preview: `update public.app_flags set preview_users = array['<uuid>']::uuid[] where key = 'paywall';`
   — note the seeded test accounts are all on trials or manual grants, so a
   gate only shows once their `subscriptions` row is free and the trial is past.

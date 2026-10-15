@@ -9,7 +9,7 @@ import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
 import { FoodEntry } from "./food-entry";
 import { FoodLogger } from "./food-logger";
-import { logPlannedMeal } from "@/app/client-actions-app";
+import { copyMealFromDay, logPlannedMeal } from "@/app/client-actions-app";
 import { dishfinderIngredientsUrl, dishfinderMacrosUrl } from "@/lib/dishfinder";
 import { DishFinderMark } from "./dishfinder-mark";
 import { useOnboarding } from "./onboarding/provider";
@@ -35,6 +35,7 @@ export function MealCard({
   entries,
   planned,
   quick,
+  previousDay = null,
 }: {
   slot: MealSlot;
   label: string;
@@ -43,12 +44,15 @@ export function MealCard({
   planned: { name: string; grams: number; macros: Macros; dishfinder_id?: number | null }[] | null;
   /** Starred and recently logged foods, shared by every meal on the page. */
   quick: QuickFoods;
+  /** The same meal the day before, when anything was logged in it — offered as "same as yesterday". */
+  previousDay?: { day: string; items: number; kcal: number } | null;
 }) {
   const { t } = useI18n();
   const f = t.clientApp.food;
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [logging, startLogging] = useTransition();
+  const [copying, startCopying] = useTransition();
   const onboarding = useOnboarding();
   // Opening any recipe link means the recipes card (onboarding/recipes-card.tsx) has nothing left to teach.
   const recipesFound = () => {
@@ -128,6 +132,24 @@ export function MealCard({
       ) : (
         <p className="mt-2 text-[13px] text-ink-faint">{f.noFoodAdded}</p>
       )}
+      {/* Offered only while the slot is empty, for the same reason as
+          "ate as planned": once something is here, a copy would double it. */}
+      {entries.length === 0 && previousDay && previousDay.items > 0 ? (
+        <button
+          type="button"
+          disabled={copying}
+          onClick={() =>
+            startCopying(async () => {
+              const result = await copyMealFromDay(slot, previousDay.day, day);
+              if (result.ok) router.refresh();
+            })
+          }
+          className="mt-2.5 inline-flex h-9 items-center gap-1.5 rounded-full bg-bg px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
+        >
+          <NavIcon d="M8 8h11v11H8zM5 16V5h11" className="h-3.5 w-3.5" />
+          {copying ? f.copyingYesterday : fill(f.sameAsYesterday, { n: previousDay.items, kcal: Math.round(previousDay.kcal) })}
+        </button>
+      ) : null}
       {entries.length > 0 ? dishfinderLinks : null}
 
       {planned && planned.length > 0 ? (

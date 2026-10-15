@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  circuitSegments, displayToKg, formatSetDuration, kgToDisplay, MAX_SET_REPS, MAX_SET_SECONDS, MAX_SET_WEIGHT_KG, parseDecimal, parseWholeNumber, prefillFor,
+  circuitSegments, displayToKg, formatSetDuration, kgToDisplay, MAX_SET_REPS, MAX_SET_SECONDS, MAX_SET_WEIGHT_KG, parseDecimal, parseWholeNumber, prefillFor, nextSetAdvice,
   previousFor, previousSetFor, progressionVs, resolveRestSeconds, restAfterLoggedSet, validateSetEdit,
   type ExerciseVideoSource, type PreviousWorkout,
 } from "@healthapp/shared";
@@ -18,7 +18,7 @@ import { ExerciseVideo } from "./exercise-video";
 import { RestDurationPicker } from "./rest-settings";
 import { useRestTimer } from "@/lib/rest-timer/client";
 import { useUnits } from "@/lib/units/client";
-import { PreviousSets, ProgressionNote } from "./previous-sets";
+import { NextSetAdvice, PreviousSets, ProgressionNote } from "./previous-sets";
 import type { ClientWorkoutDay, LoggedSetRow } from "@/lib/types";
 
 /**
@@ -505,6 +505,12 @@ function ExerciseBlock({
         </div>
       ) : null}
       <PreviousSets previous={previous} exerciseId={exerciseId} />
+      {!timed && !complete ? (
+        <NextSetAdvice
+          advice={nextSetAdvice({ setNumber: done + 1, previous, targetReps, unit: u.weightUnit })}
+          onUse={(a) => { setWeight(String(kgToDisplay(a.weight_kg, u.weightUnit))); setReps(String(a.reps)); }}
+        />
+      ) : null}
       {exerciseId ? (
         <div className="mt-2">
           <ExerciseVideo exerciseId={exerciseId} videoUrl={videoUrl} source={videoSource} collapsed />

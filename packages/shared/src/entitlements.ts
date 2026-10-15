@@ -35,9 +35,13 @@ export type Entitlements = {
   maxCustomExercises: number | null;
   /** Setting your own YouTube demo on an exercise. Watching your coach's is always free. */
   customExerciseVideos: boolean;
+  /** The logger's "try this next" line: double progression from last time (progression-advice.ts). */
+  progressionAdvice: boolean;
   // ---- nutrition ----
   barcodeScansPerDay: number | null;
   maxFavoriteFoods: number | null;
+  /** Calorie targets re-estimated from the weight trend and the diary (adaptive-targets.ts). */
+  adaptiveTargets: boolean;
   // ---- coaching ----
   maxClients: number;
   /** Adherence signal, reason and % on the dashboard; a client's fitness score on their page. */
@@ -56,8 +60,10 @@ const CLIENT_FREE = {
   maxOwnPrograms: 1,
   maxCustomExercises: 3,
   customExerciseVideos: false,
+  progressionAdvice: false,
   barcodeScansPerDay: 5,
   maxFavoriteFoods: 10,
+  adaptiveTargets: false,
 } as const;
 
 const CLIENT_PREMIUM = {
@@ -68,8 +74,10 @@ const CLIENT_PREMIUM = {
   maxOwnPrograms: null,
   maxCustomExercises: null,
   customExerciseVideos: true,
+  progressionAdvice: true,
   barcodeScansPerDay: null,
   maxFavoriteFoods: null,
+  adaptiveTargets: true,
 } as const;
 
 const NO_COACHING = { maxClients: 0, advancedAnalytics: false, programCopy: false, ingredientPlans: false } as const;

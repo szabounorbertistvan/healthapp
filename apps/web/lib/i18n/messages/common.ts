@@ -1085,6 +1085,14 @@ const en = {
         title: "Meals with foods are {plan}",
         hint: "Your plan sets the four daily targets. Filling each meal with real foods and grams comes with {plan}.",
       },
+      progressionAdvice: {
+        title: "Next-set suggestions are {plan}",
+        hint: "Last time's sets stay right here. A suggested weight and reps for this set, worked out from them, come with {plan}.",
+      },
+      adaptiveTargets: {
+        title: "Adaptive targets are {plan}",
+        hint: "Your trends stay free. Working out what you really burn from your weight and diary, and a target to match, comes with {plan}.",
+      },
     },
     lists: {
       free: ["Training, nutrition and habit logging", "Your coach's programs and meal plans", "The last 30 days of history", "5 barcode scans a day"],
@@ -1094,6 +1102,8 @@ const en = {
         "Progress photos side by side",
         "Unlimited barcode scans, favourites, own programs and exercises",
         "Your own exercise demo videos and a customisable share card",
+        "What to lift next set, from what you did last time",
+        "Calorie targets that adjust to your real weight trend",
       ],
       coachFree: ["Up to 3 clients", "Program and meal-target builders", "Messages and check-in review", "10 custom exercises"],
       coachPro: [
@@ -2202,6 +2212,14 @@ const ro: typeof en = {
         title: "Mesele cu alimente sunt {plan}",
         hint: "Planul tău setează cele patru ținte zilnice. Completarea fiecărei mese cu alimente reale și grame vine cu {plan}.",
       },
+      progressionAdvice: {
+        title: "Sugestiile pentru setul următor sunt {plan}",
+        hint: "Seturile de data trecută rămân aici. O greutate și un număr de repetări sugerate pentru setul acesta, calculate din ele, vin cu {plan}.",
+      },
+      adaptiveTargets: {
+        title: "Țintele adaptive sunt {plan}",
+        hint: "Evoluția ta rămâne gratuită. Calculul a cât consumi de fapt, din greutate și jurnal, și o țintă pe măsură vin cu {plan}.",
+      },
     },
     lists: {
       free: ["Logare antrenamente, nutriție și obiceiuri", "Programele și planurile antrenorului tău", "Istoricul ultimelor 30 de zile", "5 scanări de cod de bare pe zi"],
@@ -2211,6 +2229,8 @@ const ro: typeof en = {
         "Pozele de progres una lângă alta",
         "Scanări, favorite, programe și exerciții proprii nelimitate",
         "Videoclipuri demonstrative proprii și card de share personalizabil",
+        "Ce să ridici la setul următor, pe baza antrenamentului trecut",
+        "Ținte de calorii care se ajustează după evoluția reală a greutății",
       ],
       coachFree: ["Până la 3 clienți", "Builder de programe și ținte de macro", "Mesaje și review de check-in", "10 exerciții proprii"],
       coachPro: [
