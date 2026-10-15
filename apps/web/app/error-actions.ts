@@ -28,6 +28,11 @@ export async function reportAppError(input: {
   stack?: string | null;
   level?: "error" | "warn";
 }): Promise<void> {
+  // Development runs against the live project, so a dev server's errors
+  // (half-edited code, a migration not pushed yet) would land in production's
+  // app_errors beside real ones — 24 of the 25 groups there from 26.09 to
+  // 13.10 came from localhost. The dev overlay and terminal already show them.
+  if (process.env.NODE_ENV === "development") return;
   const message = input.message?.trim();
   if (!message) return;
   try {
