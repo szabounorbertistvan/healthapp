@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/data";
 import { FOOD_TRANSLATION_PAGE, getFoodsForTranslation } from "@/lib/food-admin-data";
 import { Card } from "@/components/ui";
-import { NavIcon } from "@/components/client-nav";
 import { FoodTranslateRow } from "@/components/food-translate-row";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";

@@ -35,7 +35,6 @@ import {
   type ChallengePostPayload,
   type MentionRef,
   type PostPayload,
-  type PostPhotoFields,
   type PostType,
   type PostVisibility,
   type PrPostPayload,

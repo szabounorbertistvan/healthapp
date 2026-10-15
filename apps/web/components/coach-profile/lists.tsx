@@ -7,7 +7,7 @@ import {
   type DurationUnit, type PriceUnit, type ServiceDelivery, type ServiceKind,
 } from "@/lib/coach-profile";
 import {
-  CURRENCIES, PRICING_MODELS, centsToPrice, coachingSinceError, credentialLabel, formatPrice, moveItem, parseDuration, priceToCents,
+  CURRENCIES, PRICING_MODELS, centsToPrice, coachingSinceError, credentialLabel, moveItem, parseDuration, priceToCents,
   pricingOf, serviceErrors, takesPrice, unitsFor, type PricingModel, type ServiceErrors,
 } from "@/lib/coach-onboarding";
 import { BUTTON, FIELD_ERROR, FIELD_INSET, HINT, LABEL, SMALL_BUTTON, SMALL_BUTTON_INSET } from "@/lib/form-classes";

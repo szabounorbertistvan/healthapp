@@ -22,7 +22,7 @@ import type { CommentPage, FeedPost, KudosGiver, ShareableSession } from "@/lib/
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
 import { SOCIAL } from "@/lib/social-ui";
-import { captionFolds, doubleTapGives, giveNeedsUndo, isDoubleTap, postAge } from "@/lib/post-card";
+import { postAge } from "@/lib/post-card";
 import { canRepost, canWebShare, postShareUrl, saveReducer, shareTargets } from "@/lib/post-share";
 import { BadgeGlyph, MentionSuggestions, MentionText, useMentionSuggest } from "./social-v2";
 import { CommentPreview } from "./comment-preview";
@@ -909,8 +909,6 @@ function useSave(post: FeedPost) {
   }
   return { ...state, toggle };
 }
-
-type SaveApi = ReturnType<typeof useSave>;
 
 // ---------- share ----------
 

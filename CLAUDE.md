@@ -43,7 +43,8 @@ npm run web
 |---|---|
 | `npm run web` | Next.js dev server on :3000 (`.claude/launch.json` runs this — use the preview tools, not Bash) |
 | `npm run typecheck` | `tsc --noEmit` across the workspace |
-| `npm test` | Vitest — `packages/**/src/**/*.test.ts` (domain math), the pure helpers in `apps/web/lib/**/*.test.ts` and `supabase/functions/_shared/**/*.test.ts`. No React unit tests exist. |
+| `npm test` | Vitest — `packages/**/src/**/*.test.ts` (domain math), the pure helpers in `apps/web/lib/**/*.test.ts` and `supabase/functions/_shared/**/*.test.ts` in node, plus React component tests `apps/web/**/*.test.tsx` in jsdom (Testing Library; render through `renderWithApp` in `apps/web/test/render.tsx`, mock server actions and `next/navigation` with `vi.mock`). |
+| `npm run lint` | ESLint 9 over apps/web (`apps/web/eslint.config.mjs`: next/core-web-vitals + next/typescript), `--max-warnings=0` — a warning fails CI. `_`-prefixed names are the deliberately-unused marker. |
 | `npm run e2e` | Playwright (`e2e/`, `playwright.config.ts`) against the dev server on :3000 and the **live** project, signed in as the seeded test accounts. Specs are read-only or undo their own write. One worker against the dev server: Turbopack 500s under concurrent loads (a production build does not — `--workers=3` passes there). `E2E_BASE_URL=http://localhost:3100` runs it against `next start` (launch entry `web-prod`), which `e2e/offline.spec.ts` needs. Not in CI yet. One-time `npx playwright install chromium`. |
 | `npm run build` | Turbo build |
 | `npm run db:start` / `db:reset` | Local Supabase stack |
@@ -53,7 +54,7 @@ npm run web
 | `npm run db:test:api` | the write-scope rules (20261122100000) through a real PostgREST over the same offline Postgres — refusals, `count: 0` on filtered writes, forged ids. Downloads PostgREST once (pinned); `PGRST_BIN` elsewhere than Linux x64. [scripts/pgtest](scripts/pgtest/README.md). |
 | `npm run e2e:local` | the **local** E2E suite (`e2e-local/`, `playwright.local.config.ts`): starts a throwaway Supabase without Docker (`scripts/pgtest/stack.mjs`: Postgres + GoTrue + PostgREST at the CLI's versions), builds the app against it on :3210 (never 3100 — `web-prod` is live; a busy port fails the run, a network fence aborts any browser request leaving the machine), signs in seeded `.test` accounts (`supabase/seed/e2e.sql`) and runs flows that **write** — refuses any non-local URL. Kept apart from `npm run e2e` (live, read-only). Manual CI workflow `e2e-local.yml`. [e2e-local/README.md](e2e-local/README.md). |
 
-CI (`.github/workflows/ci.yml`) runs typecheck + test + build, a `deno check` over
+CI (`.github/workflows/ci.yml`) runs typecheck + lint + test + build, a `deno check` over
 `supabase/functions/` (the edge functions are Deno modules that `tsc` never sees —
 run it locally with `npx -y deno@2 check --node-modules-dir=none supabase/functions/`,
 then `git checkout -- deno.lock`. **Never `--node-modules-dir=auto` here**: CI can afford

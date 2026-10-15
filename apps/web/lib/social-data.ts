@@ -5,8 +5,6 @@ import "server-only";
 import {
   FEED_PAGE_SIZE,
   KUDOS_PAGE_SIZE,
-  canSeePost,
-  feedPage,
   type PostPayload,
 } from "@healthapp/shared";
 import { currentActorId } from "./actor";

@@ -1,7 +1,6 @@
 "use server";
-import { exerciseSearchTerms, filterExercises, isPlanLimitError, PLAN_LIMIT_REACHED, youtubeVideoId, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
+import { exerciseSearchTerms, isPlanLimitError, PLAN_LIMIT_REACHED, youtubeVideoId, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
-import { exerciseLibrary } from "@/lib/exercise-library";
 import { notSignedIn, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
 import { mutated } from "@/lib/supabase/mutate";

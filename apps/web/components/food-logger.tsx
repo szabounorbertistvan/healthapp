@@ -98,7 +98,7 @@ export function FoodLogger({
       });
     }, 200);
     return () => clearTimeout(timer);
-  }, [q]);
+  }, [q, t.common.actions.unreachable]);
 
   // parseDecimal, not parseFloat: "60,5" is how a Romanian keyboard types 60.5,
   // and parseFloat stopped at the comma and logged 60.

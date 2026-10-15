@@ -1,6 +1,7 @@
 "use client";
 import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { canShareProgram, copyName, TRAINING_STYLES, type RoutineCard } from "@healthapp/shared";
 import { copyRoutine, setRoutineFlags, shareRoutine, updateRoutineDetails } from "@/app/routine-actions";
@@ -67,12 +68,12 @@ export function RoutineActions({
     <div className="mt-4">
       <div className="flex flex-wrap gap-2">
         {card.is_mine && card.days > 0 ? (
-          <a
+          <Link
             href="/workout"
             className="inline-flex h-11 items-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90"
           >
             {r.start}
-          </a>
+          </Link>
         ) : null}
 
         {canCopy ? (

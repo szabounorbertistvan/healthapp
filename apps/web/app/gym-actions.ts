@@ -1,7 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { liveUser } from "@/lib/supabase/server";
-import { getPlan } from "@/lib/plan";
 import { searchGymsRpc, type GymHit } from "@/lib/gym-data";
 import { GYM_ERROR_CODES, type GymErrorCode } from "@/lib/i18n/messages/gyms";
 

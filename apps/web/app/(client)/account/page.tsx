@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getProfile } from "@/lib/data";
 import { getI18n } from "@/lib/i18n/server";
 import { PageTour } from "@/components/onboarding/tour";

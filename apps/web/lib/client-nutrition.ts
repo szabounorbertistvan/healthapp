@@ -1,6 +1,5 @@
 // Client nutrition reads: today's log, the week strip, the published plan.
 import { myToday } from "./my-today";
-import { portionsFor } from "./food-portions";
 import "server-only";
 import {
   isoWeekday,

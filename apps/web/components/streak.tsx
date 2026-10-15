@@ -139,12 +139,11 @@ export function StreakCalendar({ calendar }: { calendar: CalendarDay[][] }) {
             <span key={i} className="flex h-4 items-center">{i % 2 === 0 ? w : ""}</span>
           ))}
         </div>
-        <div className="grid flex-1 grid-flow-col grid-rows-7 gap-1" role="grid" aria-label={x.s.calendarTitle}>
+        <div className="grid flex-1 grid-flow-col grid-rows-7 gap-1" role="group" aria-label={x.s.calendarTitle}>
           {calendar.flat().map((d) => (
             <button
               key={d.day}
               type="button"
-              role="gridcell"
               disabled={d.future}
               title={d.future ? undefined : label(d)}
               aria-label={d.future ? undefined : label(d)}

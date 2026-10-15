@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { PLAN_PRICES, TRIAL_DAYS } from "@healthapp/shared";
 import { getProfile } from "@/lib/data";
 import { APP_NAME, APP_TAGLINE, CONTACT_EMAIL } from "@/lib/brand";
 import { getI18n } from "@/lib/i18n/server";

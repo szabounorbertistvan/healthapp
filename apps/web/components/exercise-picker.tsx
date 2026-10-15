@@ -83,7 +83,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
       });
     }, 200);
     return () => clearTimeout(timer);
-  }, [q, muscle, gear, page]);
+  }, [q, muscle, gear, page, t.common.actions.unreachable]);
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const first = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;

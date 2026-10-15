@@ -10,7 +10,6 @@ import { RoutineCardView } from "@/components/routine-card";
 import { ModerationMenuButton } from "@/components/moderation";
 import { NavIcon } from "@/components/client-nav";
 import { getI18n } from "@/lib/i18n/server";
-import { SOCIAL } from "@/lib/social-ui";
 import type { ProfileBadge } from "@/lib/types";
 
 const BACK = "m15 6-6 6 6 6";

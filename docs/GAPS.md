@@ -192,8 +192,7 @@ migration before deploying this code**. In the listing, removing the last filter
 emptying the search all stay in the listing (`?all=1`) instead of jumping to the home. Not
 filterable (no structured data): languages are stored (`coach_languages`) but have no filter
 yet; there are no ratings/reviews, no price-per-session normalisation across units, no
-distance (gyms have lat/lng, coaches do not), no availability calendar. Lint: the repo has no
-ESLint config (`next lint` only offers to create one).
+distance (gyms have lat/lng, coaches do not), no availability calendar. (Lint: since 2026-10-15 `apps/web/eslint.config.mjs` + `npm run lint`, gated in CI.)
 
 Public coach page v2 (2026-10-05, migration `20261028100000_coach_public_hardening.sql`, **not
 pushed live** at the time of writing). Privacy: `coach_public_programs()` (anonymous) returned

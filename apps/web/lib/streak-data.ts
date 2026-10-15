@@ -8,7 +8,6 @@ import "server-only";
 import { cache } from "react";
 import {
   DEFAULT_TIMEZONE,
-  getActiveWorkoutDays,
   milestonesReached,
   nextMilestone,
   streakCalendar,
