@@ -1,0 +1,9 @@
+{
+  // What `next build` type-checks: the app, without its tests. Test files
+  // import vitest / Testing Library, which the deploy does not need (and on
+  // Vercel cannot always resolve — d13225d failed there on test/render.tsx).
+  // `npm run typecheck` still checks everything through tsconfig.json.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "plugins": [{ "name": "next" }] },
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx", "test/**"]
+}
