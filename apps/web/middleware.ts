@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { safeNext } from "@/lib/safe-next";
 import { userIdFromClient } from "@/lib/supabase/claims";
+import { isLocale, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE } from "@/lib/i18n/config";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
@@ -19,6 +20,12 @@ export async function middleware(request: NextRequest) {
   if (!url || !anonKey) {
     return new NextResponse("Supabase is not configured.", { status: 500 });
   }
+
+  // ?lang=ro|en from a shared link (DishFinder's promo sends its own language):
+  // the request cookie makes this render use it, the response cookie keeps it.
+  const urlLang = request.nextUrl.searchParams.get("lang");
+  const langFromUrl = isLocale(urlLang) ? urlLang : null;
+  if (langFromUrl) request.cookies.set(LOCALE_COOKIE, langFromUrl);
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
@@ -50,6 +57,9 @@ export async function middleware(request: NextRequest) {
     console.error("[middleware] getClaims failed, falling back to getUser:", error);
   })) !== null;
   const path = request.nextUrl.pathname;
+  if (langFromUrl) {
+    response.cookies.set(LOCALE_COOKIE, langFromUrl, { path: "/", maxAge: LOCALE_COOKIE_MAX_AGE, sameSite: "lax" });
+  }
 
   // The check above may have refreshed an expired session, and the refreshed
   // tokens live on `response`. A redirect is a different response object, so
