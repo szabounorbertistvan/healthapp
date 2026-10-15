@@ -32,7 +32,18 @@ export async function getMyHabits(): Promise<ClientHabitRow[]> {
 export async function getMyMeasurements(limit = 12): Promise<ClientMeasurementRow[]> {
   const live = await liveUser();
   if (!live) return [];
-  const { supabase, userId } = live;
+  return measurementsFor(live.userId, limit);
+}
+
+/**
+ * One person's newest measurements, oldest first: the caller's own, or a
+ * client's for their coach — RLS (measurements_coach_read) decides, and an
+ * unrelated caller gets an empty list.
+ */
+export async function measurementsFor(userId: string, limit = 12): Promise<ClientMeasurementRow[]> {
+  const live = await liveUser();
+  if (!live) return [];
+  const { supabase } = live;
   // Waist is not a column: circumferences is a jsonb bag of {waist, chest, ...}
   // in cm, so the app reads one key out of it rather than a named field.
   const { data } = await supabase

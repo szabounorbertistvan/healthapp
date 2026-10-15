@@ -16,6 +16,33 @@ import type { ClientDayNutrition, MealSlot, QuickFood, QuickFoods } from "./type
 
 const ZERO: Macros = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
 
+/**
+ * The diary's daily target for one person: their published plan's numbers
+ * (pickProgram — the coach's plan wins while they have a coach), ZERO without
+ * one. The caller's own, or a client's for their coach, who reads only the
+ * plans they wrote (nplans_coach_read) — which is the plan pickProgram picks
+ * while the coaching is active.
+ */
+export async function nutritionTargetFor(userId: string): Promise<Macros> {
+  const live = await liveUser();
+  if (!live) return ZERO;
+  const [{ data: plans }, coachId] = await Promise.all([
+    live.supabase
+      .from("nutrition_plans")
+      .select("id, name, kcal_target, protein_target_g, carbs_target_g, fat_target_g, coach_id, updated_at")
+      .eq("client_id", userId)
+      .eq("status", "published"),
+    activeCoachId(userId),
+  ]);
+  const plan = pickProgram(
+    (plans ?? []) as unknown as (SelectableProgram & Record<string, unknown>)[],
+    coachId !== null,
+  ) as { kcal_target: number; protein_target_g: number; carbs_target_g: number; fat_target_g: number } | null;
+  return plan
+    ? { kcal: plan.kcal_target, protein: plan.protein_target_g, carbs: plan.carbs_target_g, fat: plan.fat_target_g }
+    : ZERO;
+}
+
 /** One day of the diary; without a day, today on the person's own calendar (lib/my-today). */
 export async function getMyDayNutrition(requested?: string): Promise<ClientDayNutrition> {
   const day = requested ?? (await myToday());

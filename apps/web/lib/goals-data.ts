@@ -1,17 +1,19 @@
-// The Goal dashboard's read: the signed-in person's goals and, for each, its
-// real progress — computed now from the rows the Progress dashboard already
-// reads, never stored.
+// The Goal dashboard's read: one person's goals and, for each, its real
+// progress — computed now from the rows the Progress dashboard already reads,
+// never stored.
 //
-//   body weight / circumference   measurements (getMyMeasurements)
-//   lift                          completed sessions' sets (getMyProgressTraining — the
+//   body weight / circumference   measurements (measurementsFor)
+//   lift                          completed sessions' sets (progressTrainingFor — the
 //                                 strength tab's own read, all time)
 //   workouts a week / consistency the same completed sessions, on the person's calendar
-//   calories on target / protein  food_daily_totals (getMyNutritionTrends) against the
-//                                 diary's own target (getMyDayNutrition)
+//   calories on target / protein  day totals (nutritionTrendsFor) against the
+//                                 diary's own target (nutritionTargetFor)
 //
-// Everything answers for the caller only: the goals select is filtered to
-// their user_id and RLS (goals_owner) answers it anyway; every other read is
-// an existing "my …" reader. Nothing here writes.
+// Whose: the signed-in person's own (getMyGoalDashboard), or a client's for
+// their coach (getClientGoalDashboard). Every read is filtered by that user id
+// and RLS answers it — goals_owner / goals_coach_read and the matching policies
+// on the source tables; the coach's day totals come through
+// client_food_daily_totals(). An unrelated caller gets no rows. Nothing here writes.
 import "server-only";
 import {
   consistencySeries,
@@ -32,11 +34,14 @@ import {
   type GoalSeries,
   type GoalStatus,
 } from "@healthapp/shared";
-import { getMyMeasurements, getMyPrs } from "./client-data";
-import { getMyDayNutrition } from "./client-nutrition";
-import { getMyNutritionTrends } from "./nutrition-data";
-import { getMyProgressTraining } from "./progress-data";
+import { getMyPrs } from "./client-data";
+import { nutritionTargetFor } from "./client-nutrition";
+import { measurementsFor } from "./client-progress";
+import { myCalendar, userCalendar } from "./my-today";
+import { nutritionTrendsFor } from "./nutrition-data";
+import { progressTrainingFor } from "./progress-data";
 import { liveUser } from "./supabase/server";
+import type { Calendar } from "./week-activity";
 
 export type GoalView = {
   id: string;
@@ -112,14 +117,33 @@ function asCurrent(s: GoalSeries): GoalCurrent {
   return { value: s.current?.value ?? null, missing: s.missing };
 }
 
+/** The signed-in person's own dashboard. */
 export async function getMyGoalDashboard(): Promise<GoalDashboard | null> {
   const live = await liveUser();
   if (!live) return null;
-  const { supabase, userId } = live;
+  return goalDashboardFor(live.userId, await myCalendar());
+}
+
+/**
+ * A client's dashboard as their coach sees it, on the client's own calendar.
+ * The id comes from the URL and nothing here trusts it: RLS answers every
+ * read, and the page renders it only for a client on the coach's roster.
+ */
+export async function getClientGoalDashboard(clientId: string): Promise<GoalDashboard | null> {
+  return goalDashboardFor(clientId, await userCalendar(clientId));
+}
+
+export async function goalDashboardFor(userId: string, calendar: Calendar): Promise<GoalDashboard | null> {
+  const live = await liveUser();
+  if (!live) return null;
+  const { supabase } = live;
+  // The lift list offered by the create form comes off exercise_best_sets(),
+  // which answers for auth.uid() only — and only the owner creates goals.
+  const own = live.userId === userId;
 
   // One wave. Each reader is request-cached or cheap; the Progress page's own
   // tab reads are not repeated, because only the Goals tab calls this.
-  const [goalsRes, mainRes, measurements, training, prs, nutrition, day] = await Promise.all([
+  const [goalsRes, mainRes, measurements, training, prs, nutrition, kcalPlan] = await Promise.all([
     supabase
       .from("goals")
       .select(`id, title, metric, direction, target_value, start_value, start_date, target_date, status,
@@ -131,21 +155,20 @@ export async function getMyGoalDashboard(): Promise<GoalDashboard | null> {
     supabase
       .from("goals").select("title").eq("user_id", userId).eq("status", "active").is("metric", null)
       .order("created_at", { ascending: false }).limit(1).maybeSingle<{ title: string }>(),
-    getMyMeasurements(500),
-    getMyProgressTraining(null),
-    getMyPrs(),
-    getMyNutritionTrends(30),
-    getMyDayNutrition(),
+    measurementsFor(userId, 500),
+    progressTrainingFor(userId, null),
+    own ? getMyPrs() : Promise.resolve([]),
+    nutritionTrendsFor(userId, calendar, 30),
+    nutritionTargetFor(userId),
   ]);
   // A failed goals read must not look like "no goals yet".
   if (goalsRes.error) throw new Error(`Failed to load goals: ${goalsRes.error.message}`);
-  if (!training) return null;
 
-  const today = training.today;
+  const today = calendar.today;
   const measurementRows = measurements.map((m) => ({ day: m.taken_on, weight_kg: m.weight_kg, circumferences: m.circumferences }));
   const sessionDays = training.sessions.map((s) => s.day);
   const nutritionDays = nutrition?.days ?? [];
-  const kcalTarget = day.target.kcal > 0 ? day.target.kcal : null;
+  const kcalTarget = kcalPlan.kcal > 0 ? kcalPlan.kcal : null;
 
   // Each source computed once, shared by every goal on it and by the form.
   const cache = new Map<string, GoalSeries>();

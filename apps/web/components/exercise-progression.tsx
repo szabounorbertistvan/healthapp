@@ -234,26 +234,38 @@ function Periods({ rows, f }: { rows: PeriodChangeRow[]; f: ReturnType<typeof us
   );
 }
 
-/** The strength tab's list: one row per lift, the chip and the first reason, linked to the exercise page. */
-export function ProgressionOverview({ items }: { items: { id: string; name: string; analysis: ProgressionAnalysis }[] }) {
+/**
+ * The strength tab's list: one row per lift, the chip and the first reason,
+ * linked to the exercise page. `forCoach` is the coach's client page: the
+ * client's main lifts, unlinked — /exercises/[id] shows the reader's own
+ * history, not the client's.
+ */
+export function ProgressionOverview({ items, forCoach = false }: {
+  items: { id: string; name: string; analysis: ProgressionAnalysis }[];
+  forCoach?: boolean;
+}) {
   const f = useProgressionFormat();
   const { p } = f;
   return (
     <Card plain className="overflow-hidden p-0">
       <div className="px-5 pb-1 pt-[18px]">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{p.overviewTitle}</p>
-        <p className="mt-1 text-[12px] text-ink-faint">{p.overviewHint}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{forCoach ? p.coachOverviewTitle : p.overviewTitle}</p>
+        <p className="mt-1 text-[12px] text-ink-faint">{forCoach ? p.coachOverviewHint : p.overviewHint}</p>
       </div>
       {items.length === 0 ? (
-        <p className="px-5 pb-[18px] pt-2 text-[13px] text-ink-faint">{p.overviewEmpty}</p>
+        <p className="px-5 pb-[18px] pt-2 text-[13px] text-ink-faint">{forCoach ? p.coachOverviewEmpty : p.overviewEmpty}</p>
       ) : (
         <ul className="mt-1 divide-y divide-line/60">
           {items.map(({ id, name, analysis }) => (
             <li key={id} className="px-5 py-3.5">
               <div className="flex items-start justify-between gap-3">
-                <Link href={`/exercises/${id}`} className="min-w-0 truncate text-[14px] font-semibold hover:text-accent-ink">
-                  {name}
-                </Link>
+                {forCoach ? (
+                  <span className="min-w-0 truncate text-[14px] font-semibold">{name}</span>
+                ) : (
+                  <Link href={`/exercises/${id}`} className="min-w-0 truncate text-[14px] font-semibold hover:text-accent-ink">
+                    {name}
+                  </Link>
+                )}
                 <ProgressionBadge status={analysis.status} />
               </div>
               {analysis.reasons[0] ? (

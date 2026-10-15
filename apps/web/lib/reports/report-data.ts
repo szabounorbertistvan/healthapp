@@ -1,23 +1,25 @@
-// The reads behind a report — the signed-in person's own rows, for one period.
+// The reads behind a report — one person's rows, for one period.
 //
-// Authorization is the session's, twice over: every query is filtered by the
-// caller's own user id (taken from the session, never from the request), and
-// RLS answers it anyway (sets_owner, sessions_owner, measurements / food_logs
-// owner policies, goals_owner). There is no parameter anywhere that names a
-// user, so a report for someone else cannot be asked for.
+// Whose rows is the ReportViewer's `userId`: the signed-in person's own
+// (reportViewer(), from the session — /api/reports has no user id in it), or
+// a client's for their coach (clientReportViewer(), only after the coach route
+// found the client on the coach's active roster). Either way every query is
+// filtered by that id and RLS answers it — the owner policies, or the coach
+// read policies (is_active_coach_of) and client_food_daily_totals() for the
+// day totals. A caller who is neither gets empty reads, never someone else's.
 //
 // Nothing is computed here beyond mapping rows; scoring reuses the existing
 // mappers (toProgressSessions → loadOf, the Fitness Score's own loadOf input)
-// and the existing readers (getMyDayNutrition's target, getMyNutritionEntries,
-// getMyGoalDashboard). Reads are paged and capped; hitting a cap is reported
+// and the existing readers (nutritionTargetFor, nutritionEntriesFor,
+// goalDashboardFor). Reads are paged and capped; hitting a cap is reported
 // (`truncated`) instead of silently cutting history.
 import "server-only";
 import { localDay, shiftDays, type FitnessScoreSession, type Macros } from "@healthapp/shared";
 import { displayName, getProfile } from "../data";
-import { getMyDayNutrition } from "../client-nutrition";
-import { getMyGoalDashboard, type GoalView } from "../goals-data";
-import { myCalendar } from "../my-today";
-import { getMyNutritionEntries } from "../nutrition-data";
+import { nutritionTargetFor } from "../client-nutrition";
+import { goalDashboardFor, type GoalView } from "../goals-data";
+import { myCalendar, userCalendar } from "../my-today";
+import { dailyTotalsFor, nutritionEntriesFor } from "../nutrition-data";
 import { toNutritionDays, type DailyTotalRow } from "../nutrition-map";
 import { toProgressSessions, type ProgressSessionJoin } from "../progress-map";
 import { liveUser } from "../supabase/server";
@@ -55,6 +57,25 @@ export async function reportViewer(): Promise<ReportViewer | null> {
   return {
     userId: live.userId,
     owner: displayName(profile),
+    timeZone: calendar.timeZone,
+    today: calendar.today,
+    units: { weight: profile?.weight_unit ?? "kg", length: profile?.length_unit ?? "cm" },
+  };
+}
+
+/**
+ * A client's report, for their coach: the client's rows and the client's own
+ * calendar, in the coach's units (the coach is the one reading it). The caller
+ * must already have found `clientId` on the coach's active roster; RLS answers
+ * every read regardless.
+ */
+export async function clientReportViewer(clientId: string, clientName: string): Promise<ReportViewer | null> {
+  const live = await liveUser();
+  if (!live) return null;
+  const [profile, calendar] = await Promise.all([getProfile(), userCalendar(clientId)]);
+  return {
+    userId: clientId,
+    owner: clientName,
     timeZone: calendar.timeZone,
     today: calendar.today,
     units: { weight: profile?.weight_unit ?? "kg", length: profile?.length_unit ?? "cm" },
@@ -208,9 +229,9 @@ export async function readFoods(viewer: ReportViewer, period: ReportPeriod): Pro
 }
 
 /** Every measurable goal (active and finished), or null when the dashboard read failed. */
-export async function readGoals(): Promise<{ active: GoalView[]; all: GoalView[] } | null> {
+export async function readGoals(viewer: ReportViewer): Promise<{ active: GoalView[]; all: GoalView[] } | null> {
   try {
-    const d = await getMyGoalDashboard();
+    const d = await goalDashboardFor(viewer.userId, { today: viewer.today, timeZone: viewer.timeZone });
     if (!d) return null;
     return { active: d.active, all: [...d.active, ...d.closed] };
   } catch (e) {
@@ -225,18 +246,18 @@ export async function loadProgressReportInputs(viewer: ReportViewer, period: Rep
   if (!live) throw new Error("signed out");
   const { supabase } = live;
   const readFrom = reportReadFrom(period);
-  const [training, measurements, totals, nutritionFirst, day, entries, goals, photos] = await Promise.all([
+  const [training, measurements, totals, nutritionFirst, planTarget, entries, goals, photos] = await Promise.all([
     readTraining(viewer, readFrom, period.to, locale),
     readMeasurements(viewer, period),
-    supabase.rpc("food_daily_totals", { p_from: period.previous.start }),
+    dailyTotalsFor(viewer.userId, period.previous.start),
     supabase.from("food_logs").select("date").eq("user_id", viewer.userId).order("date", { ascending: true }).limit(1).maybeSingle<{ date: string }>(),
-    getMyDayNutrition(),
+    nutritionTargetFor(viewer.userId),
     // a failed read is reported in the file (labelsMissing), never passed off as "no data"
-    getMyNutritionEntries(period.from).catch((e: unknown) => {
+    nutritionEntriesFor(viewer.userId, period.from).catch((e: unknown) => {
       console.error(`report nutrition entries: ${e instanceof Error ? e.message : String(e)}`);
       return "failed" as const;
     }),
-    readGoals(),
+    readGoals(viewer),
     supabase.from("progress_photos").select("id", { count: "exact", head: true })
       .eq("user_id", viewer.userId).gte("date", period.from).lte("date", period.to),
   ]);
@@ -245,7 +266,7 @@ export async function loadProgressReportInputs(viewer: ReportViewer, period: Rep
   const entriesRead = entries === "failed" ? null : entries;
   const entriesComplete = entriesRead !== null && (entriesRead.completeFrom === null || entriesRead.completeFrom <= period.from);
   const nutritionDays = toNutritionDays((totals.data ?? []) as DailyTotalRow[]).filter((d) => d.day <= period.to);
-  const t = day.target;
+  const t = planTarget;
   const target: Macros | null = t.kcal > 0 || t.protein > 0 || t.carbs > 0 || t.fat > 0 ? t : null;
   return {
     period,

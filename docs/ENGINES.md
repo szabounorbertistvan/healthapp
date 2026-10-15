@@ -697,9 +697,22 @@ Missing data stays missing (never 0), a start is never invented, direction is
 explicit, percentages are clamped to 0..100, and "target reached" only *offers*
 Mark achieved. Writes: `app/goal-actions.ts` (create / update / close / delete),
 mirrored by check constraints, one active goal per source (unique index) and
-`goals_guard()` (≤ 12 active, no private exercise of someone else). The coach still
-reads goals under `goals_coach_read`; no coach screen shows the measurable ones yet.
+`goals_guard()` (≤ 12 active, no private exercise of someone else).
 pgTAP: `goal_metrics.test.sql`.
+
+**The coach's view (read-only, Coach Pro — `plan.e.advancedAnalytics`).** The coach's
+client page (`app/(coach)/clients/[id]`) shows the client's active measurable goals
+(`ClientGoalsCard`, the same cards without buttons), the progression verdicts of the
+client's main lifts (top 6 by sessions over 90 days — `getClientLiftVerdicts`), and a
+progress-PDF download (`/api/clients/[id]/report?range=30|90|365`, roster + plan
+checked, 404 otherwise; same builder as the client's own via `lib/reports/respond.ts`).
+The loaders are `…For(userId, calendar)` with the "my" wrappers kept
+(`goalDashboardFor`, `progressionOverviewFor`, `progressTrainingFor`,
+`nutritionTrendsFor`, `nutritionEntriesFor`, `nutritionTargetFor`, `measurementsFor`);
+the client's own calendar (`userCalendar`), never the coach's. RLS decides every read
+(the coach read policies); the day totals come through `client_food_daily_totals()`
+(20261127100000, gated by `is_active_coach_of`, pgTAP `client_food_daily_totals.test.sql`),
+since `food_daily_totals()` answers for `auth.uid()` only.
 
 ---
 

@@ -148,7 +148,35 @@ function goalSubtitle(goal: GoalView, g: ReturnType<typeof useGoalFormat>["g"]):
 
 type Confirming = "achieved" | "abandoned" | "delete" | null;
 
-function GoalCard({ goal, today }: { goal: GoalView; today: string }) {
+/**
+ * A client's active goals as their coach sees them: the same cards, folded by
+ * the same server code over the client's rows (getClientGoalDashboard), with
+ * every button left out — goals are the client's to set, change and close.
+ */
+export function ClientGoalsCard({ dashboard, name }: { dashboard: GoalDashboard; name: string }) {
+  const { t } = useI18n();
+  const g = t.clientApp.goals;
+  return (
+    <section aria-labelledby="client-goals" data-testid="client-goals" className="@container">
+      <h2 id="client-goals" className="mb-3 font-display text-lg font-bold tracking-tight">
+        {fill(g.coachTitle, { name })}
+      </h2>
+      {dashboard.active.length === 0 ? (
+        <Card plain>
+          <p className="text-[13px] text-ink-faint">{g.coachNone}</p>
+        </Card>
+      ) : (
+        <div className="grid gap-4 @3xl:grid-cols-2">
+          {dashboard.active.map((goal) => (
+            <GoalCard key={goal.id} goal={goal} today={dashboard.today} readOnly />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function GoalCard({ goal, today, readOnly = false }: { goal: GoalView; today: string; readOnly?: boolean }) {
   const f = useGoalFormat();
   const { g, t } = f;
   const router = useRouter();
@@ -257,7 +285,7 @@ function GoalCard({ goal, today }: { goal: GoalView; today: string }) {
         </li>
       </ul>
 
-      {p.state === "reached" ? (
+      {p.state === "reached" && !readOnly ? (
         <p className="rounded-2xl bg-accent-soft px-3.5 py-2.5 text-[12.5px] font-semibold text-accent-ink">{g.reachedHint}</p>
       ) : null}
 
@@ -270,7 +298,7 @@ function GoalCard({ goal, today }: { goal: GoalView; today: string }) {
         </details>
       ) : null}
 
-      {editing ? (
+      {readOnly ? null : editing ? (
         <EditGoalForm goal={goal} today={today} pending={pending} onCancel={() => setEditing(false)} onSave={run} />
       ) : confirming ? (
         <div className="space-y-2.5 rounded-2xl bg-bg px-4 py-3" role="alertdialog" aria-label={confirmText}>

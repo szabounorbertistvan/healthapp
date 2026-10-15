@@ -4,6 +4,14 @@ import { getCoachClientRelationships } from "@/lib/coaching-data";
 import { getClientGoal, getClients } from "@/lib/data";
 import { getClientWeeklySummary, type WeekChoice } from "@/lib/weekly-data";
 import { getClientFitnessScore } from "@/lib/fitness-score-data";
+import { getClientGoalDashboard } from "@/lib/goals-data";
+import { getClientLiftVerdicts } from "@/lib/exercise-analytics-data";
+import { userCalendar } from "@/lib/my-today";
+import { reportFileName } from "@/lib/reports/file-name";
+import { parseReportPeriod } from "@/lib/reports/report-model";
+import { ClientGoalsCard } from "@/components/goals";
+import { ProgressionOverview } from "@/components/exercise-progression";
+import { ClientReportDownload, type ClientReportOption } from "@/components/client-report-download";
 import { getFeed } from "@/lib/social-data";
 import { SignalBadge } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
@@ -17,10 +25,11 @@ import { getPlan } from "@/lib/plan";
 import { UpgradeHint } from "@/components/upgrade";
 
 /**
- * One client, from the coach's side: their weekly summary and 28-day fitness
- * score. Every number is
- * read under RLS — a coach sees exactly what is_active_coach_of() allows —
- * and computed by the same code the client's own Today uses.
+ * One client, from the coach's side: their weekly summary, 28-day fitness
+ * score, measurable goals, main-lift progression and progress report. Every
+ * number is read under RLS — a coach sees exactly what is_active_coach_of()
+ * allows — and computed by the same code the client's own screens use, on the
+ * client's calendar. Nothing here writes the client's goals.
  */
 export default async function CoachClientPage({
   params,
@@ -29,17 +38,22 @@ export default async function CoachClientPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ week?: string }>;
 }) {
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   const [{ id }, { week }] = await Promise.all([params, searchParams]);
   const choice: WeekChoice = week === "previous" ? "previous" : "current";
   // The roster and the summary go out together: the summary is filtered by
   // client id and RLS answers it, so it never needed the roster first. A client
   // the coach cannot see still 404s below — the wasted summary read is empty.
-  const [clients, summary, fitness, posts, relationships, goal] = await Promise.all([
+  const [clients, summary, fitness, insights, posts, relationships, goal] = await Promise.all([
     getClients(),
     getClientWeeklySummary(id, choice),
     // Coach Pro. getPlan is request-cached off the layout's profile read.
     getPlan().then((plan) => (plan.e.advancedAnalytics ? getClientFitnessScore(id) : null)),
+    // Coach Pro too: the client's measurable goals, their main lifts' verdicts
+    // and the client's calendar for the report periods — read-only, under RLS
+    // (goals_coach_read, the session/set/measurement coach policies,
+    // client_food_daily_totals), on the client's own calendar.
+    getPlan().then((plan) => (plan.e.advancedAnalytics ? clientInsights(id, locale === "ro" ? "ro" : "en") : null)),
     // What the client chose to put out themselves. Since 20260921100000 an
     // active coach passes the 'followers' branch, so this is the coach's view
     // of the same cards the client's followers see — private posts excluded.
@@ -113,6 +127,14 @@ export default async function CoachClientPage({
           <p className="text-[13px] text-ink-faint">{t.common.weekly.noData}</p>
         )}
 
+        {insights ? (
+          <>
+            {insights.goals ? <ClientGoalsCard dashboard={insights.goals} name={client.full_name} /> : null}
+            <ProgressionOverview items={insights.lifts} forCoach />
+            <ClientReportDownload name={client.full_name} options={insights.reports} />
+          </>
+        ) : null}
+
         <section>
           <h2 className="mb-3 font-display text-lg font-bold tracking-tight">
             {fill(t.coachApp.clients.postsTitle, { name: client.full_name })}
@@ -132,6 +154,32 @@ export default async function CoachClientPage({
       </div>
     </div>
   );
+}
+
+/** Report periods the coach can download, in days. */
+const REPORT_RANGES = [30, 90, 365] as const;
+
+/**
+ * The client's goals, main-lift verdicts and report periods, in one wave. A
+ * failed goals read hides that section (and is logged) rather than taking the
+ * whole client page down; a failed lift read already comes back empty.
+ */
+async function clientInsights(clientId: string, locale: "ro" | "en") {
+  const [goals, lifts, calendar] = await Promise.all([
+    getClientGoalDashboard(clientId).catch((e: unknown) => {
+      console.error(`[clients] goals for coach view: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
+    }),
+    getClientLiftVerdicts(clientId, locale),
+    userCalendar(clientId),
+  ]);
+  const reports: ClientReportOption[] = REPORT_RANGES.flatMap((days) => {
+    const parsed = parseReportPeriod({ range: String(days) }, calendar.today);
+    return parsed.ok
+      ? [{ days, url: `/api/clients/${clientId}/report?range=${days}`, fileName: reportFileName("progress", "pdf", parsed.period) }]
+      : [];
+  });
+  return { goals, lifts, reports };
 }
 
 /** The 24-box icon paths this screen uses. */

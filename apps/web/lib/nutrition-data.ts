@@ -11,7 +11,8 @@ import "server-only";
 import { cache } from "react";
 import { ADAPTIVE_WINDOW_DAYS, shiftDays, type NutritionDay, type NutritionEntry, type ProgressRange } from "@healthapp/shared";
 import { isoDay } from "./dates";
-import { myToday } from "./my-today";
+import { myCalendar, myToday } from "./my-today";
+import type { Calendar } from "./week-activity";
 import {
   NUTRITION_ENTRY_SELECT, toNutritionDays, toNutritionEntries, type DailyTotalRow, type NutritionEntryRow,
 } from "./nutrition-map";
@@ -31,20 +32,41 @@ export type NutritionTrends = {
   truncated: boolean;
 };
 
-export const getMyNutritionTrends = cache(async (range: ProgressRange): Promise<NutritionTrends | null> => {
+export async function getMyNutritionTrends(range: ProgressRange): Promise<NutritionTrends | null> {
   const live = await liveUser();
   if (!live) return null;
-  const { supabase, userId } = live;
+  return nutritionTrendsFor(live.userId, await myCalendar(), range);
+}
+
+/**
+ * Day totals since `from` (null = all time) for one person. Two doors, both
+ * answered by RLS on food_logs: the caller's own (food_daily_totals, no user
+ * argument) and a client's for their active coach (client_food_daily_totals,
+ * 20261127100000 — zero rows for anyone else).
+ */
+export async function dailyTotalsFor(userId: string, from: string | null) {
+  const live = await liveUser();
+  if (!live) throw new Error("signed out");
+  return live.userId === userId
+    ? live.supabase.rpc("food_daily_totals", { p_from: from })
+    : live.supabase.rpc("client_food_daily_totals", { p_client: userId, p_from: from });
+}
+
+/** One person's trends on their own calendar — the caller's, or a client's for their coach. */
+export const nutritionTrendsFor = cache(async (userId: string, calendar: Calendar, range: ProgressRange): Promise<NutritionTrends | null> => {
+  const live = await liveUser();
+  if (!live) return null;
+  const { supabase } = live;
   // The range and the equally long one before it, and never less than the
   // two weeks the weekly card needs. Started from the server's day so it can
   // run alongside the zone lookup; the extra day covers any offset, and the
   // windows built on `today` decide what counts.
   const from = range === null ? null : shiftDays(isoDay(), -(Math.max(2 * range - 1, WEEK_LOOKBACK_DAYS) + 1));
+  const today = calendar.today;
 
-  const [{ data, error }, { data: firstRow }, today] = await Promise.all([
-    supabase.rpc("food_daily_totals", { p_from: from }),
+  const [{ data, error }, { data: firstRow }] = await Promise.all([
+    dailyTotalsFor(userId, from),
     supabase.from("food_logs").select("date").eq("user_id", userId).order("date", { ascending: true }).limit(1).maybeSingle(),
-    myToday(),
   ]);
   // Empty is a legitimate answer for a new account; a failed read (the
   // migration not applied yet, say) must not be dressed up as one.
@@ -80,10 +102,17 @@ export type NutritionEntries = {
  * cut-off history. Filtered to the caller; RLS (food_logs owner policy)
  * answers it anyway, and foods are reached only through the caller's own logs.
  */
-export const getMyNutritionEntries = cache(async (from: string | null): Promise<NutritionEntries | null> => {
+export async function getMyNutritionEntries(from: string | null): Promise<NutritionEntries | null> {
   const live = await liveUser();
   if (!live) return null;
-  const { supabase, userId } = live;
+  return nutritionEntriesFor(live.userId, from);
+}
+
+/** The same for one person — the caller, or a client for their coach (food_logs_coach_read). */
+export const nutritionEntriesFor = cache(async (userId: string, from: string | null): Promise<NutritionEntries | null> => {
+  const live = await liveUser();
+  if (!live) return null;
+  const { supabase } = live;
   const rows: NutritionEntryRow[] = [];
   for (let page = 0; page < ENTRY_PAGES; page++) {
     let query = supabase

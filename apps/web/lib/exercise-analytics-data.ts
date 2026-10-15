@@ -26,6 +26,8 @@ import {
   exerciseStats,
   previousWorkouts,
   repRecords,
+  shiftDays,
+  topExercises,
   type ExerciseSessionEntry,
   type ExerciseStats,
   type ExerciseVideoSource,
@@ -34,11 +36,13 @@ import {
   type RepRecord,
 } from "@healthapp/shared";
 import { ANALYTICS_SET_SELECT, toAnalyticsSets, toProgressionSessions, type AnalyticsSetJoin } from "./exercise-analytics-map";
-import { myCalendar } from "./my-today";
+import { myCalendar, userCalendar } from "./my-today";
+import { progressTrainingFor } from "./progress-data";
 import { liveUser } from "./supabase/server";
 import { activeCoachId } from "./client-training";
 import { fetchVideoLinks, resolveVideo, videoLinksFor } from "./exercise-video-links";
 import type { ClientWorkoutDay } from "./types";
+import type { Calendar } from "./week-activity";
 
 /**
  * How many rows the two reads pull. A day is a handful of lifts and only the
@@ -158,12 +162,28 @@ const OVERVIEW_POOL = 4000;
  * gets the "not enough data" answer like any new exercise.
  */
 export async function getProgressionOverview(exerciseIds: readonly string[]): Promise<Map<string, ProgressionAnalysis>> {
+  const [live, calendar] = await Promise.all([liveUser(), myCalendar()]);
+  if (!live) return new Map();
+  return progressionOverviewFor(live.userId, calendar, exerciseIds);
+}
+
+/**
+ * The same verdicts for one person on their own calendar: the caller's, or a
+ * client's for their coach — sets_coach_read / sessions_coach_read decide, and
+ * an unrelated caller gets "not enough data" for every lift, never someone
+ * else's numbers.
+ */
+export async function progressionOverviewFor(
+  userId: string,
+  calendar: Calendar,
+  exerciseIds: readonly string[],
+): Promise<Map<string, ProgressionAnalysis>> {
   const ids = [...new Set(exerciseIds)].filter(Boolean);
   const out = new Map<string, ProgressionAnalysis>();
   if (ids.length === 0) return out;
-  const [live, calendar] = await Promise.all([liveUser(), myCalendar()]);
+  const live = await liveUser();
   if (!live) return out;
-  const { supabase, userId } = live;
+  const { supabase } = live;
   const since = new Date(Date.now() - OVERVIEW_DAYS * 86_400_000).toISOString();
   const { data, error } = await supabase
     .from("logged_sets")
@@ -185,6 +205,41 @@ export async function getProgressionOverview(exerciseIds: readonly string[]): Pr
     out.set(id, analyzeProgression(toProgressionSessions(mine, calendar.timeZone), calendar.today));
   }
   return out;
+}
+
+/** How far back "main lifts" look, and how many the coach's card lists. */
+const MAIN_LIFT_DAYS = 90;
+const MAIN_LIFTS = 6;
+
+export type LiftVerdict = { id: string; name: string; analysis: ProgressionAnalysis };
+
+/**
+ * A client's main lifts — the ones in the most sessions over the last 90 days
+ * of their own calendar (topExercises, the strength tab's own pick) — each
+ * with its progression verdict, for the coach's client page. Read-only and
+ * under RLS throughout: the sessions and sets through the coach policies, the
+ * names through exercises_select (a client's private custom lift has no name
+ * for the coach and is left out rather than shown as "—").
+ */
+export async function getClientLiftVerdicts(clientId: string, locale: "ro" | "en"): Promise<LiftVerdict[]> {
+  const live = await liveUser();
+  if (!live) return [];
+  const calendar = await userCalendar(clientId);
+  const training = await progressTrainingFor(clientId, null);
+  const window = { start: shiftDays(calendar.today, -(MAIN_LIFT_DAYS - 1)), end: calendar.today };
+  const ids = topExercises(training.sessions, window).slice(0, MAIN_LIFTS).map((e) => e.exercise_id);
+  if (ids.length === 0) return [];
+  const [{ data: names }, overview] = await Promise.all([
+    live.supabase.from("exercises").select("id, name_en, name_ro").in("id", ids),
+    progressionOverviewFor(clientId, calendar, ids),
+  ]);
+  type NameRow = { id: string; name_en: string; name_ro: string | null };
+  const nameOf = new Map(((names ?? []) as NameRow[]).map((r) => [r.id, (locale === "ro" ? r.name_ro : null) ?? r.name_en]));
+  return ids.flatMap((id) => {
+    const name = nameOf.get(id);
+    const analysis = overview.get(id);
+    return name && analysis ? [{ id, name, analysis }] : [];
+  });
 }
 
 export type ExerciseProfile = {

@@ -3,9 +3,10 @@
 // their first ever session (so a "previous period" before they started is
 // never compared against).
 //
-// Two queries, one wave. Both are filtered to the caller's own user_id and
-// RLS (`sessions_owner`, `sets_owner`) answers them anyway — there is no id in
-// here a URL could widen. Nothing is written and nothing new is stored: the
+// Two queries, one wave. Both are filtered to one user_id — the caller's own
+// (getMyProgressTraining), or a client's for the coach's client page
+// (progressTrainingFor) — and RLS answers them anyway (`sessions_owner` /
+// `sets_owner`, or the `*_coach_read` policies). Nothing is written and nothing new is stored: the
 // load is loadOf(), the 1RM is relevantOneRm(), the local day is localDay(),
 // the windows and folds are packages/shared/progress.
 import "server-only";
@@ -33,9 +34,18 @@ export type ProgressTraining = {
   truncated: boolean;
 };
 
-export const getMyProgressTraining = cache(async (range: ProgressRange): Promise<ProgressTraining | null> => {
+export async function getMyProgressTraining(range: ProgressRange): Promise<ProgressTraining | null> {
   const userId = await currentActorId();
   if (!userId) return null;
+  return progressTrainingFor(userId, range);
+}
+
+/**
+ * One person's sessions on their own calendar (users.timezone): the caller's,
+ * or a client's for their coach — sessions_coach_read / sets_coach_read
+ * decide, and an unrelated caller gets an empty history.
+ */
+export const progressTrainingFor = cache(async (userId: string, range: ProgressRange): Promise<ProgressTraining> => {
   const supabase = await supabaseServer();
 
   let sessionsQuery = supabase

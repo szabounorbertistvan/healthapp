@@ -17,6 +17,7 @@ import "server-only";
 import { cache } from "react";
 import { DEFAULT_TIMEZONE, todayIn } from "@healthapp/shared";
 import { getProfile } from "./data";
+import { userTimezone } from "./streak-data";
 import type { Calendar } from "./week-activity";
 
 export const myCalendar = cache(async (): Promise<Calendar> => {
@@ -26,3 +27,13 @@ export const myCalendar = cache(async (): Promise<Calendar> => {
 });
 
 export const myToday = cache(async (): Promise<string> => (await myCalendar()).today);
+
+/**
+ * Someone else's calendar — a coach looking at a client counts the client's
+ * days in the client's zone, never their own. users.timezone through
+ * userTimezone (readable for a connected person; the app default otherwise).
+ */
+export const userCalendar = cache(async (userId: string): Promise<Calendar> => {
+  const timeZone = await userTimezone(userId);
+  return { today: todayIn(timeZone), timeZone };
+});
