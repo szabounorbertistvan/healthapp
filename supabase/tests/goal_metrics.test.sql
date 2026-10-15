@@ -84,42 +84,42 @@ $$, '2d. an unknown start is allowed (never invented)');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_value, start_date, exercise_id)
   values ('c8000000-0000-0000-0000-000000000011', 'strength', 'x', 'lift_weight', 'increase', 70, 80, current_date, 'c8000000-0000-0000-0000-0000000000e1')
-$$, '23514', '2e. a target behind the start in the goal''s direction is refused');
+$$, '23514', null, '2e. a target behind the start in the goal''s direction is refused');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date)
   values ('c8000000-0000-0000-0000-000000000011', 'strength', 'x', 'lift_weight', 'increase', 100, current_date)
-$$, '23514', '2f. a lift goal without an exercise is refused');
+$$, '23514', null, '2f. a lift goal without an exercise is refused');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date, exercise_id)
   values ('c8000000-0000-0000-0000-000000000011', 'strength', 'x', 'lift_weight', 'decrease', 50, current_date, 'c8000000-0000-0000-0000-0000000000e1')
-$$, '23514', '2g. a lift can only count up');
+$$, '23514', null, '2g. a lift can only count up');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date, measure_key)
   values ('c8000000-0000-0000-0000-000000000011', 'weight', 'x', 'body_weight', 'decrease', 70, current_date, 'waist')
-$$, '23514', '2h. only a circumference goal carries a measurement key');
+$$, '23514', null, '2h. only a circumference goal carries a measurement key');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date, measure_key)
   values ('c8000000-0000-0000-0000-000000000011', 'other', 'x', 'circumference', 'decrease', 80, current_date, 'ear')
-$$, '23514', '2i. an unknown measurement key is refused');
+$$, '23514', null, '2i. an unknown measurement key is refused');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date)
   values ('c8000000-0000-0000-0000-000000000011', 'weight', 'x', 'body_weight', 'decrease', 5, current_date)
-$$, '23514', '2j. a body weight target outside 20..400 kg is refused');
+$$, '23514', null, '2j. a body weight target outside 20..400 kg is refused');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date)
   values ('c8000000-0000-0000-0000-000000000011', 'habit', 'x', 'consistency', 'increase', 140, current_date)
-$$, '23514', '2k. a percentage over 100 is refused');
+$$, '23514', null, '2k. a percentage over 100 is refused');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date, target_date)
   values ('c8000000-0000-0000-0000-000000000011', 'other', 'x', 'kcal_on_target', 'increase', 80, current_date, current_date - 1)
-$$, '23514', '2l. a deadline before the start is refused');
+$$, '23514', null, '2l. a deadline before the start is refused');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date)
   values ('c8000000-0000-0000-0000-000000000011', 'other', 'x', 'happiness', 'increase', 80, current_date)
-$$, '23514', '2m. an unknown metric is refused');
+$$, '23514', null, '2m. an unknown metric is refused');
 select throws_ok($$
   update public.goals set status = 'achieved' where id = 'c8000000-0000-0000-0000-0000000001f2'
-$$, '23514', '2n. achieved without achieved_at / closed_at is refused');
+$$, '23514', null, '2n. achieved without achieved_at / closed_at is refused');
 
 -- ============================================================
 -- 3. one active goal per source
@@ -127,7 +127,7 @@ $$, '23514', '2n. achieved without achieved_at / closed_at is refused');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date)
   values ('c8000000-0000-0000-0000-000000000011', 'weight', 'Gain', 'body_weight', 'increase', 90, current_date)
-$$, '23505', '3a. a second active body-weight goal is refused, whatever its direction');
+$$, '23505', null, '3a. a second active body-weight goal is refused, whatever its direction');
 select lives_ok($$
   update public.goals set status = 'abandoned', closed_at = now() where id = 'c8000000-0000-0000-0000-0000000001f2'
 $$, '3b. the owner abandons the first');
@@ -147,7 +147,7 @@ $$, '3e. marking achieved with its timestamps is accepted');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date, exercise_id)
   values ('c8000000-0000-0000-0000-000000000011', 'strength', 'x', 'lift_weight', 'increase', 60, current_date, 'c8000000-0000-0000-0000-0000000000e9')
-$$, '23503', '4a. a lift goal on someone else''s private custom exercise is refused');
+$$, '23503', null, '4a. a lift goal on someone else''s private custom exercise is refused');
 
 -- ============================================================
 -- 5. at most 12 active measurable goals
@@ -169,7 +169,7 @@ select pg_temp.authenticate_as('c8000000-0000-0000-0000-000000000011');
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date, exercise_id)
   values ('c8000000-0000-0000-0000-000000000011', 'strength', 'row', 'lift_weight', 'increase', 80, current_date, 'c8000000-0000-0000-0000-0000000000e2')
-$$, '23514', '5b. a thirteenth is refused');
+$$, '23514', null, '5b. a thirteenth is refused');
 select lives_ok($$
   insert into public.goals (user_id, type, title) values ('c8000000-0000-0000-0000-000000000011', 'other', 'Feel better')
 $$, '5c. the cap does not count the words-only main goal');
@@ -187,7 +187,7 @@ select is(pg_temp.touched($$ delete from public.goals where user_id = 'c8000000-
 select throws_ok($$
   insert into public.goals (user_id, type, title, metric, direction, target_value, start_date)
   values ('c8000000-0000-0000-0000-000000000011', 'habit', 'planted', 'consistency', 'increase', 50, current_date)
-$$, '42501', '6d. nor plants one on the client''s account');
+$$, '42501', null, '6d. nor plants one on the client''s account');
 
 select pg_temp.authenticate_as('c8000000-0000-0000-0000-000000000001');
 select ok((select count(*) from public.goals where user_id = 'c8000000-0000-0000-0000-000000000011') > 0,
