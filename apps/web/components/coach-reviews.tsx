@@ -11,7 +11,7 @@ import {
 } from "@/lib/coach-review";
 import type { ActionResult } from "@/app/actions";
 import { deleteMyReview, respondToReview, submitReview } from "@/app/review-actions";
-import { Avatar } from "./social";
+import { Avatar } from "./social-chrome";
 import { ModerationMenuButton } from "./moderation";
 
 // Coach reviews (20261106100000). The public section on /coaches/[slug], the

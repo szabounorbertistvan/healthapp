@@ -10,58 +10,72 @@ import type {
   MessageRow, NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
 } from "./types";
 import type { Role, Tier } from "./entitlements";
+import { typedDb } from "./supabase/typed";
 
 export const getProfile = cache(async (): Promise<Profile | null> => {
   const live = await liveUser();
   if (!live) return null;
   const { supabase, userId } = live;
+  const db = typedDb(supabase);
   const [{ data: user }, { data: sub, error: planError }] = await Promise.all([
-    supabase.from("users").select("id, full_name, username, consent_version, avatar_url, city, bio, sex, birth_year, timezone, check_in_weekday, leaderboard_visibility, weight_unit, length_unit, rest_prefs, notification_prefs, role, suspended_at").eq("id", userId).single(),
+    db.from("users").select("id, full_name, username, consent_version, avatar_url, city, bio, sex, birth_year, timezone, check_in_weekday, leaderboard_visibility, weight_unit, length_unit, rest_prefs, notification_prefs, role, suspended_at").eq("id", userId).single(),
     // my_plan (migration 20260923120000): the effective tier including one
     // inherited from a Coach Pro, and whether the paywall applies — a
     // definer view, because the coach's subscription is a row this person
     // cannot read. Same wave as before; it replaced a subscriptions select.
-    // `*` rather than a column list: trial_available (20261129100000) is read
-    // when the view has it and is simply absent before that migration.
-    supabase.from("my_plan")
-      .select("*")
-      .maybeSingle(),
+    // `*` so a database that has not yet got trial_available still returns the
+    // rest of the row. A named list would fail the whole read.
+    db.from("my_plan").select("*").maybeSingle(),
   ]);
   if (!user) return null;
   if (planError) console.error(`my_plan read failed: ${planError.message}`);
-  const role = user.role as Role;
-  const plan = sub as { tier: Tier | null; own_tier: Tier | null; paywall: boolean | null; trial_ends_at: string | null; has_stripe: boolean | null; trial_available?: boolean | null } | null;
+  const role: Role = user.role;
+  const tier = asTier(sub?.tier ?? null);
+  const ownTier = asTier(sub?.own_tier ?? null);
   return {
     id: user.id,
     full_name: user.full_name ?? "Coach",
-    username: (user.username as string | null) ?? null,
-    consent_version: (user.consent_version as string | null) ?? null,
-    avatar_url: (user.avatar_url as string | null) ?? null,
-    city: (user.city as string | null) ?? null,
-    bio: (user.bio as string | null) ?? null,
-    sex: (user.sex as Profile["sex"]) ?? null,
-    birth_year: (user.birth_year as number | null) ?? null,
-    timezone: (user.timezone as string | null) ?? "Europe/Bucharest",
-    check_in_weekday: (user.check_in_weekday as number | null) ?? 1,
+    username: user.username,
+    consent_version: user.consent_version,
+    avatar_url: user.avatar_url,
+    city: user.city,
+    bio: user.bio,
+    sex: asSex(user.sex),
+    birth_year: user.birth_year,
+    timezone: user.timezone || "Europe/Bucharest",
+    check_in_weekday: user.check_in_weekday,
     weight_unit: isWeightUnit(user.weight_unit) ? user.weight_unit : "kg",
     length_unit: isLengthUnit(user.length_unit) ? user.length_unit : "cm",
-    leaderboard_visibility:
-      (user.leaderboard_visibility as Profile["leaderboard_visibility"] | null) ?? "public",
+    leaderboard_visibility: asBoard(user.leaderboard_visibility),
     rest_prefs: normalizeRestPrefs(user.rest_prefs),
     email_prefs: emailPrefsState(user.notification_prefs),
     role,
     // Without the view (an unapplied migration, a failed read) the person is
     // on their role's free tier with the paywall off — every feature open,
     // exactly the app as it was before the paywall existed.
-    tier: plan?.tier ?? effectiveTier(null, role),
-    tier_via_coach: Boolean(plan?.tier && plan.own_tier && plan.tier !== plan.own_tier),
-    paywall: plan?.paywall ?? false,
-    trial_ends_at: plan?.trial_ends_at ?? null,
-    has_stripe: Boolean(plan?.has_stripe),
-    trial_available: Boolean(plan?.trial_available),
-    suspended_at: (user.suspended_at as string | null) ?? null,
+    tier: tier ?? effectiveTier(null, role),
+    tier_via_coach: Boolean(tier && ownTier && tier !== ownTier),
+    paywall: sub?.paywall ?? false,
+    trial_ends_at: sub?.trial_ends_at ?? null,
+    has_stripe: Boolean(sub?.has_stripe),
+    trial_available: Boolean(sub?.trial_available),
+    suspended_at: user.suspended_at,
   };
 });
+
+const TIERS = ["free", "premium", "coach_free", "coach_pro"] as const;
+
+function asTier(value: string | null): Tier | null {
+  return value !== null && (TIERS as readonly string[]).includes(value) ? (value as Tier) : null;
+}
+
+function asSex(value: string | null): Profile["sex"] {
+  return value === "male" || value === "female" || value === "other" ? value : null;
+}
+
+function asBoard(value: string): Profile["leaderboard_visibility"] {
+  return value === "followers" || value === "private" ? value : "public";
+}
 
 /**
  * What the shell shows for the signed-in person: their username, else the

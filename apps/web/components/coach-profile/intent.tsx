@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toggleCoachSave } from "@/app/coach-profile-actions";
-import { follow } from "@/app/social-actions";
+import { follow } from "@/app/social-follow-actions";
 import { settle } from "@/lib/settle-action";
 
 /**

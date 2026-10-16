@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { commentPreviewModel } from "@/lib/comment-preview";
 import { SOCIAL } from "@/lib/social-ui";
 import type { CommentPreviewItem } from "@/lib/types";
-import { useSocialFormat } from "./social";
+import { useSocialFormat } from "./social-chrome";
 import { MentionText } from "./social-v2";
 
 /**

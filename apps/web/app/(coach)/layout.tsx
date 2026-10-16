@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/logo";
 import { SignOutButton } from "@/components/sign-out-button";
 import { FeedbackButton } from "@/components/feedback";
-import { Avatar } from "@/components/social";
+import { Avatar } from "@/components/social-chrome";
 import { PlanProvider } from "@/lib/plan-client";
 import { getPlan } from "@/lib/plan";
 import { CONSENT_VERSION } from "@/lib/legal";

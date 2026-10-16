@@ -8,7 +8,7 @@ import { fill } from "@/lib/i18n";
 import { TIER_LABEL } from "@/lib/entitlements";
 import type { Tier } from "@/lib/entitlements";
 import { AdminTierSelect } from "@/components/billing";
-import { Avatar } from "@/components/social";
+import { Avatar } from "@/components/social-chrome";
 import { FitnessScoreCoachCard } from "@/components/fitness-score";
 import { ConfirmAction } from "@/components/admin/confirm-action";
 import { Timeline } from "@/components/admin/timeline";

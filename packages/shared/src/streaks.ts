@@ -13,6 +13,13 @@
 // if the user trained today, or yesterday if they have not yet; two missed
 // days in a row end it. Streak freezes / grace days are deliberately absent —
 // `currentStreak` is the one place a future rule would go.
+//
+// social_streak() in the database is this same rule for someone else's
+// profile (two numbers, not the days). supabase/tests/streaks.test.sql and
+// the "social_streak() contract" case in streaks.test.ts pin the same
+// outcome: a run ending yesterday is still current, and longest is the
+// best run. The fitness score has the same split — fitnessScore() here,
+// fitness_score_of() in SQL — locked by fitness-score-parity.test.ts.
 import { shiftDays } from "./weekly-summary";
 
 export const DEFAULT_TIMEZONE = "Europe/Bucharest";

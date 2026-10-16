@@ -3,7 +3,7 @@ import Link from "next/link";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { CoachPublicPost } from "@/lib/coach-profile";
-import { useSocialFormat } from "../social";
+import { useSocialFormat } from "../social-chrome";
 
 /**
  * A coach's public posts for a reader who is not signed in: text, date and

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Leaderboard, LeaderboardMetric, LeaderboardPeriod, LeaderboardRow } from "@healthapp/shared";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
-import { Avatar } from "./social";
+import { Avatar } from "./social-chrome";
 import { Card } from "./ui";
 import { boardRowHref } from "@/lib/leaderboard-map";
 

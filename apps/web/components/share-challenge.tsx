@@ -6,7 +6,7 @@ import type { PostVisibility } from "@healthapp/shared";
 import { shareChallenge } from "@/app/social-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { NavIcon } from "./client-nav";
-import { VisibilityPicker } from "./social";
+import { VisibilityPicker } from "./social-chrome";
 
 const CHECK = "m5 12 5 5 9-10";
 

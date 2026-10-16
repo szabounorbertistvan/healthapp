@@ -6,7 +6,7 @@ import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/logo";
 import { SignOutButton } from "@/components/sign-out-button";
-import { Avatar } from "@/components/social";
+import { Avatar } from "@/components/social-chrome";
 import { NotificationBell } from "@/components/notification-bell";
 import { UnitsProvider } from "@/lib/units/client";
 import { RestTimerProvider } from "@/lib/rest-timer/client";

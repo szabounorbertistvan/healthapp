@@ -9,7 +9,7 @@ import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
 import { FoodEntry } from "./food-entry";
 import { FoodLogger } from "./food-logger";
-import { copyMealFromDay, logPlannedMeal } from "@/app/client-actions-app";
+import { copyMealFromDay, logPlannedMeal } from "@/app/client-actions-food";
 import { dishfinderIngredientsUrl, dishfinderMacrosUrl } from "@/lib/dishfinder";
 import { DishFinderMark } from "./dishfinder-mark";
 import { useOnboarding } from "./onboarding/provider";

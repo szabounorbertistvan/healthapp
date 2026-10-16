@@ -3,7 +3,7 @@ import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { isValidPortionGrams, parseDecimal, portionMacros } from "@healthapp/shared";
-import { deleteFoodLog, updateFoodLog } from "@/app/client-actions-app";
+import { deleteFoodLog, updateFoodLog } from "@/app/client-actions-food";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { ClientFoodEntry } from "@/lib/types";

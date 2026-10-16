@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { isValidPortionGrams, MAX_PORTION_GRAMS, parseDecimal, portionMacros } from "@healthapp/shared";
 import { lookupBarcode, searchFoods } from "@/app/nutrition-actions";
-import { logFood, toggleFavoriteFood } from "@/app/client-actions-app";
+import { logFood, toggleFavoriteFood } from "@/app/client-actions-food";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { FOOD_GROUP_ICON, foodGroupOf } from "@/lib/food-groups";

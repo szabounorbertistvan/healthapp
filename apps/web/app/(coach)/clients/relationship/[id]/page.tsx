@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 import { getCoachClientRelationships, getRelationshipHistory } from "@/lib/coaching-data";
-import { Avatar } from "@/components/social";
+import { Avatar } from "@/components/social-chrome";
 import { CoachingActions, RelationshipPill, RelationshipTimeline } from "@/components/coaching-lifecycle";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

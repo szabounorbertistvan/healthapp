@@ -111,6 +111,17 @@ describe("longest streak", () => {
     expect(s.longest).toBe(5);
     expect(s.longestBefore).toBe(5);
   });
+  // social_streak() answers 3 and 5 for this shape (streaks.test.sql):
+  // three days ending yesterday, and an older five-day run. Today is still open.
+  test("social_streak() contract: yesterday's run stays current", () => {
+    const recent = ["2026-09-10", "2026-09-11", "2026-09-12"];
+    const older = ["2026-08-20", "2026-08-21", "2026-08-22", "2026-08-23", "2026-08-24"];
+    const s = streakSummary(days(...older, ...recent), TODAY);
+    expect(s.current).toBe(3);
+    expect(s.longest).toBe(5);
+    expect(s.activeToday).toBe(false);
+    expect(currentStreak(days(...older, ...recent), TODAY)).toEqual({ current: 3, streakStart: "2026-09-10" });
+  });
   test("when the current streak is the record, longest follows it", () => {
     const s = streakSummary(days("2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12", TODAY), TODAY);
     expect(s.current).toBe(6);

@@ -10,7 +10,7 @@ import { renderWithApp } from "@/test/render";
 const toggleCoachSave = vi.fn();
 const follow = vi.fn();
 vi.mock("@/app/coach-profile-actions", () => ({ toggleCoachSave: (...a: unknown[]) => toggleCoachSave(...a) }));
-vi.mock("@/app/social-actions", () => ({ follow: (...a: unknown[]) => follow(...a) }));
+vi.mock("@/app/social-follow-actions", () => ({ follow: (...a: unknown[]) => follow(...a) }));
 const replace = vi.fn();
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, refresh }) }));

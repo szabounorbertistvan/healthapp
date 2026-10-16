@@ -10,16 +10,15 @@ import {
   applyMention, commentSegments, isAchievementRarity, mentionQueryAt,
   type AchievementRarity, type PostVisibility, type ProfileVisibility,
 } from "@healthapp/shared";
-import {
-  mentionCandidates, publishFitnessScore, shareAchievement, shareFitnessScore, updateSocialPrivacy,
-} from "@/app/social-actions";
+import { mentionCandidates } from "@/app/social-comment-actions";
+import { publishFitnessScore, shareAchievement, shareFitnessScore, updateSocialPrivacy } from "@/app/social-privacy-actions";
 import { fill } from "@/lib/i18n";
 import { splitHashtags } from "@/lib/post-card";
 import { useI18n } from "@/lib/i18n/client";
 import type { PersonRow, ProfileBadge, SocialPrivacy } from "@/lib/types";
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
-import { Avatar, VisibilityPicker } from "./social";
+import { Avatar, VisibilityPicker } from "./social-chrome";
 
 const CHECK = "m5 12 5 5 9-10";
 

@@ -10,7 +10,7 @@ import { GymPhoto } from "@/components/gym-photo";
 import { gymMapHref, gymWhere } from "@/lib/gym-map";
 import { gymOpenState } from "@healthapp/shared";
 import { CountBars, SetHomeGymButton } from "@/components/gym-stats";
-import { Avatar } from "@/components/social";
+import { Avatar } from "@/components/social-chrome";
 import { Card } from "@/components/ui";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";

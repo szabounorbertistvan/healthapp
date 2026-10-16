@@ -1,7 +1,7 @@
 "use client";
 import { settle } from "@/lib/settle-action";
 import { useState, useTransition, useOptimistic } from "react";
-import { archiveHabit, toggleHabit } from "@/app/client-actions-app";
+import { archiveHabit, toggleHabit } from "@/app/client-actions-habits";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import { groupHabitsByCategory, suggestionKeyForName } from "@/lib/habit-suggestions";

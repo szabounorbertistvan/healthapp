@@ -6,7 +6,7 @@ import { getMyCoachingRelationships, getRelationshipHistory, type MyCoachingRela
 import { Card, EmptyState } from "@/components/ui";
 import { JoinCoach } from "@/components/join-coach";
 import { MessageThread } from "@/components/message-thread";
-import { Avatar } from "@/components/social";
+import { Avatar } from "@/components/social-chrome";
 import { CoachingActions, RelationshipPill, RelationshipTimeline } from "@/components/coaching-lifecycle";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";

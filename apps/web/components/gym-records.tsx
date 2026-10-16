@@ -5,7 +5,7 @@ import {
 } from "@/lib/gym-data";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { fill } from "@/lib/i18n";
-import { Avatar } from "./social";
+import { Avatar } from "./social-chrome";
 import { Card } from "./ui";
 
 /**

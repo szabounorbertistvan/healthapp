@@ -2,7 +2,7 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { sharedContext } from "@/lib/shared-context";
 import { useRouter } from "next/navigation";
-import { logSet, type LogSetInput } from "@/app/client-actions-app";
+import { logSet, type LogSetInput } from "@/app/client-actions-training";
 import { listQueued, outboxAvailable, putQueued, removeQueued, type QueuedSet } from "./outbox";
 
 /**

@@ -3,7 +3,7 @@ import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { displayToCm, displayToKg, parseDecimal } from "@healthapp/shared";
-import { addMeasurement } from "@/app/client-actions-app";
+import { addMeasurement } from "@/app/client-actions-body";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";

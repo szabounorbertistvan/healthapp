@@ -1,8 +1,6 @@
 "use client";
-import { settle } from "@/lib/settle-action";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useSettledAction } from "@/lib/use-settled-action";
 import { CHALLENGE_MILESTONES, type ChallengeStatus } from "@healthapp/shared";
 import { deleteChallenge, joinChallenge, leaveChallenge } from "@/app/challenge-actions";
 import { fill } from "@/lib/i18n";
@@ -181,19 +179,8 @@ export function ChallengeCard({ challenge: c }: { challenge: ChallengeCardRow })
 /** Join / leave. Ended challenges cannot be joined; leaving is always allowed. */
 export function JoinLeaveButton({ challenge: c }: { challenge: ChallengeCardRow }) {
   const { t } = useI18n();
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const ch = t.common.challenges;
-
-  function run(action: () => Promise<{ ok: boolean; message?: string }>) {
-    setError(null);
-    startTransition(async () => {
-      const result = await settle(() => action(), t.common.actions.unreachable);
-      if (!result.ok) setError(result.message ?? "Error");
-      router.refresh();
-    });
-  }
+  const { error, pending, run } = useSettledAction("Error");
 
   // Deleting is offered on your own challenge only, and beside leaving rather
   // than instead of it: the creator is a participant too.

@@ -6,8 +6,9 @@ import type { ClientGoal, SocialLinks } from "./coach-content";
  *
  * The database (20261020100000_coach_discovery_foundation.sql) is the source
  * of truth for every rule here; these are mirrors for typing and for checking
- * an action's arguments before a round trip. There is no generated
- * `Database` type in this repo, so the row shapes are written out by hand.
+ * an action's arguments before a round trip. Column types for the reads come
+ * from the generated Database type (`@healthapp/api/database`); the shapes
+ * below are what the screens use, including the status unions.
  */
 
 /** hidden (20261029100000): published, then switched off by the coach; back without a review. */

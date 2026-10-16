@@ -1,7 +1,6 @@
 "use client";
-import { settle } from "@/lib/settle-action";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useSettledAction } from "@/lib/use-settled-action";
 import type { NutritionPlanDetail, PlanMealRow } from "@/lib/types";
 import {
   addMealDayVariant,
@@ -26,21 +25,10 @@ import { PremiumSoon, UpgradeHint } from "@/components/upgrade";
 // that the day lands 300 kcal short is the thing this screen exists to prevent.
 
 export function NutritionBuilder({ plan }: { plan: NutritionPlanDetail }) {
-  const router = useRouter();
   const { t } = useI18n();
   const m = t.coachWidgets.nutritionBuilder;
   const [pickerMealId, setPickerMealId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function run(action: () => Promise<{ ok: boolean; message?: string }>) {
-    setError(null);
-    startTransition(async () => {
-      const result = await settle(action, t.common.actions.unreachable);
-      if (!result.ok) setError(result.message ?? m.somethingWentWrong);
-      router.refresh();
-    });
-  }
+  const { error, pending, run } = useSettledAction(m.somethingWentWrong);
 
   return (
     <div>

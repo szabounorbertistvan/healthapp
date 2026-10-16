@@ -2,7 +2,7 @@
 import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addHabit } from "@/app/client-actions-app";
+import { addHabit } from "@/app/client-actions-habits";
 import { useI18n } from "@/lib/i18n/client";
 import {
   HABIT_SUGGESTION_DAYS, HABIT_SUGGESTION_KEYS, suggestionKeyForName, type HabitSuggestionKey,

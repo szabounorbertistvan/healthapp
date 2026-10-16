@@ -3,7 +3,7 @@
 // everything here renders on the server with the dictionary passed in.
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
-import { Avatar } from "@/components/social";
+import { Avatar } from "@/components/social-chrome";
 import { NavIcon } from "@/components/client-nav";
 
 export function fmtDate(iso: string | null | undefined, locale: Locale): string {

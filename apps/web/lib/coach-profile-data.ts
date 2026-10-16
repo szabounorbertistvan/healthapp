@@ -1,27 +1,57 @@
 import "server-only";
+import { CLIENT_GOALS, type ClientGoal, type SocialLinks } from "@/lib/coach-content";
 import { overlayRevision, type CoachRevisionInfo, type RevisionPayload } from "./coach-revision";
 import { cache } from "react";
 import type { RoutineCard } from "@healthapp/shared";
 import { currentUserId, liveUser, supabasePublic, supabaseServer } from "@/lib/supabase/server";
+import { typedDb } from "@/lib/supabase/typed";
 import { toCards } from "@/lib/routine-data";
 import type { MyCoachApplication } from "@/lib/coach-application";
 import {
   searchArgs, type CoachSearchResult, type DiscoveryFacets, type DiscoveryQuery,
 } from "@/lib/coach-discovery";
-import type {
-  City, CoachCertificationRow, CoachProfileMissing, CoachProfileRow, CoachPublicProfile,
-  CoachCatalog, CoachPublicPost, CoachServiceRow, CoachVerificationRow, CoachViewerState, CoachingRequestStatus, Country, Language,
-  MyCoachProfile, Specialization,
+import {
+  COACH_PROFILE_STATUSES, COACH_VERIFICATION_STATUSES,
+  type City, type CoachCertificationRow, type CoachProfileMissing, type CoachProfileRow, type CoachPublicProfile,
+  type CoachCatalog, type CoachPublicPost, type CoachServiceRow, type CoachVerificationRow, type CoachViewerState, type CoachingRequestStatus, type Country, type Language,
+  type MyCoachProfile, type Specialization,
 } from "@/lib/coach-profile";
 
 // Coach Discovery reads. Writes live in app/coach-profile-actions.ts.
 
 const BASE_PROFILE_COLUMNS =
-  "id, user_id, slug, headline, about, cover_url, coaching_since, accepting_clients, online, in_person, " +
-  "status, submitted_at, reviewed_at, review_note, published_at, suspended_at, suspension_reason, created_at, updated_at, " +
-  "verification_status, verification_requested_at, verification_message, verification_decided_at, verification_note";
+  "id, user_id, slug, headline, about, cover_url, coaching_since, accepting_clients, online, in_person, status, submitted_at, reviewed_at, review_note, published_at, suspended_at, suspension_reason, created_at, updated_at, verification_status, verification_requested_at, verification_message, verification_decided_at, verification_note" as const;
 // own-words content (20261111100000); read only where the database has it — see getMyCoachProfile
-const PROFILE_COLUMNS = `${BASE_PROFILE_COLUMNS}, approach, experience_summary, client_goals, social_links`;
+const PROFILE_COLUMNS =
+  "id, user_id, slug, headline, about, cover_url, coaching_since, accepting_clients, online, in_person, status, submitted_at, reviewed_at, review_note, published_at, suspended_at, suspension_reason, created_at, updated_at, verification_status, verification_requested_at, verification_message, verification_decided_at, verification_note, approach, experience_summary, client_goals, social_links" as const;
+function isOneOf<T extends string>(values: readonly T[], value: string): value is T {
+  return (values as readonly string[]).includes(value);
+}
+
+/** The generated row uses plain strings for the status columns; the screen uses the unions. */
+function toCoachProfile(row: {
+  id: string; user_id: string; slug: string; headline: string | null; about: string | null;
+  cover_url: string | null; coaching_since: number | null; accepting_clients: boolean;
+  online: boolean; in_person: boolean; status: string; submitted_at: string | null;
+  reviewed_at: string | null; review_note: string | null; published_at: string | null;
+  suspended_at: string | null; suspension_reason: string | null; created_at: string;
+  updated_at: string; verification_status: string; verification_requested_at: string | null;
+  verification_message: string | null; verification_decided_at: string | null;
+  verification_note: string | null; approach?: string | null; experience_summary?: string | null;
+  client_goals?: string[] | null; social_links?: unknown;
+}): CoachProfileRow {
+  const { client_goals: goalsRaw, social_links: linksRaw, status, verification_status, ...rest } = row;
+  const goals = (goalsRaw ?? []).filter((g): g is ClientGoal => isOneOf(CLIENT_GOALS, g));
+  const links = linksRaw && typeof linksRaw === "object" && !Array.isArray(linksRaw) ? linksRaw as SocialLinks : undefined;
+  return {
+    ...rest,
+    status: isOneOf(COACH_PROFILE_STATUSES, status) ? status : "draft",
+    verification_status: isOneOf(COACH_VERIFICATION_STATUSES, verification_status) ? verification_status : "unverified",
+    ...(goalsRaw ? { client_goals: goals } : {}),
+    ...(links ? { social_links: links } : {}),
+  };
+}
+
 const SERVICE_COLUMNS =
   "id, coach_profile_id, name, description, kind, delivery, duration_value, duration_unit, price_cents, currency, price_unit, price_public, active, sort_order";
 // Exactly the granted columns: document_ref and admin_note are not readable.
@@ -37,19 +67,16 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile | null> {
   const live = await liveUser();
   if (!live) return null;
   const { supabase, userId } = live;
+  const db = typedDb(supabase);
 
-  let { data: profile, error } = await supabase
-    .from("coach_profiles")
-    .select(PROFILE_COLUMNS)
-    .eq("user_id", userId)
-    .maybeSingle<CoachProfileRow>();
+  const full = await db.from("coach_profiles").select(PROFILE_COLUMNS).eq("user_id", userId).maybeSingle();
   // a database without 20261111100000 (42703: no such column): the editor still works, without the new fields
-  if (error?.code === "42703") {
-    ({ data: profile, error } = await supabase
-      .from("coach_profiles").select(BASE_PROFILE_COLUMNS).eq("user_id", userId).maybeSingle<CoachProfileRow>());
-  }
-  if (error) throw new Error(`coach profile: ${error.message}`);
-  if (!profile) return null;
+  const read = full.error?.code === "42703"
+    ? await db.from("coach_profiles").select(BASE_PROFILE_COLUMNS).eq("user_id", userId).maybeSingle()
+    : full;
+  if (read.error) throw new Error(`coach profile: ${read.error.message}`);
+  if (!read.data) return null;
+  const profile = toCoachProfile(read.data);
 
   // a published or hidden profile may have a staged revision open (20261108100000)
   const isLive = profile.status === "published" || profile.status === "hidden";

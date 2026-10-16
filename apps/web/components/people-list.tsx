@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Avatar, FollowButton } from "./social";
+import { FollowButton } from "./social";
+import { Avatar } from "./social-chrome";
 import type { PersonRow } from "@/lib/types";
 
 /**

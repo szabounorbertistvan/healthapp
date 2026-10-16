@@ -12,7 +12,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { SOCIAL } from "@/lib/social-ui";
 import type { Story, StoryTrayItem, StoryViewerRow } from "@/lib/types";
 import { NavIcon } from "./client-nav";
-import { Avatar, useSocialFormat } from "./social";
+import { Avatar, useSocialFormat } from "./social-chrome";
 
 const PLUS = "M12 7v10M7 12h10";
 const CLOSE = "M6 6l12 12M18 6L6 18";

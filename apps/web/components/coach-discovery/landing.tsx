@@ -5,7 +5,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { searchCoaches } from "@/lib/coach-profile-data";
 import { EMPTY_QUERY, discoverySearch, toCoachCard, type CoachCardModel, type DiscoveryQuery } from "@/lib/coach-discovery";
 import { ratingLabel } from "@/lib/coach-review";
-import { Avatar } from "../social";
+import { Avatar } from "../social-chrome";
 import { VerifiedBadge } from "./verified-badge";
 
 /** A short list, not a directory: the landing page points at /coaches, it does not replace it. */

@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { displayName } from "@/lib/data";
 import { getI18n } from "@/lib/i18n/server";
 import { Logo, LogoMark } from "@/components/logo";
-import { Avatar } from "@/components/social";
+import { Avatar } from "@/components/social-chrome";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "@/components/sign-out-button";

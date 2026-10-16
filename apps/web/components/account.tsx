@@ -9,7 +9,7 @@ import { isValidUsername } from "@/lib/profile";
 import { BUTTON, FIELD, SMALL_BUTTON } from "@/lib/form-classes";
 import { checkImage, uploadSignedImage } from "@/lib/cloudinary-upload";
 import { Card } from "./ui";
-import { Avatar } from "./social";
+import { Avatar } from "./social-chrome";
 import {
   downloadMyData, removeAvatar, requestAccountDeletion, requestAvatarUpload, saveAvatar, updateAccount,
 } from "@/app/profile-actions";

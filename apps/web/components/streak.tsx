@@ -11,7 +11,7 @@ import { parseDay } from "@/lib/week";
 import type { StreakView } from "@/lib/streak-data";
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
-import { VisibilityPicker } from "./social";
+import { VisibilityPicker } from "./social-chrome";
 
 const FLAME = "M12 22c4 0 7-3 7-7 0-3-2-5-3-7-1 2-2 3-3 3 0-3-1-6-4-8 0 4-4 6-4 12 0 4 3 7 7 7z";
 const TROPHY = "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4";

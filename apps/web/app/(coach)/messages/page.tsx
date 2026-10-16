@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getConversations } from "@/lib/data";
 import { Card, EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
-import { Avatar } from "@/components/social";
+import { Avatar } from "@/components/social-chrome";
 import { timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 

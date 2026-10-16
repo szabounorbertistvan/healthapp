@@ -1,6 +1,6 @@
 "use client";
-import { settle } from "@/lib/settle-action";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useSettledAction } from "@/lib/use-settled-action";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addSoloProgramDay, createSoloProgram, deleteProgram, publishProgram, removeProgramDay } from "@/app/builder-actions";
@@ -33,8 +33,7 @@ export function SoloProgramBuilder({
 }) {
   const { t } = useI18n();
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const { error, setError, pending, run, startTransition } = useSettledAction("Something went wrong");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [name, setName] = useState("");
@@ -51,15 +50,6 @@ export function SoloProgramBuilder({
   const { e: plan, upgrade } = usePlan();
   const [limitHit, setLimitHit] = useState(false);
   const limited = limitHit || atLimit(plan.maxOwnPrograms, programs.length);
-
-  function run(action: () => Promise<{ ok: boolean; message?: string }>) {
-    setError(null);
-    startTransition(async () => {
-      const result = await settle(action, t.common.actions.unreachable);
-      if (!result.ok) setError(result.message ?? "Something went wrong");
-      router.refresh();
-    });
-  }
 
   const createForm = limited ? (
     <UpgradeHint card feature="ownPrograms" upgrade={upgrade} values={{ limit: plan.maxOwnPrograms ?? 0 }} />

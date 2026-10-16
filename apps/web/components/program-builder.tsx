@@ -1,6 +1,7 @@
 "use client";
 import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
+import { useSettledAction } from "@/lib/use-settled-action";
 import { useRouter } from "next/navigation";
 import type { ProgramDetail } from "@/lib/types";
 import { addProgramDay, copyProgramToClient, deleteProgram, duplicateProgramDay, publishProgram, removeProgramDay } from "@/app/builder-actions";
@@ -41,18 +42,8 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment, read
   const [copyHint, setCopyHint] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const m = t.coachWidgets.programBuilder;
-  const [error, setError] = useState<string | null>(null);
+  const { error, setError, pending, run, startTransition } = useSettledAction(m.somethingWentWrong);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [pending, startTransition] = useTransition();
-
-  function run(action: () => Promise<{ ok: boolean; message?: string }>) {
-    setError(null);
-    startTransition(async () => {
-      const result = await settle(action, t.common.actions.unreachable);
-      if (!result.ok) setError(result.message ?? m.somethingWentWrong);
-      router.refresh();
-    });
-  }
 
   const isEmpty = program.days.every((d) => d.exercises.length === 0);
 

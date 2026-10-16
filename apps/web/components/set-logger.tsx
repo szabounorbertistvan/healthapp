@@ -6,7 +6,7 @@ import {
   previousFor, previousSetFor, progressionVs, resolveRestSeconds, restAfterLoggedSet, validateSetEdit,
   type ExerciseVideoSource, type PreviousWorkout,
 } from "@healthapp/shared";
-import { finishWorkout, logSet, type LogSetResult } from "@/app/client-actions-app";
+import { finishWorkout, logSet, type LogSetResult } from "@/app/client-actions-training";
 import { useOfflineSets } from "@/lib/offline/sync";
 import type { QueuedSet } from "@/lib/offline/outbox";
 import { fill } from "@/lib/i18n";

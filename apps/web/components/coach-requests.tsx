@@ -9,7 +9,7 @@ import type { ActionResult } from "@/app/actions";
 import {
   acceptCoachingRequest, cancelCoachingRequest, declineCoachingRequest, openRequestConversation, startCoachingFromRequest,
 } from "@/app/coach-profile-actions";
-import { Avatar } from "./social";
+import { Avatar } from "./social-chrome";
 import { Card } from "./ui";
 
 // Contact requests (20261103100000): the coach's list on /requests and the

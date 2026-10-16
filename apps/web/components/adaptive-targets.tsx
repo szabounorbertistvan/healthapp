@@ -5,7 +5,7 @@ import {
   ADAPTIVE_WINDOW_DAYS, kgToDisplay, MIN_LOGGED_DAYS, MIN_WEIGH_INS, MIN_WEIGH_SPAN_DAYS, splitFromGrams,
   type AdaptiveEstimate, type AdaptiveGoal, type Macros,
 } from "@healthapp/shared";
-import { setMyNutritionTargets } from "@/app/client-actions-app";
+import { setMyNutritionTargets } from "@/app/client-actions-food";
 import { settle } from "@/lib/settle-action";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";

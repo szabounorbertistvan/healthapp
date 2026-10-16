@@ -6,7 +6,7 @@ import {
   gramsFromSplit, KCAL_PER_GRAM, MACRO_KEYS, rebalanceSplit, splitFromGrams,
   type Macros, type MacroKey, type MacroSplit,
 } from "@healthapp/shared";
-import { setMyNutritionTargets } from "@/app/client-actions-app";
+import { setMyNutritionTargets } from "@/app/client-actions-food";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";

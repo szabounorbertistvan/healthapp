@@ -6,14 +6,15 @@ import { useCallback, useEffect, useOptimistic, useReducer, useRef, useState, us
 import type { PhotoOverlay, PostMediaInput, PostVisibility, ReactionType } from "@healthapp/shared";
 import { applyReaction, displayToKg, followButtonState, isAchievementRarity, kudosSummary, postPhotoOf, POST_MEDIA_MAX, POST_TEXT_MAX, type ReactionState } from "@healthapp/shared";
 import {
-  createProgressPost, createTextPost, deletePost, editPost, follow, loadComments, loadKudos, react, refreshPostMedia, setPostSaved,
-  sharePost, unfollow,
+  createProgressPost, createTextPost, deletePost, editPost, loadKudos, react, refreshPostMedia, setPostSaved,
+  sharePost,
 } from "@/app/social-actions";
+import { follow, unfollow } from "@/app/social-follow-actions";
+import { loadComments } from "@/app/social-comment-actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
-import { parseDay } from "@/lib/week";
-import { durationLabel } from "@/lib/share-card";
+import { Avatar, useSocialFormat, VisibilityPicker } from "./social-chrome";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import type { OverlayStatValues } from "@/lib/photo-overlay";
 import { renderPhotoStory, storyFileName } from "@/lib/photo-story";
@@ -22,7 +23,6 @@ import type { CommentPage, FeedPost, KudosGiver, ShareableSession } from "@/lib/
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
 import { SOCIAL } from "@/lib/social-ui";
-import { postAge } from "@/lib/post-card";
 import { canRepost, canWebShare, postShareUrl, saveReducer, shareTargets } from "@/lib/post-share";
 import { BadgeGlyph, MentionSuggestions, MentionText, useMentionSuggest } from "./social-v2";
 import { CommentPreview } from "./comment-preview";
@@ -58,52 +58,6 @@ const EXTERNAL = "M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 3v12M7 8l5-5 5 5"
 const UNAVAILABLE = "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M5.6 5.6l12.8 12.8";
 const VIS_ICON: Record<PostVisibility, string> = { public: GLOBE, followers: PEOPLE, private: LOCK };
 
-export function Avatar({ name, url, size = "h-9 w-9", initialClassName = "text-sm" }: {
-  name: string;
-  url: string | null;
-  size?: string;
-  /** The initial's type when there is no photo; a large avatar needs a larger letter. */
-  initialClassName?: string;
-}) {
-  const initial = name.trim().charAt(0).toUpperCase() || "?";
-  return url ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt="" className={`${size} shrink-0 rounded-full object-cover`} />
-  ) : (
-    <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-accent-soft ${initialClassName} font-bold text-accent-ink`}>
-      {initial}
-    </span>
-  );
-}
-
-export function useSocialFormat() {
-  const { t, locale } = useI18n();
-  const tag = locale === "ro" ? "ro-RO" : "en-GB";
-  const nf = new Intl.NumberFormat(tag);
-  const df = new Intl.DateTimeFormat(tag, { day: "numeric", month: "short" });
-  const dtf = new Intl.DateTimeFormat(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  const s = t.common.social;
-  return {
-    n: (v: number) => nf.format(v),
-    day: (d: string) => df.format(parseDay(d)),
-    /** "2m ago", "1h ago", "Yesterday", "3d ago", then the date — computed once, never ticking. */
-    when: (iso: string) => {
-      const age = postAge(iso, Date.now());
-      switch (age.unit) {
-        case "now": return s.justNow;
-        case "minutes": return fill(s.minutesAgo, { m: age.n });
-        case "hours": return fill(s.hoursAgo, { h: age.n });
-        case "yesterday": return s.yesterday;
-        case "days": return fill(s.daysAgo, { d: age.n });
-        default: return dtf.format(new Date(iso));
-      }
-    },
-    /** The exact moment, for a hover title next to the relative label. */
-    at: (iso: string) => dtf.format(new Date(iso)),
-    duration: durationLabel,
-  };
-}
-
 /** The eyebrow every payload block shares: an icon and a small caps label. */
 function BlockLabel({ icon, children, tone = "text-accent-ink" }: { icon: string; children: React.ReactNode; tone?: string }) {
   return (
@@ -111,30 +65,6 @@ function BlockLabel({ icon, children, tone = "text-accent-ink" }: { icon: string
       <NavIcon d={icon} className="h-[15px] w-[15px]" />
       {children}
     </p>
-  );
-}
-
-export function VisibilityPicker({ value, onChange }: { value: PostVisibility; onChange: (v: PostVisibility) => void }) {
-  const { t } = useI18n();
-  const s = t.common.social;
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{s.visibilityLabel}</span>
-      <div className="inline-flex gap-1 rounded-full bg-bg p-1">
-        {(["public", "followers", "private"] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => onChange(v)}
-            className={`h-8 rounded-full px-3 text-[12.5px] font-semibold transition-colors ${
-              value === v ? "bg-accent text-accent-fg" : "text-ink-soft hover:text-ink"
-            }`}
-          >
-            {s.visibility[v]}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 

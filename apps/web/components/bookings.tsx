@@ -9,7 +9,7 @@ import { formatPrice } from "@/lib/coach-onboarding";
 import { formatBookingTime, zoneLabel, type BookingRow } from "@/lib/booking";
 import type { ActionResult } from "@/app/actions";
 import { cancelBooking, markBooking, respondBooking } from "@/app/booking-actions";
-import { Avatar } from "./social";
+import { Avatar } from "./social-chrome";
 
 // Bookings (20261105100000): the coach's list on /bookings and the client's on
 // /coaches/bookings. Each row shows who, what, when — in the booking's own

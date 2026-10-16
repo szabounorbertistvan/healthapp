@@ -7,7 +7,7 @@ import type { CoachPublicProfile, VerificationBadge } from "@/lib/coach-profile"
 import { formatPrice } from "@/lib/coach-onboarding";
 import { coachFormat, coachWhyPoints, fullSizeAvatarUrl, yearsOfExperience, type TeaserCut } from "@/lib/coach-public";
 import { gymMapHref } from "@/lib/gym-map";
-import { Avatar } from "../social";
+import { Avatar } from "../social-chrome";
 import { StartCoachingButton } from "./start-coaching";
 import { VerifiedBadge } from "../coach-discovery/verified-badge";
 import { useServiceDuration } from "./service-format";

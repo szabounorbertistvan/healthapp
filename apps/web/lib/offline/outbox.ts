@@ -11,7 +11,7 @@
 // Every item carries the user it was logged by and is replayed only while that
 // same user is signed in, so a phone that changes hands never files one
 // person's sets under another's account.
-import type { LogSetInput } from "@/app/client-actions-app";
+import type { LogSetInput } from "@/app/client-actions-training";
 
 export type QueuedSet = {
   /** Local id; the server's own key is derived from the set itself. */

@@ -9,7 +9,7 @@ import type { GymCoach, GymHit, GymRef, InboxRequest, MyCoachRequest, MyGyms } f
 import { gymMapHref, gymWhere } from "@/lib/gym-map";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
-import { Avatar } from "./social";
+import { Avatar } from "./social-chrome";
 import { Card } from "./ui";
 
 const FIELD =

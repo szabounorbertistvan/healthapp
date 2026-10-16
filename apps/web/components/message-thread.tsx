@@ -6,7 +6,7 @@ import type { ConversationContext, MessageRow } from "@/lib/types";
 import { markConversationRead, sendMessage } from "@/app/actions";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
-import { Avatar } from "./social";
+import { Avatar } from "./social-chrome";
 
 export function MessageThread({
   conversationId,

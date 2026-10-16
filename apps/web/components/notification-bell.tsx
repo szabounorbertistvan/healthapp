@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import type { NotificationRow } from "@/lib/notifications-data";
-import { markNotificationsRead } from "@/app/client-actions-app";
+import { markNotificationsRead } from "@/app/client-actions-notifications";
 import { NavIcon } from "./client-nav";
 import { NotificationRowView } from "./notification-list";
 

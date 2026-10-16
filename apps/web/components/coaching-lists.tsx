@@ -2,7 +2,7 @@ import Link from "next/link";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import type { CoachClientRelationship } from "@/lib/coaching-data";
-import { Avatar } from "./social";
+import { Avatar } from "./social-chrome";
 import { RelationshipPill } from "./coaching-lifecycle";
 
 /**

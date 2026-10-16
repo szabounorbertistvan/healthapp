@@ -13,7 +13,7 @@ import type { ClientWorkoutDay } from "@/lib/types";
 
 const logSet = vi.fn();
 const finishWorkout = vi.fn();
-vi.mock("@/app/client-actions-app", () => ({
+vi.mock("@/app/client-actions-training", () => ({
   logSet: (...a: unknown[]) => logSet(...a),
   finishWorkout: (...a: unknown[]) => finishWorkout(...a),
 }));
