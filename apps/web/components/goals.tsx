@@ -14,6 +14,9 @@ import { closeGoal, createGoal, deleteGoal, updateGoal } from "@/app/goal-action
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
+import { usePlan } from "@/lib/plan-client";
+import { atLimit } from "@healthapp/shared";
+import { PremiumSoonGoals, UpgradeHint } from "./upgrade";
 import { FIELD, LABEL, HINT } from "@/lib/form-classes";
 import type { GoalCurrent, GoalDashboard, GoalView } from "@/lib/goals-data";
 import { PointsChart } from "./exercise-analytics";
@@ -33,7 +36,12 @@ import { NavIcon } from "./client-nav";
 export function GoalsPanel({ dashboard }: { dashboard: GoalDashboard }) {
   const { t } = useI18n();
   const g = t.clientApp.goals;
-  const [creating, setCreating] = useState(dashboard.active.length === 0);
+  const { e: plan, upgrade } = usePlan();
+  // The free plans hold a few active goals at once (plan_limit 'active_goals');
+  // at the limit the hint stands where the button was. The database refuses
+  // the same insert anyway (enforce_goal_plan_limit).
+  const full = atLimit(plan.maxActiveGoals, dashboard.active.length);
+  const [creating, setCreating] = useState(dashboard.active.length === 0 && !full);
 
   return (
     <div className="space-y-5">
@@ -49,7 +57,7 @@ export function GoalsPanel({ dashboard }: { dashboard: GoalDashboard }) {
       <section aria-labelledby="goals-active">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 id="goals-active" className="text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">{g.active}</h2>
-          {!creating ? (
+          {!creating && !full ? (
             <button
               type="button"
               onClick={() => setCreating(true)}
@@ -61,7 +69,11 @@ export function GoalsPanel({ dashboard }: { dashboard: GoalDashboard }) {
           ) : null}
         </div>
 
-        {creating ? (
+        <PremiumSoonGoals className="mb-3" />
+        {full ? (
+          <UpgradeHint feature="goals" upgrade={upgrade} values={{ limit: plan.maxActiveGoals ?? 0 }} className="mb-4" />
+        ) : null}
+        {creating && !full ? (
           <div className="mb-4">
             <NewGoalForm dashboard={dashboard} onDone={() => setCreating(false)} canCancel={dashboard.active.length > 0} />
           </div>
@@ -569,6 +581,8 @@ function NewGoalForm({
         title: title.trim() || null,
       }), t.common.actions.unreachable);
       if (!result.ok) {
+        // the plan limit: the refreshed panel shows the upgrade hint in place of the form
+        if (result.errorCode === "PLAN_LIMIT_REACHED") { onDone(); router.refresh(); return; }
         setError(result.message ?? g.failed);
         return;
       }

@@ -22,6 +22,23 @@ function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
+/**
+ * "Try Premium free for 30 days": the one trial per account, no card. The
+ * database decides (start_trial(), 20261129100000) — paywall on for the
+ * caller, on a free tier, never trialled — and stamps it; Stripe is not
+ * involved until the person subscribes.
+ */
+export async function startTrial(): Promise<ActionResult & { endsAt?: string }> {
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("start_trial");
+  if (error) {
+    const code = (["TRIAL_USED", "TRIAL_NOT_NEEDED", "TRIAL_NOT_OPEN"] as const).find((c) => error.message.includes(c));
+    return { ok: false, errorCode: code ?? undefined, message: error.message };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true, endsAt: data as string };
+}
+
 /** Creates a Stripe Checkout session and returns its URL for redirect. */
 export async function startCheckout(
   plan: PaidTier,

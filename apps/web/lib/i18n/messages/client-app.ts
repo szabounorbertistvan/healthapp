@@ -743,6 +743,7 @@ const en = {
       REPORT_TOO_LARGE: "There is too much data for one file in this period. Pick a shorter period.",
       REPORT_FAILED: "The file could not be created. Nothing was saved — try again.",
       REPORT_SIGNED_OUT: "You are signed out. Sign in again and retry.",
+      REPORT_PLAN: "Downloading reports is part of Premium.",
       network: "The download failed — check your connection and try again.",
     },
     pdf: {
@@ -1938,6 +1939,7 @@ const ro: typeof en = {
       REPORT_TOO_LARGE: "Sunt prea multe date pentru un singur fișier în această perioadă. Alege o perioadă mai scurtă.",
       REPORT_FAILED: "Fișierul nu a putut fi creat. Nu s-a salvat nimic — încearcă din nou.",
       REPORT_SIGNED_OUT: "Nu mai ești conectat. Autentifică-te din nou și reîncearcă.",
+      REPORT_PLAN: "Descărcarea rapoartelor face parte din Premium.",
       network: "Descărcarea a eșuat — verifică conexiunea și încearcă din nou.",
     },
     pdf: {

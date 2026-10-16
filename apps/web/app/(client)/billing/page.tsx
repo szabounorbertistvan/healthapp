@@ -4,6 +4,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { Card } from "@/components/ui";
 import { TIER_LABEL } from "@/lib/entitlements";
 import { PlanFeatureList, SubscribePanel, TrialBanner } from "@/components/billing";
+import { TryTrialButton } from "@/components/upgrade";
 
 /**
  * The client's plan. Only where the paywall applies (app_flags.paywall, or a
@@ -26,7 +27,10 @@ export default async function BillingPage() {
             {t.common.plan.viaCoach}
           </div>
         ) : (
-          <TrialBanner trialEndsAt={profile.trial_ends_at} paid={paid} />
+          <>
+            <TrialBanner trialEndsAt={profile.trial_ends_at} paid={paid} />
+            <TryTrialButton className="mb-4" />
+          </>
         )}
       </div>
 

@@ -7,7 +7,7 @@ import { NavIcon } from "./client-nav";
 import { deletePhoto, requestPhotoUpload, savePhoto, type Pose } from "@/app/photo-actions";
 import type { ProgressPhoto } from "@/lib/photos-data";
 import type { Upgrade } from "@/lib/plan-client";
-import { UpgradeHint } from "./upgrade";
+import { PremiumSoon, UpgradeHint } from "./upgrade";
 
 const POSES: readonly Pose[] = ["front", "side", "back"];
 
@@ -193,7 +193,10 @@ export function ProgressPhotos({
       ) : (
         <>
           {canCompare ? (
-            <p className="mt-3.5 text-[11.5px] text-ink-faint">{p.compareHint}</p>
+            <p className="mt-3.5 flex flex-wrap items-center gap-2 text-[11.5px] text-ink-faint">
+              {p.compareHint}
+              <PremiumSoon feature="photoCompare" />
+            </p>
           ) : photos.length >= 2 && upgrade ? (
             <UpgradeHint feature="photoCompare" upgrade={upgrade} className="mt-3.5" />
           ) : null}

@@ -1,6 +1,6 @@
 "use client";
 import { usePlan } from "@/lib/plan-client";
-import { UpgradeHint } from "./upgrade";
+import { PremiumSoon, UpgradeHint } from "./upgrade";
 import Link from "next/link";
 import {
   FITNESS_SCORE_MIN_WORKOUTS,
@@ -161,7 +161,12 @@ export function FitnessScoreCard({ view }: { view: FitnessScoreView }) {
         </div>
       ) : null}
       <div className="mt-4">
-        {plan.progressCharts ? <Breakdown score={current} /> : <UpgradeHint feature="fitnessTrend" upgrade={upgrade} />}
+        {plan.progressCharts ? (
+          <>
+            <PremiumSoon feature="progressCharts" className="mb-2" />
+            <Breakdown score={current} />
+          </>
+        ) : <UpgradeHint feature="fitnessTrend" upgrade={upgrade} />}
       </div>
       <Link href="/fitness-score" className="mt-3.5 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
         {x.f.viewDetails} →

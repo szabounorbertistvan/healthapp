@@ -22,7 +22,7 @@ import { Card } from "@/components/ui";
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { getPlan } from "@/lib/plan";
-import { UpgradeHint } from "@/components/upgrade";
+import { PremiumSoon, UpgradeHint } from "@/components/upgrade";
 
 /**
  * One client, from the coach's side: their weekly summary, 28-day fitness
@@ -116,6 +116,7 @@ export default async function CoachClientPage({
       ) : null}
 
       <div className="mt-4 space-y-4 sm:mt-6">
+        {plan.e.advancedAnalytics ? <PremiumSoon feature="advancedAnalytics" /> : null}
         {fitness ? (
           <FitnessScoreCoachCard view={fitness} />
         ) : !plan.e.advancedAnalytics ? (

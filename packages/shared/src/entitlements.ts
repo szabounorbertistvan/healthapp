@@ -37,6 +37,12 @@ export type Entitlements = {
   customExerciseVideos: boolean;
   /** The logger's "try this next" line: double progression from last time (progression-advice.ts). */
   progressionAdvice: boolean;
+  /** The plateau / regression verdict per lift (exercise-progression.ts) on the exercise page and Progress → Strength. */
+  progressionInsights: boolean;
+  /** Active measurable goals at once (Progress → Goals); null = up to the database's own cap of 12. */
+  maxActiveGoals: number | null;
+  /** The progress PDF and the CSV exports on /reports. The GDPR data export (Account) is free on every plan. */
+  reportExports: boolean;
   // ---- nutrition ----
   barcodeScansPerDay: number | null;
   maxFavoriteFoods: number | null;
@@ -61,6 +67,9 @@ const CLIENT_FREE = {
   maxCustomExercises: 3,
   customExerciseVideos: false,
   progressionAdvice: false,
+  progressionInsights: false,
+  maxActiveGoals: 2,
+  reportExports: false,
   barcodeScansPerDay: 5,
   maxFavoriteFoods: 10,
   adaptiveTargets: false,
@@ -75,6 +84,9 @@ const CLIENT_PREMIUM = {
   maxCustomExercises: null,
   customExerciseVideos: true,
   progressionAdvice: true,
+  progressionInsights: true,
+  maxActiveGoals: null,
+  reportExports: true,
   barcodeScansPerDay: null,
   maxFavoriteFoods: null,
   adaptiveTargets: true,
@@ -125,7 +137,7 @@ export function planEntitlements(tier: Tier, paywall: boolean): Entitlements {
 }
 
 /** The limits SQL enforces, by the feature key `plan_limit()` takes. */
-export type PlanLimitKey = "own_programs" | "custom_exercises" | "favorite_foods" | "barcode_scans_day";
+export type PlanLimitKey = "own_programs" | "custom_exercises" | "favorite_foods" | "barcode_scans_day" | "active_goals";
 
 export function planLimit(e: Entitlements, key: PlanLimitKey): number | null {
   switch (key) {
@@ -137,6 +149,8 @@ export function planLimit(e: Entitlements, key: PlanLimitKey): number | null {
       return e.maxFavoriteFoods;
     case "barcode_scans_day":
       return e.barcodeScansPerDay;
+    case "active_goals":
+      return e.maxActiveGoals;
   }
 }
 

@@ -41,15 +41,18 @@ export type Profile = {
   /** Email switch per marketplace category (users.notification_prefs.email), defaults applied. */
   email_prefs: Record<string, boolean>;
   role: Role;
-  /** Effective tier — includes an active 30-day trial and Premium inherited from a Coach Pro. */
+  /** Effective tier — includes a started 30-day trial and Premium inherited from a Coach Pro. */
   tier: Tier;
   /** True when `tier` is Premium only because the person's active coach pays for Coach Pro. */
   tier_via_coach: boolean;
   /** Whether the paywall applies to this person (app_flags.paywall, or they are a preview user). */
   paywall: boolean;
+  /** End of the trial the person started; null when they never started one. */
   trial_ends_at: string | null;
   /** True once a Stripe customer exists (shows "Manage billing"). */
   has_stripe: boolean;
+  /** "Try Premium free for 30 days" may be offered: paywall on, free tier, never trialled (my_plan, 20261129100000). */
+  trial_available: boolean;
   /** Set by an admin (admin_set_suspended); the layouts refuse a suspended account. */
   suspended_at: string | null;
 };

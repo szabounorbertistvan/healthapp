@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { historyStart, isCoachTier, planEntitlements, TIER_LABEL, todayIn, type Entitlements, type Tier } from "@healthapp/shared";
+import { entitlementsFor, historyStart, isCoachTier, planEntitlements, TIER_LABEL, todayIn, type Entitlements, type Tier } from "@healthapp/shared";
 import { getProfile } from "./data";
 import type { Upgrade } from "./plan-client";
 
@@ -22,6 +22,15 @@ export type Plan = {
   historySince: string | null;
   /** Where "See plans" goes and the plan it names: Coach Pro for anyone who coaches, Premium otherwise. */
   upgrade: Upgrade;
+  /**
+   * What this person will have once the paywall is on, if they do not pay —
+   * the role's free set — while that is less than what they have now; null
+   * when nothing will change (the paywall already applies, they pay, or a
+   * Coach Pro covers them). Drives the "Premium · free for now" tags.
+   */
+  later: Entitlements | null;
+  /** The "Try … free for 30 days" button may show (start_trial() would accept). */
+  trialAvailable: boolean;
 };
 
 export type { Upgrade };
@@ -31,10 +40,18 @@ export const getPlan = cache(async (): Promise<Plan> => {
   const tier = profile?.tier ?? "free";
   const paywall = profile?.paywall ?? false;
   const e = planEntitlements(tier, paywall);
+  const viaCoach = profile?.tier_via_coach ?? false;
+  // A paid tier with no trial running is a subscription (or a comp); a paid
+  // tier inside the trial is the trial, which ends.
+  const trialRunning = profile?.trial_ends_at ? new Date(profile.trial_ends_at).getTime() > Date.now() : false;
+  const paid = (tier === "premium" || tier === "coach_pro") && !trialRunning;
+  const later = paywall || paid || viaCoach ? null : entitlementsFor(isCoachTier(tier) ? "coach_free" : "free");
   return {
     tier,
     paywall,
-    viaCoach: profile?.tier_via_coach ?? false,
+    viaCoach,
+    later,
+    trialAvailable: profile?.trial_available ?? false,
     e,
     historySince: historyStart(e, todayIn(profile?.timezone ?? "Europe/Bucharest")),
     upgrade: isCoachTier(tier)

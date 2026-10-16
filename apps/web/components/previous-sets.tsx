@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { timeAgo } from "@/lib/format";
 import { usePlan } from "@/lib/plan-client";
+import { PremiumSoon } from "./upgrade";
 import { NavIcon } from "./client-nav";
 
 /**
@@ -140,6 +141,7 @@ export function NextSetAdvice({ advice, onUse }: { advice: SetAdvice | null; onU
       <p className="min-w-0 text-[11.5px] leading-snug">
         <span className="font-semibold tabular-nums text-accent-ink">{fill(m.adviceTry, { set })}</span>
         <span className="text-ink-soft"> · {why}</span>
+        <PremiumSoon feature="progressionAdvice" className="ml-1.5 align-[1px]" />
       </p>
       <button type="button" onClick={() => onUse(advice)}
         className="shrink-0 rounded-lg bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-ink-soft hover:text-ink">

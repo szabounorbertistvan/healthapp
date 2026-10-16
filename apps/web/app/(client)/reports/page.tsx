@@ -9,6 +9,8 @@ import { reportFileName } from "@/lib/reports/file-name";
 import { loadProgressReportInputs, reportViewer } from "@/lib/reports/report-data";
 import { buildProgressReport, parseReportPeriod, REPORT_PRESETS, type ReportPeriod } from "@/lib/reports/report-model";
 import { FIELD, LABEL, SMALL_BUTTON } from "@/lib/form-classes";
+import { getPlan } from "@/lib/plan";
+import { PremiumSoon, UpgradeHint } from "@/components/upgrade";
 
 type ReportType = "progress" | CsvKind;
 const TYPES: readonly ReportType[] = ["progress", ...CSV_KINDS];
@@ -25,7 +27,7 @@ const TYPES: readonly ReportType[] = ["progress", ...CSV_KINDS];
  * whole progress report to preview it would load every section for nothing.
  */
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [{ t, locale }, raw, viewer] = await Promise.all([getI18n(), searchParams, reportViewer()]);
+  const [{ t, locale }, raw, viewer, plan] = await Promise.all([getI18n(), searchParams, reportViewer(), getPlan()]);
   const r = t.clientApp.reports;
   if (!viewer) return <EmptyState title={t.clientApp.today.notSignedInTitle} hint={t.clientApp.today.notSignedInHint} />;
 
@@ -156,7 +158,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               ) : null}
             </div>
           )}
-          {fileUrl ? <ReportExport url={fileUrl} fileName={fileName} type={type === "progress" ? "application/pdf" : "text/csv"} /> : null}
+          {/* Premium: the preview above is free, the file is not (the route refuses it too). */}
+          {fileUrl && !plan.e.reportExports ? <UpgradeHint feature="reports" upgrade={plan.upgrade} /> : null}
+          {fileUrl && plan.e.reportExports ? <PremiumSoon feature="reportExports" /> : null}
+          {fileUrl && plan.e.reportExports ? <ReportExport url={fileUrl} fileName={fileName} type={type === "progress" ? "application/pdf" : "text/csv"} /> : null}
           <p className="text-[11.5px] leading-relaxed text-ink-faint">{r.privacy}</p>
           {type !== "progress" ? <p className="text-[11.5px] leading-relaxed text-ink-faint">{r.csvNote}</p> : null}
         </Card>

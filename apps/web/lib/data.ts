@@ -21,14 +21,16 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     // inherited from a Coach Pro, and whether the paywall applies — a
     // definer view, because the coach's subscription is a row this person
     // cannot read. Same wave as before; it replaced a subscriptions select.
+    // `*` rather than a column list: trial_available (20261129100000) is read
+    // when the view has it and is simply absent before that migration.
     supabase.from("my_plan")
-      .select("tier, own_tier, paywall, trial_ends_at, has_stripe")
+      .select("*")
       .maybeSingle(),
   ]);
   if (!user) return null;
   if (planError) console.error(`my_plan read failed: ${planError.message}`);
   const role = user.role as Role;
-  const plan = sub as { tier: Tier | null; own_tier: Tier | null; paywall: boolean | null; trial_ends_at: string | null; has_stripe: boolean | null } | null;
+  const plan = sub as { tier: Tier | null; own_tier: Tier | null; paywall: boolean | null; trial_ends_at: string | null; has_stripe: boolean | null; trial_available?: boolean | null } | null;
   return {
     id: user.id,
     full_name: user.full_name ?? "Coach",
@@ -56,6 +58,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     paywall: plan?.paywall ?? false,
     trial_ends_at: plan?.trial_ends_at ?? null,
     has_stripe: Boolean(plan?.has_stripe),
+    trial_available: Boolean(plan?.trial_available),
     suspended_at: (user.suspended_at as string | null) ?? null,
   };
 });

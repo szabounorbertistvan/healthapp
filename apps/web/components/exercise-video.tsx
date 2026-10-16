@@ -5,7 +5,7 @@ import { youtubeEmbedUrl, type ExerciseVideoSource } from "@healthapp/shared";
 import { setExerciseVideo } from "@/app/library-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { usePlan } from "@/lib/plan-client";
-import { UpgradeHint } from "./upgrade";
+import { PremiumSoon, UpgradeHint } from "./upgrade";
 
 /**
  * An exercise's demo video, and the field to set it: the owner of a custom
@@ -125,6 +125,7 @@ export function ExerciseVideo({
         <UpgradeHint feature="videos" upgrade={upgrade} className="mt-2" />
       ) : editing ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
+          {libraryVideos ? null : <PremiumSoon feature="customExerciseVideos" className="basis-full w-fit" />}
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}

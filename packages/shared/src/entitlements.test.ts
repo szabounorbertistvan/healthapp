@@ -27,6 +27,13 @@ describe("entitlementsFor", () => {
     expect(entitlementsFor("premium").photoCompare).toBe(true);
   });
 
+  test("puts exports and the plateau verdict behind Premium, the GDPR export aside", () => {
+    expect(entitlementsFor("free").reportExports).toBe(false);
+    expect(entitlementsFor("free").progressionInsights).toBe(false);
+    expect(entitlementsFor("premium").reportExports).toBe(true);
+    expect(entitlementsFor("coach_pro").progressionInsights).toBe(true);
+  });
+
   test("puts next-set suggestions and adaptive targets behind Premium", () => {
     expect(entitlementsFor("free").progressionAdvice).toBe(false);
     expect(entitlementsFor("free").adaptiveTargets).toBe(false);
@@ -78,26 +85,27 @@ describe("planEntitlements", () => {
   });
 });
 
-// These four numbers are mirrored by plan_limit() in
-// supabase/migrations/20260923120000_paywall.sql. Change both or neither.
+// These numbers are mirrored by plan_limit() in
+// supabase/migrations/20260923120000_paywall.sql (active_goals: 20261128100000_goal_plan_limit.sql).
+// Change both or neither.
 describe("planLimit mirrors plan_limit() in SQL", () => {
   test("free", () => {
     const e = ENTITLEMENTS.free;
-    expect([planLimit(e, "own_programs"), planLimit(e, "custom_exercises"), planLimit(e, "favorite_foods"), planLimit(e, "barcode_scans_day")])
-      .toEqual([1, 3, 10, 5]);
+    expect([planLimit(e, "own_programs"), planLimit(e, "custom_exercises"), planLimit(e, "favorite_foods"), planLimit(e, "barcode_scans_day"), planLimit(e, "active_goals")])
+      .toEqual([1, 3, 10, 5, 2]);
   });
 
   test("coach_free", () => {
     const e = ENTITLEMENTS.coach_free;
-    expect([planLimit(e, "own_programs"), planLimit(e, "custom_exercises"), planLimit(e, "favorite_foods"), planLimit(e, "barcode_scans_day")])
-      .toEqual([1, 10, 10, 5]);
+    expect([planLimit(e, "own_programs"), planLimit(e, "custom_exercises"), planLimit(e, "favorite_foods"), planLimit(e, "barcode_scans_day"), planLimit(e, "active_goals")])
+      .toEqual([1, 10, 10, 5, 2]);
   });
 
   test("paid tiers are unlimited", () => {
     for (const tier of ["premium", "coach_pro"] as const) {
       const e = ENTITLEMENTS[tier];
-      expect([planLimit(e, "own_programs"), planLimit(e, "custom_exercises"), planLimit(e, "favorite_foods"), planLimit(e, "barcode_scans_day")])
-        .toEqual([null, null, null, null]);
+      expect([planLimit(e, "own_programs"), planLimit(e, "custom_exercises"), planLimit(e, "favorite_foods"), planLimit(e, "barcode_scans_day"), planLimit(e, "active_goals")])
+        .toEqual([null, null, null, null, null]);
     }
   });
 });

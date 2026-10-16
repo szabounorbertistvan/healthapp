@@ -13,6 +13,8 @@ import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { PointsChart } from "./exercise-analytics";
 import { Card } from "./ui";
+import { usePlan } from "@/lib/plan-client";
+import { PremiumSoon, UpgradeHint } from "./upgrade";
 
 /**
  * The progression verdict for one exercise, and the evidence behind it. It
@@ -84,6 +86,17 @@ export function ProgressionBadge({ status }: { status: ProgressionStatus }) {
 export function ProgressionCard({ analysis, chartsLocked = false }: { analysis: ProgressionAnalysis; chartsLocked?: boolean }) {
   const f = useProgressionFormat();
   const { p, t, u } = f;
+  const { e: plan, upgrade } = usePlan();
+  // Premium (ENTITLEMENTS.progressionInsights): the verdict and its reasons.
+  // The history, bests and charts around it follow their own gates.
+  if (!plan.progressionInsights) {
+    return (
+      <section className="mt-6" aria-labelledby="progression-title">
+        <h2 id="progression-title" className="font-display text-lg font-bold tracking-tight">{p.title}</h2>
+        <UpgradeHint card feature="plateau" upgrade={upgrade} className="mt-3" />
+      </section>
+    );
+  }
   const a = analysis;
   const insufficient = a.status === "insufficient";
   const chartPoints = a.series.map((x) => ({ day: x.day, value: a.metric === "reps" ? x.value : u.weightValue(x.value) }));
@@ -92,7 +105,10 @@ export function ProgressionCard({ analysis, chartsLocked = false }: { analysis: 
   return (
     <section className="mt-6" aria-labelledby="progression-title">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="progression-title" className="font-display text-lg font-bold tracking-tight">{p.title}</h2>
+        <h2 id="progression-title" className="flex flex-wrap items-center gap-2 font-display text-lg font-bold tracking-tight">
+          {p.title}
+          <PremiumSoon feature="progressionInsights" />
+        </h2>
         <ProgressionBadge status={a.status} />
       </div>
 
@@ -249,7 +265,10 @@ export function ProgressionOverview({ items, forCoach = false }: {
   return (
     <Card plain className="overflow-hidden p-0">
       <div className="px-5 pb-1 pt-[18px]">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{forCoach ? p.coachOverviewTitle : p.overviewTitle}</p>
+        <p className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          {forCoach ? p.coachOverviewTitle : p.overviewTitle}
+          {forCoach ? null : <PremiumSoon feature="progressionInsights" />}
+        </p>
         <p className="mt-1 text-[12px] text-ink-faint">{forCoach ? p.coachOverviewHint : p.overviewHint}</p>
       </div>
       {items.length === 0 ? (

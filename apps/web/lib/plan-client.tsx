@@ -13,6 +13,10 @@ export type ClientPlan = {
    * tier; it rides here because every layout mounts this.
    */
   libraryVideos: boolean;
+  /** lib/plan.ts `later`: the free set this person drops to at launch, or null when nothing changes. */
+  later?: Entitlements | null;
+  /** lib/plan.ts `trialAvailable`: offer "Try … free for 30 days" in the upgrade hints. */
+  trialAvailable?: boolean;
 };
 
 /**

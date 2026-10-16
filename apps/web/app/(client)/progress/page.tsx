@@ -11,7 +11,7 @@ import { getMyFitnessScore } from "@/lib/fitness-score-data";
 import { getMyStreak } from "@/lib/streak-data";
 import { getMyGoalDashboard } from "@/lib/goals-data";
 import { GoalsPanel } from "@/components/goals";
-import { UpgradeHint } from "@/components/upgrade";
+import { PremiumSoon, UpgradeHint } from "@/components/upgrade";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { ProgressPhotos } from "@/components/progress-photos";
 import { Card, EmptyState } from "@/components/ui";
@@ -177,7 +177,8 @@ export default async function ProgressPage({
   const [history, overview] = tab === "strength"
     ? await Promise.all([
         selected ? getExerciseHistory(selected) : Promise.resolve(null),
-        getProgressionOverview(options.map((o) => o.id)),
+        // Premium: no read at all for a plan without the verdict.
+        plan.e.progressionInsights ? getProgressionOverview(options.map((o) => o.id)) : Promise.resolve(null),
       ])
     : [null, null];
   // Windows are local days; a session's `at` is UTC, so it is placed on the
@@ -205,8 +206,10 @@ export default async function ProgressPage({
   return (
     <div className="@container mx-auto max-w-[1600px]">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
+        <h1 className="flex flex-wrap items-center gap-2.5 font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">
           {t.common.nav.progress}
+          {/* the charts, every PR and the score trend on this page */}
+          <PremiumSoon feature="progressCharts" />
         </h1>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -346,7 +349,9 @@ export default async function ProgressPage({
                 return analysis ? [{ id: o.id, name: o.name, analysis }] : [];
               })}
             />
-          ) : null}
+          ) : plan.e.progressionInsights ? null : (
+            <UpgradeHint card feature="plateau" upgrade={plan.upgrade} />
+          )}
           <ExerciseProgress
             state={state}
             options={options}

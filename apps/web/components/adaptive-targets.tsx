@@ -11,7 +11,7 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { usePlan } from "@/lib/plan-client";
 import { useUnits } from "@/lib/units/client";
-import { UpgradeHint } from "./upgrade";
+import { PremiumSoon, UpgradeHint } from "./upgrade";
 
 const GOALS: AdaptiveGoal[] = ["lose", "maintain", "gain"];
 
@@ -58,7 +58,10 @@ export function AdaptiveTargets({
   return (
     <section className="rounded-3xl glass p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-display text-lg font-bold tracking-tight">{m.title}</h2>
+        <h2 className="flex flex-wrap items-center gap-2 font-display text-lg font-bold tracking-tight">
+          {m.title}
+          <PremiumSoon feature="adaptiveTargets" />
+        </h2>
         <p className="text-[11.5px] text-ink-faint">{fill(m.window, { days: ADAPTIVE_WINDOW_DAYS })}</p>
       </div>
 

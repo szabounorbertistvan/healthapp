@@ -6,7 +6,8 @@
 //
 // Whose data: the session's, and only the session's — there is no user id in
 // the URL, and every read is filtered by the signed-in user and answered by
-// RLS (lib/reports/report-data.ts). Signed out → 401, no file.
+// RLS (lib/reports/report-data.ts). Signed out → 401, no file; a plan
+// without reportExports → 403.
 //
 // The file is made on request and streamed back; it is never stored, never
 // cached (no-store, private), never sent to another service. Errors come back
@@ -24,6 +25,7 @@ import {
 import { parseReportPeriod, type ReportPeriod } from "@/lib/reports/report-model";
 import { reportFileName } from "@/lib/reports/file-name";
 import { NO_STORE, progressPdfResponse, reportFail as fail } from "@/lib/reports/respond";
+import { getPlan } from "@/lib/plan";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +48,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
 
   const viewer = await reportViewer();
   if (!viewer) return fail(401, "REPORT_SIGNED_OUT", r.errors.REPORT_SIGNED_OUT);
+  // Premium (ENTITLEMENTS.reportExports). Open to everyone while the paywall
+  // is off. The GDPR data export under Account is a different door and free.
+  if (!(await getPlan()).e.reportExports) return fail(403, "REPORT_PLAN", r.errors.REPORT_PLAN);
 
   const url = new URL(request.url);
   const parsed = parseReportPeriod(Object.fromEntries(url.searchParams), viewer.today);

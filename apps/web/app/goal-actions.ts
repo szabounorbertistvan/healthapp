@@ -9,8 +9,8 @@
 // Progress is never written: it is computed on read from the person's data.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { GOAL_METRIC_SPEC, isGoalMetric, validateGoalInput, type GoalErrorCode } from "@healthapp/shared";
-import { notSignedIn } from "@/lib/action-result";
+import { GOAL_METRIC_SPEC, isGoalMetric, isPlanLimitError, validateGoalInput, type GoalErrorCode } from "@healthapp/shared";
+import { notSignedIn, planLimitReached } from "@/lib/action-result";
 import { getI18n } from "@/lib/i18n/server";
 import { myToday } from "@/lib/my-today";
 import { liveUser } from "@/lib/supabase/server";
@@ -29,8 +29,10 @@ async function refused(code: GoalErrorCode): Promise<ActionResult> {
   return { ok: false, errorCode: code, message: t.clientApp.goals.errors[code] };
 }
 
-/** A database refusal, in the person's words: the duplicate index, the cap, the exercise guard, a check. */
+/** A database refusal, in the person's words: the plan limit, the duplicate index, the cap, the exercise guard, a check. */
 async function fromDatabase(error: { code?: string; message: string }): Promise<ActionResult> {
+  // the plan's active-goal limit (20261128100000) — the screen shows the upgrade hint
+  if (isPlanLimitError(error.message)) return planLimitReached;
   if (error.code === "23505") return refused("GOAL_DUPLICATE");
   if (error.message.includes("GOAL_LIMIT")) return refused("GOAL_LIMIT");
   if (error.message.includes("GOAL_EXERCISE")) return refused("GOAL_EXERCISE");

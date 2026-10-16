@@ -13,6 +13,6 @@ export const notSignedIn = { ok: false, message: "Not signed in" } as const;
  * feature their tier does not include (UPGRADE_REQUIRED, checked in the
  * action). Screens show the upgrade hint for both rather than the message.
  */
-export type PlanErrorCode = "PLAN_LIMIT_REACHED" | "UPGRADE_REQUIRED";
+export type PlanErrorCode = "PLAN_LIMIT_REACHED" | "UPGRADE_REQUIRED" | "TRIAL_USED" | "TRIAL_NOT_NEEDED" | "TRIAL_NOT_OPEN";
 export const planLimitReached = { ok: false, message: "PLAN_LIMIT_REACHED", errorCode: "PLAN_LIMIT_REACHED" } as const;
 export const upgradeRequired = { ok: false, message: "UPGRADE_REQUIRED", errorCode: "UPGRADE_REQUIRED" } as const;

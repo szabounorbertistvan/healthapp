@@ -5,7 +5,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { loadWorkoutShareCard } from "@/app/share-card-actions";
 import { APP_NAME } from "@/lib/brand";
 import { usePlan } from "@/lib/plan-client";
-import { PlanTag, UpgradeHint } from "./upgrade";
+import { PlanTag, PremiumSoon, UpgradeHint } from "./upgrade";
 import { useI18n } from "@/lib/i18n/client";
 import {
   DEFAULT_SHARE_OPTIONS,
@@ -268,7 +268,7 @@ export function ShareWorkoutDialog({ card, onClose }: { card: WorkoutShareCard; 
           className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-line px-4 text-sm font-semibold hover:border-accent"
         >
           {s.editStats}
-          {customize ? null : <PlanTag label={upgrade.label} />}
+          {customize ? <PremiumSoon feature="shareCustomize" /> : <PlanTag label={upgrade.label} />}
         </button>
         {editing && !customize ? <UpgradeHint feature="share" upgrade={upgrade} className="mt-2" /> : null}
         {editing && customize ? (

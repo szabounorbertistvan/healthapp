@@ -28,7 +28,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   const [plan, onboarding] = await Promise.all([getPlan(), getOnboardingState()]);
 
   return (
-    <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade, libraryVideos: profile.role === "admin" }}>
+    <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade, libraryVideos: profile.role === "admin", later: plan.later, trialAvailable: plan.trialAvailable }}>
     <OnboardingProvider userId={profile.id} initial={onboarding}>
     <div className="flex min-h-screen">
       {/* The sidebar sits on the page ground, no border: the cards are the

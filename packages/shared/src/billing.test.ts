@@ -12,14 +12,14 @@ describe("effectiveTier", () => {
   });
 
   it("grants the role's full paid tier during an unexpired trial", () => {
-    const sub = { tier: "free" as const, status: "active", trial_ends_at: "2026-09-01T00:00:00Z" };
+    const sub = { tier: "free" as const, status: "active", trial_started_at: "2026-08-20T00:00:00Z", trial_ends_at: "2026-09-01T00:00:00Z" };
     expect(effectiveTier(sub, "client", NOW)).toBe("premium");
     expect(effectiveTier(sub, "coach", NOW)).toBe("coach_pro");
     expect(effectiveTier(sub, "both", NOW)).toBe("coach_pro");
   });
 
   it("falls back to free after the trial expires", () => {
-    const sub = { tier: "free" as const, status: "active", trial_ends_at: "2026-08-01T00:00:00Z" };
+    const sub = { tier: "free" as const, status: "active", trial_started_at: "2026-07-02T00:00:00Z", trial_ends_at: "2026-08-01T00:00:00Z" };
     expect(effectiveTier(sub, "client", NOW)).toBe("free");
   });
 
@@ -27,11 +27,17 @@ describe("effectiveTier", () => {
     expect(effectiveTier({ tier: "premium", status: "canceled" }, "client", NOW)).toBe("free");
     expect(
       effectiveTier(
-        { tier: "premium", status: "past_due", trial_ends_at: "2026-09-01T00:00:00Z" },
+        { tier: "premium", status: "past_due", trial_started_at: "2026-08-20T00:00:00Z", trial_ends_at: "2026-09-01T00:00:00Z" },
         "client",
         NOW,
       ),
     ).toBe("premium");
+  });
+
+  it("ignores a trial end nobody started (the old sign-up stamp)", () => {
+    const sub = { tier: "free" as const, status: "active", trial_ends_at: "2026-09-01T00:00:00Z" };
+    expect(effectiveTier(sub, "client", NOW)).toBe("free");
+    expect(effectiveTier(sub, "coach", NOW)).toBe("coach_free");
   });
 
   it("handles a missing subscription row", () => {
@@ -39,7 +45,7 @@ describe("effectiveTier", () => {
   });
 
   it("drops a coach whose trial ended to Coach Starter, not to the client Free tier", () => {
-    const sub = { tier: "free" as const, status: "active", trial_ends_at: "2026-08-01T00:00:00Z" };
+    const sub = { tier: "free" as const, status: "active", trial_started_at: "2026-07-02T00:00:00Z", trial_ends_at: "2026-08-01T00:00:00Z" };
     expect(effectiveTier(sub, "coach", NOW)).toBe("coach_free");
     expect(effectiveTier(null, "both", NOW)).toBe("coach_free");
     expect(effectiveTier(null, "admin", NOW)).toBe("coach_free");

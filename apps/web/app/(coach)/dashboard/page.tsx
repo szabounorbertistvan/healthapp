@@ -12,7 +12,7 @@ import { NavIcon } from "@/components/client-nav";
 import { pct, timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { getPlan } from "@/lib/plan";
-import { UpgradeHint } from "@/components/upgrade";
+import { PremiumSoon, UpgradeHint } from "@/components/upgrade";
 import { CoachRequestsCard } from "@/components/gyms";
 import { getCoachRequestInbox } from "@/lib/gym-data";
 
@@ -91,6 +91,7 @@ export default async function DashboardPage() {
 
       <div data-tour="dashboard-queue" className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
         {!pro && rows.length > 0 ? <UpgradeHint card feature="analytics" upgrade={plan.upgrade} /> : null}
+        {pro && rows.length > 0 ? <PremiumSoon feature="advancedAnalytics" /> : null}
         {rows.length === 0 ? (
           <EmptyState plain title={t.coachApp.dashboard.emptyTitle} hint={t.coachApp.dashboard.emptyHint} />
         ) : (

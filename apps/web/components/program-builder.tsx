@@ -6,7 +6,7 @@ import type { ProgramDetail } from "@/lib/types";
 import { addProgramDay, copyProgramToClient, deleteProgram, duplicateProgramDay, publishProgram, removeProgramDay } from "@/app/builder-actions";
 import Link from "next/link";
 import { usePlan } from "@/lib/plan-client";
-import { PlanTag, UpgradeHint } from "@/components/upgrade";
+import { PlanTag, PremiumSoon, UpgradeHint } from "@/components/upgrade";
 import { ProgramDayEditor } from "@/components/program-day-editor";
 import { NavIcon } from "@/components/client-nav";
 import { Card, EmptyState } from "@/components/ui";
@@ -90,7 +90,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment, read
             className="inline-flex h-11 items-center gap-2 rounded-full bg-surface px-4 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
           >
             {t.common.plan.copyProgram.button}
-            {canCopy ? null : <PlanTag label={upgrade.label} />}
+            {canCopy ? <PremiumSoon feature="programCopy" /> : <PlanTag label={upgrade.label} />}
           </button>
           <button
             onClick={() => run(() => publishProgram(program.id))}
@@ -201,7 +201,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment, read
                   className="inline-flex h-9 items-center gap-1.5 rounded-full bg-bg px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
                 >
                   {m.duplicate}
-                  {canCopy ? null : <PlanTag label={upgrade.label} />}
+                  {canCopy ? <PremiumSoon feature="programCopy" /> : <PlanTag label={upgrade.label} />}
                 </button>
                 <button
                   onClick={() => { if (window.confirm(fill(t.clientApp.workout.deleteDayConfirm, { name: day.name }))) run(() => removeProgramDay(program.id, day.id)); }}

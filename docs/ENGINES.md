@@ -1364,6 +1364,31 @@ assertions, run live inside a rolled-back transaction before applying).
   `setMyNutritionTargets` keeping the split; read by `getMyAdaptiveInputs`.
   Free on every plan, same day: **"same as the day before"** on an empty meal
   (`copyMealFromDay`, derived ids so a double tap is a no-op).
+- *Moved behind Premium 2026-10-15*: **report exports** (`reportExports`) — `/reports` keeps the
+  preview, the download button becomes `UpgradeHint`, and `/api/reports/[file]` answers 403
+  `REPORT_PLAN` (the GDPR data export under Account is a different door and stays free; the coach's
+  client report was already `advancedAnalytics`); **the plateau verdict** (`progressionInsights`) —
+  `ProgressionCard` on the exercise page and the overview on Progress → Strength (not even read
+  without it); **active goals** (`maxActiveGoals`: free / Starter 2, paid unlimited up to
+  `goals_guard`'s 12) — enforced in SQL by `plan_limit('active_goals')` + trigger
+  `goals_plan_limit` (`20261128100000_goal_plan_limit.sql`, test `goal_plan_limit.test.sql`), the
+  goals panel shows the hint in place of "New goal" at the limit.
+- *"Premium · free for now" (2026-10-16)*: while the paywall is off, `PremiumSoon` /
+  `PremiumSoonGoals` (`components/upgrade.tsx`) tag every Premium/Coach Pro feature the person's
+  plan will not keep — `lib/plan.ts` `later` = the role's free set, null when they pay, a Coach Pro
+  covers them or the paywall already applies. Tagged: progress charts (Progress title, score
+  breakdown), photo compare, share customisation, own exercise videos, next-set suggestion,
+  plateau verdict, adaptive targets, report exports, the goals limit, and for coaches the
+  dashboard analytics, the client page insights, program copy and ingredient plans. Not tagged:
+  the numeric limits (history window, own programs, custom exercises, scans, favourites).
+- *Opt-in trial* (`20261129100000_trial_opt_in.sql`, test `trial_opt_in.test.sql`; relu 2026-10-16):
+  everything is free until the paywall goes on; from then a trial runs only after the person
+  presses **"Try … free for 30 days"** (`TryTrialButton` in every `UpgradeHint`, on `/billing` and
+  in coach Settings → `startTrial` → `start_trial()`): once per account, no card, only while the
+  paywall applies to them and they are on a free tier. Sign-up no longer stamps a trial;
+  `own_tier()` counts one only with `subscriptions.trial_started_at` set (mirrored in
+  `packages/shared/src/billing.ts` `effectiveTier`). `my_plan` adds `trial_available`, and its
+  `trial_ends_at` is null until a trial is started. Old sign-up end dates stay in the rows, unused.
 - To preview: `update public.app_flags set preview_users = array['<uuid>']::uuid[] where key = 'paywall';`
   — note the seeded test accounts are all on trials or manual grants, so a
   gate only shows once their `subscriptions` row is free and the trial is past.

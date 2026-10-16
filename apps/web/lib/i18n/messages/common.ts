@@ -1024,6 +1024,14 @@ const en = {
     seePlans: "See plans",
     viaCoach: "Premium is included with your coach's Pro plan.",
     limitReached: "You've reached what your plan includes.",
+    soonTag: "{plan} · free for now",
+    soonHint: "Free while Voinic is launching. Then it becomes part of {plan}, which you can try free for 30 days.",
+    tryTrial: "Try {plan} free for 30 days",
+    trialStarting: "Starting…",
+    trialUsed: "You have already used your free trial.",
+    trialNotNeeded: "Your plan already includes this.",
+    trialFailed: "Could not start the trial. Try again.",
+    soonGoals: "Free for now: as many goals as you like (up to 12). Later the free plan keeps {limit} active at once; more is {plan}.",
     features: {
       history: {
         title: "Older history is {plan}",
@@ -1089,6 +1097,18 @@ const en = {
         title: "Next-set suggestions are {plan}",
         hint: "Last time's sets stay right here. A suggested weight and reps for this set, worked out from them, come with {plan}.",
       },
+      goals: {
+        title: "{limit} active goals is your plan's limit",
+        hint: "Finish or abandon one to start another, or follow up to 12 at once with {plan}.",
+      },
+      reports: {
+        title: "Reports and exports are {plan}",
+        hint: "The preview above stays free. Downloading the PDF report and the CSV files comes with {plan}. Your full data export under Account is free on every plan.",
+      },
+      plateau: {
+        title: "Plateau detection is {plan}",
+        hint: "Your history and records stay free. Whether a lift is progressing, stalling or slipping — and why — comes with {plan}.",
+      },
       adaptiveTargets: {
         title: "Adaptive targets are {plan}",
         hint: "Your trends stay free. Working out what you really burn from your weight and diary, and a target to match, comes with {plan}.",
@@ -1104,6 +1124,8 @@ const en = {
         "Your own exercise demo videos and a customisable share card",
         "What to lift next set, from what you did last time",
         "Calorie targets that adjust to your real weight trend",
+        "Plateau detection on every lift, PDF reports and CSV exports",
+        "Up to 12 goals at once (free: 2)",
       ],
       coachFree: ["Up to 3 clients", "Program and meal-target builders", "Messages and check-in review", "10 custom exercises"],
       coachPro: [
@@ -2151,6 +2173,14 @@ const ro: typeof en = {
     seePlans: "Vezi planurile",
     viaCoach: "Premium e inclus în planul Pro al antrenorului tău.",
     limitReached: "Ai atins ce include planul tău.",
+    soonTag: "{plan} · gratuit acum",
+    soonHint: "Gratuit cât timp Voinic e în lansare. Apoi va face parte din {plan}, pe care îl poți încerca gratuit 30 de zile.",
+    tryTrial: "Încearcă {plan} gratuit 30 de zile",
+    trialStarting: "Se pornește…",
+    trialUsed: "Ai folosit deja perioada de probă gratuită.",
+    trialNotNeeded: "Planul tău include deja asta.",
+    trialFailed: "Nu am putut porni perioada de probă. Încearcă din nou.",
+    soonGoals: "Gratuit acum: câte obiective vrei (până la 12). Mai târziu planul gratuit păstrează {limit} active deodată; mai multe vin cu {plan}.",
     features: {
       history: {
         title: "Istoricul mai vechi e {plan}",
@@ -2216,6 +2246,18 @@ const ro: typeof en = {
         title: "Sugestiile pentru setul următor sunt {plan}",
         hint: "Seturile de data trecută rămân aici. O greutate și un număr de repetări sugerate pentru setul acesta, calculate din ele, vin cu {plan}.",
       },
+      goals: {
+        title: "{limit} obiective active e limita planului tău",
+        hint: "Încheie sau abandonează unul ca să începi altul, sau urmărește până la 12 deodată cu {plan}.",
+      },
+      reports: {
+        title: "Rapoartele și exporturile sunt {plan}",
+        hint: "Previzualizarea de mai sus rămâne gratuită. Descărcarea raportului PDF și a fișierelor CSV vine cu {plan}. Exportul complet al datelor tale din Cont e gratuit pe orice plan.",
+      },
+      plateau: {
+        title: "Detectarea platourilor e {plan}",
+        hint: "Istoricul și recordurile rămân gratuite. Dacă un exercițiu progresează, stagnează sau regresează — și de ce — vine cu {plan}.",
+      },
       adaptiveTargets: {
         title: "Țintele adaptive sunt {plan}",
         hint: "Evoluția ta rămâne gratuită. Calculul a cât consumi de fapt, din greutate și jurnal, și o țintă pe măsură vin cu {plan}.",
@@ -2231,6 +2273,8 @@ const ro: typeof en = {
         "Videoclipuri demonstrative proprii și card de share personalizabil",
         "Ce să ridici la setul următor, pe baza antrenamentului trecut",
         "Ținte de calorii care se ajustează după evoluția reală a greutății",
+        "Detectarea platourilor la fiecare exercițiu, rapoarte PDF și exporturi CSV",
+        "Până la 12 obiective deodată (gratuit: 2)",
       ],
       coachFree: ["Până la 3 clienți", "Builder de programe și ținte de macro", "Mesaje și review de check-in", "10 exerciții proprii"],
       coachPro: [

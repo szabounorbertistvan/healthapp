@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/data";
 import { Card } from "@/components/ui";
 import { TIER_LABEL } from "@/lib/entitlements";
 import { PlanFeatureList, SubscribePanel, TrialBanner } from "@/components/billing";
+import { TryTrialButton } from "@/components/upgrade";
 import { getI18n } from "@/lib/i18n/server";
 import { PageTour } from "@/components/onboarding/tour";
 import { cloudinaryConfigured } from "@/lib/cloudinary";
@@ -71,6 +72,7 @@ export default async function SettingsPage() {
         {profile.paywall ? (
         <>
         <TrialBanner trialEndsAt={profile.trial_ends_at} paid={paid} />
+        <TryTrialButton />
 
         <Card plain>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.coachApp.settings.subscription}</p>

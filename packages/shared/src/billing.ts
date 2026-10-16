@@ -45,13 +45,15 @@ export type SubscriptionRow = {
   tier: Tier;
   status: string; // active | canceled | past_due
   trial_ends_at?: string | null;
+  /** When the person pressed "Try Premium" (20261129100000). A trial counts only once started. */
+  trial_started_at?: string | null;
 };
 
 /**
  * What the user is actually entitled to right now. Mirrors public.own_tier +
- * public.effective_tier in SQL (migration 20260923120000_paywall): a
- * paid/granted tier wins; otherwise an unexpired trial grants the full paid
- * tier for the role; otherwise the role's free tier — Coach Starter for anyone
+ * public.effective_tier in SQL (20260923120000_paywall, trial rule
+ * 20261129100000_trial_opt_in): a paid/granted tier wins; otherwise a trial
+ * the person started and that has not ended grants the full paid tier for the role; otherwise the role's free tier — Coach Starter for anyone
  * who coaches, Free for everyone else.
  *
  * `coachOwnTier` is the client's active coach's *own* tier (never itself
@@ -66,7 +68,7 @@ export function effectiveTier(
   coachOwnTier: Tier | null = null,
 ): Tier {
   if (sub && sub.status === "active" && sub.tier !== "free") return sub.tier;
-  if (sub?.trial_ends_at && new Date(sub.trial_ends_at) > now) return trialTierFor(role);
+  if (sub?.trial_started_at && sub.trial_ends_at && new Date(sub.trial_ends_at) > now) return trialTierFor(role);
   if (role !== "client") return "coach_free";
   return coachOwnTier === "coach_pro" ? "premium" : "free";
 }
