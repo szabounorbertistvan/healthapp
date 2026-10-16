@@ -8,6 +8,7 @@ import { cloudinaryConfigured } from "@/lib/cloudinary";
 import { CONSENT_VERSION } from "@/lib/legal";
 import { getI18n } from "@/lib/i18n/server";
 import { Logo } from "@/components/logo";
+import { APP_NAME } from "@/lib/brand";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { OnboardingProvider } from "@/components/onboarding/provider";
@@ -37,8 +38,7 @@ export default async function OnboardingPage({
   if (profile.suspended_at) redirect("/suspended");
   if (!profile.username || profile.consent_version !== CONSENT_VERSION) redirect("/complete-profile");
 
-  const [{ t }, state, snapshot, params] = await Promise.all([
-    getI18n(),
+  const [state, snapshot, params] = await Promise.all([
     getOnboardingState(),
     getSetupSnapshot(profile),
     searchParams,
@@ -56,7 +56,7 @@ export default async function OnboardingPage({
   return (
     <main className="min-h-screen px-4 pb-16 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 sm:pt-6">
       <header className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-        <Link href={audience === "client" ? "/today" : "/dashboard"} aria-label={t.onboarding.setup.later}>
+        <Link href={audience === "client" ? "/today" : "/dashboard"} aria-label={APP_NAME}>
           <Logo size="sm" />
         </Link>
         <div className="flex items-center gap-2">

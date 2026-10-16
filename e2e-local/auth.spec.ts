@@ -104,7 +104,13 @@ test.describe("password reset", () => {
     await signIn(page, RESET_ACCOUNT, PASSWORD);
     await expect(page.locator("form").getByRole("alert")).toBeVisible();
     await signIn(page, RESET_ACCOUNT, NEW_PASSWORD);
-    await expect(page).toHaveURL(/\/today$/, { timeout: 30_000 });
+    // e2e-reset is a client with no coach and no program (supabase/seed/e2e.sql), so
+    // signed in it lands where every empty account does: Today sends it on to the
+    // coach-or-solo choice (onboarding.spec.ts expects the same), not to /today itself
+    await expect(page).toHaveURL(/\/welcome$/, { timeout: 30_000 });
+    // …and it is a session, not a page a signed-out visitor could reach
+    await page.goto("/progress");
+    await expect(page).toHaveURL(/\/progress$/);
 
     // a recovery link works once
     await page.context().clearCookies();

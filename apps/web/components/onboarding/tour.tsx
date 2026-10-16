@@ -200,9 +200,13 @@ function TourCard({
     };
   }, [target]);
 
+  // Only once placed: the first render is `visibility: hidden` until the layout
+  // effect has measured it, and focus() on a hidden element does nothing — the
+  // card opened from its button then never had focus (e2e-local onboarding, 2026-10-16).
+  const placed = pos !== null;
   useEffect(() => {
-    if (takeFocus) ref.current?.focus({ preventScroll: true });
-  }, [takeFocus]);
+    if (takeFocus && placed) ref.current?.focus({ preventScroll: true });
+  }, [takeFocus, placed]);
 
   // Escape closes — unless a modal dialog is open, whose own Escape that is
   useEffect(() => {

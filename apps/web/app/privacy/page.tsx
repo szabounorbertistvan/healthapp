@@ -28,7 +28,7 @@ function EnglishContent() {
   return (
     <>
       <h1 className="text-3xl font-extrabold tracking-tight">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-ink-faint">Last updated: 26 August 2026</p>
+      <p className="mt-2 text-sm text-ink-faint">Last updated: 16 October 2026</p>
 
       <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-ink-soft">
         <section>
@@ -74,6 +74,26 @@ function EnglishContent() {
             When you search foods or scan a barcode, the search term or barcode is sent to{" "}
             <a href="https://openfoodfacts.org" className="font-semibold text-accent-ink hover:underline">Open Food Facts</a>{" "}
             to look up nutrition data; no account information is sent with it.
+          </p>
+          <p className="mt-2">
+            Pictures are stored with Cloudinary. Progress photos and coaches&apos; qualification
+            documents are stored privately and can only be opened through short-lived signed
+            links the app creates for the people allowed to see them. Profile photos and coach
+            cover images are public, because they are shown on your profile.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">Asking an AI for feedback</h2>
+          <p>
+            When you finish a workout you can choose to open an AI assistant (ChatGPT, Claude,
+            Gemini, Grok or Perplexity) with a summary of that workout. Nothing is sent until
+            you tap one. The summary — the workout&apos;s name and date, the exercises, sets,
+            weights and effort, your notes on the sets, and your sex and age if you have set
+            them, but never your name, username or email — then goes from your device to that
+            service, in the link it opens or when you paste it, and that service handles it
+            under its own terms. {APP_NAME} does not receive the answer. The exact text is
+            shown under &quot;See what gets sent&quot; before you tap.
           </p>
         </section>
 
@@ -167,7 +187,7 @@ function RomanianContent() {
   return (
     <>
       <h1 className="text-3xl font-extrabold tracking-tight">Politica de confidențialitate</h1>
-      <p className="mt-2 text-sm text-ink-faint">Ultima actualizare: 26 august 2026</p>
+      <p className="mt-2 text-sm text-ink-faint">Ultima actualizare: 16 octombrie 2026</p>
 
       <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-ink-soft">
         <section>
@@ -216,6 +236,28 @@ function RomanianContent() {
             <a href="https://openfoodfacts.org" className="font-semibold text-accent-ink hover:underline">Open Food Facts</a>{" "}
             pentru a consulta datele nutriționale; nicio informație despre cont nu este trimisă
             împreună cu acesta.
+          </p>
+          <p className="mt-2">
+            Imaginile sunt stocate cu Cloudinary. Fotografiile de progres și documentele de
+            calificare ale antrenorilor sunt stocate privat și pot fi deschise doar prin linkuri
+            semnate, valabile scurt timp, pe care aplicația le creează pentru persoanele care au
+            dreptul să le vadă. Fotografiile de profil și imaginile de copertă ale antrenorilor
+            sunt publice, pentru că apar pe profilul dumneavoastră.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-lg font-bold text-ink">Părerea unui AI despre antrenament</h2>
+          <p>
+            Când terminați un antrenament puteți alege să deschideți un asistent AI (ChatGPT,
+            Claude, Gemini, Grok sau Perplexity) cu un rezumat al acelui antrenament. Nimic nu
+            este trimis până nu apăsați pe unul. Rezumatul — numele și data antrenamentului,
+            exercițiile, seriile, greutățile și efortul, notițele dumneavoastră la serii, precum
+            și sexul și vârsta, dacă le-ați completat, dar niciodată numele, numele de utilizator
+            sau adresa de email — pleacă atunci de pe dispozitivul dumneavoastră către acel
+            serviciu, în linkul pe care îl deschide sau când îl lipiți, iar serviciul îl
+            prelucrează potrivit propriilor sale condiții. {APP_NAME} nu primește răspunsul.
+            Textul exact este afișat la „Vezi ce se trimite” înainte să apăsați.
           </p>
         </section>
 

@@ -87,3 +87,16 @@ This path has not been run yet: the machine this was written on has no Docker.
 
 - A sandbox whose preinstalled Chromium is not the build this Playwright pins can set `E2E_CHROMIUM_PATH`.
 - Next redirects to `localhost` even when called on `127.0.0.1`, and cookies are per host. Keep the app URL on `localhost`.
+- **Windows (run here 2026-10-16).** `bins.mjs` downloads Linux binaries only, so point it at
+  Windows ones: `PGRST_BIN` = PostgREST v16.1 `postgrest-v16.1-windows-x86-64.zip` (official
+  release, SHA-256 `ae4b3dca…2e87`), and put
+  `scripts/pgtest/node_modules/@embedded-postgres/windows-x64/native/bin` on `PATH` — it carries
+  the `libpq.dll` PostgREST needs (without it the exe dies with 0xC0000135). `GOTRUE_BIN` = GoTrue
+  v2.195.0 built from source with Go ≥ 1.25.12 (`go build -o auth.exe .` in the release tarball, with
+  `migrations/` beside the exe); Windows has no `SO_REUSEPORT`, so `cmd/serve_cmd.go`'s
+  `ListenConfig.Control` must be dropped in that local copy. A run that is killed can leave a
+  `postgres.exe` child holding the stack's port 54430 and a PostgREST on 54432 — the next run then
+  fails with "PostgREST did not come up" (exit 3); stop those first.
+- `E2E_DIAG_STREAM=1` adds a probe of React's streaming (segment containers, `$RC`/`$RV` calls, RSC
+  requests) to every page of the test's own context and writes `stream-timeline.txt` next to a test
+  that ends with a `div[hidden][id^="S:"]` still in the DOM. Off by default; docs/GAPS.md explains why.

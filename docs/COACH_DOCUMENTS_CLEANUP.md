@@ -30,7 +30,7 @@ Never a candidate:
 - Anything in a pending review or on a suspended profile.
 - Identity documents. They have their own job, `identity`.
 
-The privacy policy (`app/privacy/page.tsx`) promises the 12-month rule, so the retention job has to actually run. Schedule it monthly, or run it by hand after a backup. Account deletion removes every document separately: `destroyUserPhotos()` deletes the whole folder when deletion is requested, and the purge job removes the rows.
+The privacy policy (`app/privacy/page.tsx`) promises the 12-month rule, so the retention job has to actually run. `.github/workflows/coach-documents-retention.yml` does the **dry runs** (retention, identity, orphans) on the 1st of every month and goes red when anything is due; it deletes nothing, because `--execute` stays a person's act. It needs five repository secrets in GitHub (Settings → Secrets and variables → Actions): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — until they are set it fails (red) and checks nothing. When it is red: take a backup, then run the printed jobs by hand as below. Account deletion removes every document separately: `destroyUserPhotos()` deletes the whole folder when deletion is requested, and the purge job removes the rows.
 
 ## Safety properties (tested in `scripts/lib/coach-documents-core.test.mjs` and `supabase/tests/coach_documents_operations.test.sql`)
 

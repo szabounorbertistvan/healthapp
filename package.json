@@ -20,6 +20,7 @@
     "db:test:race": "node scripts/pgtest/race-bookings.mjs",
     "db:test:api": "node scripts/pgtest/api.mjs",
     "db:backup": "node scripts/db-backup.mjs",
+    "db:gate": "node scripts/migration-gate.mjs",
     "seed:accounts": "node scripts/seed-accounts.mjs",
     "exercises:images": "node scripts/mirror-exercise-images.mjs",
     "exercises:translate": "node scripts/translate-exercises.mjs",

@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toggleCoachSave } from "@/app/coach-profile-actions";
 import { follow } from "@/app/social-actions";
+import { settle } from "@/lib/settle-action";
 
 /**
  * Back from signing in with "Save" in mind (20261108100000): the coach page
@@ -18,7 +19,9 @@ export function SaveIntent({ profileId, saved, slug }: { profileId: string; save
     if (done.current) return;
     done.current = true;
     void (async () => {
-      if (!saved) await toggleCoachSave(profileId, false);
+      // settle(): a request that never answered must not leave the intent in the URL
+      // (and an unhandled rejection behind); the button shows the real state after the refresh
+      if (!saved) await settle(() => toggleCoachSave(profileId, false), "unreachable");
       router.replace(`/coaches/${slug}`, { scroll: false });
       router.refresh();
     })();
@@ -37,7 +40,7 @@ export function FollowIntent({ userId, following, slug }: { userId: string; foll
     if (done.current) return;
     done.current = true;
     void (async () => {
-      if (!following) await follow(userId);
+      if (!following) await settle(() => follow(userId), "unreachable");
       router.replace(`/coaches/${slug}`, { scroll: false });
       router.refresh();
     })();

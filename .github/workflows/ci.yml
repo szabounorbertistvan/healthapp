@@ -15,10 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # the migration gate diffs supabase/migrations against the commit this lands on
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      # Names, duplicate versions, and no migration that was already on the base
+      # edited, deleted, renamed or added out of order (docs/MIGRATION_GATE.md).
+      # It reads no database: whether production has applied them is the
+      # separate pre-release check, `npm run db:gate -- --remote <ledger>`.
+      - name: Migration gate
+        run: node scripts/migration-gate.mjs --base "$BASE"
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint

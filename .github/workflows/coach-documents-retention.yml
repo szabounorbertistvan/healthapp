@@ -1,0 +1,59 @@
+name: Coach documents retention (dry run)
+
+# The privacy policy promises that a qualification document that was not
+# accepted, and the documents of a rejected or withdrawn application, are
+# deleted after 12 months (docs/COACH_DOCUMENTS_CLEANUP.md). Deleting stays a
+# person's act — `--execute` needs the count from a fresh dry run and the
+# project ref, by design — so this job only does the dry runs, monthly, and
+# goes red when something is due. Then an operator takes a backup and runs the
+# printed commands by hand.
+#
+# It reads production only through the service-role functions of
+# 20261120100000 (coach_document_purge_candidates / coach_document_storage_ids)
+# and the Cloudinary Admin API listing; it deletes nothing. Until the
+# repository secrets below are set, it fails (red) and checks nothing.
+
+on:
+  schedule:
+    - cron: "0 6 1 * *" # 06:00 UTC on the 1st of every month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+    steps:
+      # Red, not a quiet pass: the privacy policy's 12-month promise depends on this job running.
+      - name: Not configured
+        if: env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' || env.CLOUDINARY_CLOUD_NAME == '' || env.CLOUDINARY_API_KEY == '' || env.CLOUDINARY_API_SECRET == ''
+        run: |
+          echo "::error::Repository secrets for the coach-documents dry run are missing (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET); nothing was checked."
+          exit 1
+      - uses: actions/checkout@v4
+        if: env.SUPABASE_SERVICE_ROLE_KEY != '' && env.CLOUDINARY_API_SECRET != ''
+      - uses: actions/setup-node@v4
+        if: env.SUPABASE_SERVICE_ROLE_KEY != '' && env.CLOUDINARY_API_SECRET != ''
+        with:
+          node-version: 22
+      - name: Dry runs (retention, identity, orphans)
+        if: env.SUPABASE_SERVICE_ROLE_KEY != '' && env.CLOUDINARY_API_SECRET != ''
+        # pipefail: a script that fails (bad secret, database down) fails the job with its own exit code
+        shell: bash
+        run: |
+          set -euo pipefail
+          due=0
+          for job in retention identity orphans; do
+            node scripts/coach-documents.mjs "$job" | tee "$job.txt"
+            n=$(sed -n "s/^$job: \([0-9][0-9]*\) item(s) planned.*/\1/p" "$job.txt" | head -1)
+            if [ -z "$n" ]; then echo "::error::$job: no plan line in the output"; exit 1; fi
+            if [ "$n" -gt 0 ]; then echo "::warning::$job: $n item(s) due — see docs/COACH_DOCUMENTS_CLEANUP.md"; due=1; fi
+          done
+          exit $due

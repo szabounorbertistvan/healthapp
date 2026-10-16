@@ -74,8 +74,12 @@ warm-up and is left out — since 2026-10-15 everywhere, not only here: `totalVo
 `trainingLoad` skip a set flagged `warmup`, and every set read (`LOAD_SET_SELECT`,
 `LOGGED_SET_SELECT`, `PROGRESS_SET_SELECT`) embeds `prescribed:program_exercises(set_type)`
 so history, Today, Progress, the exercise page and the reports agree. A warm-up still
-counts as a set. Not yet in SQL: challenges, achievements, gym records and the social
-workout stats still sum every set (they are computed in the database).
+counts as a set. In SQL since 20261202100000 (local, not yet on the live project):
+`is_warmup_set()` is the same rule, and the volume sums of `fitness_score_of`,
+`social_leaderboard`, `challenge_progress_rows`, `challenge_value`, `achievement_facts`
+and `social_posts_guard` filter by it (pgTAP `warmup_volume`, mirrored by
+`packages/shared/src/warmup-volume-parity.test.ts`). Still summing every set, with no app
+number to agree with: `gym_stats` / `gym_tops` and the `admin_*` panel totals.
 Variants are separate exercise rows and are never merged. Thresholds are
 `PROGRESSION_RULES` — operational, overridable, tested: ≥ 4 sessions over ≥ 21
 days, median gap ≤ 21 days, latest ≤ 42 days old; ±2.5 % is noise; plateau = 4

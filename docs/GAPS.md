@@ -620,3 +620,29 @@ them the section renders a "not configured" note instead of a broken upload.
   produce no 1RM. Nothing infers a body weight from `measurements` to fill the
   gap, and analytics does not pretend otherwise — `relevantOneRm` returns null
   rather than a number built on a guess.
+
+## Streamed page content left behind in the DOM (found 2026-10-16, cause partly known)
+
+Under the concurrency of the local E2E suite (3 workers), a page's streamed Suspense segment is
+sometimes left in `<div hidden id="S:0">` for good while the same content is rendered on the
+client: two plan-name fields on `/nutrition/new`, two read-only notices on `/nutrition/[id]`,
+two "Finish setting up" cards on `/dashboard`, two discovery sections on the landing page, and an
+orphan on `/coaches/<slug>` in a test that still passed. Seen on the Linux runner (run
+38872495062) and on Windows. The copy is hidden, so nobody sees it, but the DOM holds duplicate
+ids and strict E2E selectors fail intermittently. React reports nothing (no #418/#421/#423).
+
+Proven with `E2E_DIAG_STREAM=1` (`e2e-local/fixtures.ts` writes `stream-timeline.txt` when a test
+ends with a segment container in the DOM): React 19.2.8's inline runtime does not swap a segment
+at once. `$RC` marks the boundary `$~`, queues it in `$RB` and schedules `$RV` on an animation
+frame or a timer; `$RV` removes `S:<n>` and moves the content in (19.2's batched reveals). In the
+orphaned pages `$RC` ran with both targets present and `$RV` never ran, although frames were
+being produced and the page was visible and focused. The client then rendered the unrevealed
+boundary itself.
+
+Not known: why the scheduled `$RV` never fires there. Ruled out by experiment: the onboarding
+provider's mount-time updates (made transitions — no change) and the service worker (suite run
+with workers blocked — same failures). Wrapping `requestAnimationFrame` / `setTimeout` to watch
+the callback changed the behaviour and proved nothing. A page loaded alone, even with the CPU
+slowed 6×, never showed it. Next experiment: trace the main thread (CDP `Tracing`, or a long-task
+`PerformanceObserver`) between `$RC` and the client render in a failing full-suite run, without
+patching the scheduler, and check React's tracker for 19.2 reveal batching with Next 15.5.

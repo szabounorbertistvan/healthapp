@@ -2,9 +2,39 @@
 // versions, pasted from the SQL editor or `supabase migration list`) with the
 // local supabase/migrations files. Pure; scripts/migration-diff.mjs does the I/O.
 
-/** 14-digit versions found anywhere in a text (a comma list, a table, CLI output). */
-export function parseVersions(text) {
+/** Every 14-digit version in a text, sorted and unique. */
+function versionsIn(text) {
   return [...new Set(String(text).match(/\b\d{14}\b/g) ?? [])].sort();
+}
+
+/**
+ * The REMOTE versions of a ledger, from any of the three shapes it arrives in:
+ *   - `supabase migration list` as JSON: {"migrations":[{"local":…,"remote":…}]} → the `remote` fields;
+ *   - `supabase migration list` as a table: `Local | Remote | Time` rows → the Remote column;
+ *   - anything else (the SQL editor's comma list) → every 14-digit number.
+ * The CLI prints the local column beside the remote one, so reading every
+ * number of its output counted a migration that exists only here as applied
+ * there — and `pending` came out empty exactly when something was pending.
+ */
+export function parseVersions(text) {
+  const s = String(text);
+  const json = s.indexOf('{"migrations"');
+  if (json >= 0) {
+    try {
+      const end = s.lastIndexOf("}");
+      const parsed = JSON.parse(s.slice(json, end + 1));
+      if (Array.isArray(parsed.migrations)) {
+        return [...new Set(parsed.migrations.map((m) => String(m.remote ?? "")).filter((v) => /^\d{14}$/.test(v)))].sort();
+      }
+    } catch {
+      // not the CLI's JSON after all: fall through to the other shapes
+    }
+  }
+  const rows = s.split(/\r?\n/).filter((l) => /^\s*\d{14}\s*\||^\s*\|\s*\d{14}/.test(l));
+  if (rows.length > 0) {
+    return [...new Set(rows.map((l) => (l.split("|")[1] ?? "").trim()).filter((v) => /^\d{14}$/.test(v)))].sort();
+  }
+  return versionsIn(s);
 }
 
 /** Local file names → versions, refusing duplicates (two files, one version). */

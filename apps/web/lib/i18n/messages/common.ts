@@ -964,7 +964,7 @@ const en = {
   },
   aiReview: {
     title: "Ask an AI for feedback",
-    hint: "Opens the assistant with a summary of this workout ready to send. Nothing leaves the app until you tap one — and only the numbers below go, never your name.",
+    hint: "Opens the assistant with a summary of this workout ready to send. Nothing leaves the app until you tap one — then the summary below goes (your sets, your set notes, and your sex and age if set), never your name, username or email.",
     copy: "Copy prompt",
     otherApp: "Other app…",
     copied: "Prompt copied",
@@ -2113,7 +2113,7 @@ const ro: typeof en = {
   },
   aiReview: {
     title: "Cere părerea unui AI",
-    hint: "Deschide asistentul cu un rezumat al antrenamentului, gata de trimis. Nimic nu pleacă din aplicație până nu apeși — și pleacă doar cifrele de mai jos, niciodată numele tău.",
+    hint: "Deschide asistentul cu un rezumat al antrenamentului, gata de trimis. Nimic nu pleacă din aplicație până nu apeși — atunci pleacă rezumatul de mai jos (seriile, notițele tale la serii și sexul și vârsta, dacă le-ai completat), niciodată numele, numele de utilizator sau emailul.",
     copy: "Copiază promptul",
     otherApp: "Altă aplicație…",
     copied: "Prompt copiat",
