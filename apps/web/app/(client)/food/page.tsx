@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getMyDayNutrition, getMyFoodDays, getMyPlanMeals, getMyQuickFoods } from "@/lib/client-data";
 import { validDay, weekDaysOf } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
@@ -99,6 +100,9 @@ export default async function FoodPage({
     <div className="mx-auto max-w-[1600px]">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1"><FoodViewTabs view="diary" /></div>
+        <Link href="/recipes" className="inline-flex h-9 items-center rounded-full bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink">
+          {t.clientApp.recipes.link}
+        </Link>
         <PageTour id="food" steps={["week", "summary", "meals"]} />
       </div>
       <div data-tour="food-week">

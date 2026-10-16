@@ -89,7 +89,12 @@ export async function middleware(request: NextRequest) {
     path === "/robots.txt" || path === "/sitemap.xml" ||
     // the link at the foot of every marketplace email (20261115100000): it
     // must work from any inbox, signed in or not — the token is the proof
-    path === "/unsubscribe" || path === "/unsubscribe/one-click"
+    path === "/unsubscribe" || path === "/unsubscribe/one-click" ||
+    // DishFinder's "Add to Voinic" form post (20261201100000): the person may
+    // be signed out, and a redirect would drop the body. The route writes
+    // nothing — it verifies the signature, parks the recipe in a cookie and
+    // sends the person to /recipes, which is behind sign-in as usual.
+    path === "/recipes/receive"
   ) return response;
   const isLanding = path === "/";
   const isLogin = path.startsWith("/login");

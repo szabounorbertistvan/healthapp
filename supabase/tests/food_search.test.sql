@@ -6,7 +6,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(15);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -29,6 +29,16 @@ insert into public.foods (id, source, external_id, name_en, name_ro, kcal_100g, 
   ('f5000000-0000-0000-0000-00000000a002', 'usda', 'fs:2', 'Chicken, thigh, raw',  null,           177, 17.3, 0, 11.6, true);
 insert into public.foods (id, source, owner_id, name_en, name_ro, kcal_100g) values
   ('f5000000-0000-0000-0000-00000000a003', 'custom', 'f5000000-0000-0000-0000-000000000002', 'Other''s chicken soup', 'Supa altcuiva', 50);
+
+-- ranking rows: alphabetical order would put every one of them in the wrong
+-- place, so the order assertions below only pass on exact → prefix → rest.
+insert into public.foods (id, source, external_id, name_en, name_ro, kcal_100g, verified) values
+  ('f5000000-0000-0000-0000-00000000a011', 'usda', 'fs:11', 'Carrots',                     'Morcovi',           41, true),
+  ('f5000000-0000-0000-0000-00000000a012', 'usda', 'fs:12', 'Carrots, raw',                'Morcovi cruzi',     41, true),
+  ('f5000000-0000-0000-0000-00000000a013', 'usda', 'fs:13', 'Carrots, baby, raw',          'Baby morcovi',      35, true),
+  ('f5000000-0000-0000-0000-00000000a014', 'usda', 'fs:14', 'Peas and carrots, canned',    'Mazăre cu morcovi', 38, true),
+  ('f5000000-0000-0000-0000-00000000a015', 'usda', 'fs:15', 'Babyfood, carrots, strained', null,                27, true),
+  ('f5000000-0000-0000-0000-00000000a016', 'usda', 'fs:16', 'Carrots, frozen',             null,                36, true);
 
 -- the client's plan references the first USDA row
 insert into public.nutrition_plans (id, client_id, name, kcal_target, status)
@@ -59,6 +69,21 @@ select is(
 select is((select count(*)::int from public.search_foods('c')), 0, 'one character returns nothing');
 select is((select count(*)::int from public.search_foods('chicken', 1)), 1, 'the limit is honoured');
 select is((select count(*)::int from public.search_foods('%')), 0, 'LIKE metacharacters are not wildcards');
+
+-- 13-15  exact name, then name prefix, then the rest — inside each block
+select is(
+  (select string_agg(coalesce(s.name_ro, s.name_en), ' | ' order by s.ordinality)
+     from public.search_foods('morcovi') with ordinality s),
+  'Morcovi | Morcovi cruzi | Baby morcovi | Mazăre cu morcovi',
+  'a Romanian word: the plain food, then names starting with it, then dishes that mention it');
+select is(
+  (select string_agg(coalesce(s.name_ro, s.name_en), ' | ' order by s.ordinality)
+     from public.search_foods('Carrots') with ordinality s),
+  'Morcovi | Baby morcovi | Morcovi cruzi | Mazăre cu morcovi | Carrots, frozen | Babyfood, carrots, strained',
+  'an English word ranks on name_en too, and the English tail stays last, ranked the same way');
+select is(
+  (select coalesce(s.name_ro, s.name_en) from public.search_foods('mazare') s limit 1),
+  'Mazăre cu morcovi', 'the prefix match ignores diacritics');
 
 -- 8  single-row read for a food not referenced yet
 select is(

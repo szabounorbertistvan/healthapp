@@ -19,6 +19,12 @@ describe("dishfinderIdFromOff", () => {
     expect(dishfinderIdFromOff(["en:dairies", "en:yogurts", "en:fruit-yogurts"])).toBeNull();
   });
 
+  it("links a pâté or ham although OFF files it under prepared meats", () => {
+    expect(dishfinderIdFromOff(["en:meats", "en:prepared-meats", "en:pork", "en:pate", "en:pork-pates"])).toBe(4877);
+    expect(dishfinderIdFromOff(["en:meats", "en:prepared-meats", "en:pork-pates", "en:ready-meals"])).toBeNull();
+    expect(dishfinderIdFromOff(["en:meats", "en:prepared-meats", "en:beef"])).toBeNull();
+  });
+
   it("returns null for products that are not one ingredient", () => {
     expect(dishfinderIdFromOff(["en:snacks", "en:salty-snacks", "en:crisps"])).toBeNull();
     expect(dishfinderIdFromOff([])).toBeNull();
@@ -31,6 +37,10 @@ describe("dishfinderIdFromOff", () => {
     expect(dishfinderIdFromOff([], "Fulgi de ovăz")).toBe(3400);
     expect(dishfinderIdFromOff(undefined, "Iaurt de băut cu căpșuni")).toBeNull();
     expect(dishfinderIdFromOff(["en:snacks"], "Iaurt")).toBeNull();
+    expect(dishfinderIdFromOff([], "Soy Protein Isolate")).toBe(4511);
+    expect(dishfinderIdFromOff([], "Brânză de burduf")).toBe(4477);
+    expect(dishfinderIdFromOff([], "Șuncă din piept de curcan")).toBe(5045);
+    expect(dishfinderIdFromOff([], "Gymbeam True Whey Prodigest")).toBeNull();
   });
 
   it("maps only to positive DishFinder ids", () => {

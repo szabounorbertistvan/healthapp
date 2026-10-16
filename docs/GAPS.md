@@ -51,7 +51,7 @@ is `mealsForWeekday` in `packages/shared/src/meal-days.ts`, with tests, because
 the diary, the coach preview and the log must not disagree. Spec W6's
 "duplicate day" for the plan builder is still only in the *program* builder.
 
-**2. No recipes or composite foods.** A meal is a flat list of raw ingredient
+**2. No recipes of one's own making yet.** Since 2026-10-16 a person can save a DishFinder recipe ("Add to Voinic", see DISHFINDER.md) as one of *My recipes* and log servings of it; still missing: writing a recipe from scratch in Voinic, and recipes in a coach's meal plan. A meal is a flat list of raw ingredient
 rows. A coach who wants "chicken bowl" in five plans re-adds chicken + rice + oil
 + broccoli five times. There is no saved recipe entity that expands into
 ingredients or logs as one item. See [DISHFINDER.md](DISHFINDER.md) — the sibling

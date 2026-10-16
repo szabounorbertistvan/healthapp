@@ -25,6 +25,7 @@ export * from "./rest-timer";
 export * from "./exercise-analytics";
 export * from "./progression-advice";
 export * from "./adaptive-targets";
+export * from "./recipe-handoff";
 export * from "./routines";
 export * from "./mentions";
 export * from "./stories";

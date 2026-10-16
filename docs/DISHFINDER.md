@@ -50,6 +50,31 @@
   ≤ 60 rows, 400 searches/user/day, other people's customs hidden) and
   `food_by_id()` / `food_by_barcode()`. pgTAP: `supabase/tests/food_search.test.sql`.
   What this cannot stop: copying what the screen shows, one search at a time.
+- **"Add to Voinic" — a recipe handed over on the person's click** (2026-10-16, relu's design:
+  nothing is imported ahead of time). On a DishFinder recipe opened from Voinic (`ref=voinic`) a
+  button opens DishFinder's `GET /api/recipes/:id/voinic-handoff`, which signs the recipe (HMAC-SHA256,
+  shared secret `DISHFINDER_HANDOFF_SECRET` here = `VOINIC_HANDOFF_SECRET` there, 30-minute expiry) and
+  form-posts it to `POST /recipes/receive` (`app/recipes/receive/route.ts`, public in middleware). That
+  route verifies, parks the payload in the httpOnly cookie `vi_recipe_handoff` and redirects to
+  `/recipes?import=1`, behind sign-in; the page verifies again and opens `RecipeImportDialog`:
+  servings, a serving's weight (proposed from the lines' grams), each line with the Voinic food its
+  DishFinder ingredient id points to (`foods_by_dishfinder_ids()`), change / grams / remove, and the
+  per-serving nutrition — DishFinder's (scaled to the serving count) or recalculated from the lines.
+  `saveRecipeImport` works the numbers out again on the server (signed payload + `foods_by_ids()`),
+  never from the browser. Saved in `recipes` / `recipe_ingredients` (migration `20261201100000`,
+  owner-only, test `recipes.test.sql`) with the link back; `/recipes` lists them and logs n servings
+  into `food_logs` (method `recipe`, macros snapshotted). The rule "no runtime call to DishFinder"
+  still holds: the data travels with the person's click, the signature is the trust. Format:
+  `packages/shared/src/recipe-handoff.ts`; both sides assert the same signature test vector.
+- **Romanian names, round two** (2026-10-16, applied live): 1,114 more USDA rows got `name_ro`
+  (1,534 of 6,781 now) and 357 more got `dishfinder_ingredient_id` (777 now). Sources: DishFinder
+  `ingredient_nutrition.source_ref` fdc ids not used before, its `server/scripts/fdc-verification`
+  matches (minus `fdc-adjudication.json` `artifact_wrong_food`, the loose "drift" ones checked by hand),
+  a match on the Romanian name once the cooked/raw word is stripped, and hand translations for the
+  common foods left. Built by `scripts/build-ro-names-sql.mjs` from a reviewed list kept in the
+  gitignored `backups/` — never committed. DishFinder's database is on **Neon** now
+  (`server/.env` `DATABASE_URL`), not the paused Supabase project. Known: the older DishFinder names
+  drop the state, so "Quinoa", "Bulgur", "Cușcuș" name the *cooked* rows.
 - The reverse direction (DishFinder's nutrition table filled from our USDA seed)
   is DishFinder's business and was done the same day — see the 2026-10-01 note
   under obstacle 1 below.

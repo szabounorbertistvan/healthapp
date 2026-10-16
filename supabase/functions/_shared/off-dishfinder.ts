@@ -93,7 +93,18 @@ const PLAIN_NAMES: Record<string, number> = {
   "banane": 3071, "banana": 3071, "mere": 3069, "apples": 3069, "stafide": 3110, "raisins": 3110, "curmale": 3108, "dates": 3108,
   "proteina din zer": 4083, "whey protein": 4083, "whey": 4083, "cacao": 4015, "cocoa powder": 4015, "ciocolata neagra": 4018, "dark chocolate": 4018,
   "apa": 3945, "water": 3945, "apa minerala": 3945, "mineral water": 3945,
+  // plan + log foods still unlinked on 2026-10-16 (no OFF categories)
+  "soy protein": 4511, "soy protein isolate": 4511, "proteina de soia": 4511, "izolat proteic din soia": 4511,
+  "focaccia": 3487, "foccacia": 3487, "branza de burduf": 4477, "burduf": 4477,
+  "sunca de curcan": 5045, "sunca din piept de curcan": 5045, "turkey ham": 5045,
 };
+
+/**
+ * Tags whose food IS a prepared meat in DishFinder too (a pâté, a ham): OFF files
+ * them under `en:prepared-meats`, which would otherwise veto every one. Only that
+ * veto is lifted, and only when one of these is the tag that maps.
+ */
+const PREPARED_MEAT_INGREDIENTS = new Set(["en:pork-pates", "en:hams", "en:white-hams", "en:bacons", "en:sausages"]);
 
 const normalizeName = (name: unknown): string =>
   typeof name === "string"
@@ -103,17 +114,19 @@ const normalizeName = (name: unknown): string =>
 /**
  * The DishFinder ingredient for a scanned product, or null when it is not plainly
  * one ingredient. Categories first: most specific tag wins (OFF lists general →
- * specific, so scan from the end), and a flavoured/prepared tag vetoes. Only when
+ * specific, so scan from the end), and a flavoured/prepared tag vetoes (bar
+ * `en:prepared-meats` on a pâté or ham, see PREPARED_MEAT_INGREDIENTS). Only when
  * the product carries no categories at all does the bare product name count, and
  * only as one of PLAIN_NAMES in full.
  */
 export function dishfinderIdFromOff(categoriesTags: unknown, productName?: unknown): number | null {
   const tags = Array.isArray(categoriesTags) ? categoriesTags.filter((t): t is string => typeof t === "string") : [];
   if (tags.length > 0) {
-    if (tags.some((t) => NOT_PLAIN.has(t))) return null;
     for (let i = tags.length - 1; i >= 0; i--) {
       const id = OFF_TO_DISHFINDER[tags[i]];
-      if (id) return id;
+      if (!id) continue;
+      const lifted = PREPARED_MEAT_INGREDIENTS.has(tags[i]) ? "en:prepared-meats" : null;
+      return tags.some((t) => NOT_PLAIN.has(t) && t !== lifted) ? null : id;
     }
     return null;
   }

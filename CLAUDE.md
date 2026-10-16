@@ -85,7 +85,7 @@ exercises (+ /translate), foods, nutrition, gyms, coaches (+ /[id], the coach-pr
 feedback, errors, system, search, coach-applications (the approval queue), reports (the social_reports queue, coach profiles and reviews included), marketplace (aggregate analytics + the ranking inspector)) — its own layout, gated by `lib/admin/guard.ts` and, in the
 database, by `admin_assert()` inside every `admin_*` RPC
 (`20260920100000_admin_panel.sql`; reads in `lib/admin/data.ts`, writes in
-`app/admin-actions.ts`, strings in `messages/admin.ts`). `(client)` = today, workout (list of every
+`app/admin-actions.ts`, strings in `messages/admin.ts`). `(client)` = today, recipes (My recipes + the DishFinder import dialog), workout (list of every
 published program → `workout/[dayId]` day overview + per-day history →
 `workout/[dayId]/log` set logger), workout/build, food, habits, progress,
 check-in, coach (+ `coach/messages/[id]`, any thread on the client's side — e.g. a coach whose request was accepted; the current coach with pause/resume/end and past coaches), billing. Ungrouped: landing `page.tsx`, `coaches` (Coach Discovery: bare `/coaches` is the Discovery Home, `?all=1` or any search/filter the listing; state in
@@ -164,7 +164,7 @@ readable by `anon`** except through the Coach Discovery doors —
 `coach_booking_slots(...)` (free start/end times only, 2026-10-07), `coach_public_reviews(slug)`, `coach_slug_redirect(slug)` and `coach_sitemap()` (2026-10-07), and the one anonymous *write* `marketplace_track()` (first-party, cookieless measurement — the visitor hash is computed in SQL from the request headers; 20261110120000), plus `email_unsubscribe(user, category, token)` behind the `/unsubscribe` link in every email (it only sets that one email switch off, and only for a token signed by the database; 20261115100000), all gated by the internal `coach_public_visible()` / `booking_eligibility()` (published, account
 live, no block): `coach_*` tables have owner/admin policies only, and those functions'
 field lists *are* the public contract — adding a key publishes it. `/coaches/*` is the
-one app area middleware lets through without a session, besides `/unsubscribe` (+ `/one-click`) and the legal/auth pages.
+one app area middleware lets through without a session, besides `/unsubscribe` (+ `/one-click`), `/recipes/receive` (DishFinder's signed "Add to Voinic" form post — it writes nothing, it parks the verified recipe in a cookie and sends the person to `/recipes`) and the legal/auth pages.
 **`trainer_clients` is written only by functions** (since 2026-10-07): the lifecycle
 invited → active → (paused ⇄ active) → ended is a trigger, participant moves go through
 `coaching_transition()`, and one *current* (active or paused) coach per client is a unique index.
