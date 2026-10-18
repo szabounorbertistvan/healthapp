@@ -9,6 +9,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# read-only token: these jobs check out the code and run checks, nothing else
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Typecheck, lint, tests, build

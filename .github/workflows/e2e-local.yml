@@ -16,6 +16,10 @@ concurrency:
   group: e2e-local-${{ github.ref }}
   cancel-in-progress: true
 
+# read-only token: these jobs check out code and upload test reports, nothing else
+permissions:
+  contents: read
+
 jobs:
   e2e-local:
     name: Local E2E (Playwright)

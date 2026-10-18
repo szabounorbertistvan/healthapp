@@ -81,6 +81,14 @@ function EnglishContent() {
             links the app creates for the people allowed to see them. Profile photos and coach
             cover images are public, because they are shown on your profile.
           </p>
+          <p className="mt-2">
+            The app itself is served by Vercel; the parts that run on its servers run in Vercel&apos;s
+            Frankfurt (EU) region. If you sign in with Google, Google tells us the email address,
+            name and picture of your Google account. If you turn on rest-timer notifications, your
+            browser gives us an address at its push service (run by the browser&apos;s maker, such
+            as Google, Apple or Mozilla); we keep it to send you the &quot;rest finished&quot;
+            notification, whose content is encrypted for your browser.
+          </p>
         </section>
 
         <section>
@@ -243,6 +251,15 @@ function RomanianContent() {
             semnate, valabile scurt timp, pe care aplicația le creează pentru persoanele care au
             dreptul să le vadă. Fotografiile de profil și imaginile de copertă ale antrenorilor
             sunt publice, pentru că apar pe profilul dumneavoastră.
+          </p>
+          <p className="mt-2">
+            Aplicația este servită de Vercel; părțile care rulează pe serverele sale rulează în
+            regiunea Frankfurt (UE) a Vercel. Dacă vă autentificați cu Google, Google ne comunică
+            adresa de email, numele și fotografia contului dumneavoastră Google. Dacă porniți
+            notificările cronometrului de pauză, browserul ne dă o adresă la serviciul său de
+            notificări (operat de producătorul browserului, de exemplu Google, Apple sau Mozilla);
+            o păstrăm pentru a vă trimite notificarea „pauza s-a terminat”, al cărei conținut este
+            criptat pentru browserul dumneavoastră.
           </p>
         </section>
 
