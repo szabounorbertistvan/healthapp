@@ -629,8 +629,24 @@ computed per-100g × grams and live plan totals sit next to the targets so the d
 can be made to land on the number. Publish makes it visible to the client, who
 sees it under each slot as "coach planned" next to their own log.
 
-So it is **ingredient-based, not calories-only** — but see [GAPS.md](GAPS.md):
-there is no per-weekday plan, no recipes, and no one-tap "ate as planned".
+So it is **ingredient-based, not calories-only** — but see [GAPS.md](GAPS.md)
+for what is still missing.
+
+**A plan is a week (2026-10-18).** `planned_meals.day_index` 0 is the base menu,
+1..7 a weekday's own version of a slot; `mealsForWeekday` (packages/shared/meal-days)
+resolves a day, and `planDayTotals` / `planWeekDays` total it — never the sum of every
+row, which counted a weekday version on top of the base meal it replaces and made a
+plan read "over target" (the old `NutritionPlanDetail.totals`, removed). The builder
+has an Every day tab plus Mon..Sun; a base meal seen from a weekday is read-only and
+is changed for that day only by copying it there (`addMealDayVariant`, `copyFoods`
+false = start it empty), one version per slot and day. `compareToTarget` is the
+±5% below / within / above rule; grams typed in the builder re-cost the day before
+the save lands. Grams stay the only stored quantity; "2 × M · 100 g edible" is derived
+for display from the food's own servings (`practicalQuantity` in lib/food-portions),
+never guessed — no serving, grams only. There is no ml: `foods` has no density.
+Recipes carry `steps` / `prep_minutes` / `cook_minutes` (20261203100000), written by
+their owner on /recipes; plan meals are foods, not recipes, so a plan cannot show a
+recipe's steps yet.
 
 **Where food data comes from.** `foods` is a local cache. Custom foods are
 owner-scoped; Open Food Facts rows are written by the edge functions on first use,

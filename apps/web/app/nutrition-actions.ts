@@ -3,8 +3,8 @@ import { type FoodItem } from "@/lib/food-portions";
 import { revalidatePath } from "next/cache";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
 import { inserted, mutated } from "@/lib/supabase/mutate";
-import { getLocale } from "@/lib/i18n/server";
-import { isPlanLimitError, isValidDailyTargets, MAX_KCAL_TARGET, MAX_MACRO_TARGET_G, MIN_KCAL_TARGET } from "@healthapp/shared";
+import { getI18n, getLocale } from "@/lib/i18n/server";
+import { isPlanLimitError, isValidDailyTargets, MAX_EXTRA_MEALS_PER_DAY, MAX_KCAL_TARGET, MAX_MACRO_TARGET_G, MIN_KCAL_TARGET, nextExtraPosition } from "@healthapp/shared";
 import type { ActionResult } from "./actions";
 import { notSignedIn, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
@@ -219,10 +219,13 @@ export async function addPlanFood(input: {
   const parsed = await parseInput(z.object({ planId: id, mealId: id, foodId: id, grams: num }), input);
   if (!parsed.ok) return parsed.result;
   if (input.grams <= 0) return { ok: false, message: "Grams must be above zero" };
-  // Meals with real foods are Coach Pro; a Starter plan is its four targets.
-  if (!(await getPlan()).e.ingredientPlans) return upgradeRequired;
-
   const supabase = await supabaseServer();
+  // Meals with real foods are Coach Pro for a coach's plan; a Starter plan is
+  // its four targets. A person's own plan (coach_id null) is not coaching, so
+  // the gate does not apply to it — the meal plan is theirs to fill.
+  const { data: owner } = await supabase.from("nutrition_plans").select("coach_id").eq("id", input.planId).maybeSingle();
+  if (owner?.coach_id !== null && !(await getPlan()).e.ingredientPlans) return upgradeRequired;
+
   const { error } = await supabase.from("planned_meal_foods").insert({
     planned_meal_id: input.mealId,
     food_id: input.foodId,
@@ -450,13 +453,21 @@ function toFoodItem(row: FoodRow): FoodItem {
  * Copying rather than moving is deliberate: a coach who wants "Sunday is
  * different" still wants the default to keep applying Monday to Saturday, and
  * moving the only meal in a slot would empty six days to fill one.
+ *
+ * `copyFoods: false` is "replace on this day": the weekday gets the slot with
+ * nothing in it, to be filled with a different meal, and the other six days
+ * keep the everyday one.
+ *
+ * One version per slot and day: a second one would be invisible (mealsForWeekday
+ * picks the first) yet still cost a row, so a double click must not make one.
  */
 export async function addMealDayVariant(
   planId: string,
   mealId: string,
   dayIndex: number,
+  copyFoods = true,
 ): Promise<ActionResult & { id?: string }> {
-  const parsed = await parseInput(z.tuple([id, id, num]), [planId, mealId, dayIndex]);
+  const parsed = await parseInput(z.tuple([id, id, num, z.boolean()]), [planId, mealId, dayIndex, copyFoods]);
   if (!parsed.ok) return parsed.result;
   if (!Number.isInteger(dayIndex) || dayIndex < 1 || dayIndex > 7) {
     return { ok: false, message: "Pick a weekday" };
@@ -465,11 +476,24 @@ export async function addMealDayVariant(
 
   const { data: source, error: readError } = await supabase
     .from("planned_meals")
-    .select("slot, name, position, plan_id, planned_meal_foods(food_id, grams)")
+    .select("slot, name, position, plan_id, extra, recipe_id, planned_meal_foods(food_id, grams)")
     .eq("id", mealId)
     .eq("plan_id", planId)
     .single();
   if (readError || !source) return { ok: false, message: readError?.message ?? "Meal not found" };
+  // an extra meal already belongs to one day; it has no every-day version to vary
+  if (source.extra) return { ok: false, errorCode: "INVALID_INPUT" };
+
+  const { data: clash, error: clashError } = await supabase
+    .from("planned_meals")
+    .select("id")
+    .eq("plan_id", planId)
+    .eq("slot", source.slot)
+    .eq("day_index", dayIndex)
+    .eq("extra", false)
+    .limit(1);
+  if (clashError) return { ok: false, message: clashError.message };
+  if ((clash ?? []).length > 0) return { ok: false, message: "That day already has its own version of this meal" };
 
   const { data: created, error } = await supabase
     .from("planned_meals")
@@ -479,6 +503,8 @@ export async function addMealDayVariant(
       name: source.name,
       position: source.position,
       day_index: dayIndex,
+      // the linked recipe travels with the copy; "start empty" is a different meal
+      recipe_id: copyFoods ? source.recipe_id : null,
     })
     .select("id")
     .single();
@@ -486,7 +512,7 @@ export async function addMealDayVariant(
   if (refused) return refused;
   if (!created) return { ok: false };
 
-  const foods = (source.planned_meal_foods ?? []) as { food_id: string; grams: number }[];
+  const foods = copyFoods ? ((source.planned_meal_foods ?? []) as { food_id: string; grams: number }[]) : [];
   if (foods.length > 0) {
     const { error: foodError } = await supabase.from("planned_meal_foods").insert(
       foods.map((f) => ({ planned_meal_id: created.id, food_id: f.food_id, grams: f.grams })),
@@ -516,4 +542,158 @@ export async function removeMealDayVariant(planId: string, mealId: string): Prom
   if (failed) return failed;
   revalidatePath(`/nutrition/${planId}`);
   return { ok: true };
+}
+
+// ---------- linked recipes and extra meals (20261204100000) ----------
+
+const PLAN_MEAL_NAME = z.string().max(60);
+
+/** The guard's refusals in the editor's words; anything else as it came. */
+async function planMealRefusal(message: string | undefined): Promise<ActionResult | null> {
+  if (!message) return null;
+  const m = (await getI18n()).t.coachWidgets.nutritionBuilder;
+  if (message.includes("EXTRA_MEAL_LIMIT")) return { ok: false, errorCode: "INVALID_INPUT", message: m.extraLimit };
+  if (message.includes("RECIPE_NOT_YOURS")) return { ok: false, errorCode: "INVALID_INPUT", message: m.recipeNotYours };
+  return null;
+}
+
+/**
+ * Link one of the editor's own recipes to a meal, or unlink it (null). A
+ * reference only: the meal's foods and grams — what the day is costed from —
+ * are not touched, so nothing is added twice. planned_meals_guard refuses a
+ * recipe that is not the caller's.
+ */
+export async function setMealRecipe(planId: string, mealId: string, recipeId: string | null): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, id.nullable()]), [planId, mealId, recipeId]);
+  if (!parsed.ok) return parsed.result;
+  const supabase = await supabaseServer();
+  const res = await supabase
+    .from("planned_meals")
+    .update({ recipe_id: recipeId }, { count: "exact" })
+    .eq("id", mealId)
+    .eq("plan_id", planId);
+  const refused = await planMealRefusal(res.error?.message);
+  if (refused) return refused;
+  const failed = await mutated(res);
+  if (failed) return failed;
+  revalidatePath(`/nutrition/${planId}`);
+  return { ok: true };
+}
+
+/**
+ * A meal on top of one weekday's slot meals — a second snack, a pre-workout
+ * meal. It exists on that day only; `slot` is the diary meal the client logs
+ * it into. At most MAX_EXTRA_MEALS_PER_DAY a day (checked here for the
+ * message, enforced by planned_meals_guard).
+ */
+export async function addExtraMeal(input: {
+  planId: string;
+  dayIndex: number;
+  slot: "breakfast" | "lunch" | "dinner" | "snack";
+  name: string;
+}): Promise<ActionResult & { id?: string }> {
+  const parsed = await parseInput(
+    z.object({ planId: id, dayIndex: z.number().int().min(1).max(7), slot: z.enum(["breakfast", "lunch", "dinner", "snack"]), name: PLAN_MEAL_NAME }),
+    input,
+  );
+  if (!parsed.ok) return parsed.result;
+  const name = input.name.trim();
+  const m = (await getI18n()).t.coachWidgets.nutritionBuilder;
+  if (!name) return { ok: false, errorCode: "INVALID_INPUT", message: m.extraNameNeeded };
+  const supabase = await supabaseServer();
+  const { data: rows, error: readError } = await supabase
+    .from("planned_meals")
+    .select("day_index, position, extra")
+    .eq("plan_id", input.planId)
+    .eq("day_index", input.dayIndex)
+    .eq("extra", true);
+  if (readError) return { ok: false, message: readError.message };
+  if ((rows ?? []).length >= MAX_EXTRA_MEALS_PER_DAY) return { ok: false, errorCode: "INVALID_INPUT", message: m.extraLimit };
+
+  const { data, error } = await supabase
+    .from("planned_meals")
+    .insert({
+      plan_id: input.planId,
+      day_index: input.dayIndex,
+      slot: input.slot,
+      name,
+      extra: true,
+      position: nextExtraPosition(rows ?? [], input.dayIndex),
+    })
+    .select("id")
+    .single();
+  const limit = await planMealRefusal(error?.message);
+  if (limit) return limit;
+  const refused = await inserted(error);
+  if (refused) return refused;
+  revalidatePath(`/nutrition/${input.planId}`);
+  return { ok: true, id: data?.id };
+}
+
+/** Rename an extra meal (the base slots keep their names). */
+export async function renameExtraMeal(planId: string, mealId: string, name: string): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id, PLAN_MEAL_NAME]), [planId, mealId, name]);
+  if (!parsed.ok) return parsed.result;
+  const clean = name.trim();
+  if (!clean) return { ok: false, errorCode: "INVALID_INPUT", message: (await getI18n()).t.coachWidgets.nutritionBuilder.extraNameNeeded };
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase
+      .from("planned_meals")
+      .update({ name: clean }, { count: "exact" })
+      .eq("id", mealId)
+      .eq("plan_id", planId)
+      .eq("extra", true),
+  );
+  if (failed) return failed;
+  revalidatePath(`/nutrition/${planId}`);
+  return { ok: true };
+}
+
+/** Remove an extra meal and its foods. Only extras: a base slot meal is never deleted here. */
+export async function removeExtraMeal(planId: string, mealId: string): Promise<ActionResult> {
+  const parsed = await parseInput(z.tuple([id, id]), [planId, mealId]);
+  if (!parsed.ok) return parsed.result;
+  const supabase = await supabaseServer();
+  const failed = await mutated(
+    await supabase
+      .from("planned_meals")
+      .delete({ count: "exact" })
+      .eq("id", mealId)
+      .eq("plan_id", planId)
+      .eq("extra", true),
+  );
+  if (failed) return failed;
+  revalidatePath(`/nutrition/${planId}`);
+  return { ok: true };
+}
+
+/**
+ * A person's own meal plan (no coach): their targets plan (setMyNutritionTargets,
+ * coach_id null) gets the four default meal slots, so the builder on /food/plan
+ * has meals to fill. Idempotent — a plan that already has meals is left alone.
+ * Written through the same policies as a coach's plan (can_edit_nutrition_plan
+ * lets the solo owner write their own meals).
+ */
+export async function startMyMealPlan(): Promise<ActionResult & { id?: string }> {
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const { data: plan, error } = await supabase
+    .from("nutrition_plans")
+    .select("id, planned_meals(id)")
+    .eq("client_id", userId)
+    .is("coach_id", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return { ok: false, message: error.message };
+  if (!plan) return { ok: false, errorCode: "INVALID_INPUT", message: (await getI18n()).t.clientApp.mealPlan.noTargets };
+  if (((plan.planned_meals ?? []) as unknown[]).length === 0) {
+    const { error: mealsError } = await supabase.from("planned_meals").insert(defaultPlanMeals(plan.id));
+    const refused = await inserted(mealsError);
+    if (refused) return refused;
+  }
+  revalidatePath("/food/plan");
+  return { ok: true, id: plan.id };
 }

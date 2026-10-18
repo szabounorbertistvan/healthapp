@@ -127,3 +127,66 @@ export function portionsFor(food: {
   const hit = KEYWORD_PORTIONS.find((entry) => entry.match.test(haystack));
   return hit ? PORTIONS[hit.key] : [];
 }
+
+/**
+ * A planned or logged weight in everyday terms — "2 × M" eggs, "1 × slice" of
+ * bread — when one of the food's own servings measures it. Grams stay the
+ * stored, canonical quantity (every macro is costed from them); this is only
+ * how they read.
+ *
+ * Never a guess: with no serving on the food, or none that divides the weight
+ * into whole or half pieces within 8%, the answer is null and the caller shows
+ * grams alone. Labels that already carry a count above one ("2 slices") are
+ * skipped, so a count is never multiplied twice.
+ */
+export type PracticalQuantity = {
+  /** 1, 1.5, 2 … */
+  count: number;
+  /** The serving's label without a leading "1 ": "M", "slice", "tbsp". */
+  unit: string;
+  /** count × the serving's grams. */
+  grams: number;
+  /** True when count × the serving equals the weight (±0.5 g); false for "≈". */
+  exact: boolean;
+  /** Where the serving's number comes from, e.g. "medium, 53-63 g with shell". */
+  note: string;
+  /** The serving is the eaten part of something with a shell, peel or core. */
+  edible: boolean;
+};
+
+const MAX_PIECES = 20;
+
+export function practicalQuantity(
+  grams: number,
+  portions: readonly { label: string; grams: number; note?: string }[],
+): PracticalQuantity | null {
+  if (!(grams > 0)) return null;
+  let best: (PracticalQuantity & { error: number }) | null = null;
+  for (const p of portions) {
+    if (!(p.grams > 0) || !p.label) continue;
+    const lead = /^(\d+(?:[.,]\d+)?)\s+(.+)$/.exec(p.label.trim());
+    if (lead && Number(lead[1]!.replace(",", ".")) !== 1) continue;
+    const unit = lead ? lead[2]! : p.label.trim();
+    const note = p.note ?? "";
+    const edible = /shell|peel|cored|coaj|cojit/i.test(note);
+
+    const whole = Math.round(grams / p.grams);
+    if (whole >= 1 && whole <= MAX_PIECES && Math.abs(whole * p.grams - grams) <= 0.5) {
+      return { count: whole, unit, grams: Math.round(whole * p.grams * 10) / 10, exact: true, note, edible };
+    }
+    const half = Math.round((grams / p.grams) * 2) / 2;
+    if (half < 0.5 || half > MAX_PIECES) continue;
+    const error = Math.abs(half * p.grams - grams) / grams;
+    if (error <= 0.08 && (!best || error < best.error)) {
+      best = { count: half, unit, grams: Math.round(half * p.grams * 10) / 10, exact: false, note, edible, error };
+    }
+  }
+  if (!best) return null;
+  const { error: _error, ...rest } = best;
+  return rest;
+}
+
+/** grams for `count` of a serving, to one decimal — what a piece picker writes. */
+export function gramsForPieces(count: number, servingGrams: number): number {
+  return Math.round(count * servingGrams * 10) / 10;
+}

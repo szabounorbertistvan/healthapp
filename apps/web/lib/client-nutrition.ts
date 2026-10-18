@@ -13,6 +13,7 @@ import {
 import { liveUser } from "./supabase/server";
 import { activeCoachId } from "./client-training";
 import type { ClientDayNutrition, MealSlot, QuickFood, QuickFoods } from "./types";
+import { toPlanRecipe, type PlanRecipe, type PlanRecipeJoin } from "./plan-recipe";
 
 const ZERO: Macros = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
 
@@ -131,6 +132,9 @@ export async function getMyPlanMeals(day?: string): Promise<
     id: string;
     slot: MealSlot;
     name: string;
+    /** An extra meal of this day, logged into `slot` next to the slot's own meal. */
+    extra: boolean;
+    recipe: PlanRecipe | "none" | "unavailable";
     /** `per100g` and `food_id` are what logPlannedMeal needs to write a food_log
         that can still be re-costed exactly when the portion is edited later. */
     foods: {
@@ -141,6 +145,9 @@ export async function getMyPlanMeals(day?: string): Promise<
       macros: Macros;
       /** DishFinder ingredient id when the food has one — feeds the "cook this / eat out" links. */
       dishfinder_id: number | null;
+      /** For the everyday quantity ("2 × M"): the English name and the food's own servings. */
+      name_en: string;
+      portions: { label: string; grams: number; note: string }[];
     }[];
   }[]
 > {
@@ -150,8 +157,9 @@ export async function getMyPlanMeals(day?: string): Promise<
   const [{ data: rows }, coachId] = await Promise.all([
     supabase
       .from("nutrition_plans")
-      .select(`id, coach_id, updated_at, planned_meals(id, slot, name, position, day_index,
-        planned_meal_foods(id, grams, food:foods(id, name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g, dishfinder_ingredient_id)))`)
+      .select(`id, coach_id, updated_at, planned_meals(id, slot, name, position, day_index, extra,
+        recipe_id, recipe:recipes(id, title, servings, serving_grams, prep_minutes, cook_minutes, steps, recipe_ingredients(position, label, grams)),
+        planned_meal_foods(id, grams, food:foods(id, name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g, dishfinder_ingredient_id, portions)))`)
       .eq("client_id", userId)
       .eq("status", "published"),
     activeCoachId(userId),
@@ -167,10 +175,12 @@ export async function getMyPlanMeals(day?: string): Promise<
       id: string; name_ro: string | null; name_en: string;
       kcal_100g: number; protein_100g: number; carbs_100g: number; fat_100g: number;
       dishfinder_ingredient_id: number | null;
+      portions: unknown;
     } | null;
   };
   type MealJoin = {
-    id: string; slot: MealSlot; name: string; position: number; day_index: number;
+    id: string; slot: MealSlot; name: string; position: number; day_index: number; extra: boolean | null;
+    recipe_id: string | null; recipe: PlanRecipeJoin;
     planned_meal_foods: FoodJoin[];
   };
   // day_index has meant "0 = every day, 1..7 = that weekday" since the first
@@ -184,6 +194,9 @@ export async function getMyPlanMeals(day?: string): Promise<
       id: m.id,
       slot: m.slot,
       name: m.name,
+      extra: m.extra === true,
+      // read-only for the client through recipes_plan_client_read (published plans only)
+      recipe: toPlanRecipe(m.recipe_id, m.recipe),
       foods: m.planned_meal_foods.map((f) => {
         const per100g = {
           kcal: f.food?.kcal_100g ?? 0,
@@ -198,6 +211,8 @@ export async function getMyPlanMeals(day?: string): Promise<
           per100g,
           macros: portionMacros(per100g, f.grams),
           dishfinder_id: f.food?.dishfinder_ingredient_id ?? null,
+          name_en: f.food?.name_en ?? "",
+          portions: Array.isArray(f.food?.portions) ? (f.food.portions as { label: string; grams: number; note: string }[]) : [],
         };
       }),
     }));
@@ -283,4 +298,25 @@ export async function getMyQuickFoods(limit = 8): Promise<QuickFoods> {
     group: null,
   }));
   return { recent, favorites };
+}
+
+/**
+ * The person's own plan (coach_id null — their targets) for /food/plan: its
+ * id and whether it has meal slots yet. Null without one. A read error throws:
+ * "no plan" must not be what a failed read looks like.
+ */
+export async function getMySoloPlan(): Promise<{ id: string; hasMeals: boolean } | null> {
+  const live = await liveUser();
+  if (!live) return null;
+  const { data, error } = await live.supabase
+    .from("nutrition_plans")
+    .select("id, planned_meals(id)")
+    .eq("client_id", live.userId)
+    .is("coach_id", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`getMySoloPlan: ${error.message}`);
+  if (!data) return null;
+  return { id: data.id as string, hasMeals: ((data.planned_meals ?? []) as unknown[]).length > 0 };
 }

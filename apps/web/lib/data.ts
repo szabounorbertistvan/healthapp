@@ -2,15 +2,16 @@
 import "server-only";
 import { cache } from "react";
 import { liveUser, supabaseServer } from "./supabase/server";
-import { effectiveTier, emailPrefsState, isExerciseMeasure, isLengthUnit, isWeightUnit, normalizeRestPrefs, pickProgram, portionMacros, sumMacros } from "@healthapp/shared";
+import { effectiveTier, emailPrefsState, isExerciseMeasure, isLengthUnit, isWeightUnit, normalizeRestPrefs, pickProgram, planWeekDays, portionMacros, sumMacros } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { liveAdherenceFor } from "./live-adherence";
 import type {
   CheckInRow, ClientRow, ConversationContext, ConversationRow, DashboardRow,
-  MessageRow, NutritionPlanDetail, NutritionPlanRow, Profile, ProgramDetail, ProgramRow,
+  MessageRow, NutritionPlanDetail, NutritionPlanRow, PlanFoodRow, Profile, ProgramDetail, ProgramRow,
 } from "./types";
 import type { Role, Tier } from "./entitlements";
 import { typedDb } from "./supabase/typed";
+import { toPlanRecipe, type PlanRecipeJoin } from "./plan-recipe";
 
 export const getProfile = cache(async (): Promise<Profile | null> => {
   const live = await liveUser();
@@ -440,37 +441,51 @@ export async function getNutritionPlan(id: string): Promise<NutritionPlanDetail 
     .from("nutrition_plans")
     .select(`id, name, status, kcal_target, protein_target_g, carbs_target_g, fat_target_g,
       client:users!nutrition_plans_client_id_fkey(full_name),
-      planned_meals(id, slot, name, position, day_index,
+      planned_meals(id, slot, name, position, day_index, extra,
+        recipe_id, recipe:recipes(id, title, servings, serving_grams, prep_minutes, cook_minutes, steps, recipe_ingredients(position, label, grams)),
         planned_meal_foods(id, grams,
-          food:foods(name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g)))`)
+          food:foods(id, name_ro, name_en, kcal_100g, protein_100g, carbs_100g, fat_100g, portions)))`)
     .eq("id", id)
     .single();
   if (error) return null;
 
   type FoodJoin = {
     id: string; grams: number;
-    food: { name_ro: string | null; name_en: string; kcal_100g: number;
-      protein_100g: number; carbs_100g: number; fat_100g: number } | null;
+    food: { id: string; name_ro: string | null; name_en: string; kcal_100g: number;
+      protein_100g: number; carbs_100g: number; fat_100g: number; portions: unknown } | null;
   };
-  type MealJoin = { id: string; slot: PlanSlot; name: string; position: number; day_index: number; planned_meal_foods: FoodJoin[] };
+  type MealJoin = {
+    id: string; slot: PlanSlot; name: string; position: number; day_index: number; extra: boolean | null;
+    recipe_id: string | null; recipe: PlanRecipeJoin; planned_meal_foods: FoodJoin[];
+  };
 
   const meals = (data.planned_meals as unknown as MealJoin[])
     .sort((a, b) => a.position - b.position)
     .map((meal) => {
-      const foods = meal.planned_meal_foods.map((row) => ({
-        id: row.id,
-        food_name: row.food?.name_ro ?? row.food?.name_en ?? "—",
-        grams: row.grams,
-        macros: portionMacros(
-          {
-            kcal: row.food?.kcal_100g ?? 0, protein: row.food?.protein_100g ?? 0,
-            carbs: row.food?.carbs_100g ?? 0, fat: row.food?.fat_100g ?? 0,
-          },
-          row.grams,
-        ),
-      }));
+      const foods = meal.planned_meal_foods.map((row) => {
+        // numeric columns can arrive as strings; the builder re-costs a row from
+        // these while a grams edit is in flight, so they must be numbers.
+        const per100g = {
+          kcal: Number(row.food?.kcal_100g ?? 0), protein: Number(row.food?.protein_100g ?? 0),
+          carbs: Number(row.food?.carbs_100g ?? 0), fat: Number(row.food?.fat_100g ?? 0),
+        };
+        const grams = Number(row.grams);
+        return {
+          id: row.id,
+          food_id: row.food?.id ?? null,
+          food_name: row.food?.name_ro ?? row.food?.name_en ?? "—",
+          food_name_en: row.food?.name_en ?? "",
+          grams,
+          per100g,
+          portions: Array.isArray(row.food?.portions) ? (row.food.portions as PlanFoodRow["portions"]) : [],
+          macros: portionMacros(per100g, grams),
+        };
+      });
       return {
         id: meal.id, slot: meal.slot, name: meal.name, day_index: meal.day_index,
+        position: meal.position, extra: meal.extra === true,
+        // a reference only: the meal is still costed from its foods below
+        recipe: toPlanRecipe(meal.recipe_id, meal.recipe),
         foods, totals: sumMacros(foods.map((f) => f.macros)),
       };
     });
@@ -480,7 +495,10 @@ export async function getNutritionPlan(id: string): Promise<NutritionPlanDetail 
     client_name: (data.client as unknown as { full_name: string })?.full_name ?? "—",
     kcal_target: data.kcal_target, protein_target_g: data.protein_target_g,
     carbs_target_g: data.carbs_target_g, fat_target_g: data.fat_target_g,
-    meals, totals: sumMacros(meals.map((m) => m.totals)),
+    // Per day, never the sum of every row: the list holds the everyday meals
+    // AND each weekday's own versions, so adding them all up counted a slot
+    // twice on any day with a version of its own (planWeekDays, shared/meal-days).
+    meals, days: planWeekDays(meals),
   };
 }
 

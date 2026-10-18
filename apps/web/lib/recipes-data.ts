@@ -15,6 +15,10 @@ export type MyRecipe = {
   dishfinder_url: string | null;
   image_url: string | null;
   lines: { label: string; grams: number | null; food_name: string | null }[];
+  /** Preparation in order (20261203100000); empty = none written, shown as such. */
+  steps: string[];
+  prep_minutes: number | null;
+  cook_minutes: number | null;
 };
 
 /** The signed-in person's recipes, newest first, with their lines. One query. */
@@ -24,7 +28,7 @@ export async function getMyRecipes(): Promise<MyRecipe[]> {
   const { data } = await live.supabase
     .from("recipes")
     .select(`id, title, servings, serving_grams, kcal_serving, protein_serving, carbs_serving, fat_serving,
-      nutrition_source, dishfinder_url, image_url,
+      nutrition_source, dishfinder_url, image_url, steps, prep_minutes, cook_minutes,
       recipe_ingredients(position, label, grams, food:foods(name_ro, name_en))`)
     .eq("owner_id", live.userId)
     .order("updated_at", { ascending: false })
@@ -33,6 +37,7 @@ export async function getMyRecipes(): Promise<MyRecipe[]> {
     id: string; title: string; servings: number; serving_grams: number;
     kcal_serving: number; protein_serving: number; carbs_serving: number; fat_serving: number;
     nutrition_source: "dishfinder" | "voinic"; dishfinder_url: string | null; image_url: string | null;
+    steps: string[] | null; prep_minutes: number | null; cook_minutes: number | null;
     recipe_ingredients: { position: number; label: string; grams: number | null; food: { name_ro: string | null; name_en: string } | null }[];
   };
   return ((data ?? []) as unknown as Row[]).map((r) => ({
@@ -47,6 +52,9 @@ export async function getMyRecipes(): Promise<MyRecipe[]> {
     lines: [...r.recipe_ingredients]
       .sort((a, b) => a.position - b.position)
       .map((l) => ({ label: l.label, grams: l.grams === null ? null : Number(l.grams), food_name: l.food ? (l.food.name_ro ?? l.food.name_en) : null })),
+    steps: Array.isArray(r.steps) ? r.steps : [],
+    prep_minutes: r.prep_minutes ?? null,
+    cook_minutes: r.cook_minutes ?? null,
   }));
 }
 

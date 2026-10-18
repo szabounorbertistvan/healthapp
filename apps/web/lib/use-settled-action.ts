@@ -17,11 +17,15 @@ export function useSettledAction(fallback: string) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function run(action: () => Promise<{ ok: boolean; message?: string }>) {
+  /** `undo` puts an optimistic change back when the action fails (the nutrition builder's in-flight grams). */
+  function run(action: () => Promise<{ ok: boolean; message?: string }>, undo?: () => void) {
     setError(null);
     startTransition(async () => {
       const result = await settle(action, t.common.actions.unreachable);
-      if (!result.ok) setError(result.message ?? fallback);
+      if (!result.ok) {
+        setError(result.message ?? fallback);
+        undo?.();
+      }
       router.refresh();
     });
   }

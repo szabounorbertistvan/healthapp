@@ -82,3 +82,27 @@ describe("serving arithmetic", () => {
     expect(scaledServing({ kcal: 123, protein: 5.8, carbs: 6.3, fat: 8.4 }, 40, 20)).toEqual({ kcal: 246, protein: 11.6, carbs: 12.6, fat: 16.8 });
   });
 });
+
+import { checkRecipeSteps, recipeStepsFromText } from "./recipe-handoff";
+
+describe("recipeStepsFromText", () => {
+  it("takes one step per non-blank line, in order, dropping typed numbering", () => {
+    expect(recipeStepsFromText("1. Rinse the rice.\n\n2) Boil the water.\r\n  Add the rice  \n")).toEqual([
+      "Rinse the rice.", "Boil the water.", "Add the rice",
+    ]);
+  });
+  it("keeps a number that is part of the step", () => {
+    expect(recipeStepsFromText("200 g rice into the pot")).toEqual(["200 g rice into the pot"]);
+  });
+  it("invents nothing from blank text", () => {
+    expect(recipeStepsFromText("  \n\n ")).toEqual([]);
+  });
+});
+
+describe("checkRecipeSteps", () => {
+  it("matches the column's limits", () => {
+    expect(checkRecipeSteps(Array(40).fill("x"))).toBe("ok");
+    expect(checkRecipeSteps(Array(41).fill("x"))).toBe("TOO_MANY_STEPS");
+    expect(checkRecipeSteps(["x".repeat(1001)])).toBe("STEP_TOO_LONG");
+  });
+});

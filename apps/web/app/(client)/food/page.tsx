@@ -100,6 +100,12 @@ export default async function FoodPage({
     <div className="mx-auto max-w-[1600px]">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1"><FoodViewTabs view="diary" /></div>
+        {/* a coach's plan is theirs to edit; the person's own plan is edited here */}
+        {nutrition.plan_owner !== "coach" ? (
+          <Link href="/food/plan" className="inline-flex h-9 items-center rounded-full bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink">
+            {t.clientApp.mealPlan.link}
+          </Link>
+        ) : null}
         <Link href="/recipes" className="inline-flex h-9 items-center rounded-full bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink">
           {t.clientApp.recipes.link}
         </Link>
@@ -127,7 +133,10 @@ export default async function FoodPage({
               label={slotLabel[slot]}
               day={day}
               entries={nutrition.entries.filter((e) => e.slot === slot)}
-              planned={planMeals.find((m) => m.slot === slot)?.foods ?? null}
+              planned={planMeals.find((m) => m.slot === slot && !m.extra)?.foods ?? null}
+              plannedRecipe={planMeals.find((m) => m.slot === slot && !m.extra)?.recipe ?? "none"}
+              // a day's extra meals sit under the diary meal they are logged into
+              extras={planMeals.filter((m) => m.slot === slot && m.extra)}
               quick={quick}
               previousDay={(() => {
                 const prior = before.entries.filter((e) => e.slot === slot);

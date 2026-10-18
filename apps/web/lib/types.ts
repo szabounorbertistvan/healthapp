@@ -5,6 +5,7 @@ import type {
 import type { ExerciseMeasure, ExerciseVideoSource, LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
 import type { Role, Tier } from "./entitlements";
 import type { ExerciseType } from "./exercise-types";
+import type { PlanRecipe } from "./plan-recipe";
 
 export type Signal = "on_track" | "needs_attention" | "at_risk";
 
@@ -177,8 +178,15 @@ export type NutritionPlanRow = {
 
 export type PlanFoodRow = {
   id: string;
+  food_id: string | null;
   food_name: string;
+  /** For portionsFor's keyword fallback (lib/food-portions). */
+  food_name_en: string;
+  /** Always canonical edible grams; a practical unit ("2 × M") is derived from it for display. */
   grams: number;
+  per100g: Macros;
+  /** Serving presets stored on the food row (curated or imported); may be empty. */
+  portions: { label: string; grams: number; note: string }[];
   /** Computed from per-100g values by @healthapp/shared, never stored twice. */
   macros: { kcal: number; protein: number; carbs: number; fat: number };
 };
@@ -189,6 +197,11 @@ export type PlanMealRow = {
   name: string;
   /** 0 = every day, 1..7 = that ISO weekday only (1 = Monday). */
   day_index: number;
+  position: number;
+  /** An extra meal on its weekday, on top of the slot meals (20261204100000). */
+  extra: boolean;
+  /** The linked recipe — a reference only, never costed; "unavailable" = a link the reader cannot follow. */
+  recipe: PlanRecipe | "none" | "unavailable";
   foods: PlanFoodRow[];
   totals: { kcal: number; protein: number; carbs: number; fat: number };
 };
@@ -203,7 +216,13 @@ export type NutritionPlanDetail = {
   carbs_target_g: number;
   fat_target_g: number;
   meals: PlanMealRow[];
-  totals: { kcal: number; protein: number; carbs: number; fat: number };
+  /**
+   * Monday..Sunday (index 0 = ISO weekday 1): what the meals each day resolves
+   * to add up to. There is deliberately no plan-wide sum to compare with a
+   * daily target — that sum counted every weekday version on top of the
+   * everyday meal it replaces.
+   */
+  days: { kcal: number; protein: number; carbs: number; fat: number }[];
 };
 
 /** Where a thread stands (20261104100000): coaching, an accepted request, or history only. */

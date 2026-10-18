@@ -138,3 +138,28 @@ export function scaledServing(perServing: Macros, fromServings: number, toServin
   const r1 = (x: number) => Math.round(x * k * 10) / 10;
   return { kcal: Math.round(perServing.kcal * k), protein: r1(perServing.protein), carbs: r1(perServing.carbs), fat: r1(perServing.fat) };
 }
+
+// ---------- preparation steps (20261203100000) ----------
+
+/** The column's own limits (is_valid_recipe_steps): 40 steps of 1..1000 characters. */
+export const RECIPE_MAX_STEPS = 40;
+export const RECIPE_MAX_STEP_LENGTH = 1000;
+
+/**
+ * The editor's text as steps: one non-blank line per step, in order, with a
+ * typed or pasted "1." / "2)" numbering dropped — the list numbers itself.
+ * Blank lines are only spacing. Never adds a step that was not written.
+ */
+export function recipeStepsFromText(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*\d{1,2}\s*[.)]\s+/, "").trim())
+    .filter((line) => line.length > 0);
+}
+
+/** Steps the database will take, or why not. */
+export function checkRecipeSteps(steps: readonly string[]): "ok" | "TOO_MANY_STEPS" | "STEP_TOO_LONG" {
+  if (steps.length > RECIPE_MAX_STEPS) return "TOO_MANY_STEPS";
+  if (steps.some((s) => s.trim().length > RECIPE_MAX_STEP_LENGTH)) return "STEP_TOO_LONG";
+  return "ok";
+}

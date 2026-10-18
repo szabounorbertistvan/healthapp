@@ -14,6 +14,14 @@ import { dishfinderIngredientsUrl, dishfinderMacrosUrl } from "@/lib/dishfinder"
 import { DishFinderMark } from "./dishfinder-mark";
 import { useOnboarding } from "./onboarding/provider";
 import { RECIPES_TIP_KEY } from "@/lib/onboarding-model";
+import { portionsFor, practicalQuantity } from "@/lib/food-portions";
+import type { PlanRecipe } from "@/lib/plan-recipe";
+import { PlannedRecipe } from "./recipes";
+
+type PlannedFood = {
+  name: string; grams: number; macros: Macros; dishfinder_id?: number | null;
+  food_id?: string | null; name_en?: string; portions?: { label: string; grams: number; note: string }[];
+};
 
 /** A 24-box icon per slot: a cup, the midday sun, a moon, a piece of fruit. */
 const SLOT_ICON: Record<MealSlot, string> = {
@@ -36,20 +44,33 @@ export function MealCard({
   planned,
   quick,
   previousDay = null,
+  plannedRecipe = "none",
+  extras = [],
 }: {
   slot: MealSlot;
   label: string;
   day: string;
   entries: ClientFoodEntry[];
-  planned: { name: string; grams: number; macros: Macros; dishfinder_id?: number | null }[] | null;
+  planned: PlannedFood[] | null;
   /** Starred and recently logged foods, shared by every meal on the page. */
   quick: QuickFoods;
   /** The same meal the day before, when anything was logged in it — offered as "same as yesterday". */
   previousDay?: { day: string; items: number; kcal: number } | null;
+  /** The recipe the coach linked to this slot's planned meal (20261204100000). */
+  plannedRecipe?: PlanRecipe | "none" | "unavailable";
+  /** The day's extra meals logged into this slot, each with its own foods and recipe. */
+  extras?: { id: string; name: string; foods: PlannedFood[]; recipe: PlanRecipe | "none" | "unavailable" }[];
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const f = t.clientApp.food;
   const router = useRouter();
+  // "2 × M · 100 g" when one of the food's own servings measures the grams; grams alone otherwise.
+  const quantity = (p: PlannedFood) => {
+    const q = practicalQuantity(p.grams, portionsFor({ id: p.food_id ?? "", name_en: p.name_en ?? "", name_ro: p.name, portions: p.portions }));
+    if (!q) return `${p.grams} g`;
+    const count = q.count.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB", { maximumFractionDigits: 1 });
+    return fill(q.exact ? f.practicalExact : f.practicalApprox, { count, unit: q.unit, grams: p.grams }) + (q.edible ? ` ${f.edible}` : "");
+  };
   const [adding, setAdding] = useState(false);
   const [logging, startLogging] = useTransition();
   const [copying, startCopying] = useTransition();
@@ -152,24 +173,32 @@ export function MealCard({
       ) : null}
       {entries.length > 0 ? dishfinderLinks : null}
 
-      {planned && planned.length > 0 ? (
+      {(planned && planned.length > 0) || plannedRecipe !== "none" ? (
         <div className="mt-3 rounded-2xl bg-bg px-3.5 pb-3 pt-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{f.coachPlanned}</p>
           <ul className="mt-1.5 space-y-1 text-[13px] text-ink-soft">
-            {planned.map((p, i) => (
+            {(planned ?? []).map((p, i) => (
               <li key={`${p.name}-${i}`} className="flex justify-between gap-3">
                 <span className="truncate">{p.name}</span>
                 <span className="shrink-0 tabular-nums text-ink-faint">
-                  {p.grams} g · {p.macros.kcal} kcal
+                  {quantity(p)} · {p.macros.kcal} kcal
                 </span>
               </li>
             ))}
           </ul>
+          {plannedRecipe !== "none" ? (
+            <div className="mt-2">
+              <PlannedRecipe
+                recipe={plannedRecipe}
+                labels={{ title: plannedRecipe === "unavailable" ? "" : fill(f.cookFrom, { title: plannedRecipe.title }), show: f.showRecipe, hide: f.hideRecipe, unavailable: f.recipeUnavailable }}
+              />
+            </div>
+          ) : null}
           {entries.length === 0 ? dishfinderLinks : null}
           {/* One tap for the whole meal. It is offered only while the slot is
               still empty: once something is logged here the coach's list is a
               reference, and a second tap would be a second dinner. */}
-          {entries.length === 0 ? (
+          {entries.length === 0 && (planned?.length ?? 0) > 0 ? (
             <button
               type="button"
               disabled={logging}
@@ -187,7 +216,64 @@ export function MealCard({
         </div>
       ) : null}
 
+      {extras.map((x) => (
+        <ExtraPlannedMeal key={x.id} meal={x} slot={slot} day={day} quantity={quantity} />
+      ))}
+
       {adding ? <FoodLogger slot={slot} day={day} quick={quick} onClose={() => setAdding(false)} /> : null}
     </Card>
+  );
+}
+
+/**
+ * An extra meal the coach planned for this day (20261204100000), logged into
+ * this slot next to the slot's own meal. Its "ate as planned" writes its own
+ * foods under keys derived from the meal, so a second tap adds nothing.
+ */
+function ExtraPlannedMeal({ meal, slot, day, quantity }: {
+  meal: { id: string; name: string; foods: PlannedFood[]; recipe: PlanRecipe | "none" | "unavailable" };
+  slot: MealSlot;
+  day: string;
+  quantity: (p: PlannedFood) => string;
+}) {
+  const { t } = useI18n();
+  const f = t.clientApp.food;
+  const router = useRouter();
+  const [logging, start] = useTransition();
+  return (
+    <div className="mt-3 rounded-2xl bg-bg px-3.5 pb-3 pt-2.5">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{fill(f.extraMeal, { name: meal.name })}</p>
+      {meal.foods.length > 0 ? (
+        <ul className="mt-1.5 space-y-1 text-[13px] text-ink-soft">
+          {meal.foods.map((p, i) => (
+            <li key={`${p.name}-${i}`} className="flex justify-between gap-3">
+              <span className="truncate">{p.name}</span>
+              <span className="shrink-0 tabular-nums text-ink-faint">{quantity(p)} · {p.macros.kcal} kcal</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {meal.recipe !== "none" ? (
+        <div className="mt-2">
+          <PlannedRecipe
+            recipe={meal.recipe}
+            labels={{ title: meal.recipe === "unavailable" ? "" : fill(f.cookFrom, { title: meal.recipe.title }), show: f.showRecipe, hide: f.hideRecipe, unavailable: f.recipeUnavailable }}
+          />
+        </div>
+      ) : null}
+      {meal.foods.length > 0 ? (
+        <button
+          type="button"
+          disabled={logging}
+          onClick={() => start(async () => {
+            const result = await logPlannedMeal(slot, day, meal.id);
+            if (result.ok) router.refresh();
+          })}
+          className="mt-2.5 inline-flex h-9 items-center rounded-full bg-accent px-3.5 font-display text-[12.5px] font-bold text-accent-fg hover:opacity-90 disabled:opacity-50"
+        >
+          {logging ? f.ateAsPlannedDone : f.ateAsPlanned}
+        </button>
+      ) : null}
+    </div>
   );
 }

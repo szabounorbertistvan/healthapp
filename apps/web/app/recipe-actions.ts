@@ -10,7 +10,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { recomputedServing, scaledServing, type DialogLine, type Macros } from "@healthapp/shared";
+import { checkRecipeSteps, recomputedServing, RECIPE_MAX_STEP_LENGTH, RECIPE_MAX_STEPS, scaledServing, type DialogLine, type Macros } from "@healthapp/shared";
 import { notSignedIn } from "@/lib/action-result";
 import { liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
@@ -192,5 +192,37 @@ export async function deleteRecipe(recipeId: string): Promise<ActionResult> {
   const failed = await mutated(res);
   if (failed) return failed;
   touched();
+  return { ok: true };
+}
+
+const PrepInput = z.object({
+  recipeId: id,
+  /** In order; blank lines already dropped by recipeStepsFromText. An empty list clears the instructions. */
+  steps: z.array(z.string().max(RECIPE_MAX_STEP_LENGTH)).max(RECIPE_MAX_STEPS),
+  prepMinutes: z.number().int().min(0).max(1440).nullable(),
+  cookMinutes: z.number().int().min(0).max(1440).nullable(),
+});
+
+/**
+ * The owner's preparation steps and times for one recipe (20261203100000).
+ * Only those three columns are written: servings, grams and macros — what the
+ * diary and any logged serving rely on — are not part of this update.
+ */
+export async function updateRecipePreparation(input: z.input<typeof PrepInput>): Promise<ActionResult> {
+  const parsed = await parseInput(PrepInput, input);
+  if (!parsed.ok) return parsed.result;
+  const v = parsed.data;
+  const steps = v.steps.map((s) => s.trim()).filter((s) => s.length > 0);
+  if (checkRecipeSteps(steps) !== "ok") return { ok: false, errorCode: "INVALID_INPUT" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const res = await live.supabase
+    .from("recipes")
+    .update({ steps, prep_minutes: v.prepMinutes, cook_minutes: v.cookMinutes }, { count: "exact" })
+    .eq("id", v.recipeId)
+    .eq("owner_id", live.userId);
+  const failed = await mutated(res);
+  if (failed) return failed;
+  revalidatePath("/recipes");
   return { ok: true };
 }

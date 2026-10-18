@@ -1,11 +1,11 @@
--- pgTAP · recipes (20261201100000): owner-only recipes and lines, the caps,
+-- pgTAP · recipes (20261201100000, steps 20261203100000): owner-only recipes and lines, the caps,
 -- and the two food lookups keep foods unlistable.
 --
 -- Run with a local stack up:  npm run db:test
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(24);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -65,6 +65,30 @@ select throws_ok($$
   insert into public.recipe_ingredients (recipe_id, position, label)
   values ('cc000000-0000-0000-0000-000000000001', 1, 'smuggled line')
 $$, '42501', null, 'nobody adds a line to someone else''s recipe');
+
+-- ---------- preparation steps (20261203100000) ----------
+select pg_temp.authenticate_as('ca000000-0000-0000-0000-000000000001');
+select is((select cardinality(steps) from public.recipes where id = 'cc000000-0000-0000-0000-000000000001'), 0,
+  'a recipe starts without steps — none are invented');
+select lives_ok($$
+  update public.recipes set steps = array['Rinse the cabbage.', 'Roll and simmer.'], prep_minutes = 40, cook_minutes = 180
+   where id = 'cc000000-0000-0000-0000-000000000001'
+$$, 'the owner writes steps and times');
+select is((select steps[2] from public.recipes where id = 'cc000000-0000-0000-0000-000000000001'), 'Roll and simmer.',
+  '...kept in order');
+select is((select serving_grams from public.recipes where id = 'cc000000-0000-0000-0000-000000000001'), 80::numeric,
+  '...without touching the serving');
+select throws_ok($$ update public.recipes set steps = array['  '] where id = 'cc000000-0000-0000-0000-000000000001' $$,
+  '23514', null, 'a blank step is refused');
+select throws_ok($$ update public.recipes set steps = array_fill('x'::text, array[41]) where id = 'cc000000-0000-0000-0000-000000000001' $$,
+  '23514', null, 'at most 40 steps');
+select throws_ok($$ update public.recipes set cook_minutes = -5 where id = 'cc000000-0000-0000-0000-000000000001' $$,
+  '23514', null, 'a time is not negative');
+select pg_temp.authenticate_as('ca000000-0000-0000-0000-000000000002');
+update public.recipes set steps = array['Forged step'];
+select pg_temp.authenticate_as('ca000000-0000-0000-0000-000000000001');
+select is((select steps[1] from public.recipes where id = 'cc000000-0000-0000-0000-000000000001'), 'Rinse the cabbage.',
+  'nobody else rewrites the steps');
 
 -- ---------- food lookups ----------
 select pg_temp.authenticate_as('ca000000-0000-0000-0000-000000000001');

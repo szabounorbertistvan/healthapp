@@ -3391,26 +3391,32 @@ export type Database = {
       planned_meals: {
         Row: {
           day_index: number
+          extra: boolean
           id: string
           name: string
           plan_id: string
           position: number
+          recipe_id: string | null
           slot: Database["public"]["Enums"]["meal_slot"]
         }
         Insert: {
           day_index?: number
+          extra?: boolean
           id?: string
           name: string
           plan_id: string
           position?: number
+          recipe_id?: string | null
           slot: Database["public"]["Enums"]["meal_slot"]
         }
         Update: {
           day_index?: number
+          extra?: boolean
           id?: string
           name?: string
           plan_id?: string
           position?: number
+          recipe_id?: string | null
           slot?: Database["public"]["Enums"]["meal_slot"]
         }
         Relationships: [
@@ -3419,6 +3425,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "nutrition_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planned_meals_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
         ]
@@ -3772,6 +3785,7 @@ export type Database = {
       recipes: {
         Row: {
           carbs_serving: number
+          cook_minutes: number | null
           created_at: string
           dishfinder_recipe_id: number | null
           dishfinder_url: string | null
@@ -3781,14 +3795,17 @@ export type Database = {
           kcal_serving: number
           nutrition_source: string
           owner_id: string
+          prep_minutes: number | null
           protein_serving: number
           serving_grams: number
           servings: number
+          steps: string[]
           title: string
           updated_at: string
         }
         Insert: {
           carbs_serving?: number
+          cook_minutes?: number | null
           created_at?: string
           dishfinder_recipe_id?: number | null
           dishfinder_url?: string | null
@@ -3798,14 +3815,17 @@ export type Database = {
           kcal_serving: number
           nutrition_source: string
           owner_id: string
+          prep_minutes?: number | null
           protein_serving?: number
           serving_grams: number
           servings: number
+          steps?: string[]
           title: string
           updated_at?: string
         }
         Update: {
           carbs_serving?: number
+          cook_minutes?: number | null
           created_at?: string
           dishfinder_recipe_id?: number | null
           dishfinder_url?: string | null
@@ -3815,9 +3835,11 @@ export type Database = {
           kcal_serving?: number
           nutrition_source?: string
           owner_id?: string
+          prep_minutes?: number | null
           protein_serving?: number
           serving_grams?: number
           servings?: number
+          steps?: string[]
           title?: string
           updated_at?: string
         }

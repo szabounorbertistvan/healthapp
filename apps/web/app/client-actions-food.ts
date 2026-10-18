@@ -5,6 +5,7 @@ import type { MealSlot } from "@/lib/types";
 import { myToday } from "@/lib/my-today";
 import { validDay } from "@/lib/week";
 import { revalidatePath } from "next/cache";
+import { id as uuidShape } from "@/lib/validate";
 import {
   gramsFromSplit, isPlanLimitError, isValidPortionGrams, MACRO_KEYS, MAX_PORTION_GRAMS, portionMacros,
   type Macros, type MacroSplit,
@@ -72,7 +73,8 @@ export async function logFood(input: {
  * instead of being random, so the unique constraint turns a double tap — or a
  * retry on a flaky connection — into a no-op rather than a second dinner.
  */
-export async function logPlannedMeal(slot: MealSlot, day?: string): Promise<ActionResult> {
+export async function logPlannedMeal(slot: MealSlot, day?: string, mealId?: string): Promise<ActionResult> {
+  if (mealId !== undefined && !uuidShape.safeParse(mealId).success) return { ok: false, errorCode: "INVALID_INPUT" };
   const date = day ?? (await myToday());
   const live = await liveUser();
   if (!live) return notSignedIn;
@@ -80,7 +82,12 @@ export async function logPlannedMeal(slot: MealSlot, day?: string): Promise<Acti
 
   // Resolved for the day being logged, so logging Saturday from the diary
   // writes Saturday's planned meal rather than today's.
-  const meal = (await getMyPlanMeals(date)).find((m) => m.slot === slot);
+  // The slot's own meal by default; an extra meal of the day (20261204100000)
+  // by its id — it logs into its slot next to that meal, never instead of it.
+  const meals = await getMyPlanMeals(date);
+  const meal = mealId
+    ? meals.find((m) => m.id === mealId && m.slot === slot)
+    : meals.find((m) => m.slot === slot && !m.extra);
   if (!meal || meal.foods.length === 0) return { ok: false, message: "No planned meal for this slot" };
 
   const { error } = await supabase.from("food_logs").upsert(
@@ -95,7 +102,8 @@ export async function logPlannedMeal(slot: MealSlot, day?: string): Promise<Acti
       protein_g: f.macros.protein,
       carbs_g: f.macros.carbs,
       fat_g: f.macros.fat,
-      client_generated_id: uuidFrom(`planned:${userId}:${date}:${slot}:${i}`),
+      // the slot meal keeps its original key, so a tap from before extras existed still dedupes
+      client_generated_id: uuidFrom(meal.extra ? `planned:${userId}:${date}:${meal.id}:${i}` : `planned:${userId}:${date}:${slot}:${i}`),
       client_ts: new Date().toISOString(),
     })),
     { onConflict: "client_generated_id", ignoreDuplicates: true },
