@@ -12,7 +12,7 @@ import { liveUser } from "./supabase/server";
  *    people they follow, so an unfiltered social_posts read would export other
  *    people's data into their file. The filter column is named per table.
  * 2. **Children travel with their parent.** program_days, program_exercises,
- *    planned_meals and planned_meal_foods carry no user column at all — they
+ *    planned_meals, planned_meal_foods and recipe_ingredients carry no user column at all — they
  *    are reachable only through the program or plan, so they are embedded
  *    rather than queried on their own.
  * 3. **A failed table is reported, not silently dropped.** An export that
@@ -105,7 +105,7 @@ export async function exportMyData(): Promise<DataExport | null> {
   if (!live) return null;
   const { supabase, userId } = live;
 
-  const [account, programs, plans, conversations, profile, restricted, ...rest] = await Promise.all([
+  const [account, programs, plans, recipes, conversations, profile, restricted, ...rest] = await Promise.all([
     supabase.from("users").select("*").eq("id", userId).single(),
     supabase
       .from("programs")
@@ -115,6 +115,8 @@ export async function exportMyData(): Promise<DataExport | null> {
       .from("nutrition_plans")
       .select("*, planned_meals(*, planned_meal_foods(*))")
       .or(`client_id.eq.${userId},coach_id.eq.${userId}`),
+    // the person's own recipes (20261201100000, steps 20261203100000), ingredients embedded
+    supabase.from("recipes").select("*, recipe_ingredients(*)").eq("owner_id", userId),
     supabase.from("conversations").select("*").or(`client_id.eq.${userId},coach_id.eq.${userId}`),
     supabase.from("coach_profiles").select("*").eq("user_id", userId).maybeSingle(),
     supabase.rpc("export_my_restricted_data"),
@@ -142,11 +144,13 @@ export async function exportMyData(): Promise<DataExport | null> {
     account: account.data ?? null,
     programs: programs.data ?? [],
     nutrition_plans: plans.data ?? [],
+    recipes: recipes.data ?? [],
     conversations: conversations.data ?? [],
   };
   if (account.error) errors.users = account.error.message;
   if (programs.error) errors.programs = programs.error.message;
   if (plans.error) errors.nutrition_plans = plans.error.message;
+  if (recipes.error) errors.recipes = recipes.error.message;
   if (conversations.error) errors.conversations = conversations.error.message;
   if (profile.error) errors.coach_profiles = profile.error.message;
   if (restricted.error) errors.export_my_restricted_data = restricted.error.message;
