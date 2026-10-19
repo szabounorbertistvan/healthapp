@@ -164,7 +164,10 @@ readable by `anon`** except through the Coach Discovery doors —
 `search_coaches(...)`, `coach_discovery_facets()` (2026-10-01), `coach_booking_services(slug)` and
 `coach_booking_slots(...)` (free start/end times only, 2026-10-07), `coach_public_reviews(slug)`, `coach_slug_redirect(slug)` and `coach_sitemap()` (2026-10-07), and the one anonymous *write* `marketplace_track()` (first-party, cookieless measurement — the visitor hash is computed in SQL from the request headers; 20261110120000), plus `email_unsubscribe(user, category, token)` behind the `/unsubscribe` link in every email (it only sets that one email switch off, and only for a token signed by the database; 20261115100000), all gated by the internal `coach_public_visible()` / `booking_eligibility()` (published, account
 live, no block): `coach_*` tables have owner/admin policies only, and those functions'
-field lists *are* the public contract — adding a key publishes it. `/coaches/*` is the
+field lists *are* the public contract — adding a key publishes it. Since 20261205100000 no
+security-definer function is executable by PUBLIC or anon except those doors (plus `username_available`,
+`record_login_failure`, `record_app_error`), and new functions default to no anon EXECUTE: a new door must
+`grant execute … to anon` itself and be added to `supabase/tests/function_privilege_hygiene.test.sql`. `/coaches/*` is the
 one app area middleware lets through without a session, besides `/unsubscribe` (+ `/one-click`), `/recipes/receive` (DishFinder's signed "Add to Voinic" form post — it writes nothing, it parks the verified recipe in a cookie and sends the person to `/recipes`) and the legal/auth pages.
 **`trainer_clients` is written only by functions** (since 2026-10-07): the lifecycle
 invited → active → (paused ⇄ active) → ended is a trigger, participant moves go through
