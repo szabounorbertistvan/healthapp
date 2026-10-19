@@ -1,0 +1,5 @@
+{
+  "allow": {
+    "20261205100000": "Edited after its first push (ce9be42) because CI's real stack refused it (must be owner of function time_multirange); never applied anywhere — production's ledger checked 2026-10-19, local only."
+  }
+}

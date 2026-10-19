@@ -80,11 +80,11 @@ select is(
    where n.nspname = 'public'
      and p.proname in ('plan_limit', 'gym_google_field_mask', 'admin_audit_events_immutable', 'admin_uuid_or_null',
                        'handle_updated_at', 'preserve_food_portions', 'training_load_score', 'effective_rpe',
-                       'time_range', 'time_multirange', 'public_display_name', 'coach_slug_base',
+                       'public_display_name', 'coach_slug_base',
                        'coach_certifications_reset_verification', 'coach_profiles_edit_lock')
      and not (coalesce(p.proconfig, '{}') @> array['search_path=public'])),
   '{}'::text[],
-  'the 14 flagged functions have search_path = public');
+  'the 12 flagged functions we own have search_path = public');
 select is(public.coach_slug_base('Ab'), 'coach-ab', 'coach_slug_base() still works with its fixed search_path');
 
 -- ---------- my_plan: security invoker, same answer ----------

@@ -24,9 +24,12 @@
 -- claim_signup_role() stays signed-in only: the Google callback calls it after
 -- exchangeCodeForSession(), with the new session.
 --
--- Also: the 14 functions the advisor reports with a mutable search_path get
--- `search_path = public` (all of them use built-ins only; time_range /
--- time_multirange are the range type's own constructors), and my_plan becomes
+-- Also: 12 of the 14 functions the advisor reports with a mutable search_path get
+-- `search_path = public` (all of them use built-ins only). The other two,
+-- time_range / time_multirange, are the range type's own constructors: on a
+-- real Supabase stack `postgres` does not own them ("must be owner of function
+-- time_multirange", CI 2026-10-19), and a constructor resolves nothing by name,
+-- so they are left as they are. And my_plan becomes
 -- a security-invoker view — it reads through my_plan_row(), itself security
 -- definer, keyed to auth.uid(), executable by authenticated.
 
@@ -105,15 +108,15 @@ begin
     where n.nspname = 'public'
       and p.proname in ('plan_limit', 'gym_google_field_mask', 'admin_audit_events_immutable', 'admin_uuid_or_null',
                         'handle_updated_at', 'preserve_food_portions', 'training_load_score', 'effective_rpe',
-                        'time_range', 'time_multirange', 'public_display_name', 'coach_slug_base',
+                        'public_display_name', 'coach_slug_base',
                         'coach_certifications_reset_verification', 'coach_profiles_edit_lock')
   loop
     execute format('alter function %s set search_path = public', v_sig);
     v_found := v_found + 1;
   end loop;
-  -- 14 names; time_range has 2 constructors and time_multirange 3
-  if v_found < 14 then
-    raise exception 'search_path: expected at least 14 functions, found %', v_found;
+  -- 12 names (the advisor's 14 minus the time_range / time_multirange constructors, below)
+  if v_found < 12 then
+    raise exception 'search_path: expected at least 12 functions, found %', v_found;
   end if;
 end;
 $$;
