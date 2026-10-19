@@ -58,18 +58,27 @@ A reviewed exception (e.g. a file renamed before it was ever applied) goes in
   2026-10-19: Root Directory `apps/web`, the production build runs `next build` → `.next`.
 - The Node version is not pinned in the repository (no `engines`, no `.nvmrc`): Vercel uses the
   project setting (24.x, seen 2026-10-19), and every workflow uses Node 24 to match.
-- Vercel builds `main` on its own; CI does not gate it (no Deployment Checks configured as of
-  2026-10-19 — Vercel's GitHub import needs the workflow to report through
-  `vercel/repository-dispatch/actions/status@v1`, which CI does not do yet). Vercel can be made to wait: in the project settings, require the GitHub checks
-  (*Typecheck, lint, tests, build*, whose first step is the migration gate, and *RLS policies
-  (pgTAP)*) before a deployment is promoted to Production. Alternatively, turn off auto-deploy and
-  deploy from a workflow after CI — that needs a `VERCEL_TOKEN` secret.
+- Vercel builds `main` on its own, and CI runs beside it. Since 2026-10-19 the last CI job,
+  *Vercel gate*, needs the other three (*Typecheck, lint, tests, build*, whose first step is
+  the migration gate; *Edge functions (deno check)*; *RLS policies (pgTAP)*) and posts one
+  commit status, **`Vercel - healthapp: ci`**: success only when all three passed, failure
+  otherwise. It runs on pushes only (Deployment Checks gate Production, which only `main`
+  builds), with `statuses: write` on that job alone. The status is written with `gh api`, not
+  `vercel/repository-dispatch/actions/status@v1`: that action finds "its" job by run id only,
+  so in a run with several jobs it reports whichever job GitHub lists first. There is no
+  `repository_dispatch` trigger: Vercel's docs make it optional when the check runs on push,
+  and it would run CI a second time per push inside the same concurrency group.
+- Making Vercel wait is a project setting, once that status has appeared on a `main` commit:
+  Settings → Build and Deployment → Deployment Checks → Add Checks → GitHub → select
+  `Vercel - healthapp: ci`. Production deployments are then still built, but assigned to
+  www.voinic.fit only after the status is success; *Force Promote* on a deployment bypasses it.
+  Not configured as of 2026-10-19.
 
 ## What it cannot do
 
-- **It does not block Vercel.** Vercel deploys `main` on its own build; CI runs beside it.
-  A red gate tells you, it does not stop the deploy. Making Vercel wait for the CI checks
-  is a Vercel project setting (outside the repository).
+- **It blocks Vercel only through the dashboard setting.** Vercel builds `main` on its own;
+  a red gate holds the Production promotion only once `Vercel - healthapp: ci` is a required
+  Deployment Check (above). Until then a red gate tells you, it does not stop the deploy.
 - **It does not see production in CI.** CI has no credentials for the live project, by
   design, so "is this migration applied?" is only answered by the `--remote` run, by a person.
 - **It cannot tell which code needs which migration.** The rule stays the project's:

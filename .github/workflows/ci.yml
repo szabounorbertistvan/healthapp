@@ -75,3 +75,36 @@ jobs:
       - run: supabase test db
       - if: always()
         run: supabase stop --no-backup
+
+  # One commit status for Vercel's Deployment Checks, so a production build of
+  # main is promoted only once every job above passed (docs/MIGRATION_GATE.md).
+  # Posted by hand rather than through vercel/repository-dispatch/actions/status:
+  # that action looks its job up by run id alone, so in a run with several jobs
+  # it reports whichever job GitHub lists first. Push only — Vercel gates
+  # production, which only main builds; no repository_dispatch trigger, which
+  # would run CI a second time per push and share (and cancel) this group.
+  vercel:
+    name: Vercel gate
+    needs: [check, functions, database]
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Report to Vercel Deployment Checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          state=success
+          desc="Typecheck, lint, tests, build, deno check and pgTAP passed"
+          for r in $RESULTS; do
+            if [ "$r" != success ]; then state=failure; desc="A CI job ended as: $r"; fi
+          done
+          gh api --method POST "repos/$REPO/statuses/$SHA" \
+            -f state="$state" -f context="Vercel - healthapp: ci" \
+            -f description="$desc" -f target_url="$RUN_URL"
+          [ "$state" = success ]
