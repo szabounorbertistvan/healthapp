@@ -13,6 +13,7 @@ import type { ActionResult } from "@/app/actions";
 import { deleteMyReview, respondToReview, submitReview } from "@/app/review-actions";
 import { Avatar } from "./social-chrome";
 import { ModerationMenuButton } from "./moderation";
+import { ConfirmDialog } from "./confirm-dialog";
 
 // Coach reviews (20261106100000). The public section on /coaches/[slug], the
 // form on /coaches/[slug]/review and the coach's own list on /reviews. Every
@@ -194,6 +195,7 @@ export function ReviewForm({ profileId, slug, coachName, state }: {
   const [rating, setRating] = useState(existing?.rating ?? 0);
   const [body, setBody] = useState(existing?.body ?? "");
   const [done, setDone] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (existing?.status === "hidden") {
     return <p className="rounded-3xl bg-surface px-6 py-8 text-center font-semibold" data-testid="review-hidden">{f.hidden}</p>;
@@ -226,11 +228,20 @@ export function ReviewForm({ profileId, slug, coachName, state }: {
         </button>
         {existing ? (
           <button type="button" className={SMALL_BUTTON} disabled={busy} data-testid="review-delete"
-            onClick={() => { if (window.confirm(f.deleteConfirm)) run(() => deleteMyReview(existing.id, slug), () => { setDone(f.deleted); setRating(0); setBody(""); }); }}>
+            onClick={() => setConfirmDelete(true)}>
             {f.delete}
           </button>
         ) : null}
       </div>
+      {existing ? (
+        <ConfirmDialog open={confirmDelete} title={f.deleteConfirm} busy={busy} testId="review-delete-confirm"
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            // closed first, so a refusal shows its error on the form rather than behind the sheet
+            setConfirmDelete(false);
+            run(() => deleteMyReview(existing.id, slug), () => { setDone(f.deleted); setRating(0); setBody(""); });
+          }} />
+      ) : null}
     </div>
   );
 }

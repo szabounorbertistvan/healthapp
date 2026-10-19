@@ -95,7 +95,6 @@ test.describe("the whole journey (writes, opt-in)", () => {
     const stamp = Date.now().toString(36);
     const client = await as(browser, CLIENT);
     const coach = await as(browser, COACH);
-    client.page.on("dialog", (d) => d.accept());
 
     // 1–2. the eligible client sees the CTA on the coach's page
     await client.page.goto(`/coaches/${PUBLISHED}`);
@@ -141,6 +140,7 @@ test.describe("the whole journey (writes, opt-in)", () => {
     // clean up: the reviewer deletes their review
     await client.page.goto(`/coaches/${PUBLISHED}/review`);
     await client.page.getByTestId("review-delete").click();
+    await client.page.getByTestId("review-delete-confirm-confirm").click();
     await expect(client.page.getByTestId("review-done")).toBeVisible();
 
     await client.context.close();

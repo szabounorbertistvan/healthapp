@@ -10,6 +10,7 @@ import { usePlan } from "@/lib/plan-client";
 import { PlanTag, PremiumSoon, UpgradeHint } from "@/components/upgrade";
 import { ProgramDayEditor } from "@/components/program-day-editor";
 import { NavIcon } from "@/components/client-nav";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Card, EmptyState } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { fill } from "@/lib/i18n";
@@ -44,6 +45,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment, read
   const m = t.coachWidgets.programBuilder;
   const { error, setError, pending, run, startTransition } = useSettledAction(m.somethingWentWrong);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [dayToDelete, setDayToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const isEmpty = program.days.every((d) => d.exercises.length === 0);
 
@@ -195,7 +197,7 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment, read
                   {canCopy ? <PremiumSoon feature="programCopy" /> : <PlanTag label={upgrade.label} />}
                 </button>
                 <button
-                  onClick={() => { if (window.confirm(fill(t.clientApp.workout.deleteDayConfirm, { name: day.name }))) run(() => removeProgramDay(program.id, day.id)); }}
+                  onClick={() => setDayToDelete({ id: day.id, name: day.name })}
                   disabled={pending}
                   title={t.clientApp.workout.deleteDay}
                   aria-label={t.clientApp.workout.deleteDay}
@@ -208,6 +210,17 @@ export function ProgramBuilder({ program, clients = [], muscles, equipment, read
           />
         ))}
       </fieldset>
+      <ConfirmDialog
+        open={dayToDelete !== null}
+        title={fill(t.clientApp.workout.deleteDayConfirm, { name: dayToDelete?.name ?? "" })}
+        testId="day-delete-confirm"
+        onCancel={() => setDayToDelete(null)}
+        onConfirm={() => {
+          const day = dayToDelete;
+          setDayToDelete(null);
+          if (day) run(() => removeProgramDay(program.id, day.id));
+        }}
+      />
     </div>
   );
 }
