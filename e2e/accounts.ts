@@ -11,6 +11,7 @@ export const ACCOUNTS = {
   client: "client@healthapp.test", // Maria, Andrei's client
   coach: "trainer@healthapp.test", // Andrei
   coach2: "trainer2@healthapp.test", // Cristina — a second roster, for isolation
+  admin: "admin@healthapp.test", // the seeded admin — e2e/admin.spec.ts, read-only
 } as const;
 
 export type Who = keyof typeof ACCOUNTS;

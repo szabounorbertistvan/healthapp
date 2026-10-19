@@ -6,6 +6,8 @@ const landing: Record<Who, RegExp> = {
   client: /\/today/,
   coach: /\/dashboard/,
   coach2: /\/dashboard/,
+  // an admin lands wherever the app sends a non-client: the coach surface or the panel
+  admin: /\/(dashboard|admin)/,
 };
 
 for (const who of Object.keys(ACCOUNTS) as Who[]) {
