@@ -72,13 +72,15 @@ A reviewed exception (e.g. a file renamed before it was ever applied) goes in
   Settings → Build and Deployment → Deployment Checks → Add Checks → GitHub → select
   `Vercel - healthapp: ci`. Production deployments are then still built, but assigned to
   www.voinic.fit only after the status is success; *Force Promote* on a deployment bypasses it.
-  Not configured as of 2026-10-19.
+  **Configured 2026-10-19** (required check `Vercel - healthapp: ci`, GitHub, Production). To undo:
+  the same section → `…` on the check → remove.
 
 ## What it cannot do
 
 - **It blocks Vercel only through the dashboard setting.** Vercel builds `main` on its own;
-  a red gate holds the Production promotion only once `Vercel - healthapp: ci` is a required
-  Deployment Check (above). Until then a red gate tells you, it does not stop the deploy.
+  a red gate holds the Production promotion because `Vercel - healthapp: ci` is a required
+  Deployment Check (above, since 2026-10-19). If that check is ever removed, a red gate only
+  tells you, it does not stop the deploy.
 - **It does not see production in CI.** CI has no credentials for the live project, by
   design, so "is this migration applied?" is only answered by the `--remote` run, by a person.
 - **It cannot tell which code needs which migration.** The rule stays the project's:
