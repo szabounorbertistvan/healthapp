@@ -1,8 +1,10 @@
-# Marketplace email — design (nothing sends yet)
+# Marketplace email — live since 2026-10-19
 
-Status 2026-10-11: **implemented locally, not active, nothing sends.** Provider: **Brevo** (chosen 2026-10-11, replacing the Resend draft). Auth email
+Status 2026-10-19: **live.** Function v3 deployed (skips reserved test domains), `EMAIL_DISPATCH_ENABLED=true` set, cron `marketplace-email-tick` active every minute; first real tick 07:01 UTC answered 200 (the one queued row, from 2026-10-13, skipped as stale). Supabase Auth "Confirm email" turned on the same day. Provider: **Brevo** (chosen 2026-10-11, replacing the Resend draft). Auth email
 (confirm sign-up, reset password) is a separate path, owned by Supabase Auth —
 see docs/ENGINES.md §Accounts.
+
+To stop sending at once: `npx supabase secrets unset EMAIL_DISPATCH_ENABLED` (the function then answers 503 and rows stay pending), or pause the job with `select cron.alter_job((select jobid from cron.job where jobname = 'marketplace-email-tick'), active := false);`.
 
 | Piece | Where | State |
 |---|---|---|
@@ -10,8 +12,8 @@ see docs/ENGINES.md §Accounts.
 | Provider (Brevo transactional API, swappable interface, config validation) | `supabase/functions/_shared/email/provider.ts` | done, tested with a mocked fetch |
 | RO/EN templates, Voinic branding | `supabase/functions/_shared/email/templates.ts` | done, tested (escaping, no message text or sender, both languages for every rule) |
 | Dispatcher core + HTTP handler | `supabase/functions/_shared/email/dispatch.ts` | done, tested with a mock store and provider |
-| Edge function | `supabase/functions/marketplace-email-dispatch/index.ts`, `verify_jwt = true` in `config.toml` | wired, **not deployed**; without the outbox it answers 500, without secrets 503 |
-| Outbox table, enqueue trigger, claim/peek/mark RPCs, cron tick | `supabase/migrations/20261114100000_email_outbox.sql` + `supabase/tests/email_outbox.test.sql` | **migration** (approved 2026-10-11); the `marketplace-email-tick` cron job is created **inactive**; the enqueue trigger never blocks a notification (an error becomes a warning); SQL rule list held equal to the TS rules by `apps/web/lib/email-outbox-rules.test.ts` |
+| Edge function | `supabase/functions/marketplace-email-dispatch/index.ts`, `verify_jwt = true` in `config.toml` | deployed (v3, 2026-10-19); without the outbox it answers 500, without secrets 503 |
+| Outbox table, enqueue trigger, claim/peek/mark RPCs, cron tick | `supabase/migrations/20261114100000_email_outbox.sql` + `supabase/tests/email_outbox.test.sql` | **migration** (approved 2026-10-11); the `marketplace-email-tick` cron job is created inactive and was switched on 2026-10-19; the enqueue trigger never blocks a notification (an error becomes a warning); SQL rule list held equal to the TS rules by `apps/web/lib/email-outbox-rules.test.ts` |
 | Preferences UI | `components/email-settings.tsx` (`EmailPrefsCard` on `/account` and the coach's `/settings`), `app/email-actions.ts` (`saveEmailPref`), helpers `EMAIL_PREF_CATEGORIES` / `emailPrefsState` / `withEmailPref` in the shared module | done 2026-10-11; unit + e2e (`e2e/email-prefs.spec.ts`); "Your coach page" only for someone who coaches; push switches (top-level keys) preserved |
 | Unsubscribe links | `supabase/migrations/20261115100000_email_unsubscribe.sql` (signing key generated **inside the database**, `email_unsubscribe_token()` signs in `email_outbox_rows()`, `email_unsubscribe()` the anon door that verifies), `/unsubscribe` (page + button, nothing changes on GET), `/unsubscribe/one-click` (RFC 8058 POST, the `List-Unsubscribe` header), footer link in every template; the dispatcher skips (`no_unsubscribe`) any email without a token | done 2026-10-11; pgTAP `email_unsubscribe.test.sql` (16), unit tests for links, headers, footer |
 | Admin `failed` count | — | not built |
