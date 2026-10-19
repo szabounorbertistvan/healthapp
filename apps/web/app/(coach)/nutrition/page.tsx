@@ -33,7 +33,7 @@ export default async function NutritionPage() {
           <EmptyState plain title={n.emptyTitle} hint={n.emptyHint} />
         </div>
       ) : (
-        <div data-tour="nutrition-list" className="mt-5 grid gap-3.5 sm:mt-6 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]">
+        <div data-tour="nutrition-list" className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-3.5 sm:mt-6 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]">
           {plans.map((p) => (
             <Link key={p.id} href={`/nutrition/${p.id}`} className="group">
               <Card plain className="h-full sm:p-5">

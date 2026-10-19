@@ -33,7 +33,7 @@ export default async function SettingsPage() {
         <PageTour id="settings" steps={["coachProfile", "profile"]} />
       </header>
 
-      <div className="mt-5 grid gap-3.5 sm:mt-6">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-3.5 sm:mt-6">
         {/* Coach Discovery: the public coach page, built at /settings/coach-profile. */}
         <div data-tour="settings-coachProfile"><CoachProfileSettingsCard status={coachStatus} /></div>
 

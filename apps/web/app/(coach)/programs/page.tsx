@@ -34,7 +34,7 @@ export default async function ProgramsPage() {
         ) : (
           /* As many columns as fit, never a card under 380px — one on a phone,
              several across a wide coach desk. */
-          <div className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] sm:gap-4">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] sm:gap-4">
             {programs.map((p) => (
               <Link key={p.id} href={`/programs/${p.id}`} className="block h-full">
                 <Card plain className="flex h-full flex-col transition hover:bg-accent-soft/40 sm:p-5">

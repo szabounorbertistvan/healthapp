@@ -197,7 +197,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
 
       {/* As many columns as fit, never a card under 300px: one on a phone and
           inside the day editor's narrow box, several across a wide library. */}
-      <ul ref={listRef} className={`grid min-h-0 flex-1 auto-rows-min content-start gap-2 overflow-y-auto sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] ${creating ? "hidden" : ""}`}>
+      <ul ref={listRef} className={`grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] auto-rows-min content-start gap-2 overflow-y-auto sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] ${creating ? "hidden" : ""}`}>
         {results.map((exercise) => (
           <li
             key={exerciseRef(exercise)}

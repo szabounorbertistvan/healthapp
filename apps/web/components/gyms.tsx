@@ -73,7 +73,7 @@ function GymSearch({
         shown.length === 0 ? (
           query ? <p className="mt-2 text-[12.5px] leading-relaxed text-ink-faint">{m.noResults}</p> : null
         ) : (
-          <ul className="mt-2 grid gap-1.5">
+          <ul className="mt-2 grid grid-cols-[minmax(0,1fr)] gap-1.5">
             {shown.map((g) => (
               <li key={g.id}>
                 <button
@@ -82,7 +82,7 @@ function GymSearch({
                   onClick={() => onPick(g)}
                   className="flex w-full items-center justify-between gap-3 rounded-2xl bg-bg px-3.5 py-2.5 text-left hover:bg-accent-soft/40 disabled:cursor-default disabled:hover:bg-bg"
                 >
-                  <span className="min-w-0">
+                  <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-semibold text-ink">{g.name}</span>
                     <span className="block truncate text-[12.5px] text-ink-faint">
                       {gymWhere(g.address, g.city)}

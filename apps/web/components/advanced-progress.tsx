@@ -551,7 +551,7 @@ export function ExerciseProgress({
       </div>
       {comparison.mixed ? <p className="text-[12px] text-ink-faint">{a.liftMixed}</p> : null}
       {chartsLocked ?? (
-        <div className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
           {stats.bodyweight ? (
             <MetricChart title={d.maxReps} metric="reps" sessions={sessions} range={state.range} todayIso={todayIso} />
           ) : (

@@ -199,7 +199,7 @@ export default async function RoutineDetailPage({
         {days.length === 0 ? (
           <p className="mt-2 text-sm text-ink-faint">{r.noDays}</p>
         ) : (
-          <div className="mt-3 grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
             {days.map((day, index) => (
               <Card plain key={day.id}>
                 <div className="flex items-baseline justify-between gap-2">

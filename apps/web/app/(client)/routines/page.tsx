@@ -102,7 +102,7 @@ export default async function RoutinesPage({
       {featured.length > 0 ? (
         <section className="mt-5">
           <h2 className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{r.featuredShelf}</h2>
-          <div className="mt-2.5 grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))] sm:gap-4">
+          <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))] sm:gap-4">
             {featured.map((card) => (
               <RoutineCardView key={card.id} card={card} />
             ))}
@@ -115,7 +115,7 @@ export default async function RoutinesPage({
           <EmptyState plain {...emptyFor(tab, isFilterActive(filter) ? "filtered" : "none", r)} />
         </div>
       ) : (
-        <div className="mt-5 grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))] sm:gap-4">
+        <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))] sm:gap-4">
           {cards.map((card) => (
             <RoutineCardView key={card.id} card={card} />
           ))}

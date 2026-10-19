@@ -32,7 +32,7 @@ export default async function AccountPage() {
         <PageTour id="account" steps={["profile", "gym", "email"]} />
       </div>
 
-      <div className="mt-5 grid gap-3.5 sm:mt-6">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-3.5 sm:mt-6">
         <div data-tour="account-profile">
         <ProfileForm
           role={profile.role}

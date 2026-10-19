@@ -96,7 +96,7 @@ export function WorkoutDayList({
 
           {/* As many columns as fit, never a card under 380px — one on a phone,
               two around a laptop, six across an ultrawide. */}
-          <div className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] sm:gap-4">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] sm:gap-4">
             {group.days.map((day) =>
               group.is_own && editable ? (
                 <SwipeToDelete

@@ -122,7 +122,7 @@ export function SetLogger({
 
       {/* As many columns as fit, never a block under 420px — one on a phone,
           several across a wide window. A circuit stays one cell. */}
-      <div className="grid gap-3.5 sm:grid-cols-[repeat(auto-fill,minmax(420px,1fr))]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3.5 sm:grid-cols-[repeat(auto-fill,minmax(420px,1fr))]">
       {circuitSegments(day.exercises).map((seg, si) => (
         <div
           key={seg.circuit ?? `solo-${si}`}

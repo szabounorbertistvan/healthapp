@@ -97,7 +97,7 @@ export default async function MarketplacePage() {
           <div className="h-full rounded-full bg-accent" style={{ width: `${completeness.pct}%` }} />
         </div>
         <p className="mt-2 text-[12.5px] text-ink-faint">{m.completenessHint}</p>
-        <ul className="mt-4 grid gap-1.5 sm:grid-cols-2" data-testid="marketplace-checklist">
+        <ul className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-1.5 sm:grid-cols-2" data-testid="marketplace-checklist">
           {completeness.items.map((item) => (
             <li key={item.key} className="flex items-center justify-between gap-3 rounded-2xl bg-bg px-3.5 py-2.5 text-[13.5px]" data-done={item.done}>
               <span className="flex min-w-0 items-center gap-2">

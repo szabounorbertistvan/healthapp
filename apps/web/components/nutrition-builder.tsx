@@ -653,7 +653,7 @@ function MealCard({
       {/* Foods open inside the meal they will be added to, not in a panel
           elsewhere on the page. */}
       <div className="flex flex-col gap-3.5 lg:flex-row">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[11rem] flex-1">
           {meal.foods.length === 0 ? (
             <p className="rounded-2xl bg-bg px-4 py-5 text-center text-[13px] text-ink-faint">
               {m.nothingPlanned}
@@ -727,7 +727,7 @@ function FoodRow({
   return (
     <li className="rounded-2xl bg-bg px-4 py-3 text-[14.5px] font-medium">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[11rem] flex-1">
           <p className="truncate font-medium">{food.food_name}</p>
           <p className="mt-0.5 text-[12px] tabular-nums text-ink-faint" title={practical?.note || undefined}>
             {practical
@@ -747,7 +747,7 @@ function FoodRow({
             onCommit={onCommit}
           />
         ) : null}
-        <span className="w-44 shrink-0 text-right text-[12.5px] tabular-nums text-ink-faint">
+        <span className="min-w-0 flex-1 text-[12.5px] tabular-nums text-ink-faint sm:w-44 sm:flex-none sm:shrink-0 sm:text-right">
           {round(food.macros.kcal)} kcal · {round(food.macros.protein)}P{" "}
           {round(food.macros.carbs)}C {round(food.macros.fat)}F
         </span>
@@ -1001,7 +1001,7 @@ function MealRecipe({
       <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.recipe}</p>
       {linked ? (
         <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-[11rem] flex-1">
             <PlannedRecipe
               recipe={meal.recipe as PlanRecipe | "unavailable"}
               labels={{

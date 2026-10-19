@@ -95,7 +95,7 @@ export function ExerciseAnalytics({
           <div className="mt-3">{chartsLocked}</div>
         ) : (
           <>
-            <div className="mt-3 grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
+            <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
               {stats.bodyweight ? (
                 // Nothing was ever loaded: weight, volume and 1RM would be empty
                 // lines, and the number that moves is reps.
