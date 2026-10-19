@@ -1,5 +1,5 @@
 import type {
-  AdherenceResult, ChallengeCategory, ChallengeDifficulty, ChallengeStatus, ChallengeType, ChallengeUnit, LoadTrend, Macros, PostPayload, PostType,
+  AdherenceFacts, AdherenceResult, ChallengeCategory, ChallengeDifficulty, ChallengeStatus, ChallengeType, ChallengeUnit, LoadTrend, Macros, PostPayload, PostType,
   PhotoOverlay, PostVisibility, ReactionType, TrainingLoad,
 } from "@healthapp/shared";
 import type { ExerciseMeasure, ExerciseVideoSource, LengthUnit, RestPrefs, WeightUnit } from "@healthapp/shared";
@@ -64,7 +64,10 @@ export type DashboardRow = {
   full_name: string;
   avatar_url: string | null;
   signal: Signal;
+  /** English, from the weekly snapshot — shown only when the live read below failed. */
   reason: string;
+  /** This week's numbers behind the signal, live; screens render them in the reader's language. */
+  facts?: AdherenceFacts;
   overall_pct: number;
   last_activity: string | null;
   pending_checkin: boolean;

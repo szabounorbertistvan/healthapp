@@ -504,8 +504,8 @@ them the section renders a "not configured" note instead of a broken upload.
 
 ## Known small ones
 
-- `lib/data.ts:124` — `previous: null // TODO: fetch previous week in one query`,
-  so week-over-week deltas on the coach dashboard are absent.
+- ~~`lib/data.ts` — `previous: null // TODO`~~ — fixed 2026-10-19: `previousCheckIns()` reads each pending
+  check-in's predecessor in one query, so the review shows last week's figures beside this week's.
 - Admin coach/client view switching no longer exists — `lib/view-mode.ts` went
   with demo mode on 2026-09-14. A live equivalent is a real access-control
   decision about health data and should not be added casually.

@@ -2,7 +2,7 @@
 import "server-only";
 import { cache } from "react";
 import { liveUser, supabaseServer } from "./supabase/server";
-import { effectiveTier, emailPrefsState, isExerciseMeasure, isLengthUnit, isWeightUnit, normalizeRestPrefs, pickProgram, planWeekDays, portionMacros, sumMacros } from "@healthapp/shared";
+import { effectiveTier, emailPrefsState, isExerciseMeasure, isLengthUnit, isWeightUnit, normalizeRestPrefs, pickProgram, planWeekDays, portionMacros, shiftDays, sumMacros } from "@healthapp/shared";
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { liveAdherenceFor } from "./live-adherence";
 import type {
@@ -125,7 +125,7 @@ export const getDashboard = cache(async (): Promise<DashboardRow[]> => {
   return rows
     .map((r) => {
       const a = live.get(r.client_id);
-      return a ? { ...r, signal: a.signal, reason: a.reason, overall_pct: a.overall } : r;
+      return a ? { ...r, signal: a.signal, reason: a.reason, facts: a.facts, overall_pct: a.overall } : r;
     })
     // The RPC's order was by the snapshot's signal; re-rank by the live one.
     .sort((a, b) => rank[a.signal] - rank[b.signal] || Number(b.pending_checkin) - Number(a.pending_checkin));
@@ -233,7 +233,12 @@ export async function getCheckIns(): Promise<CheckInRow[]> {
     .is("coach_reviewed_at", null)
     .order("submitted_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((c) => {
+  const rows = data ?? [];
+  const previous = await previousCheckIns(
+    supabase,
+    rows.map((c) => ({ userId: (c.user as unknown as { id: string }).id, weekStart: c.week_start as string })),
+  );
+  return rows.map((c) => {
     const user = c.user as unknown as { id: string; full_name: string };
     return {
       id: c.id, client_id: user.id, full_name: user.full_name,
@@ -241,10 +246,45 @@ export async function getCheckIns(): Promise<CheckInRow[]> {
       sleep: c.sleep, energy: c.energy, stress: c.stress,
       hunger: c.hunger, recovery: c.recovery, note: c.note,
       submitted_at: c.submitted_at, coach_reviewed_at: c.coach_reviewed_at,
-      previous: null, // TODO: fetch previous week in one query
+      previous: previous.get(`${user.id}|${c.week_start}`) ?? null,
       context: "",
     };
   });
+}
+
+type CheckInFigures = NonNullable<CheckInRow["previous"]>;
+
+/**
+ * Each pending check-in's predecessor — the same client's latest earlier
+ * check-in — in one query for all of them, so the review can show the week
+ * over week change. Bounded to twelve weeks before the oldest pending one; a
+ * client with nothing in that window has no comparison. A failed read leaves
+ * every comparison out rather than failing the queue.
+ */
+async function previousCheckIns(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  pending: { userId: string; weekStart: string }[],
+): Promise<Map<string, CheckInFigures>> {
+  const out = new Map<string, CheckInFigures>();
+  if (pending.length === 0) return out;
+  const oldest = pending.reduce((m, p) => (p.weekStart < m ? p.weekStart : m), pending[0]!.weekStart);
+  const { data, error } = await supabase
+    .from("check_ins")
+    .select("user_id, week_start, weight_kg, sleep, energy, stress, hunger, recovery")
+    .in("user_id", [...new Set(pending.map((p) => p.userId))])
+    .gte("week_start", shiftDays(oldest, -84))
+    .order("week_start", { ascending: false });
+  if (error || !data) return out;
+  for (const p of pending) {
+    const prev = data.find((r) => r.user_id === p.userId && r.week_start < p.weekStart);
+    if (prev) {
+      out.set(`${p.userId}|${p.weekStart}`, {
+        weight_kg: prev.weight_kg, sleep: prev.sleep, energy: prev.energy,
+        stress: prev.stress, hunger: prev.hunger, recovery: prev.recovery,
+      });
+    }
+  }
+  return out;
 }
 
 export async function getPrograms(): Promise<ProgramRow[]> {

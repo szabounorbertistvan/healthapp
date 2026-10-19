@@ -11,6 +11,8 @@ import { Card, SignalBadge, EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { pct, timeAgo } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
+import { fill, type Dictionary } from "@/lib/i18n";
+import type { DashboardRow } from "@/lib/types";
 import { getPlan } from "@/lib/plan";
 import { PremiumSoon, UpgradeHint } from "@/components/upgrade";
 import { CoachRequestsCard } from "@/components/gyms";
@@ -126,7 +128,7 @@ export default async function DashboardPage() {
                         {pro ? (
                           <>
                             <td className="px-3 py-4"><SignalBadge signal={r.signal} /></td>
-                            <td className="min-w-56 px-3 py-4 text-[13px] leading-relaxed text-ink-soft">{r.reason}</td>
+                            <td className="min-w-56 px-3 py-4 text-[13px] leading-relaxed text-ink-soft">{whyText(r, t.coachApp.dashboard)}</td>
                             <td className="whitespace-nowrap px-3 py-4 text-right">
                               <Adherence value={r.overall_pct} />
                             </td>
@@ -165,7 +167,7 @@ export default async function DashboardPage() {
                       </span>
                       {pro ? <SignalBadge signal={r.signal} /> : null}
                     </div>
-                    {pro ? <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">{r.reason}</p> : null}
+                    {pro ? <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">{whyText(r, t.coachApp.dashboard)}</p> : null}
                     <dl className="mt-3 flex items-end justify-between gap-3">
                       {pro ? (
                         <div>
@@ -202,6 +204,17 @@ export default async function DashboardPage() {
 }
 
 /** The 24-box icon paths this screen uses. */
+/** The row's "why" in the reader's language; the snapshot's English only when the live read failed. */
+function whyText(r: DashboardRow, d: Dictionary["coachApp"]["dashboard"]): string {
+  const f = r.facts;
+  if (!f) return r.reason;
+  const line = fill(d.why, {
+    completed: f.completed, target: f.target, days: f.daysLogged, habits: f.habitsPct,
+    checkin: f.checkin ? d.whyCheckinDone : d.whyCheckinMissed,
+  });
+  return f.stalledDays === null ? line : line + fill(d.whyStalled, { days: f.stalledDays });
+}
+
 const ICON = {
   clients:
     "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2 20a7 7 0 0 1 14 0M17 11a3 3 0 0 0 0-6M18 20h4a6 6 0 0 0-3-5.2",

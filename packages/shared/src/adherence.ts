@@ -41,7 +41,19 @@ export type AdherenceResult = {
   signal: AdherenceSignal;
   /** Plain-language explanation — a signal a coach cannot justify is unusable. */
   reason: string;
+  /** The numbers behind `reason`, for screens that say it in the reader's language. */
+  facts: AdherenceFacts;
   formulaVersion: number;
+};
+
+/** `reason` as data. `stalledDays` is null unless 3..98 days passed with no log. */
+export type AdherenceFacts = {
+  completed: number;
+  target: number;
+  daysLogged: number;
+  habitsPct: number;
+  checkin: boolean;
+  stalledDays: number | null;
 };
 
 export function computeAdherence(i: AdherenceInputs): AdherenceResult {
@@ -70,6 +82,7 @@ export function computeAdherence(i: AdherenceInputs): AdherenceResult {
     overall,
     signal: signalFor(overall, i.checkinSubmitted, i.inactiveDays),
     reason: explain(i, planned, habits),
+    facts: factsOf(i, planned, habits),
     formulaVersion: FORMULA_VERSION,
   };
 }
@@ -113,13 +126,24 @@ export function macroScore(days: readonly { kcal: number }[], kcalTarget: number
   return round3(total / days.length);
 }
 
+function factsOf(i: AdherenceInputs, planned: number, habits: number): AdherenceFacts {
+  return {
+    completed: i.completedSessions,
+    target: planned === 0 ? SOLO_SESSIONS_PER_WEEK : planned,
+    daysLogged: i.daysLogged,
+    habitsPct: Math.round(habits * 100),
+    checkin: i.checkinSubmitted,
+    stalledDays: i.inactiveDays >= 3 && i.inactiveDays < 99 ? i.inactiveDays : null,
+  };
+}
+
+// English, as stored in adherence_snapshots.reason by the SQL engine; screens use `facts`.
 function explain(i: AdherenceInputs, planned: number, habits: number): string {
-  const target = planned === 0 ? SOLO_SESSIONS_PER_WEEK : planned;
-  const stalled =
-    i.inactiveDays >= 3 && i.inactiveDays < 99 ? ` · no logs for ${i.inactiveDays} days` : "";
+  const f = factsOf(i, planned, habits);
+  const stalled = f.stalledDays !== null ? ` · no logs for ${f.stalledDays} days` : "";
   return (
-    `${i.completedSessions}/${target} workouts · food logged ${i.daysLogged}/7 days · ` +
-    `habits ${Math.round(habits * 100)}% · check-in ${i.checkinSubmitted ? "done" : "missed"}${stalled}`
+    `${f.completed}/${f.target} workouts · food logged ${f.daysLogged}/7 days · ` +
+    `habits ${f.habitsPct}% · check-in ${f.checkin ? "done" : "missed"}${stalled}`
   );
 }
 

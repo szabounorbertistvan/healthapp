@@ -90,6 +90,8 @@ describe("computeAdherence", () => {
     expect(r.reason).toBe(
       "1/4 workouts · food logged 2/7 days · habits 50% · check-in missed · no logs for 5 days",
     );
+    // the same numbers as data, for screens that say them in Romanian
+    expect(r.facts).toEqual({ completed: 1, target: 4, daysLogged: 2, habitsPct: 50, checkin: false, stalledDays: 5 });
   });
 
   test("stamps the formula version so old snapshots stay interpretable", () => {
