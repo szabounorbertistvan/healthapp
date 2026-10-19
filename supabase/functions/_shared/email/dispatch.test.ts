@@ -14,7 +14,7 @@ function row(over: Partial<OutboxRow> = {}): OutboxRow {
   return {
     id: "o1", notification_id: "11111111-2222-4333-8444-555555555555", attempts: 0,
     category: "booking", payload: { event: "confirmed", screen: "my_bookings" }, created_at: ago(1), read_at: null,
-    email: "ana@example.test", email_confirmed: true, locale: "ro", time_zone: "Europe/Bucharest", prefs: {},
+    email: "ana@voinic.fit", email_confirmed: true, locale: "ro", time_zone: "Europe/Bucharest", prefs: {},
     suspended: false, deletion_requested: false, actor_name: "Kai", starts_at: "2026-10-12T07:00:00Z",
     user_id: "22222222-3333-4444-8555-666666666666", unsubscribe_token: TOKEN,
     ...over,
@@ -51,7 +51,7 @@ describe("processBatch", () => {
     const summary = await run(store, provider);
     expect(summary.sent).toBe(1);
     expect(sent).toHaveLength(1);
-    expect(sent[0]!.to).toBe("ana@example.test");
+    expect(sent[0]!.to).toBe("ana@voinic.fit");
     expect(sent[0]!.idempotencyKey).toBe("11111111-2222-4333-8444-555555555555");
     expect(sent[0]!.html).toContain("https://www.voinic.fit/coaches/bookings");
     expect(marks).toEqual([{ id: "o1", status: "sent", lastStatus: 200, providerMessageId: "msg_1" }]);
@@ -77,9 +77,10 @@ describe("processBatch", () => {
     expect(marks).toEqual([{ id: "o1", status: "skipped", reason: "no_unsubscribe" }]);
   });
 
-  it("skips without sending: unconfirmed address, suspended account, opted out, not eligible", async () => {
+  it("skips without sending: unconfirmed address, test domain, suspended account, opted out, not eligible", async () => {
     const rows = [
       row({ id: "a", email_confirmed: false }),
+      row({ id: "t", email: "client@healthapp.test" }),
       row({ id: "b", suspended: true }),
       row({ id: "c", prefs: { email: { booking: false } } }),
       row({ id: "d", category: "coaching", payload: { event: "paused" } }),
@@ -89,7 +90,7 @@ describe("processBatch", () => {
     await run(store, provider);
     expect(sent).toHaveLength(0);
     expect(marks.map((m) => (m.status === "skipped" ? m.reason : m.status))).toEqual([
-      "email_unconfirmed", "account_inactive", "opted_out", "not_eligible",
+      "email_unconfirmed", "reserved_domain", "account_inactive", "opted_out", "not_eligible",
     ]);
   });
 
@@ -132,7 +133,7 @@ describe("processBatch", () => {
     expect(sent).toHaveLength(0);
     expect(marks).toHaveLength(0);
     expect(summary.log[0]).toMatchObject({ outcome: "would_send" });
-    expect(JSON.stringify(summary)).not.toContain("ana@example.test");
+    expect(JSON.stringify(summary)).not.toContain("ana@voinic.fit");
   });
 });
 

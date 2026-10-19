@@ -54,12 +54,13 @@ A reviewed exception (e.g. a file renamed before it was ever applied) goes in
 - There are two `vercel.json`. Commits `b382bb7` and `fce15c1` (2026-09-06) record that the
   project's **Root Directory was set to `apps/web`**, which makes Vercel read
   `apps/web/vercel.json` (build `next build`, ignore step `npx turbo-ignore @healthapp/web`,
-  output `.next`, region fra1) and ignore the root file. That is history, not a check of the
-  dashboard today; the root file is kept until someone confirms the setting.
+  output `.next`, region fra1) and ignore the root file. Confirmed in the dashboard on
+  2026-10-19: Root Directory `apps/web`, the production build runs `next build` → `.next`.
 - The Node version is not pinned in the repository (no `engines`, no `.nvmrc`): Vercel uses the
-  project setting; CI uses Node 22.
-- Vercel builds `main` on its own; CI does not gate it. Without changing anything in the
-  repository, Vercel can be made to wait: in the project settings, require the GitHub checks
+  project setting (24.x, seen 2026-10-19), and every workflow uses Node 24 to match.
+- Vercel builds `main` on its own; CI does not gate it (no Deployment Checks configured as of
+  2026-10-19 — Vercel's GitHub import needs the workflow to report through
+  `vercel/repository-dispatch/actions/status@v1`, which CI does not do yet). Vercel can be made to wait: in the project settings, require the GitHub checks
   (*Typecheck, lint, tests, build*, whose first step is the migration gate, and *RLS policies
   (pgTAP)*) before a deployment is promoted to Production. Alternatively, turn off auto-deploy and
   deploy from a workflow after CI — that needs a `VERCEL_TOKEN` secret.

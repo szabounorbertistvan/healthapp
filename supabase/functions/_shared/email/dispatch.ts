@@ -11,6 +11,7 @@
 import {
   classifyEmailSendStatus,
   emailRetryDelaySeconds,
+  isReservedEmailDomain,
   marketplaceEmailDecision,
   emailUnsubscribePath,
   marketplaceEmailIdempotencyKey,
@@ -101,6 +102,7 @@ export async function processBatch(args: {
       {
         hasEmail: Boolean(row.email),
         emailConfirmed: row.email_confirmed,
+        reservedDomain: isReservedEmailDomain(row.email),
         suspended: row.suspended,
         deletionRequested: row.deletion_requested,
         prefs: row.prefs,

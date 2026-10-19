@@ -42,7 +42,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: env.SUPABASE_SERVICE_ROLE_KEY != '' && env.CLOUDINARY_API_SECRET != ''
         with:
-          node-version: 22
+          node-version: 24
       - name: Dry runs (retention, identity, orphans)
         if: env.SUPABASE_SERVICE_ROLE_KEY != '' && env.CLOUDINARY_API_SECRET != ''
         # pipefail: a script that fails (bad secret, database down) fails the job with its own exit code

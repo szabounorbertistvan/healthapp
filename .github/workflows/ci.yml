@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       # Names, duplicate versions, and no migration that was already on the base
       # edited, deleted, renamed or added out of order (docs/MIGRATION_GATE.md).

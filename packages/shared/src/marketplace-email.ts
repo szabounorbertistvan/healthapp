@@ -149,13 +149,24 @@ export interface EmailRecipientState {
   hasEmail: boolean;
   /** auth.users.email_confirmed_at is set — never mail an address nobody proved they own. */
   emailConfirmed: boolean;
+  /** The address ends in a reserved TLD (RFC 2606/6761) — the seeded test accounts. */
+  reservedDomain?: boolean;
   suspended: boolean;
   deletionRequested: boolean;
   prefs: unknown;
 }
 
 export type EmailSkipReason =
-  | "not_eligible" | "no_email" | "email_unconfirmed" | "account_inactive" | "opted_out" | "read_in_app" | "stale";
+  | "not_eligible" | "no_email" | "email_unconfirmed" | "reserved_domain" | "account_inactive" | "opted_out" | "read_in_app" | "stale";
+
+/**
+ * `.test`, `.example`, `.invalid`, `.localhost` can never receive mail. The live
+ * project's seeded test accounts use them with a confirmed address, so without
+ * this every event of theirs would bounce at Brevo and hurt the sender's standing.
+ */
+export function isReservedEmailDomain(email: string | null | undefined): boolean {
+  return typeof email === "string" && /\.(test|example|invalid|localhost)$/i.test(email.trim());
+}
 
 export type EmailDecision =
   | { action: "send"; rule: MarketplaceEmailRule; path: string | null }
@@ -172,6 +183,7 @@ export function marketplaceEmailDecision(n: EmailCandidate, who: EmailRecipientS
   if (!rule) return { action: "skip", reason: "not_eligible" };
   if (!who.hasEmail) return { action: "skip", reason: "no_email" };
   if (!who.emailConfirmed) return { action: "skip", reason: "email_unconfirmed" };
+  if (who.reservedDomain) return { action: "skip", reason: "reserved_domain" };
   if (who.suspended || who.deletionRequested) return { action: "skip", reason: "account_inactive" };
   if (!emailCategoryEnabled(who.prefs, rule)) return { action: "skip", reason: "opted_out" };
   if (rule.skipIfRead && n.readAt) return { action: "skip", reason: "read_in_app" };

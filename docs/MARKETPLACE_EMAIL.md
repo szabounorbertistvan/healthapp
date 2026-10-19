@@ -59,8 +59,10 @@ link. **Never** message text, health data, review text, notes or prices.
 | 8 | `marketplace` / `profile_published`, `profile_returned`, `revision_approved`, `revision_returned` | coach | admin decision | operational | `/settings/coach-profile` | — |
 
 Every row is also skipped when the recipient has no email, an **unconfirmed**
-email (Confirm email is off in production today — an unverified address may
-belong to someone else), is suspended or has asked for deletion. These are
+email (Confirm email was off in production until 2026-10-19, so every account made
+before then counts as confirmed — an unverified address may belong to someone else),
+an address on a reserved test domain (`.test`, `.example`, `.invalid`, `.localhost` —
+the seeded test accounts; mailing them would bounce at Brevo), is suspended or has asked for deletion. These are
 re-checked **at send time** (`marketplaceEmailDecision`), not at enqueue time.
 
 In-app only on purpose: a request the client cancelled, `booking/completed`

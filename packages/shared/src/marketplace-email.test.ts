@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyEmailSendStatus, EMAIL_MAX_ATTEMPTS, EMAIL_PREF_CATEGORIES, emailCategoryEnabled, emailPrefsState, emailRetryDelaySeconds,
-  emailUnsubscribePath, isEmailPrefCategory, parseEmailUnsubscribe, withEmailPref,
+  emailUnsubscribePath, isEmailPrefCategory, isReservedEmailDomain, parseEmailUnsubscribe, withEmailPref,
   MARKETPLACE_EMAIL_RULES, marketplaceEmailDecision, marketplaceEmailIdempotencyKey, marketplaceEmailPath,
   marketplaceEmailRule, type EmailCandidate, type EmailRecipientState,
 } from "./marketplace-email";
@@ -69,6 +69,16 @@ describe("marketplaceEmailDecision", () => {
     expect(marketplaceEmailDecision(n, { ...live, deletionRequested: true }, NOW)).toEqual({ action: "skip", reason: "account_inactive" });
     expect(marketplaceEmailDecision(n, { ...live, prefs: { email: { coaching_request: false } } }, NOW))
       .toEqual({ action: "skip", reason: "opted_out" });
+  });
+
+  it("never mails a reserved test domain", () => {
+    const n = row("coaching_request", { event: "sent", screen: "coach_requests" });
+    expect(marketplaceEmailDecision(n, { ...live, reservedDomain: true }, NOW)).toEqual({ action: "skip", reason: "reserved_domain" });
+    expect(isReservedEmailDomain("client@healthapp.test")).toBe(true);
+    expect(isReservedEmailDomain("a@b.EXAMPLE")).toBe(true);
+    expect(isReservedEmailDomain("coach@voinic.fit")).toBe(false);
+    expect(isReservedEmailDomain("someone@test.ro")).toBe(false);
+    expect(isReservedEmailDomain(null)).toBe(false);
   });
 
   it("holds a message back, then drops it if it was read in the app", () => {
