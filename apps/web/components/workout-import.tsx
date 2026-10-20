@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import type { WeightUnit } from "@healthapp/shared";
 import { finishWorkoutImport, importWorkoutChunk, type ImportChunkSession } from "@/app/import-actions";
 import { exerciseNames, MAX_IMPORT_BYTES, parseWorkoutCsv, type ParseResult } from "@/lib/import/workout-csv";
-import { buildMatchIndex, matchExercise, type LibraryExercise } from "@/lib/import/exercise-match";
+import { buildMatchIndex, matchExercise, type LibraryExercise, type MatchIndex } from "@/lib/import/exercise-match";
 import { BUTTON, FIELD, SMALL_BUTTON, SMALL_BUTTON_INSET } from "@/lib/form-classes";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -281,6 +281,7 @@ export function WorkoutImport({
               choice={choices[name] ?? null}
               suggestions={suggested[name] ?? []}
               library={library}
+              index={index}
               label={label}
               disabled={busy}
               onChoose={(c) => setChoices((prev) => ({ ...prev, [name]: c }))}
@@ -313,13 +314,14 @@ export function WorkoutImport({
 }
 
 function ExerciseRow({
-  name, sets, choice, suggestions, library, label, disabled, onChoose,
+  name, sets, choice, suggestions, library, index, label, disabled, onChoose,
 }: {
   name: string;
   sets: number;
   choice: Choice;
   suggestions: string[];
   library: LibraryExercise[];
+  index: MatchIndex;
   label: (id: string) => string;
   disabled: boolean;
   onChoose: (c: Choice) => void;
@@ -328,17 +330,22 @@ function ExerciseRow({
   const m = t.clientApp.workoutImport;
   const [open, setOpen] = useState(choice === null);
   const [query, setQuery] = useState("");
+  // What the matcher makes of the words first — so "genuflexiuni" or "împins
+  // cu gantere" finds the lift through the Romanian names it knows — then every
+  // name that contains them, accents ignored.
   const results = useMemo(() => {
-    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const fold = (x: string) => x.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const words = fold(query).split(/\s+/).filter(Boolean);
     if (words.length === 0) return [];
-    return library
+    const matched = matchExercise(query, index);
+    const contains = library
       .filter((e) => {
-        const hay = `${e.name_en} ${e.name_ro ?? ""}`.toLowerCase();
+        const hay = fold(`${e.name_en} ${e.name_ro ?? ""}`);
         return words.every((w) => hay.includes(w));
       })
-      .slice(0, 8)
       .map((e) => e.id);
-  }, [query, library]);
+    return [...new Set([...(matched.exerciseId ? [matched.exerciseId] : []), ...contains, ...matched.suggestions])].slice(0, 8);
+  }, [query, library, index]);
   const shown = query.trim() ? results : suggestions;
   const status = choice === "skip" ? m.skippedLabel : choice ? m.matched : m.needsMatch;
   const pick = (c: Choice) => {

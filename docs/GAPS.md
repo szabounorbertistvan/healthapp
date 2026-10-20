@@ -105,7 +105,10 @@ from the headers, kg / lb — a Strong file without a unit column asks — timed
 sets as reps 0 + `duration_seconds`, every row held to `validateSetEdit`),
 names are matched to the library (`lib/import/exercise-match.ts`: own exercises
 first, an alias list for the common Hevy/Strong names, then a strict word match;
-the rest go to a review step — pick or skip), and `app/import-actions.ts` writes
+the rest go to a review step — pick or skip; ~130 Romanian gym names
+("Genuflexiuni", "Împins la piept cu bara", "Tras la helcometru"…) are aliases too,
+since only 3 of 879 library rows have `name_ro`, and the review search reads
+Romanian through the same matcher), and `app/import-actions.ts` writes
 owner-scoped sessions and sets a few days per call, with derived
 `client_generated_id`s so a re-import adds nothing. PR flags are then re-derived
 per lift with `recomputePrFlags` / `estimated1RM` (`lib/pr-history.ts`).

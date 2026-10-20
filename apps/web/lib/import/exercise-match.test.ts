@@ -16,7 +16,8 @@ describe("nameTokens", () => {
   it("folds spellings, plurals, brackets and accents", () => {
     expect([...nameTokens("Pull-Ups (Bodyweight)")].sort()).toEqual(["bodyweight", "pullup"]);
     expect([...nameTokens("Crunches", "body only")].sort()).toEqual(["bodyweight", "crunch"]);
-    expect([...nameTokens("Flexii cu gantere (DB)")].sort()).toEqual(["cu", "dumbbell", "flexii", "gantere"]);
+    // Romanian: "cu" drops out, "gantere" is the dumbbell it means.
+    expect([...nameTokens("Flexii cu gantere (DB)")].sort()).toEqual(["dumbbell", "flexii"]);
     expect(nameTokens("Bench Press").has("press")).toBe(true);
   });
 });
@@ -33,6 +34,22 @@ describe("matchExercise", () => {
     expect(match("Leg Extension (Machine)")).toBe("Leg Extensions");
     expect(match("Plank")).toBe("Plank");
     expect(match("Face Pull (Cable)")).toBe("Face Pull");
+  });
+
+  it("matches the lifts as Romanian gyms name them, with or without diacritics", () => {
+    expect(match("Genuflexiuni cu bara")).toBe("Barbell Squat");
+    expect(match("Împins la piept cu bara")).toBe("Barbell Bench Press - Medium Grip");
+    expect(match("impins piept bara")).toBe("Barbell Bench Press - Medium Grip");
+    expect(match("Împins înclinat cu gantere")).toBe("Incline Dumbbell Press");
+    expect(match("Îndreptări")).toBe("Barbell Deadlift");
+    expect(match("Tracțiuni")).toBe("Pullups");
+    expect(match("Tras la helcometru")).toBe("Wide-Grip Lat Pulldown");
+    expect(match("Ramat la cablu")).toBe("Seated Cable Rows");
+    expect(match("Flexii ciocan cu gantere")).toBe("Hammer Curls");
+    expect(match("Presă picioare")).toBe("Leg Press");
+    expect(match("Planșă")).toBe("Plank");
+    // Unknown Romanian names still go to the review step, never to a guess.
+    expect(match("Fandări bulgărești cu gantere")).toBeNull();
   });
 
   it("matches a name already written the library's way", () => {
