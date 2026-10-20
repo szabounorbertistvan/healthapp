@@ -71,7 +71,8 @@ Deno.serve(async (req) => {
         const n = p.nutriments ?? {};
         const kcal = n["energy-kcal_100g"];
         const code = p.code == null ? "" : String(p.code);
-        const name = typeof p.product_name === "string" ? p.product_name.trim() : "";
+        const nameRo = typeof p.product_name_ro === "string" && p.product_name_ro.trim() ? p.product_name_ro.trim() : null;
+        const name = (typeof p.product_name === "string" ? p.product_name.trim() : "") || nameRo || "";
         if (!name || !code || kcal == null || seen.has(code)) continue;
 
         const row = {
@@ -79,6 +80,7 @@ Deno.serve(async (req) => {
           external_id: code,
           barcode: code,
           name_en: name,
+          ...(nameRo ? { name_ro: nameRo } : {}),
           brand: firstBrand(p.brands),
           kcal_100g: round2(kcal),
           protein_100g: round2(n.proteins_100g ?? 0),
@@ -98,8 +100,8 @@ Deno.serve(async (req) => {
         results.push({
           food_id: cached?.id ?? null,
           external: { source: "off", id: code },
-          name,
-          name_ro: null,
+          name: (locale === "ro" ? nameRo : null) ?? name,
+          name_ro: nameRo,
           brand: row.brand,
           per_100g: { kcal: row.kcal_100g, protein: row.protein_100g, carbs: row.carbs_100g, fat: row.fat_100g },
           verified: false,
@@ -120,6 +122,8 @@ Deno.serve(async (req) => {
 type OffProduct = {
   code?: unknown;
   product_name?: unknown;
+  /** The Romanian name, when the product's page has one. */
+  product_name_ro?: unknown;
   brands?: unknown;
   nutriments?: Record<string, unknown>;
   serving_size?: unknown;
@@ -129,7 +133,7 @@ type OffProduct = {
 };
 
 const OFF_FIELDS =
-  "code,product_name,brands,nutriments,serving_size,serving_quantity,product_quantity,categories_tags";
+  "code,product_name,product_name_ro,brands,nutriments,serving_size,serving_quantity,product_quantity,categories_tags";
 
 /**
  * Open Food Facts has two search APIs. Search-a-licious
@@ -144,31 +148,51 @@ const OFF_FIELDS =
 async function fetchOffProducts(q: string): Promise<OffProduct[]> {
   const init = { headers: { "User-Agent": OFF_USER_AGENT }, signal: AbortSignal.timeout(5000) };
 
-  try {
-    const res = await fetch(
-      `https://search.openfoodfacts.org/search?q=${encodeURIComponent(q)}&page_size=15&fields=${OFF_FIELDS}`,
-      init,
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data?.hits) && data.hits.length > 0) return data.hits as OffProduct[];
-    }
-  } catch (_e) {
-    // fall through to the legacy endpoint
-  }
+  // Products sold in Romania first (a shelf at Lidl, Kaufland, Mega…), then the
+  // rest of the world: the same query twice in parallel, Romania's hits ahead,
+  // one row per barcode. Search-a-licious takes a Lucene-style filter in `q`.
+  const sal = (query: string) =>
+    fetch(`https://search.openfoodfacts.org/search?q=${encodeURIComponent(query)}&page_size=15&fields=${OFF_FIELDS}`, init)
+      .then(async (res) => {
+        if (!res.ok) return [] as OffProduct[];
+        const data = await res.json();
+        return Array.isArray(data?.hits) ? (data.hits as OffProduct[]) : [];
+      })
+      .catch(() => [] as OffProduct[]);
 
-  try {
-    const res = await fetch(
+  const [romania, world] = await Promise.all([sal(`${q} countries_tags:"en:romania"`), sal(q)]);
+  const merged = mergeByCode(romania, world);
+  if (merged.length > 0) return merged;
+
+  // fall through to the legacy endpoint (Romania-filtered first, then anywhere)
+  const legacy = (romaniaOnly: boolean) =>
+    fetch(
       "https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&search_simple=1" +
-        `&page_size=15&search_terms=${encodeURIComponent(q)}&fields=${OFF_FIELDS}`,
+        `&page_size=15&search_terms=${encodeURIComponent(q)}&fields=${OFF_FIELDS}` +
+        (romaniaOnly ? "&tagtype_0=countries&tag_contains_0=contains&tag_0=romania" : ""),
       init,
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data?.products) ? (data.products as OffProduct[]) : [];
-  } catch (_e) {
-    return [];
+    )
+      .then(async (res) => {
+        if (!res.ok) return [] as OffProduct[];
+        const data = await res.json();
+        return Array.isArray(data?.products) ? (data.products as OffProduct[]) : [];
+      })
+      .catch(() => [] as OffProduct[]);
+  const ro = await legacy(true);
+  return mergeByCode(ro, ro.length >= 10 ? [] : await legacy(false));
+}
+
+/** Romania's products first, each barcode once. */
+function mergeByCode(first: OffProduct[], rest: OffProduct[]): OffProduct[] {
+  const seen = new Set<string>();
+  const out: OffProduct[] = [];
+  for (const p of [...first, ...rest]) {
+    const code = p.code == null ? "" : String(p.code);
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    out.push(p);
   }
+  return out;
 }
 
 /** Same rule as public.search_normalize() and normalizeForSearch in packages/shared. */

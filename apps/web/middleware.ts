@@ -94,7 +94,10 @@ export async function middleware(request: NextRequest) {
     // be signed out, and a redirect would drop the body. The route writes
     // nothing — it verifies the signature, parks the recipe in a cookie and
     // sends the person to /recipes, which is behind sign-in as usual.
-    path === "/recipes/receive"
+    path === "/recipes/receive" ||
+    // the calendar sync worker, called by a scheduler with a bearer secret
+    // (app/api/cron/calendar-sync/route.ts checks it); there is no session
+    path === "/api/cron/calendar-sync"
   ) return response;
   const isLanding = path === "/";
   const isLogin = path.startsWith("/login");

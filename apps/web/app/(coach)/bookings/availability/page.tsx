@@ -15,9 +15,12 @@ import { CalendarIntegrations } from "@/components/calendar-integrations";
  * Calendar connections (20261111130000) close the page: external busy time
  * blocks slots like time off does.
  */
-export default async function AvailabilityPage() {
-  const [{ t }, data, calendars] = await Promise.all([getI18n(), getMyAvailability(), getMyCalendarIntegrations()]);
+export default async function AvailabilityPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [{ t }, data, calendars, params] = await Promise.all([getI18n(), getMyAvailability(), getMyCalendarIntegrations(), searchParams]);
   const a = t.coachProfile.bookings.availability;
+  // the OAuth callback's answer (?calendar=connected | denied | failed | unavailable)
+  const calendarResult = typeof params.calendar === "string" && params.calendar in a.calendar.results
+    ? a.calendar.results[params.calendar as keyof typeof a.calendar.results] : null;
   const today = zonedDate(new Date(), data.timezone);
   const section = "font-display text-lg font-bold tracking-tight";
 
@@ -61,6 +64,11 @@ export default async function AvailabilityPage() {
       <section className="mt-8" aria-label={a.calendar.title}>
         <h2 className={section}>{a.calendar.title}</h2>
         <p className="mt-1 max-w-[62ch] text-[13px] text-ink-soft">{a.calendar.hint}</p>
+        {calendarResult ? (
+          <p role="status" className={`mt-3 rounded-2xl px-4 py-3 text-[13px] font-semibold ${params.calendar === "connected" ? "bg-accent-soft text-accent-ink" : "bg-warn-soft text-warn"}`}>
+            {calendarResult}
+          </p>
+        ) : null}
         <div className="mt-3">
           <CalendarIntegrations connections={calendars}
             connectable={{ google: calendarConnectAvailable("google"), microsoft: calendarConnectAvailable("microsoft") }} />

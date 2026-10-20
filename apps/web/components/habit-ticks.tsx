@@ -1,7 +1,8 @@
 "use client";
 import { settle } from "@/lib/settle-action";
 import { useState, useTransition, useOptimistic } from "react";
-import { archiveHabit, toggleHabit } from "@/app/client-actions-habits";
+import { archiveHabit, setHabitDone, toggleHabit } from "@/app/client-actions-habits";
+import { useOfflineOutbox, useQueuedHabitStates } from "@/lib/offline/sync";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import { groupHabitsByCategory, suggestionKeyForName } from "@/lib/habit-suggestions";
@@ -35,7 +36,17 @@ export function HabitTicks({ habits, removable = false }: { habits: ClientHabitR
   // Removing asks first, inline: "Delete habit?" with Cancel / Delete.
   const [confirming, setConfirming] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
-  const [rows, toggleOptimistic] = useOptimistic(habits, (state, id: string) =>
+  // a tick made without a connection waits in the outbox; it shows as made
+  const offline = useOfflineOutbox();
+  // this device's calendar day, yyyy-mm-dd (en-CA formats dates that way)
+  const [today] = useState(() => new Date().toLocaleDateString("en-CA"));
+  const queuedStates = useQueuedHabitStates(today);
+  const shown = queuedStates.size === 0 ? habits : habits.map((h) => {
+    const done = queuedStates.get(h.id);
+    if (done === undefined || done === h.done_today) return h;
+    return { ...h, done_today: done, done_this_week: h.done_this_week + (done ? 1 : -1) };
+  });
+  const [rows, toggleOptimistic] = useOptimistic(shown, (state, id: string) =>
     state.map((h) =>
       h.id === id
         ? {
@@ -74,8 +85,21 @@ export function HabitTicks({ habits, removable = false }: { habits: ClientHabitR
                       onClick={() =>
                         startTransition(async () => {
                           toggleOptimistic(habit.id);
-                          // a tick that did not stick falls back to the server's state when the transition ends
-                          await settle(() => toggleHabit(habit.id), t.common.actions.unreachable);
+                          const done = !habit.done_today;
+                          // A tick with no connection waits on this phone as the state it
+                          // was set to, so a replay cannot undo it.
+                          if (navigator.onLine === false && offline) {
+                            await offline.queueAction({ kind: "habit", habitId: habit.id, day: today, done });
+                            return;
+                          }
+                          try {
+                            // a queued tick for this habit is overridden by an explicit state
+                            if (queuedStates.has(habit.id)) await setHabitDone(habit.id, today, done);
+                            else await toggleHabit(habit.id);
+                          } catch {
+                            if (offline) await offline.queueAction({ kind: "habit", habitId: habit.id, day: today, done });
+                            else await settle(() => toggleHabit(habit.id), t.common.actions.unreachable);
+                          }
                         })
                       }
                       className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1.5 text-left hover:bg-bg"

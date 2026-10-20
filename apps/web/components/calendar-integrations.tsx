@@ -16,9 +16,10 @@ import { Switch } from "./ui";
  * required — and Disconnect. No secret is ever in these props: they come from
  * my_calendar_integrations(), which has none to give.
  *
- * Connect is "coming soon" until a provider's OAuth flow exists
- * (lib/calendar/provider.ts) — never a button that cannot work, never a fake
- * connection.
+ * Connect is a plain link to /api/calendar/<provider>/connect, which starts
+ * the provider's consent screen; it is "coming soon" until the deployment has
+ * that provider configured (lib/calendar/registry.ts) — never a button that
+ * cannot work, never a fake connection.
  */
 export function CalendarIntegrations({ connections, connectable }: {
   connections: CalendarIntegration[];
@@ -35,13 +36,17 @@ export function CalendarIntegrations({ connections, connectable }: {
           return (
             <li key={provider} className="rounded-3xl bg-surface p-5" data-testid="calendar-provider" data-provider={provider}
               data-status={conn?.status ?? "not_connected"}>
-              {conn ? <Connected conn={conn} locale={locale} /> : (
+              {conn ? <Connected conn={conn} locale={locale} canReconnect={connectable[provider]} /> : (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold">{c.providers[provider]}</p>
                     <p className="text-[13px] text-ink-faint">{c.statuses.not_connected}</p>
                   </div>
-                  {connectable[provider] ? null : (
+                  {connectable[provider] ? (
+                    <a href={`/api/calendar/${provider}/connect`} className={`${SMALL_BUTTON} h-10 px-4`} data-testid="calendar-connect">
+                      {c.connect}
+                    </a>
+                  ) : (
                     <span className="flex flex-col items-end gap-1">
                       <span className={`${SMALL_BUTTON} h-10 cursor-not-allowed px-4 opacity-60`} aria-disabled="true" data-testid="calendar-connect-soon">
                         {c.comingSoon}
@@ -59,7 +64,7 @@ export function CalendarIntegrations({ connections, connectable }: {
   );
 }
 
-function Connected({ conn, locale }: { conn: CalendarIntegration; locale: "en" | "ro" }) {
+function Connected({ conn, locale, canReconnect }: { conn: CalendarIntegration; locale: "en" | "ro"; canReconnect: boolean }) {
   const { t } = useI18n();
   const c = t.coachProfile.bookings.availability.calendar;
   const router = useRouter();
@@ -110,6 +115,11 @@ function Connected({ conn, locale }: { conn: CalendarIntegration; locale: "en" |
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
+        {canReconnect && view.state === "reauth_required" && !confirming ? (
+          <a href={`/api/calendar/${conn.provider}/connect`} className={`${SMALL_BUTTON} h-10 px-4`} data-testid="calendar-reconnect">
+            {c.reconnect}
+          </a>
+        ) : null}
         {confirming ? (
           <>
             <p className="w-full text-[13px] text-ink-soft">{fill(c.disconnectConfirm, { provider: c.providers[conn.provider] })}</p>

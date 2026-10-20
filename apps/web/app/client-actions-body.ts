@@ -76,7 +76,7 @@ export async function submitCheckIn(input: {
     .eq("user_id", userId)
     .eq("week_start", weekStart)
     .maybeSingle();
-  if (already) return { ok: false, message: "This week is already checked in" };
+  if (already) return { ok: false, errorCode: "ALREADY_CHECKED_IN", message: "This week is already checked in" };
 
   const { error } = await supabase.from("check_ins").insert({
     user_id: userId,
@@ -95,6 +95,7 @@ export async function submitCheckIn(input: {
     return {
       ok: false,
       message: error.code === "23505" ? "This week is already checked in" : error.message,
+      ...(error.code === "23505" ? { errorCode: "ALREADY_CHECKED_IN" as const } : {}),
     };
   }
   revalidatePath("/check-in");

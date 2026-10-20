@@ -16,6 +16,7 @@ import { UpgradeHint, type PlanFeature } from "./upgrade";
 import { ProductCard } from "./product-card";
 import { NewFoodForm, NotFoundNote } from "./new-food-form";
 import { portionsFor, type FoodItem } from "@/lib/food-portions";
+import { useOfflineOutbox } from "@/lib/offline/sync";
 
 // Only a real foods.id survives a write (the server drops anything else), so a
 // product that came straight from Open Food Facts is keyed by name instead.
@@ -69,6 +70,8 @@ export function FoodLogger({
   const [picked, setPicked] = useState<FoodItem | null>(null);
   const [grams, setGrams] = useState("100");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const offline = useOfflineOutbox();
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanned, setScanned] = useState<{ food: FoodItem; barcode: string } | null>(null);
@@ -251,7 +254,8 @@ export function FoodLogger({
             onClick={() =>
               startTransition(async () => {
                 setError(null);
-                const result = await settle(() => logFood({
+                setNotice(null);
+                const input = {
                   slot,
                   day,
                   foodName: nameOf(picked),
@@ -260,15 +264,30 @@ export function FoodLogger({
                   // Links the log to its foods row so a later portion edit
                   // re-costs from the unrounded per-100g basis.
                   foodId: picked.id || null,
-                }), t.common.actions.unreachable);
-                if (!result.ok) {
-                  setError(result.message ?? fl.couldNotLog);
+                  // one id per press: a replay from the outbox cannot log it twice
+                  clientId: crypto.randomUUID(),
+                };
+                // No connection (the browser says so, or the request dies on the
+                // way): the log waits on this phone and syncs by itself.
+                let result: Awaited<ReturnType<typeof logFood>> | null = null;
+                let queued = false;
+                if (navigator.onLine === false && offline) queued = !!(await offline.queueAction({ kind: "food", input }));
+                else {
+                  try {
+                    result = await logFood(input);
+                  } catch {
+                    if (offline) queued = !!(await offline.queueAction({ kind: "food", input }));
+                  }
+                }
+                if (queued) setNotice(fl.savedOnPhone);
+                else if (!result?.ok) {
+                  setError(result?.message ?? fl.couldNotLog);
                   return;
                 }
                 setPicked(null);
                 setQ("");
                 setGrams("100");
-                router.refresh();
+                if (!queued) router.refresh();
               })
             }
             className="mt-3.5 h-11 w-full rounded-2xl bg-accent px-4 text-sm font-bold text-accent-fg disabled:opacity-40"
@@ -446,6 +465,7 @@ export function FoodLogger({
       )}
 
       {error ? <p className="mt-2 text-sm font-semibold text-risk">{error}</p> : null}
+      {notice ? <p role="status" className="mt-2 text-[13px] font-semibold text-warn">{notice}</p> : null}
     </div>
   );
 }

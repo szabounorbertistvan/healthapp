@@ -43,13 +43,15 @@ Deno.serve(async (req) => {
   try {
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v2/product/${code}.json` +
-        "?fields=code,product_name,brands,nutriments,serving_size,serving_quantity,product_quantity,categories_tags",
+        "?fields=code,product_name,product_name_ro,brands,nutriments,serving_size,serving_quantity,product_quantity,categories_tags",
       { headers: { "User-Agent": OFF_USER_AGENT }, signal: AbortSignal.timeout(5000) },
     );
     if (res.status === 404) return json({ error: "not_found" }, 404);
     const data = await res.json();
     const p = data.product;
     const kcal = p?.nutriments?.["energy-kcal_100g"];
+    // a Romanian-only page carries just product_name_ro
+    if (p && !p.product_name && typeof p.product_name_ro === "string") p.product_name = p.product_name_ro;
     if (data.status !== 1 || !p?.product_name || kcal == null) {
       return json({ error: "not_found" }, 404);
     }
@@ -59,6 +61,7 @@ Deno.serve(async (req) => {
       external_id: String(p.code),
       barcode: String(p.code),
       name_en: p.product_name,
+      ...(typeof p.product_name_ro === "string" && p.product_name_ro.trim() ? { name_ro: p.product_name_ro.trim() } : {}),
       brand: p.brands?.split(",")[0]?.trim() ?? null,
       kcal_100g: round2(kcal),
       protein_100g: round2(p.nutriments.proteins_100g ?? 0),

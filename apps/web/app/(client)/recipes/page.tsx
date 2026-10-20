@@ -3,6 +3,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { getImportProposal, getMyRecipes, readPendingHandoff } from "@/lib/recipes-data";
 import { RecipeCard } from "@/components/recipes";
 import { RecipeImportDialog } from "@/components/recipe-import-dialog";
+import { NewRecipeButton } from "@/components/recipe-editor-dialog";
 import { EmptyState } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 
@@ -29,8 +30,13 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
         <NavIcon d="m15 6-6 6 6 6" className="h-3.5 w-3.5" />
         {t.common.nav.nutrition}
       </Link>
-      <h1 className="mt-3 font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">{m.title}</h1>
-      <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-soft">{m.intro}</p>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">{m.title}</h1>
+          <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-soft">{m.intro}</p>
+        </div>
+        <NewRecipeButton />
+      </div>
 
       {error ? <p role="alert" className="mt-4 max-w-2xl rounded-2xl bg-warn-soft px-4 py-3 text-[13px] font-semibold text-warn">{m.errors[error]}</p> : null}
 

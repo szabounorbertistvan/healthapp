@@ -8,6 +8,7 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { Card } from "./ui";
+import { useOfflineOutbox } from "@/lib/offline/sync";
 
 const SCALES = ["sleep", "energy", "stress", "hunger", "recovery"] as const;
 
@@ -27,6 +28,8 @@ export function CheckInForm() {
   });
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const offline = useOfflineOutbox();
   const [pending, startTransition] = useTransition();
 
   return (
@@ -93,11 +96,18 @@ export function CheckInForm() {
               // Typed in the reader's unit; check_ins.weight_kg is metric.
               const typed = parseDecimal(weight);
               const parsed = typed === null ? null : displayToKg(typed, u.weightUnit);
-              const result = await settle(() => submitCheckIn({
-                weightKg: parsed,
-                ...scores,
-                note,
-              }), t.common.actions.unreachable);
+              const input = { weightKg: parsed, ...scores, note };
+              // No connection: the check-in waits on this phone and is sent by itself.
+              if (navigator.onLine === false && offline) {
+                if (await offline.queueAction({ kind: "checkin", input })) { setNotice(t.clientWidgets.checkInForm.savedOnPhone); return; }
+              }
+              let result: Awaited<ReturnType<typeof submitCheckIn>>;
+              try {
+                result = await submitCheckIn(input);
+              } catch {
+                if (offline && (await offline.queueAction({ kind: "checkin", input }))) { setNotice(t.clientWidgets.checkInForm.savedOnPhone); return; }
+                result = await settle(() => submitCheckIn(input), t.common.actions.unreachable);
+              }
               if (!result.ok) {
                 setError(result.message ?? t.clientWidgets.checkInForm.couldNotSubmit);
                 return;
@@ -111,6 +121,7 @@ export function CheckInForm() {
         </button>
 
         {error ? <p className="text-[13px] font-semibold text-risk">{error}</p> : null}
+        {notice ? <p role="status" className="text-[13px] font-semibold text-warn">{notice}</p> : null}
       </div>
     </Card>
   );

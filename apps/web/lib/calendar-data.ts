@@ -1,6 +1,7 @@
 import "server-only";
 import type { CalendarConnectionStatus, CalendarErrorCode, CalendarProvider } from "@healthapp/shared";
 import { liveUser } from "@/lib/supabase/server";
+import { calendarAdapter } from "@/lib/calendar/registry";
 
 /**
  * The signed-in coach's calendar connections (my_calendar_integrations(),
@@ -33,10 +34,11 @@ export async function getMyCalendarIntegrations(): Promise<CalendarIntegration[]
 }
 
 /**
- * Whether a provider's connect flow exists in this deployment. It does not
- * yet for any provider (lib/calendar/provider.ts): the screen says "coming
- * soon" rather than offering a button that cannot work.
+ * Whether a provider's connect flow is configured in this deployment (its
+ * OAuth client, the token key and the service key — lib/calendar/registry.ts).
+ * Until it is, the screen says "coming soon" rather than offering a button
+ * that cannot work.
  */
-export function calendarConnectAvailable(_provider: CalendarProvider): boolean {
-  return false;
+export function calendarConnectAvailable(provider: CalendarProvider): boolean {
+  return calendarAdapter(provider) !== null;
 }

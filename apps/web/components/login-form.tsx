@@ -61,13 +61,16 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
   useEffect(() => {
     nextRef.current = safeNext(new URLSearchParams(window.location.search).get("next"));
   }, []);
-  // shown only once the Supabase project has the provider switched on
+  // each shown only once the Supabase project has the provider switched on
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [appleEnabled, setAppleEnabled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     enabledOAuthProviders().then((providers) => {
-      if (!cancelled) setGoogleEnabled(providers.has("google"));
+      if (cancelled) return;
+      setGoogleEnabled(providers.has("google"));
+      setAppleEnabled(providers.has("apple"));
     });
     return () => {
       cancelled = true;
@@ -194,20 +197,22 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
     else setDone({ kind: "reset", email });
   }
 
-  // Google covers both sign-in and sign-up: Supabase creates the account on
-  // first consent. The coach/client choice cannot travel as user metadata on an
-  // OAuth request, so it rides on the callback URL and is claimed there.
-  async function google() {
+  // Google and Apple cover both sign-in and sign-up: Supabase creates the
+  // account on first consent. The coach/client choice cannot travel as user
+  // metadata on an OAuth request, so it rides on the callback URL and is
+  // claimed there. Apple may hide the email (a relay address) and sends no
+  // name after the first consent; /complete-profile asks for what is missing.
+  async function oauth(provider: "google" | "apple") {
     const next = nextRef.current;
     setBusy(true);
     setError(null);
     const params = new URLSearchParams({ next, flow: "oauth" });
     if (mode === "signup") params.set("role", role);
     const { error } = await supabaseBrowser().auth.signInWithOAuth({
-      provider: "google",
+      provider,
       options: { redirectTo: `${window.location.origin}/auth/callback?${params}` },
     });
-    // on success the browser is already leaving for Google
+    // on success the browser is already leaving for the provider
     if (error) {
       setBusy(false);
       setError(t.login.errOAuth);
@@ -338,14 +343,15 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
         {busy ? "…" : submitLabel}
       </button>
 
-      {mode !== "forgot" && googleEnabled ? (
+      {mode !== "forgot" && (googleEnabled || appleEnabled) ? (
         <>
           <div className="flex items-center gap-3 py-1 text-[11px] uppercase tracking-wide text-ink-faint">
             <span className="h-px flex-1 bg-line" />
             {t.login.or}
             <span className="h-px flex-1 bg-line" />
           </div>
-          <GoogleButton onClick={google} disabled={busy} label={t.login.continueWithGoogle} />
+          {appleEnabled ? <AppleButton onClick={() => oauth("apple")} disabled={busy} label={t.login.continueWithApple} /> : null}
+          {googleEnabled ? <GoogleButton onClick={() => oauth("google")} disabled={busy} label={t.login.continueWithGoogle} /> : null}
         </>
       ) : null}
 
@@ -429,6 +435,22 @@ function ResendConfirmation({ email, getNext }: { email: string; getNext: () => 
         </p>
       ) : null}
     </div>
+  );
+}
+
+// Apple's guidelines: a black (or white) button with the Apple mark, listed
+// first or with equal prominence beside the other providers.
+function AppleButton({ onClick, disabled, label }: { onClick: () => void; disabled: boolean; label: string }) {
+  return (
+    <button
+      type="button" onClick={onClick} disabled={disabled}
+      className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-ink bg-ink py-2 text-sm font-semibold text-bg hover:opacity-90 disabled:opacity-50"
+    >
+      <svg width="16" height="18" viewBox="0 0 814 1000" aria-hidden="true" fill="currentColor">
+        <path d="M788 341c-6 4-108 62-108 190 0 148 130 200 134 202-1 3-21 72-69 142-43 62-88 124-157 124s-87-40-166-40c-77 0-104 41-167 41s-107-58-157-129C40 788 0 664 0 547 0 359 122 259 242 259c64 0 117 42 157 42 38 0 98-45 171-45 28 0 128 3 194 85zM549 154c30-36 51-85 51-135 0-7-1-14-2-19-48 2-106 32-140 73-27 31-53 80-53 131 0 8 1 15 2 18 3 1 9 2 14 2 43 0 97-29 128-70z" />
+      </svg>
+      {label}
+    </button>
   );
 }
 

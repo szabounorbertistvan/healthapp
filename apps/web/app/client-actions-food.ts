@@ -28,8 +28,15 @@ export async function logFood(input: {
   /** foods.id, so a later portion edit can re-cost from the unrounded basis. */
   foodId?: string | null;
   day?: string;
+  /**
+   * The browser's own id for this one log (a uuid made when the person pressed
+   * Add). A replay from the offline outbox sends the same id, so the unique
+   * client_generated_id turns a second delivery into a no-op.
+   */
+  clientId?: string;
 }): Promise<ActionResult> {
   if (!input.foodName.trim()) return { ok: false, message: "Pick a food" };
+  if (input.day !== undefined && !validDay(input.day)) return { ok: false, errorCode: "INVALID_INPUT" };
   if (!isValidPortionGrams(input.grams)) {
     return { ok: false, message: fill((await getI18n()).t.clientWidgets.foodLogger.gramsRange, { max: MAX_PORTION_GRAMS }) };
   }
@@ -53,9 +60,11 @@ export async function logFood(input: {
     protein_g: macros.protein,
     carbs_g: macros.carbs,
     fat_g: macros.fat,
-    client_generated_id: crypto.randomUUID(),
+    client_generated_id: asUuid(input.clientId) ?? crypto.randomUUID(),
     client_ts: new Date().toISOString(),
   });
+  // the same log delivered twice (an outbox replay whose first answer was lost)
+  if (error?.code === "23505" && asUuid(input.clientId)) return { ok: true };
   if (error) return { ok: false, message: error.message };
   revalidatePath("/food");
   revalidatePath("/today");

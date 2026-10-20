@@ -30,7 +30,7 @@ export type ActionResult = {
  */
 export type ActionErrorCode =
   | RpcErrorCode | ProfileErrorCode | PlanErrorCode | CoachProfileErrorCode | BookingErrorCode | ReviewErrorCode | CoachingErrorCode
-  | GoalErrorCode | "NO_ROWS" | "INVALID_INPUT" | "NOT_PUBLISHED";
+  | GoalErrorCode | "NO_ROWS" | "INVALID_INPUT" | "NOT_PUBLISHED" | "ALREADY_CHECKED_IN";
 export type ProfileErrorCode =
   | "NAME" | "USERNAME_FORMAT" | "SEX" | "AGE" | "USERNAME_TAKEN" | "ROLE" | "CITY" | "BIO";
 

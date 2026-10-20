@@ -117,6 +117,7 @@ const en = {
     keep: "Keep",
   },
   foodLogger: {
+    savedOnPhone: "No connection — saved on this phone. It is added to the diary when you're back online.",
     gramsTooMuch: "At most {max} g in one entry",
     gramsRange: "Grams must be above 0 and at most {max}",
     logFood: "Log food",
@@ -234,6 +235,7 @@ const en = {
     // no static chrome to translate.
   },
   checkInForm: {
+    savedOnPhone: "No connection — your check-in is saved on this phone and is sent when you're back online.",
     scales: {
       sleep: "Sleep quality",
       energy: "Energy",
@@ -429,6 +431,7 @@ const ro: typeof en = {
     keep: "Păstrează",
   },
   foodLogger: {
+    savedOnPhone: "Fără conexiune — salvat pe telefon. Se adaugă în jurnal când revii online.",
     gramsTooMuch: "Cel mult {max} g într-o singură înregistrare",
     gramsRange: "Gramele trebuie să fie peste 0 și cel mult {max}",
     logFood: "Adaugă mâncare",
@@ -543,6 +546,7 @@ const ro: typeof en = {
   },
   habitTicks: {},
   checkInForm: {
+    savedOnPhone: "Fără conexiune — check-in-ul e salvat pe telefon și se trimite când revii online.",
     scales: {
       sleep: "Calitatea somnului",
       energy: "Energie",

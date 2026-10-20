@@ -59,7 +59,7 @@ export function RecipeCard({ recipe }: { recipe: MyRecipe }) {
           </p>
           <p className="mt-0.5 text-[11.5px] text-ink-faint">
             {fill(m.servingWeight, { grams: recipe.serving_grams })} · {fill(m.madeOf, { servings: recipe.servings })} ·{" "}
-            {recipe.nutrition_source === "voinic" ? m.adjusted : m.fromDishfinder}
+            {!recipe.dishfinder_url ? m.ownRecipe : recipe.nutrition_source === "voinic" ? m.adjusted : m.fromDishfinder}
           </p>
           {recipe.dishfinder_url ? (
             <a href={recipe.dishfinder_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-[12px] font-semibold text-accent-ink hover:underline">

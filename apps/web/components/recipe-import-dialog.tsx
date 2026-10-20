@@ -227,7 +227,7 @@ export function RecipeImportDialog(props: ImportDialogProps) {
 }
 
 /** One line's food search: Enter or the button asks, so typing does not burn the daily search quota. */
-function FoodSearch({ placeholder, empty, onPick }: { placeholder: string; empty: string; onPick: (f: FoodItem) => void }) {
+export function FoodSearch({ placeholder, empty, onPick }: { placeholder: string; empty: string; onPick: (f: FoodItem) => void }) {
   const [q, setQ] = useState("");
   const [found, setFound] = useState<FoodItem[] | null>(null);
   const [pending, start] = useTransition();

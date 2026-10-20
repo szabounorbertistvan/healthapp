@@ -6,6 +6,7 @@ import { myToday } from "@/lib/my-today";
 import { liveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { uuidFrom } from "@/lib/stable-id";
+import { validDay } from "@/lib/week";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -38,6 +39,28 @@ export async function toggleHabit(habitId: string, requested?: string): Promise<
 }
 
 
+
+/**
+ * Set a habit's tick for one day to a known state — what the offline outbox
+ * replays. Unlike toggleHabit it can be delivered twice: done twice is still
+ * done (the log id is derived), not done twice is still not done.
+ */
+export async function setHabitDone(habitId: string, day: string, done: boolean): Promise<ActionResult> {
+  if (!validDay(day) || !/^[0-9a-f-]{36}$/i.test(habitId)) return { ok: false, errorCode: "INVALID_INPUT" };
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const { error } = done
+    ? await supabase.from("habit_logs").upsert(
+        { habit_id: habitId, user_id: userId, date: day, client_generated_id: uuidFrom(`${habitId}:${day}`) },
+        { onConflict: "client_generated_id", ignoreDuplicates: true },
+      )
+    : await supabase.from("habit_logs").delete().eq("habit_id", habitId).eq("date", day).eq("user_id", userId);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/today");
+  revalidatePath("/habits");
+  return { ok: true };
+}
 
 export async function addHabit(name: string, targetPerWeek: number): Promise<ActionResult> {
   if (!name.trim()) return { ok: false, message: "Give the habit a name" };

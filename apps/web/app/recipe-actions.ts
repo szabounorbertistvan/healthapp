@@ -1,6 +1,7 @@
 "use server";
 // Writes for "My recipes": save a DishFinder hand-off as the person adjusted it,
-// drop a pending hand-off, log servings into the diary, delete a recipe.
+// write a recipe from scratch, drop a pending hand-off, log servings into the
+// diary, delete a recipe.
 //
 // The numbers saved are always worked out here, never taken from the browser:
 // "from DishFinder" is the signed hand-off (re-verified from the cookie),
@@ -225,4 +226,90 @@ export async function updateRecipePreparation(input: z.input<typeof PrepInput>):
   if (failed) return failed;
   revalidatePath("/recipes");
   return { ok: true };
+}
+
+const NewLine = z.object({
+  foodId: id,
+  grams: z.number().positive().max(20000),
+});
+const CreateInput = z.object({
+  title: text(160).min(1),
+  servings: z.number().positive().max(500),
+  /** null = the total grams of the lines over the servings. */
+  servingGrams: z.number().positive().max(3000).nullable(),
+  lines: z.array(NewLine).min(1).max(60),
+  steps: z.array(z.string().max(RECIPE_MAX_STEP_LENGTH)).max(RECIPE_MAX_STEPS),
+  prepMinutes: z.number().int().min(0).max(1440).nullable(),
+  cookMinutes: z.number().int().min(0).max(1440).nullable(),
+});
+
+/**
+ * A recipe written in Voinic: foods from the library (or the person's own) and
+ * their grams, how many servings the pot makes, optional steps. One serving's
+ * nutrition is computed here from the foods' per-100 g values (foods_by_ids),
+ * never taken from the browser, and stored as nutrition_source 'voinic'.
+ */
+export async function createRecipe(input: z.input<typeof CreateInput>): Promise<ActionResult & { id?: string }> {
+  const parsed = await parseInput(CreateInput, input);
+  if (!parsed.ok) return parsed.result;
+  const v = parsed.data;
+  const steps = v.steps.map((s) => s.trim()).filter((s) => s.length > 0);
+  if (checkRecipeSteps(steps) !== "ok") return { ok: false, errorCode: "INVALID_INPUT" };
+
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+
+  const foodIds = [...new Set(v.lines.map((l) => l.foodId))];
+  const { data, error } = await supabase.rpc("foods_by_ids", { p_ids: foodIds });
+  if (error) return { ok: false, message: error.message };
+  const foods = new Map<string, { name: string; per100: Macros }>();
+  for (const f of (data ?? []) as { id: string; name_en: string; name_ro: string | null; kcal_100g: number; protein_100g: number; carbs_100g: number; fat_100g: number }[]) {
+    foods.set(f.id, {
+      name: f.name_ro || f.name_en,
+      per100: { kcal: Number(f.kcal_100g), protein: Number(f.protein_100g), carbs: Number(f.carbs_100g), fat: Number(f.fat_100g) },
+    });
+  }
+  // a food the person cannot see (someone else's custom one) is refused, not skipped
+  if (v.lines.some((l) => !foods.has(l.foodId))) return { ok: false, errorCode: "INVALID_INPUT" };
+
+  const dialogLines: DialogLine[] = v.lines.map((l) => ({ food: { id: l.foodId, per100: foods.get(l.foodId)!.per100 }, grams: l.grams, include: true }));
+  const serving = recomputedServing(dialogLines, v.servings).macros;
+  const totalGrams = v.lines.reduce((s, l) => s + l.grams, 0);
+  const servingGrams = Math.round((v.servingGrams ?? totalGrams / v.servings) * 10) / 10;
+  if (!(servingGrams > 0) || servingGrams > 3000) return { ok: false, errorCode: "INVALID_INPUT" };
+
+  const { data: inserted, error: insertError } = await supabase.from("recipes").insert({
+    owner_id: userId,
+    title: v.title.trim(),
+    servings: v.servings,
+    serving_grams: servingGrams,
+    kcal_serving: serving.kcal,
+    protein_serving: serving.protein,
+    carbs_serving: serving.carbs,
+    fat_serving: serving.fat,
+    nutrition_source: "voinic",
+    steps,
+    prep_minutes: v.prepMinutes,
+    cook_minutes: v.cookMinutes,
+  }).select("id").single();
+  if (insertError) return { ok: false, message: insertError.message.includes("RECIPE_LIMIT") ? "RECIPE_LIMIT" : insertError.message };
+  const recipeId = (inserted as { id: string }).id;
+
+  const { error: linesError } = await supabase.from("recipe_ingredients").insert(
+    v.lines.map((l, position) => ({
+      recipe_id: recipeId,
+      position,
+      label: `${Math.round(l.grams)} g ${foods.get(l.foodId)!.name}`.slice(0, 200),
+      food_id: l.foodId,
+      grams: l.grams,
+    })),
+  );
+  if (linesError) {
+    // no half-written recipe: without its lines it would show the wrong ingredients
+    await supabase.from("recipes").delete().eq("id", recipeId).eq("owner_id", userId);
+    return { ok: false, message: linesError.message };
+  }
+  touched();
+  return { ok: true, id: recipeId };
 }

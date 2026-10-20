@@ -3,7 +3,13 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "r
 import { sharedContext } from "@/lib/shared-context";
 import { useRouter } from "next/navigation";
 import { logSet, type LogSetInput } from "@/app/client-actions-training";
-import { listQueued, outboxAvailable, putQueued, removeQueued, type QueuedSet } from "./outbox";
+import { logFood } from "@/app/client-actions-food";
+import { setHabitDone } from "@/app/client-actions-habits";
+import { submitCheckIn } from "@/app/client-actions-body";
+import {
+  listActions, listQueued, outboxAvailable, putAction, putQueued, removeAction, removeQueued,
+  type QueuedAction, type QueuedActionPayload, type QueuedSet,
+} from "./outbox";
 
 /**
  * Replays the offline outbox (./outbox.ts) through logSet() whenever there is
@@ -25,7 +31,19 @@ type OfflineSets = {
   flush: () => Promise<QueuedSet[]>;
   /** Forget the failed items (after the person has read why). */
   dismissFailed: () => Promise<void>;
+  /** Food logs, habit ticks and check-ins waiting for a connection. */
+  actions: QueuedAction[];
+  /** Keep one of those for later. Null when this browser cannot hold an outbox. */
+  queueAction: (payload: QueuedActionPayload) => Promise<QueuedAction | null>;
 };
+
+/** One waiting action through its server action; true = done (or already done), false = refused for good. Throws when still offline. */
+async function replay(item: QueuedAction): Promise<{ ok: boolean; message?: string }> {
+  if (item.kind === "food") return logFood(item.input);
+  if (item.kind === "habit") return setHabitDone(item.habitId, item.day, item.done);
+  const result = await submitCheckIn(item.input);
+  return result.errorCode === "ALREADY_CHECKED_IN" ? { ok: true } : result;
+}
 
 const Context = sharedContext<OfflineSets | null>("offline-sets", null);
 
@@ -34,11 +52,13 @@ const RETRY_MS = 20_000;
 export function OfflineSetsProvider({ userId, children }: { userId: string; children: React.ReactNode }) {
   const router = useRouter();
   const [queued, setQueued] = useState<QueuedSet[]>([]);
+  const [actions, setActions] = useState<QueuedAction[]>([]);
   const running = useRef<Promise<QueuedSet[]> | null>(null);
 
   const reload = useCallback(async () => {
-    const items = await listQueued(userId);
+    const [items, waiting] = await Promise.all([listQueued(userId), listActions(userId)]);
     setQueued(items);
+    setActions(waiting);
     return items;
   }, [userId]);
 
@@ -59,6 +79,21 @@ export function OfflineSetsProvider({ userId, children }: { userId: string; chil
           synced++;
         } else {
           await putQueued({ ...item, error: result.message ?? "" });
+        }
+      }
+      // then the food logs, habit ticks and check-ins, oldest first
+      for (const item of (await listActions(userId)).filter((a) => !a.error)) {
+        let result: { ok: boolean; message?: string };
+        try {
+          result = await replay(item);
+        } catch {
+          break;
+        }
+        if (result.ok) {
+          await removeAction(item.id);
+          synced++;
+        } else {
+          await putAction({ ...item, error: result.message ?? "" });
         }
       }
       const left = await reload();
@@ -82,8 +117,20 @@ export function OfflineSetsProvider({ userId, children }: { userId: string; chil
     [userId, reload],
   );
 
+  const queueAction = useCallback<OfflineSets["queueAction"]>(
+    async (payload) => {
+      if (!outboxAvailable()) return null;
+      const item = { ...payload, id: crypto.randomUUID(), userId, queuedAt: new Date().toISOString() } as QueuedAction;
+      if (!(await putAction(item))) return null;
+      await reload();
+      return item;
+    },
+    [userId, reload],
+  );
+
   const dismissFailed = useCallback(async () => {
     for (const item of await listQueued(userId)) if (item.error) await removeQueued(item.id);
+    for (const item of await listActions(userId)) if (item.error) await removeAction(item.id);
     await reload();
   }, [userId, reload]);
 
@@ -101,7 +148,7 @@ export function OfflineSetsProvider({ userId, children }: { userId: string; chil
     };
   }, [reload, flush]);
 
-  const waiting = queued.some((item) => !item.error);
+  const waiting = queued.some((item) => !item.error) || actions.some((item) => !item.error);
   useEffect(() => {
     if (!waiting) return;
     const timer = window.setInterval(() => {
@@ -110,8 +157,29 @@ export function OfflineSetsProvider({ userId, children }: { userId: string; chil
     return () => window.clearInterval(timer);
   }, [waiting, flush]);
 
-  const value = useMemo(() => ({ queued, queue, flush, dismissFailed }), [queued, queue, flush, dismissFailed]);
+  const value = useMemo(
+    () => ({ queued, queue, flush, dismissFailed, actions, queueAction }),
+    [queued, queue, flush, dismissFailed, actions, queueAction],
+  );
   return <Context.Provider value={value}>{children}</Context.Provider>;
+}
+
+/**
+ * Waiting habit ticks for one day, as the state the person last set: habit id →
+ * done. A tick made offline shows as made until the server has it.
+ */
+export function useQueuedHabitStates(day: string | null): Map<string, boolean> {
+  const ctx = useContext(Context);
+  return useMemo(() => {
+    const out = new Map<string, boolean>();
+    for (const a of ctx?.actions ?? []) if (a.kind === "habit" && !a.error && a.day === day) out.set(a.habitId, a.done);
+    return out;
+  }, [ctx?.actions, day]);
+}
+
+/** The outbox for a screen that may be shown outside the provider (tests, a coach page): null there. */
+export function useOfflineOutbox(): OfflineSets | null {
+  return useContext(Context);
 }
 
 export function useOfflineSets(): OfflineSets {

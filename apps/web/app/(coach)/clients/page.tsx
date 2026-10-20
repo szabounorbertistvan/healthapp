@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getClients } from "@/lib/data";
+import { getClients, getPrograms } from "@/lib/data";
+import { BulkActions } from "@/components/bulk-actions";
 import { getCoachClientRelationships } from "@/lib/coaching-data";
 import { CoachRelationshipSection } from "@/components/coaching-lists";
 import { getPlan } from "@/lib/plan";
@@ -21,11 +22,15 @@ const ICON = {
 
 export default async function ClientsPage() {
   const { t, locale } = await getI18n();
-  const [clients, plan, requests, relationships] = await Promise.all([
+  const [clients, plan, requests, relationships, programs] = await Promise.all([
     getClients(), getPlan(), getCoachRequestInbox(),
     // paused and past clients (20261109110000): their own sections, never the active roster
     getCoachClientRelationships("all"),
+    // the bulk "copy a program" picker; a failed read only hides that option
+    getPrograms().catch(() => []),
   ]);
+  const activeClients = clients.filter((c) => c.status === "active" && c.client_id)
+    .map((c) => ({ id: c.client_id, name: c.full_name, signal: c.signal }));
   const maxClients = plan.e.maxClients;
   // Signal and adherence % are Coach Pro (the dashboard carries the hint).
   const pro = plan.e.advancedAnalytics;
@@ -54,6 +59,8 @@ export default async function ClientsPage() {
             <NavIcon d={ICON.trophy} className="h-[17px] w-[17px]" />
             {t.common.challenges.coachTitle}
           </Link>
+          <BulkActions clients={activeClients} canCopyPrograms={plan.e.programCopy}
+            programs={programs.map((p) => ({ id: p.id, name: p.name, client: p.client_name }))} />
           <PageTour id="clients" steps={["invite", "list"]} />
           <div data-tour="clients-invite"><InviteButton disabled={limitReached} /></div>
         </div>
