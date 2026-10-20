@@ -1,5 +1,6 @@
 "use server";
-// Importing workout history from Hevy or Strong (the page: (client)/workout/import).
+// Importing workout history — Hevy, Strong, Fitbod, FitNotes or the Voinic
+// spreadsheet template (the page: (client)/workout/import).
 //
 // The browser parses the file (lib/import/workout-csv.ts), the person maps
 // each exercise name to the library, and the sessions arrive here a few days

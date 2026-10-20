@@ -209,6 +209,20 @@ const ALIASES: [string, string][] = [
   ["Power Clean", "Power Clean"],
   ["Clean and Jerk (Barbell)", "Clean and Jerk"],
   ["Snatch (Barbell)", "Snatch"],
+  // Fitbod / FitNotes spellings
+  ["Back Squat", "Barbell Squat"],
+  ["Flat Barbell Bench Press", "Barbell Bench Press - Medium Grip"],
+  ["Flat Dumbbell Bench Press", "Dumbbell Bench Press"],
+  ["Barbell Row", "Bent Over Barbell Row"],
+  ["Overhead Press", "Standing Military Press"],
+  ["Lat Pulldown", "Wide-Grip Lat Pulldown"],
+  ["Cable Row", "Seated Cable Rows"],
+  ["Seated Machine Fly", "Butterfly"],
+  ["Dumbbell Fly", "Dumbbell Flyes"],
+  ["Machine Leg Press", "Leg Press"],
+  ["Leg Extension", "Leg Extensions"],
+  ["Weighted Pull Up", "Pullups"],
+  ["Assisted Pull Up", "Band Assisted Pull-Up"],
 ];
 
 const ALIAS_INDEX = new Map(ALIASES.map(([from, to]) => [bagKey(nameTokens(from)), to.toLowerCase()]));

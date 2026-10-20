@@ -93,10 +93,14 @@ sessions (`lib/streak-data.ts`, `packages/shared/src/streaks.ts`), not from the
 `packages/shared`, the scheduled job that materialises weekly snapshots does
 not.
 
-## Workout import (Hevy / Strong) — built 2026-10-20
+## Workout import (Hevy / Strong / Fitbod / FitNotes / spreadsheet) — built 2026-10-20
 
-`/workout/import` (link "Import history" on Training) takes a Hevy `workouts.csv`
-or a Strong export. The browser parses it (`lib/import/workout-csv.ts`, format
+`/workout/import` (link "Import history" on Training) takes a Hevy `workouts.csv`,
+a Strong, Fitbod or FitNotes export, or the Voinic template for a spreadsheet
+kept by hand (`public/import/voinic-template.csv`, English columns, comma;
+`voinic-sablon.csv`, Romanian columns, semicolon — what a Romanian Excel
+saves; header-only on purpose, so no example row is ever imported as a real
+workout). The browser parses it (`lib/import/workout-csv.ts`, format
 from the headers, kg / lb — a Strong file without a unit column asks — timed
 sets as reps 0 + `duration_seconds`, every row held to `validateSetEdit`),
 names are matched to the library (`lib/import/exercise-match.ts`: own exercises
@@ -107,7 +111,14 @@ owner-scoped sessions and sets a few days per call, with derived
 per lift with `recomputePrFlags` / `estimated1RM` (`lib/pr-history.ts`).
 Verified on the live project 2026-10-20 with `client@healthapp.test`: a Hevy and
 a Strong sample (2024-03-26/28, 2023-01-15/17), a re-import (0 new), a day
-already logged and a future date (both skipped).
+already logged and a future date (both skipped); then a Romanian template,
+a Fitbod and a FitNotes sample (2022-05-12/13, 2022-06-02, 2022-07-04).
+**Fitbod and FitNotes were built from their documented export columns, not
+from a real export file** — the headers match loosely (`Weight(kg)` /
+`Weight (lbs)`, `isWarmup`, `Time` as h:mm:ss); check against a real file when
+one turns up. Fitbod stamps sets in UTC: a workout is one local day in the
+person's `users.timezone`, first set to last. FitNotes and a template row
+without a time have no clock time: the workout is filed at 12:00.
 
 Decided, and what it means:
 - **Imported sessions are history**: completed, dated when they happened,
@@ -128,7 +139,11 @@ Decided, and what it means:
 Still missing: no `source` column — an imported session is told apart only by
 its title in `logged_sessions.notes`, and the history list shows it as an
 ad-hoc "Session"; no way to undo one import as a unit; badge notifications and
-`SET_LOGGED` audit rows fire per imported row; no other apps (Fitbod, JEFIT).
+`SET_LOGGED` audit rows fire per imported row; JEFIT (a multi-table export),
+Apple Health / Google Fit / Garmin (no set-level CSV) are not read. When the
+paywall is switched on, Free shows 30 days of history — years of imported
+workouts would be out of sight until Premium; decide before the landing copy
+("bring your history") meets that.
 
 ## Coaching
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { getProfile } from "@/lib/data";
 import { APP_NAME, APP_TAGLINE, CONTACT_EMAIL } from "@/lib/brand";
 import { getI18n } from "@/lib/i18n/server";
-import { fill } from "@/lib/i18n";
+import { fill, type Dictionary } from "@/lib/i18n";
 import { LanguageSelector } from "@/components/language-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo, LogoMark, Wordmark } from "@/components/logo";
@@ -147,6 +147,11 @@ export default async function LandingPage() {
           </figure>
         ))}
       </section>
+
+      {/* Switching apps: the history comes along. Its own section because it is
+          the first question of someone leaving Hevy or Strong — "do I start
+          from zero?" — and the answer is the reason to move. */}
+      <ImportHistory l={l} appHref={appHref} />
 
       {/* The two audiences as one band rather than two stacked sections: each
           half keeps its own list, and its athlete stands in the outer corner
@@ -304,6 +309,61 @@ function Audience({
         }`}
       />
     </div>
+  );
+}
+
+/**
+ * "Bring your history": the promise and the sources on one side, the three
+ * steps on the other. Signed in, it opens the import page; signed out, it is
+ * the sign-up — the import needs an account to write into.
+ */
+function ImportHistory({ l, appHref }: { l: Dictionary["landing"]; appHref: string | null }) {
+  const h = l.importHistory;
+  const cta = "inline-flex h-12 items-center justify-center rounded-2xl bg-accent px-6 font-display font-bold text-accent-fg hover:opacity-90";
+  return (
+    <section className="mt-11 grid gap-8 rounded-3xl bg-surface p-6 sm:mt-[72px] sm:p-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-14">
+      <div>
+        <p className="flex items-center gap-3 font-display text-xs font-bold uppercase tracking-[0.28em] text-accent-ink">
+          <span className="h-px w-8 bg-accent" aria-hidden />
+          {h.eyebrow}
+        </p>
+        <h2 className="mt-4 text-balance font-display text-[28px] font-extrabold leading-[1.08] tracking-tight sm:text-[40px]">
+          {h.title}
+        </h2>
+        <p className="mt-4 max-w-[54ch] leading-relaxed text-ink-soft sm:text-[16px]">{fill(h.body, { app: APP_NAME })}</p>
+        <p className="mt-6 text-[12px] font-bold uppercase tracking-[0.16em] text-ink-faint">{h.sourcesLabel}</p>
+        <ul className="mt-2.5 flex flex-wrap gap-2">
+          {h.sources.map((name) => (
+            <li key={name} className="inline-flex h-9 items-center rounded-full bg-bg px-3.5 text-[13px] font-semibold">
+              {name}
+            </li>
+          ))}
+        </ul>
+        <div className="mt-7">
+          {appHref ? (
+            <Link href="/workout/import" className={cta}>{h.ctaSignedIn}</Link>
+          ) : (
+            <LoginModal label={h.ctaSignUp} mode="signup" className={cta} />
+          )}
+        </div>
+      </div>
+      <div className="flex flex-col justify-center">
+        <ol className="space-y-5">
+          {h.steps.map((step, i) => (
+            <li key={step.title} className="flex gap-4">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-bg font-display text-lg font-extrabold text-accent-ink">
+                {i + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="font-display text-[16px] font-bold">{step.title}</p>
+                <p className="mt-1 text-[13.5px] leading-relaxed text-ink-soft">{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-6 border-t border-line/60 pt-4 text-[12.5px] leading-relaxed text-ink-faint">{h.note}</p>
+      </div>
+    </section>
   );
 }
 

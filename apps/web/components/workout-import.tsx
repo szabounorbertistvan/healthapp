@@ -24,7 +24,9 @@ type Parsed = Extract<ParseResult, { ok: true }>;
 type Choice = string | "skip" | null;
 type Totals = { sessions: number; sets: number; already: number; dayTaken: number; future: number };
 
-export function WorkoutImport({ library, defaultUnit }: { library: LibraryExercise[]; defaultUnit: WeightUnit }) {
+export function WorkoutImport({
+  library, defaultUnit, timeZone,
+}: { library: LibraryExercise[]; defaultUnit: WeightUnit; timeZone: string }) {
   const { t, locale } = useI18n();
   const m = t.clientApp.workoutImport;
   const router = useRouter();
@@ -43,9 +45,9 @@ export function WorkoutImport({ library, defaultUnit }: { library: LibraryExerci
   const byId = useMemo(() => new Map(library.map((e) => [e.id, e])), [library]);
   const parsed: Parsed | null = useMemo(() => {
     if (csv === null) return null;
-    const r = parseWorkoutCsv(csv, { weightUnit: unit });
+    const r = parseWorkoutCsv(csv, { weightUnit: unit, timeZone });
     return r.ok ? r : null;
-  }, [csv, unit]);
+  }, [csv, unit, timeZone]);
   const names = useMemo(() => (parsed ? exerciseNames(parsed.sessions) : []), [parsed]);
   const setCount = parsed?.sessions.reduce((n, s) => n + s.sets.length, 0) ?? 0;
   const unresolved = names.filter((n) => (choices[n.name] ?? null) === null).length;
@@ -62,7 +64,7 @@ export function WorkoutImport({ library, defaultUnit }: { library: LibraryExerci
     setReading(true);
     try {
       const text = await file.text();
-      const r = parseWorkoutCsv(text, { weightUnit: unit });
+      const r = parseWorkoutCsv(text, { weightUnit: unit, timeZone });
       if (!r.ok) {
         setCsv(null);
         setError(r.error === "empty" ? m.errEmpty : r.error === "unknownFormat" ? m.errUnknown : m.errNoSessions);
@@ -200,7 +202,17 @@ export function WorkoutImport({ library, defaultUnit }: { library: LibraryExerci
         <ul className="mt-3 space-y-1 text-[13px] text-ink-faint">
           <li>{m.howHevy}</li>
           <li>{m.howStrong}</li>
+          <li>{m.howFitbod}</li>
+          <li>{m.howFitNotes}</li>
         </ul>
+        <div className="mt-4 rounded-2xl bg-bg p-4">
+          <p className="text-sm font-semibold">{m.templateTitle}</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">{m.templateBody}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a href="/import/voinic-template.csv" download className={SMALL_BUTTON_INSET}>{m.templateEn}</a>
+            <a href="/import/voinic-sablon.csv" download className={SMALL_BUTTON_INSET}>{m.templateRo}</a>
+          </div>
+        </div>
         <div className="mt-4">{fileButton}</div>
         {error ? <p role="alert" className="mt-3 text-sm text-risk">{error}</p> : null}
       </Card>
@@ -223,7 +235,7 @@ export function WorkoutImport({ library, defaultUnit }: { library: LibraryExerci
       <Card plain className="sm:p-5">
         <p className="text-sm font-semibold">
           {fill(m.detected, {
-            app: parsed.format === "hevy" ? "Hevy" : "Strong",
+            app: m.formats[parsed.format],
             sessions: parsed.sessions.length,
             sets: setCount,
             from: first,

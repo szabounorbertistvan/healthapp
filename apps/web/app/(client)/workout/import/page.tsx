@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DEFAULT_TIMEZONE } from "@healthapp/shared";
 import { getProfile } from "@/lib/data";
 import { getImportLibrary } from "@/lib/import/library-data";
 import { WorkoutImport } from "@/components/workout-import";
@@ -6,7 +7,8 @@ import { NavIcon } from "@/components/client-nav";
 import { getI18n } from "@/lib/i18n/server";
 
 /**
- * Bringing training history over from Hevy or Strong. The file never leaves
+ * Bringing training history over from Hevy, Strong, Fitbod, FitNotes or a
+ * spreadsheet kept by hand (the Voinic template in public/import/). The file never leaves
  * the browser whole: it is parsed there and the sessions are written through
  * app/import-actions.ts, owner-scoped like any logged set. Open to anyone who
  * trains — a coach's own training is under (client) too.
@@ -22,7 +24,11 @@ export default async function WorkoutImportPage() {
       </Link>
       <h1 className="mt-3 font-display text-2xl font-extrabold leading-none tracking-tight sm:text-[28px]">{m.title}</h1>
       <div className="mt-5 sm:mt-6">
-        <WorkoutImport library={library} defaultUnit={profile?.weight_unit ?? "kg"} />
+        <WorkoutImport
+          library={library}
+          defaultUnit={profile?.weight_unit ?? "kg"}
+          timeZone={profile?.timezone || DEFAULT_TIMEZONE}
+        />
       </div>
     </div>
   );
