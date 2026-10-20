@@ -250,8 +250,8 @@ select ok(not exists (select 1 from jsonb_array_elements(public.coach_discovery_
   'facets: a language nobody speaks is not offered');
 select is((select (k ->> 'coaches')::int from jsonb_array_elements(public.coach_discovery_facets() -> 'service_kinds') k
             where k ->> 'kind' = 'group_coaching'), 1, 'facets: service kinds, counted');
-select ok(not has_function_privilege('anon', 'public.coach_ranked(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, boolean, boolean, uuid, boolean, text[], text[], numeric, boolean)', 'execute')
-          and not has_function_privilege('authenticated', 'public.coach_ranked(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, boolean, boolean, uuid, boolean, text[], text[], numeric, boolean)', 'execute'),
+select ok(not has_function_privilege('anon', 'public.coach_ranked(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, boolean, boolean, uuid, boolean, text[], text[], numeric, boolean, numeric, numeric, int)', 'execute')
+          and not has_function_privilege('authenticated', 'public.coach_ranked(text, text, text, boolean, boolean, text[], int, int, int, text, boolean, text, boolean, boolean, uuid, boolean, text[], text[], numeric, boolean, numeric, numeric, int)', 'execute'),
   'the ranking layer stays internal');
 reset role;
 
