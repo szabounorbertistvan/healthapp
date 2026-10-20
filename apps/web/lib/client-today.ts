@@ -247,15 +247,23 @@ export async function getMyCoachThread(): Promise<
   if (!coachId) return null;
   const { data } = await supabase
     .from("conversations")
-    .select("id, coach:users!conversations_coach_id_fkey(full_name), messages(id, body, created_at, sender_id)")
+    .select("id, coach:users!conversations_coach_id_fkey(full_name), messages(id, body, created_at, sender_id, attachment_kind, attachment_seconds, attachment_width, attachment_height)")
     .eq("client_id", userId)
     .eq("coach_id", coachId)
     .maybeSingle();
   if (!data) return null;
-  type Msg = { id: string; body: string; created_at: string; sender_id: string };
+  type Msg = {
+    id: string; body: string | null; created_at: string; sender_id: string;
+    attachment_kind: "image" | "audio" | null; attachment_seconds: number | null; attachment_width: number | null; attachment_height: number | null;
+  };
   const messages = ((data.messages as unknown as Msg[]) ?? [])
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map((m) => ({ id: m.id, body: m.body, at: m.created_at, mine: m.sender_id === userId }));
+    .map((m) => ({
+      id: m.id, body: m.body ?? "", at: m.created_at, mine: m.sender_id === userId,
+      attachment: m.attachment_kind
+        ? { kind: m.attachment_kind, seconds: m.attachment_seconds === null ? null : Number(m.attachment_seconds), width: m.attachment_width, height: m.attachment_height }
+        : null,
+    }));
   return {
     id: data.id,
     coach_name: (data.coach as unknown as { full_name: string })?.full_name ?? "Your coach",

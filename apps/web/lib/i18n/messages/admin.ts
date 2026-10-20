@@ -313,6 +313,15 @@ const en = {
     labels: { pending: "pending", expired: "expired", accepted: "accepted", revoked: "revoked", ended: "ended" },
   },
   workouts: {
+    starter: {
+      title: "Voinic starter routines",
+      button: "Add the 4 starter routines",
+      working: "Adding…",
+      hint: "Full Body 3 days, Upper/Lower 4 days, Push/Pull/Legs 3 days, Strength 4 days — public, marked “By Voinic” and featured on Discover, owned by your account. Pressing it again adds nothing.",
+      created: "{n} routines added to Discover.",
+      already: "They are already there.",
+      failed: "That did not work.",
+    },
     title: "Workouts",
     sessions: "Sessions started", completed: "Completed", abandoned: "Abandoned", abandonedHint: "Started more than a day ago, never finished.",
     inProgress: "In progress", sets: "Sets logged", prs: "PRs", exercises: "Distinct exercises", activeUsers: "Users who trained",
@@ -1051,6 +1060,15 @@ const ro: typeof en = {
     labels: { pending: "în așteptare", expired: "expirată", accepted: "acceptată", revoked: "revocată", ended: "încheiată" },
   },
   workouts: {
+    starter: {
+      title: "Rutinele de start Voinic",
+      button: "Adaugă cele 4 rutine de start",
+      working: "Se adaugă…",
+      hint: "Full Body 3 zile, Upper/Lower 4 zile, Push/Pull/Legs 3 zile, Forță 4 zile — publice, marcate „De la Voinic” și recomandate în Descoperă, pe contul tău. Apăsat din nou nu mai adaugă nimic.",
+      created: "{n} rutine adăugate în Descoperă.",
+      already: "Sunt deja acolo.",
+      failed: "N-a mers.",
+    },
     title: "Antrenamente",
     sessions: "Sesiuni începute", completed: "Finalizate", abandoned: "Abandonate", abandonedHint: "Începute acum mai mult de o zi, neterminate.",
     inProgress: "În desfășurare", sets: "Seturi notate", prs: "Recorduri", exercises: "Exerciții distincte", activeUsers: "Utilizatori care s-au antrenat",

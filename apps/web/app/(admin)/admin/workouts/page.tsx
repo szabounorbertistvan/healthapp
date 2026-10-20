@@ -5,6 +5,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { fill } from "@/lib/i18n";
 import { AdminHeader, Breakdown, DaysPicker, Kpi, KpiGrid, Note, Section, Table, Td, Th, UserCell, fmtNum } from "@/components/admin/ui";
 import { DailyBars, DailyLines } from "@/components/admin/charts";
+import { StarterRoutinesButton } from "@/components/admin/starter-routines";
 
 // Admin · training analytics over a window (7/14/30/90 days).
 export default async function AdminWorkoutsPage({ searchParams }: { searchParams: Promise<Search> }) {
@@ -61,6 +62,7 @@ export default async function AdminWorkoutsPage({ searchParams }: { searchParams
         <Section title={m.load}><Breakdown data={s.load_distribution} labels={m.loadBands} locale={locale} /></Section>
         <Section title={m.byHour}><Breakdown data={hours} locale={locale} /></Section>
       </div>
+      <Section title={m.starter.title} className="mt-4"><StarterRoutinesButton /></Section>
       <Note>{m.filtersHint}</Note>
     </div>
   );

@@ -150,9 +150,14 @@ workouts would be out of sight until Premium; decide before the landing copy
 
 ## Coaching
 
+**Realtime: messages only** (since 20261207130000 a thread hears new messages live). Everything else below still holds.
+
 **No realtime.** No Supabase channel subscription exists anywhere in the web app.
 Messages and the kitchen-style live surfaces are all server-rendered reads
 refreshed by `router.refresh()`.
+
+**`coach_feedback`: per-session and per-set comments exist since 20261207110000** (see ENGINES.md, 2026-12-07 batch);
+`set_video` is still unwritten. The paragraph below is the earlier state.
 
 **`coach_feedback` is half-wired.** The coach *does* write it: `reviewCheckIn`
 (`app/actions.ts`) inserts a `check_in` row when the coach types a reply. Until

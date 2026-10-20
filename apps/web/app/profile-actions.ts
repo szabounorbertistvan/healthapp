@@ -12,7 +12,7 @@ import { exportMyData } from "@/lib/data-export";
 import { CONSENT_VERSION } from "@/lib/legal";
 import {
   AVATAR_PUBLIC_ID, avatarFolder, avatarUrl, cloudinaryConfigured, CloudinaryNotConfiguredError,
-  destroyAvatar, destroyUserPhotos, signAvatarUpload, type AvatarUploadTicket,
+  destroyAvatar, destroyUserPhotos, destroyUserMessageAttachments, signAvatarUpload, type AvatarUploadTicket,
 } from "@/lib/cloudinary";
 
 const MAX_CITY = 80;
@@ -304,6 +304,10 @@ export async function requestAccountDeletion(): Promise<ActionResult & { purgeAf
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase, userId } = live;
+  // the conversations this person wrote in, read while the account is whole:
+  // their message attachments live under one folder per conversation (20261207130000)
+  const { data: conversations } = await supabase
+    .from("conversations").select("id").or(`coach_id.eq.${userId},client_id.eq.${userId}`);
   const { data, error } = await supabase.rpc("request_account_deletion");
   if (error) return { ok: false, message: error.message };
 
@@ -314,6 +318,11 @@ export async function requestAccountDeletion(): Promise<ActionResult & { purgeAf
       await destroyUserPhotos(userId);
     } catch (photoError) {
       console.error("progress photos not removed on deletion:", (photoError as Error).message);
+    }
+    try {
+      await destroyUserMessageAttachments(userId, (conversations ?? []).map((c) => c.id as string));
+    } catch (attachmentError) {
+      console.error("message attachments not removed on deletion:", (attachmentError as Error).message);
     }
   }
   revalidatePath("/", "layout");

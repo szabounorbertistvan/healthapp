@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_QUERY, changedFilter, clearFilters, filterCount, landingFor, landingIndexable, landingSlugs, listingHref, discoverySearch, emptyKind, filterChips, hasFilters, hasMore, isDiscoveryHome, matchViewerCity,
-  normalizePlace, parseDiscoveryQuery, searchArgs, toCoachCard, withChange, type CoachSearchRow, type DiscoveryFacets,
+  normalizePlace, parseDiscoveryQuery, roundPoint, searchArgs, toCoachCard, withChange, type CoachSearchRow, type DiscoveryFacets,
 } from "./coach-discovery";
 
 const facets: DiscoveryFacets = {
@@ -174,7 +174,7 @@ describe("card mapping", () => {
       href: "/coaches/ana", name: "Ana", avatarUrl: null, headline: "Strength coach", verified: true,
       city: "București", formats: ["online", "in_person"], years: 10, specializations: ["Forță"], primarySpecialization: null,
       moreSpecializations: 3, startingPrice: { cents: 20000, currency: "RON", unit: "month" }, followers: 12, accepting: true,
-      rating: null, follow: null, isSelf: false, save: null, profileId: null, availableSoon: false,
+      rating: null, follow: null, isSelf: false, save: null, profileId: null, availableSoon: false, distanceKm: null,
     });
     expect(toCoachCard({ ...row, available_soon: true }, "en").availableSoon).toBe(true);
     expect(toCoachCard(row, "en").city).toBe("Bucharest");
@@ -369,5 +369,28 @@ describe("landing pages (20261111110000)", () => {
   });
   it("the sitemap's landing slugs: only places and specializations with enough coaches", () => {
     expect(landingSlugs(withCounts)).toEqual(["hypertrophy", "romania"]);
+  });
+});
+
+describe("near me (20261207140000)", () => {
+  it("parses a rounded point and a radius, and writes them back", () => {
+    const q = parseDiscoveryQuery(new URLSearchParams("near=46.7712,23.6236&km=25&sort=distance"));
+    expect(q.near).toEqual({ lat: 46.77, lng: 23.62 });
+    expect(q.radius).toBe(25);
+    expect(q.sort).toBe("distance");
+    expect(discoverySearch(q)).toBe("?near=46.77%2C23.62&km=25&sort=distance");
+    expect(searchArgs(q)).toMatchObject({ p_near_lat: 46.77, p_near_lng: 23.62, p_radius_km: 25, p_sort: "distance" });
+  });
+
+  it("ignores a malformed point, an off-list radius and a radius without a point", () => {
+    expect(parseDiscoveryQuery(new URLSearchParams("near=999,23")).near).toBeNull();
+    expect(parseDiscoveryQuery(new URLSearchParams("near=46.7,23.6&km=7")).radius).toBeNull();
+    expect(parseDiscoveryQuery(new URLSearchParams("km=25")).radius).toBeNull();
+    expect(searchArgs(parseDiscoveryQuery(new URLSearchParams("")))).not.toHaveProperty("p_near_lat");
+  });
+
+  it("rounds a phone's location to about a kilometre", () => {
+    expect(roundPoint(46.771234, 23.623612)).toEqual({ lat: 46.77, lng: 23.62 });
+    expect(roundPoint(100, 0)).toBeNull();
   });
 });

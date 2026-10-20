@@ -6,7 +6,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import {
-  DISCOVERY_CURRENCY, DISCOVERY_SORTS, EXPERIENCE_STEPS, RATING_STEPS, changedFilter, clearFilters, discoverySearch, filterChips,
+  EMPTY_QUERY, DISCOVERY_CURRENCY, DISCOVERY_SORTS, EXPERIENCE_STEPS, RADIUS_STEPS, RATING_STEPS, changedFilter, clearFilters, discoverySearch, filterChips, roundPoint,
   filterCount, withChange, type DiscoveryFacets, type DiscoveryQuery, type DiscoverySort,
 } from "@/lib/coach-discovery";
 import { SERVICE_KINDS } from "@/lib/coach-profile";
@@ -222,6 +222,7 @@ function FilterFields({ query, facets, onChange, instant = true, pending = false
             </select>
           </>
         ) : null}
+        <NearMe query={query} onChange={go} />
       </fieldset>
 
       <fieldset>
@@ -439,7 +440,8 @@ export function SortSelect({ query }: { query: DiscoveryQuery }) {
         onChange={(e) => go(withChange(query, { sort: e.target.value as DiscoverySort }))}
         className="h-11 rounded-2xl border border-line bg-surface px-3.5 text-[13.5px] font-semibold text-ink outline-none ring-accent/50 focus:ring-2"
       >
-        {DISCOVERY_SORTS.map((s) => <option key={s} value={s}>{d.sorts[s]}</option>)}
+        {/* nearest first only means something once the reader shared where they are */}
+        {DISCOVERY_SORTS.filter((s) => s !== "distance" || query.near).map((s) => <option key={s} value={s}>{d.sorts[s]}</option>)}
       </select>
     </div>
   );
@@ -452,6 +454,7 @@ export function ActiveFilters({ query, facets }: { query: DiscoveryQuery; facets
   const chips = filterChips(query, facets, locale, {
     online: d.online, inPerson: d.inPerson, hybrid: d.hybrid, verified: d.verifiedChip, experience: d.yearsPlus, priceFrom: d.priceFrom,
     priceTo: d.priceTo, priceRange: d.priceRange, includeFull: d.includeFull, rating: d.ratingPlus, available: d.availableChip,
+    near: d.nearChip, within: d.withinChip,
     serviceKinds: t.coachProfile.services.kinds,
   });
   if (chips.length === 0) return null;
@@ -473,5 +476,85 @@ export function ActiveFilters({ query, facets }: { query: DiscoveryQuery; facets
         </Link>
       </li>
     </ul>
+  );
+}
+
+/**
+ * "Near me": the browser's location, asked only when pressed, rounded to about
+ * 1 km (roundPoint) and sent with this search — never stored. Then "within"
+ * steps and nearest-first. A refusal or a phone without location says so and
+ * leaves the search as it was.
+ */
+export function NearMe({ query, onChange }: { query: DiscoveryQuery; onChange: (next: DiscoveryQuery, mode?: "push" | "replace") => void }) {
+  const { t } = useI18n();
+  const d = t.coachProfile.discovery;
+  const [state, setState] = useState<"idle" | "locating" | "denied" | "unsupported">("idle");
+  function locate() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) { setState("unsupported"); return; }
+    setState("locating");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const point = roundPoint(pos.coords.latitude, pos.coords.longitude);
+        setState("idle");
+        if (point) onChange(withChange(query, { near: point, sort: "distance" }));
+      },
+      () => setState("denied"),
+      { enableHighAccuracy: false, maximumAge: 10 * 60_000, timeout: 15_000 },
+    );
+  }
+  return (
+    <div className="mt-3" data-testid="discovery-near-me">
+      {query.near ? (
+        <div className="flex flex-wrap gap-1.5">
+          <Chip on={query.radius === null} onToggle={() => onChange(withChange(query, { radius: null }))}>{d.anyDistance}</Chip>
+          {RADIUS_STEPS.map((km) => (
+            <Chip key={km} on={query.radius === km} onToggle={() => onChange(withChange(query, { radius: km }))}>{fill(d.withinChip, { n: km })}</Chip>
+          ))}
+          <Chip on={false} onToggle={() => onChange(withChange(query, { near: null, radius: null, sort: query.sort === "distance" ? "recommended" : query.sort }))}>
+            {d.nearOff}
+          </Chip>
+        </div>
+      ) : (
+        <button type="button" onClick={locate} disabled={state === "locating"}
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-line bg-surface px-3.5 text-[13px] font-semibold text-ink hover:border-accent disabled:opacity-60">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+          </svg>
+          {state === "locating" ? d.nearLocating : d.nearMe}
+        </button>
+      )}
+      <p className={HINT}>{state === "denied" ? d.nearDenied : state === "unsupported" ? d.nearUnsupported : d.nearHint}</p>
+    </div>
+  );
+}
+
+/** The Discovery Home's "near me" pill: asks for the location once, then opens the listing nearest first. */
+export function NearMePill() {
+  const { t } = useI18n();
+  const d = t.coachProfile.discovery;
+  const router = useRouter();
+  const [state, setState] = useState<"idle" | "locating" | "denied">("idle");
+  return (
+    <button type="button" disabled={state === "locating"} data-testid="discovery-near-me-pill"
+      title={state === "denied" ? d.nearDenied : d.nearHint}
+      onClick={() => {
+        if (typeof navigator === "undefined" || !navigator.geolocation) { setState("denied"); return; }
+        setState("locating");
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const point = roundPoint(pos.coords.latitude, pos.coords.longitude);
+            setState("idle");
+            if (point) router.push(`${PATH}${discoverySearch({ ...EMPTY_QUERY, near: point, sort: "distance" })}`);
+          },
+          () => setState("denied"),
+          { enableHighAccuracy: false, maximumAge: 10 * 60_000, timeout: 15_000 },
+        );
+      }}
+      className="inline-flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-[13.5px] font-semibold text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-60">
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+        <circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+      </svg>
+      {state === "locating" ? d.nearLocating : state === "denied" ? d.nearChip + " ✕" : d.nearMe}
+    </button>
   );
 }

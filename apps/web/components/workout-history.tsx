@@ -80,12 +80,19 @@ export function WorkoutHistory({ sessions, share }: {
 
             {open ? (
               <div className="space-y-3.5 border-t border-line/60 px-5 pb-[18px] pt-4">
-                {share && session.sets > 0 ? (
-                  <ShareWorkoutButton
-                    card={shareCardFromHistory(session, share.dayName, share.profile)}
-                    className="inline-flex h-9 items-center rounded-full bg-bg px-3.5 text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
-                  />
-                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  {share && session.sets > 0 ? (
+                    <ShareWorkoutButton
+                      card={shareCardFromHistory(session, share.dayName, share.profile)}
+                      className="inline-flex h-9 items-center rounded-full bg-bg px-3.5 text-xs font-semibold text-ink-soft hover:text-ink disabled:opacity-50"
+                    />
+                  ) : null}
+                  {/* the workout's own page, where a coach's comments on it are read (20261207110000) */}
+                  <Link href={`/workout/session/${session.id}`}
+                    className="inline-flex h-9 items-center rounded-full bg-bg px-3.5 text-xs font-semibold text-ink-soft hover:text-ink">
+                    {t.coachWidgets.workoutFeedback.openWorkout}
+                  </Link>
+                </div>
                 {session.exercises.map((exercise) => (
                   <div key={exercise.name}>
                     <p className="text-sm font-semibold">

@@ -111,6 +111,8 @@ export type CheckInRow = {
     recovery: number | null;
   } | null;
   context: string;
+  /** Answers to the coach's own questions (20261207120000), in the order asked. */
+  answers: { prompt: string; kind: "scale" | "number" | "yes_no" | "text"; value_num: number | null; value_bool: boolean | null; value_text: string | null }[];
 };
 
 export type ProgramRow = {
@@ -269,8 +271,11 @@ export type ConversationContext = {
 export type MessageRow = {
   id: string;
   mine: boolean;
+  /** "" for a message that is only a picture or a voice note. */
   body: string;
   at: string;
+  /** One picture or voice note (20261207130000), streamed by /api/messages/<id>/attachment. */
+  attachment?: { kind: "image" | "audio"; seconds: number | null; width: number | null; height: number | null } | null;
 };
 
 // ---------- client (trainee) surface ----------

@@ -235,6 +235,9 @@ const en = {
     // no static chrome to translate.
   },
   checkInForm: {
+    coachQuestions: "Your coach asks",
+    yes: "Yes",
+    no: "No",
     savedOnPhone: "No connection — your check-in is saved on this phone and is sent when you're back online.",
     scales: {
       sleep: "Sleep quality",
@@ -546,6 +549,9 @@ const ro: typeof en = {
   },
   habitTicks: {},
   checkInForm: {
+    coachQuestions: "Antrenorul te întreabă",
+    yes: "Da",
+    no: "Nu",
     savedOnPhone: "Fără conexiune — check-in-ul e salvat pe telefon și se trimite când revii online.",
     scales: {
       sleep: "Calitatea somnului",

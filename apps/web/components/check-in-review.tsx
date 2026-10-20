@@ -103,6 +103,24 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
           </Card>
         </div>
 
+        {selected.answers.length > 0 ? (
+          <Card plain>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.yourQuestions}</p>
+            <dl className="mt-2 divide-y divide-line/60">
+              {selected.answers.map((a, i) => (
+                <div key={i} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2 text-[13.5px]">
+                  <dt className="text-ink-soft">{a.prompt}</dt>
+                  <dd className="font-semibold tabular-nums">
+                    {a.kind === "yes_no" ? (a.value_bool ? m.yes : m.no)
+                      : a.kind === "text" ? <span className="font-normal">&ldquo;{a.value_text}&rdquo;</span>
+                      : a.kind === "scale" ? `${a.value_num}/10` : a.value_num}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
+        ) : null}
+
         {selected.note ? (
           <Card plain>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.clientNote}</p>

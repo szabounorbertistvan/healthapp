@@ -35,7 +35,8 @@ export type QueuedActionPayload =
   | { kind: "food"; input: { slot: "breakfast" | "lunch" | "dinner" | "snack"; foodName: string; grams: number;
       per100g: { kcal: number; protein: number; carbs: number; fat: number }; foodId: string | null; day: string; clientId: string } }
   | { kind: "habit"; habitId: string; day: string; done: boolean }
-  | { kind: "checkin"; input: { weightKg: number | null; sleep: number; energy: number; stress: number; hunger: number; recovery: number; note: string } };
+  | { kind: "checkin"; input: { weightKg: number | null; sleep: number; energy: number; stress: number; hunger: number; recovery: number; note: string;
+      answers?: { questionId: string; value: number | boolean | string }[] } };
 
 export type QueuedAction = QueuedActionPayload & {
   id: string;

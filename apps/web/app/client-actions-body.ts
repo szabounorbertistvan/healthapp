@@ -61,6 +61,13 @@ export async function submitCheckIn(input: {
   hunger: number;
   recovery: number;
   note: string;
+  /**
+   * Answers to the coach's own questions (20261207120000): a number for a
+   * scale or number question, true/false for yes/no, text for text. The
+   * database copies each question's words and refuses an answer of the wrong
+   * kind or to a question not meant for this client.
+   */
+  answers?: { questionId: string; value: number | boolean | string }[];
 }): Promise<ActionResult> {
   // The person's Monday — the week getMyCheckInState and the coach's adherence read.
   const weekStart = weekStartOf(await myToday());
@@ -78,7 +85,7 @@ export async function submitCheckIn(input: {
     .maybeSingle();
   if (already) return { ok: false, errorCode: "ALREADY_CHECKED_IN", message: "This week is already checked in" };
 
-  const { error } = await supabase.from("check_ins").insert({
+  const { data: created, error } = await supabase.from("check_ins").insert({
     user_id: userId,
     week_start: weekStart,
     weight_kg: input.weightKg,
@@ -89,7 +96,7 @@ export async function submitCheckIn(input: {
     recovery: input.recovery,
     note: input.note.trim() || null,
     submitted_at: new Date().toISOString(),
-  });
+  }).select("id").single();
   // A double tap can still race past the check above; 23505 means the same thing.
   if (error) {
     return {
@@ -98,7 +105,24 @@ export async function submitCheckIn(input: {
       ...(error.code === "23505" ? { errorCode: "ALREADY_CHECKED_IN" as const } : {}),
     };
   }
+  // the coach's questions, after the check-in exists; a refused answer never undoes the check-in
+  const answers = (input.answers ?? [])
+    .filter((a) => /^[0-9a-f-]{36}$/i.test(a.questionId))
+    .slice(0, 12)
+    .map((a) => ({
+      check_in_id: (created as { id: string }).id,
+      question_id: a.questionId,
+      value_num: typeof a.value === "number" && Number.isFinite(a.value) ? a.value : null,
+      value_bool: typeof a.value === "boolean" ? a.value : null,
+      value_text: typeof a.value === "string" && a.value.trim() ? a.value.trim().slice(0, 1000) : null,
+    }))
+    .filter((a) => a.value_num !== null || a.value_bool !== null || a.value_text !== null);
+  for (const a of answers) {
+    const { error: answerError } = await supabase.from("check_in_answers").insert(a);
+    if (answerError) console.error("check-in answer refused:", answerError.code);
+  }
   revalidatePath("/check-in");
   revalidatePath("/today");
+  revalidatePath("/check-ins");
   return { ok: true };
 }

@@ -1466,3 +1466,44 @@ coach-side RLS policy — keys off.
 - **Push:** `supabase/functions/push-dispatch`. No client registers a token.
 - **Exercise library:** `app/(coach)/library`, `lib/exercise-library.ts`,
   `supabase/functions/import-exercises`.
+
+---
+
+## 2026-12-07 batch (migrations 20261207100000 → 20261207150000)
+
+**Coach feedback on workouts** (`20261207100000` category, `20261207110000`; pgTAP `coach_feedback_workouts`).
+`coach_feedback_guard` makes every comment point at THAT client's session / set / check-in; `coach_feedback_notify`
+sends the client a `coach_feedback` notice for session and set comments (the check-in reply stays silent, as before);
+a coach may delete their own comment within a day. Coach: "Recent workouts" on `/clients/[id]`
+(`components/workout-feedback.tsx`, `lib/workout-feedback.ts`, `app/workout-feedback-actions.ts`) — last 6 finished
+sessions, set by set, a comment per set or per workout. Client: `/workout/session/[id]` (the notice's target; reading
+marks the comments read) and a link from every row of a day's history.
+
+**Check-in questions** (`20261207120000`; pgTAP `check_in_questions`). `check_in_questions` (coach-owned; all clients
+or one; scale / number / yes_no / text; ≤ 12 active) and `check_in_answers` (one per check-in and question; prompt and
+kind copied on insert; frozen once the coach reviewed the check-in). Coach: the editor above the queue on `/check-ins`
+(`components/check-in-questions-editor.tsx`, `app/check-in-question-actions.ts`); answers in the review card. Client:
+the questions in `CheckInForm` (`getMyCheckInQuestions`), sent with `submitCheckIn({ answers })`.
+
+**Message attachments + realtime** (`20261207130000`; pgTAP `message_attachments`). One image or voice note per
+message, an authenticated Cloudinary asset at `voinic/messages/<conversation>/<sender>/<random>`: the ticket is signed
+for one public_id (`requestMessageUpload`), what Cloudinary stored is checked before the row is written
+(`sendMessageWithAttachment`), the file is read only through `/api/messages/[id]/attachment` (RLS on the row decides).
+Voice notes: MediaRecorder, ≤ 5 min, played as a blob. `messages` is in the `supabase_realtime` publication; the thread
+subscribes to INSERTs of its conversation and refreshes from the server. Account deletion removes the person's
+attachments per conversation (`destroyUserMessageAttachments`).
+
+**Coach search by distance** (`20261207140000`; pgTAP `coach_search_distance`). `search_coaches(... p_near_lat,
+p_near_lng, p_radius_km)` and sort `distance`; distance = to the coach's gym pin, else the city centre
+(`coach_distance_km`, internal). The reader's point is asked in the browser, rounded to 2 decimals (`roundPoint`), kept
+only in the URL (`?near=lat,lng&km=`). UI: "Coaches near me" on the Discovery Home and in the filters; `distance_km`
+on cards.
+
+**Starter routines** (`20261207150000`; pgTAP `starter_routines`). `admin_create_starter_routines()` — four public,
+official, featured routines owned by the calling admin; the button is on `/admin/workouts`.
+
+**Without a migration (same batch):** recipes written from scratch (`createRecipe`, `components/recipe-editor-dialog.tsx`);
+bulk client actions on `/clients` (`app/bulk-actions.ts`); food logs, habit ticks and check-ins in the offline outbox
+(`lib/offline/outbox.ts` store `actions`); Google / Microsoft calendar adapters, OAuth routes and the sync worker
+(off until configured — docs/CALENDAR_SETUP.md); Sign in with Apple (shown once enabled in Supabase —
+docs/APPLE_SIGNIN_SETUP.md); Open Food Facts products sold in Romania first in `food-search` / `barcode-lookup`.

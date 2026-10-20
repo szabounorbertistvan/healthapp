@@ -14,10 +14,20 @@ export const DISCOVERY_PAGE_SIZE = 24;
 /** "Load more" grows the page this far (the RPC refuses offsets past 1000). */
 export const DISCOVERY_MAX_PAGES = 10;
 export const EXPERIENCE_STEPS = [1, 3, 5, 10] as const;
-export const DISCOVERY_SORTS = ["recommended", "relevance", "rating", "availability", "experience", "followers", "newest"] as const;
+export const DISCOVERY_SORTS = ["recommended", "relevance", "rating", "availability", "distance", "experience", "followers", "newest"] as const;
 export type DiscoverySort = (typeof DISCOVERY_SORTS)[number];
 /** The minimum-rating steps the filter offers (published reviews; the database ignores anything outside 1..5). */
 export const RATING_STEPS = [3, 3.5, 4, 4.5] as const;
+/** The "within" steps for a reader's point (km, 20261207140000). */
+export const RADIUS_STEPS = [5, 10, 25, 50, 100] as const;
+/**
+ * A reader's point travels in the URL rounded to 2 decimals (about 1 km):
+ * enough to sort coaches by city or gym, never a street address in a link.
+ */
+export function roundPoint(lat: number, lng: number): { lat: number; lng: number } | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat: Math.round(lat * 100) / 100, lng: Math.round(lng * 100) / 100 };
+}
 /** Prices are filtered in one currency; the market is Romania. */
 export const DISCOVERY_CURRENCY = "RON";
 
@@ -48,6 +58,10 @@ export type DiscoveryQuery = {
   minRating: number | null;
   /** A free public booking slot within the next 14 days. */
   available: boolean;
+  /** "Near me": the reader's point, rounded (roundPoint). Used for this search only, never stored. */
+  near: { lat: number; lng: number } | null;
+  /** Only coaches with a place within this many km of `near` (RADIUS_STEPS). */
+  radius: number | null;
   sort: DiscoverySort;
   /** 1-based; page N shows the first N × 24 (Load more). */
   page: number;
@@ -62,7 +76,7 @@ export type DiscoveryQuery = {
 export const EMPTY_QUERY: DiscoveryQuery = {
   q: "", country: null, city: null, gym: null, online: false, inPerson: false, hybrid: false, specializations: [],
   experience: null, verified: false, priceMin: null, priceMax: null, accepting: true, serviceKinds: [], languages: [],
-  minRating: null, available: false, sort: "recommended", page: 1, browse: false,
+  minRating: null, available: false, near: null, radius: null, sort: "recommended", page: 1, browse: false,
 };
 
 type Params = Record<string, string | string[] | undefined> | URLSearchParams;
@@ -91,6 +105,11 @@ const positiveInt = (v: string | undefined, max: number) => {
   return Number.isInteger(n) && n > 0 && n <= max ? n : null;
 };
 
+function parseNear(v: string | undefined): { lat: number; lng: number } | null {
+  const m = v?.trim().match(/^(-?\d{1,2}(?:\.\d{1,4})?),(-?\d{1,3}(?:\.\d{1,4})?)$/);
+  return m ? roundPoint(Number(m[1]), Number(m[2])) : null;
+}
+
 /** Anything a URL may carry → a valid query; unknown or malformed values fall back to the default. */
 export function parseDiscoveryQuery(params: Params): DiscoveryQuery {
   const specs = all(params, "specialization").flatMap((v) => v.split(","))
@@ -115,6 +134,8 @@ export function parseDiscoveryQuery(params: Params): DiscoveryQuery {
     languages: many(params, "language", (v) => LANGUAGE.test(v), 10),
     minRating: (RATING_STEPS as readonly number[]).includes(Number(one(params, "rating"))) ? Number(one(params, "rating")) : null,
     available: one(params, "available") === "true",
+    near: parseNear(one(params, "near")),
+    radius: parseNear(one(params, "near")) && (RADIUS_STEPS as readonly number[]).includes(Number(one(params, "km"))) ? Number(one(params, "km")) : null,
     sort: (DISCOVERY_SORTS as readonly string[]).includes(sort ?? "") ? (sort as DiscoverySort) : "recommended",
     page: Math.min(positiveInt(one(params, "page"), DISCOVERY_MAX_PAGES) ?? 1, DISCOVERY_MAX_PAGES),
     browse: one(params, "all") === "1",
@@ -141,6 +162,10 @@ export function discoverySearch(query: DiscoveryQuery): string {
   for (const l of query.languages) p.append("language", l);
   if (query.minRating !== null) p.set("rating", String(query.minRating));
   if (query.available) p.set("available", "true");
+  if (query.near) {
+    p.set("near", `${query.near.lat},${query.near.lng}`);
+    if (query.radius) p.set("km", String(query.radius));
+  }
   // a search or a filter already means the listing; `all` only marks the bare one
   if (query.browse && !hasFilters(query)) p.set("all", "1");
   if (query.sort !== "recommended") p.set("sort", query.sort);
@@ -197,6 +222,9 @@ export function searchArgs(query: DiscoveryQuery) {
     ...(query.languages.length ? { p_languages: query.languages } : {}),
     ...(query.minRating !== null ? { p_min_rating: query.minRating } : {}),
     ...(query.available ? { p_available: true } : {}),
+    // 20261207140000, same rule
+    ...(query.near ? { p_near_lat: query.near.lat, p_near_lng: query.near.lng } : {}),
+    ...(query.near && query.radius ? { p_radius_km: query.radius } : {}),
   };
 }
 
@@ -232,7 +260,7 @@ export function filterCount(query: DiscoveryQuery): number {
   return [
     query.country, query.city, query.gym, query.online || null, query.inPerson || null, query.hybrid || null,
     query.experience, query.verified || null, query.priceMin ?? query.priceMax, query.accepting ? null : true,
-    query.minRating, query.available || null,
+    query.minRating, query.available || null, query.near ? true : null,
   ].filter((v) => v !== null && v !== undefined).length
     + query.specializations.length + query.serviceKinds.length + query.languages.length;
 }
@@ -275,6 +303,9 @@ export type ChipLabels = {
   /** "{n}+ ★" */
   rating?: string;
   available?: string;
+  /** "Near me" / "Within {km} km" */
+  near?: string;
+  within?: string;
   /** Service kind → its label (the services' own names in messages). */
   serviceKinds?: Partial<Record<ServiceKind, string>>;
 };
@@ -332,6 +363,10 @@ export function filterChips(current: DiscoveryQuery, facets: DiscoveryFacets, lo
     chips.push({ key: "rating", label: fillN(labels.rating ?? "{n}+ ★", { n: query.minRating }), remove: withChange(query, { minRating: null }) });
   }
   if (query.available) chips.push({ key: "available", label: labels.available ?? "available", remove: withChange(query, { available: false }) });
+  if (query.near) {
+    const label = query.radius ? fillN(labels.within ?? "≤ {n} km", { n: query.radius }) : labels.near ?? "near";
+    chips.push({ key: "near", label, remove: withChange(query, { near: null, radius: null, sort: query.sort === "distance" ? "recommended" : query.sort }) });
+  }
   if (!query.accepting) chips.push({ key: "accepting", label: labels.includeFull, remove: withChange(query, { accepting: true }) });
   return chips;
 }
@@ -377,6 +412,8 @@ export type CoachSearchRow = {
   rating?: { average: number | string; count: number } | null;
   /** A free public booking slot within 7 days (20261111110000). Absent before that migration. */
   available_soon?: boolean;
+  /** km to the coach's nearest gym or city, only when the reader sent a point (20261207140000). */
+  distance_km?: number | null;
 };
 export type CoachSearchResult = { total: number; items: CoachSearchRow[] };
 
@@ -414,6 +451,8 @@ export type CoachCardModel = {
   isSelf: boolean;
   /** Bookable within the week — from the database, never a score. */
   availableSoon: boolean;
+  /** Distance from the reader's point, km (one decimal), when one was sent. */
+  distanceKm: number | null;
 };
 
 export function toCoachCard(row: CoachSearchRow, locale: "en" | "ro", now = new Date()): CoachCardModel {
@@ -445,6 +484,7 @@ export function toCoachCard(row: CoachSearchRow, locale: "en" | "ro", now = new 
     save: row.id && row.user_id && !row.is_self ? { profileId: row.id, saved: row.is_saved === true } : null,
     profileId: row.id ?? null,
     availableSoon: row.available_soon === true,
+    distanceKm: typeof row.distance_km === "number" ? row.distance_km : null,
   };
 }
 

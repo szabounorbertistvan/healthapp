@@ -487,3 +487,82 @@ export async function destroyGymPhoto(gymId: string): Promise<void> {
   const client = configured();
   await client.uploader.destroy(gymPhotoPublicId(gymId), { invalidate: true }).catch(() => {});
 }
+
+// ---------- message attachments (20261207130000) ----------
+// One picture or one voice note in a coach–client conversation: an
+// AUTHENTICATED asset in the sender's own folder of that conversation (the
+// database checks the path), uploaded with a ticket signed for exactly one
+// public_id, never overwritable. Read only through
+// /api/messages/<id>/attachment, which asks the database (msg_select) first.
+// Cloudinary keeps audio under resource_type "video".
+
+export type MessageAttachmentKind = "image" | "audio";
+export const MESSAGE_IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp", "heic"] as const;
+export const MESSAGE_AUDIO_FORMATS = ["webm", "ogg", "mp3", "m4a", "mp4", "wav", "aac"] as const;
+export const MESSAGE_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+export function messageFolder(conversationId: string, senderId: string): string {
+  return `voinic/messages/${conversationId}/${senderId}`;
+}
+
+const resourceType = (kind: MessageAttachmentKind): "image" | "video" => (kind === "audio" ? "video" : "image");
+
+export function signMessageUpload(conversationId: string, senderId: string, publicId: string, kind: MessageAttachmentKind) {
+  const client = configured();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = {
+    folder: messageFolder(conversationId, senderId),
+    public_id: publicId,
+    timestamp,
+    type: "authenticated",
+    allowed_formats: (kind === "audio" ? MESSAGE_AUDIO_FORMATS : MESSAGE_IMAGE_FORMATS).join(","),
+    overwrite: "false",
+  };
+  const signature = client.utils.api_sign_request(params, API_SECRET!);
+  return {
+    cloudName: CLOUD_NAME!,
+    apiKey: API_KEY!,
+    resourceType: resourceType(kind),
+    fields: {
+      folder: params.folder, public_id: params.public_id, timestamp: String(timestamp), type: params.type,
+      allowed_formats: params.allowed_formats, overwrite: params.overwrite, signature,
+    },
+  };
+}
+
+export type StoredMessageAsset = { public_id: string; format: string; bytes: number; width?: number; height?: number; duration?: number };
+
+/** What Cloudinary stored — format, size and (audio) length as it measured them, not as the browser said. */
+export async function lookupMessageAttachment(publicId: string, kind: MessageAttachmentKind): Promise<StoredMessageAsset | null> {
+  const client = configured();
+  try {
+    const r = (await client.api.resource(publicId, { type: "authenticated", resource_type: resourceType(kind) })) as StoredMessageAsset;
+    return r?.public_id ? r : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A five-minute signed link the server fetches and streams; the browser never sees it. */
+export function messageAttachmentDownloadUrl(publicId: string, format: string, kind: MessageAttachmentKind): string {
+  const client = configured();
+  return client.utils.private_download_url(publicId, format, {
+    type: "authenticated", resource_type: resourceType(kind), expires_at: Math.floor(Date.now() / 1000) + 300,
+  });
+}
+
+export async function destroyMessageAttachment(publicId: string, kind: MessageAttachmentKind): Promise<void> {
+  const client = configured();
+  await client.uploader.destroy(publicId, { type: "authenticated", resource_type: resourceType(kind), invalidate: true }).catch(() => {});
+}
+
+/** Every attachment one person sent, in each of their conversations (account deletion). */
+export async function destroyUserMessageAttachments(userId: string, conversationIds: string[]): Promise<void> {
+  const client = configured();
+  for (const conv of conversationIds) {
+    const prefix = messageFolder(conv, userId);
+    await client.api.delete_resources_by_prefix(prefix, { type: "authenticated" }).catch(() => {});
+    await client.api.delete_resources_by_prefix(prefix, { type: "authenticated", resource_type: "video" }).catch(() => {});
+    await client.api.delete_folder(prefix).catch(() => {});
+  }
+}

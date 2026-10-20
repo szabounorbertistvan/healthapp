@@ -115,3 +115,18 @@ export async function reportLoginFailure(email: string): Promise<void> {
     // best effort: a failed report must never turn into a login error
   }
 }
+
+/**
+ * Voinic's four starter routines (20261207150000): public, official and
+ * featured, owned by the admin who presses the button. Idempotent per admin —
+ * a routine with the same name already on the account is left alone.
+ */
+export async function createStarterRoutines(): Promise<ActionResult & { created?: number }> {
+  if (!(await adminActor())) return { ok: false, message: "Admins only" };
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.rpc("admin_create_starter_routines");
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/routines");
+  revalidatePath("/admin/workouts");
+  return { ok: true, created: typeof data === "number" ? data : 0 };
+}

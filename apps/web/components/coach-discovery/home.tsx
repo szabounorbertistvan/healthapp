@@ -6,7 +6,7 @@ import {
   EMPTY_QUERY, QUICK_SPECIALIZATIONS, discoverySearch, listingHref, type CoachCardModel, type DiscoveryFacets, type DiscoveryQuery,
 } from "@/lib/coach-discovery";
 import { CoachCard } from "./coach-card";
-import { CitySelect, CoachSearchBox } from "./controls";
+import { CitySelect, CoachSearchBox, NearMePill } from "./controls";
 
 /**
  * "Coaches near you" in one of four honest states. Location is only ever the
@@ -84,6 +84,7 @@ export async function DiscoveryHome({ query, facets, recommended, near, signedIn
         {/* quick discovery intents — each one a real filter of search_coaches(); pointless with nobody to filter */}
         {noCoaches ? null : <nav aria-label={h.quickFilters} className="relative mt-5">
           <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0">
+            <li className="shrink-0"><NearMePill /></li>
             {quick.map((q) => (
               <li key={q.key} className="shrink-0">
                 <Link href={q.href}

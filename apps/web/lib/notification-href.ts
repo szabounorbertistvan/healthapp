@@ -96,6 +96,11 @@ export function notificationHref(category: string, payload: Record<string, unkno
     const challenge = id(payload, "challenge_id");
     return challenge ? `/challenges/${challenge}` : null;
   }
+  // the coach's comment on a workout or one of its sets (20261207110000): the session page
+  if (category === "coach_feedback") {
+    const session = id(payload, "session_id");
+    return session ? `/workout/session/${session}` : null;
+  }
 
   const screen = typeof payload?.screen === "string" ? payload.screen : null;
   return (screen && SCREEN_HREF[screen]) || null;
@@ -130,6 +135,7 @@ export type NotificationSentence =
   | "coaching_paused"
   | "coaching_resumed"
   | "coaching_ended"
+  | "coach_feedback"
   | MarketplaceSentence;
 
 /** What moderation told a coach about their listing (20261110110000). */
@@ -157,6 +163,7 @@ export function notificationSentence(category: string, payload: Record<string, u
     case "comment_reply":
     case "badge_earned":
     case "new_message":
+    case "coach_feedback":
       return category;
     case "new_mention":
       return id(payload, "comment_id") ? "new_mention" : "new_mention_post";

@@ -9,12 +9,15 @@ import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { Card } from "./ui";
 import { useOfflineOutbox } from "@/lib/offline/sync";
+import type { CheckInQuestion } from "@/lib/check-in-questions";
 
 const SCALES = ["sleep", "energy", "stress", "hunger", "recovery"] as const;
 
 type ScaleKey = (typeof SCALES)[number];
 
-export function CheckInForm() {
+type AnswerValue = number | boolean | string;
+
+export function CheckInForm({ questions = [] }: { questions?: CheckInQuestion[] }) {
   const { t } = useI18n();
   const u = useUnits();
   const router = useRouter();
@@ -27,6 +30,8 @@ export function CheckInForm() {
     recovery: 5,
   });
   const [note, setNote] = useState("");
+  // the coach's own questions: unanswered ones are simply not sent
+  const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const offline = useOfflineOutbox();
@@ -75,6 +80,22 @@ export function CheckInForm() {
           </div>
         </div>
 
+        {questions.length > 0 ? (
+          <div className="rounded-2xl bg-bg px-4 py-3.5" data-testid="check-in-coach-questions">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientWidgets.checkInForm.coachQuestions}</p>
+            <div className="mt-1 divide-y divide-line/60">
+              {questions.map((q) => (
+                <QuestionField key={q.id} question={q} value={answers[q.id]}
+                  onChange={(v) => setAnswers((prev) => {
+                    const next = { ...prev };
+                    if (v === null) delete next[q.id]; else next[q.id] = v;
+                    return next;
+                  })} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <label className="block">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
             {t.clientWidgets.checkInForm.coachNote}
@@ -96,7 +117,10 @@ export function CheckInForm() {
               // Typed in the reader's unit; check_ins.weight_kg is metric.
               const typed = parseDecimal(weight);
               const parsed = typed === null ? null : displayToKg(typed, u.weightUnit);
-              const input = { weightKg: parsed, ...scores, note };
+              const input = {
+                weightKg: parsed, ...scores, note,
+                answers: Object.entries(answers).map(([questionId, value]) => ({ questionId, value })),
+              };
               // No connection: the check-in waits on this phone and is sent by itself.
               if (navigator.onLine === false && offline) {
                 if (await offline.queueAction({ kind: "checkin", input })) { setNotice(t.clientWidgets.checkInForm.savedOnPhone); return; }
@@ -124,5 +148,46 @@ export function CheckInForm() {
         {notice ? <p role="status" className="text-[13px] font-semibold text-warn">{notice}</p> : null}
       </div>
     </Card>
+  );
+}
+
+/** One coach question, answered the way its kind asks. */
+function QuestionField({ question, value, onChange }: {
+  question: CheckInQuestion; value: AnswerValue | undefined; onChange: (v: AnswerValue | null) => void;
+}) {
+  const { t } = useI18n();
+  const f = t.clientWidgets.checkInForm;
+  return (
+    <div className="py-2.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-sm font-semibold">{question.prompt}</span>
+        {question.kind === "scale" ? (
+          <span className="font-display text-base font-bold tabular-nums text-accent-ink">{typeof value === "number" ? value : "—"}</span>
+        ) : null}
+      </div>
+      {question.kind === "scale" ? (
+        <input type="range" min={1} max={10} value={typeof value === "number" ? value : 5} aria-label={question.prompt}
+          onChange={(e) => onChange(Number(e.target.value))} className="mt-2 w-full" />
+      ) : question.kind === "number" ? (
+        <input inputMode="decimal" aria-label={question.prompt} value={typeof value === "number" ? String(value) : ""}
+          onChange={(e) => { const n = parseDecimal(e.target.value); onChange(e.target.value.trim() === "" || n === null ? null : n); }}
+          placeholder={f.optional}
+          className="mt-1.5 h-10 w-36 rounded-xl border border-line bg-surface px-3 text-sm tabular-nums outline-none focus:border-accent" />
+      ) : question.kind === "yes_no" ? (
+        <div className="mt-1.5 flex gap-1.5" role="radiogroup" aria-label={question.prompt}>
+          {[true, false].map((b) => (
+            <button key={String(b)} type="button" role="radio" aria-checked={value === b}
+              onClick={() => onChange(value === b ? null : b)}
+              className={`h-9 rounded-full px-4 text-[13px] font-semibold ${value === b ? "bg-accent text-accent-fg" : "border border-line bg-surface text-ink-soft"}`}>
+              {b ? f.yes : f.no}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <textarea aria-label={question.prompt} rows={2} maxLength={1000} value={typeof value === "string" ? value : ""}
+          onChange={(e) => onChange(e.target.value.trim() ? e.target.value : null)}
+          className="mt-1.5 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent" />
+      )}
+    </div>
   );
 }

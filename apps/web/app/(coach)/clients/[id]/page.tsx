@@ -13,6 +13,8 @@ import { ClientGoalsCard } from "@/components/goals";
 import { ProgressionOverview } from "@/components/exercise-progression";
 import { ClientReportDownload, type ClientReportOption } from "@/components/client-report-download";
 import { getFeed } from "@/lib/social-data";
+import { getClientRecentWorkouts } from "@/lib/workout-feedback";
+import { ClientWorkoutsFeedback } from "@/components/workout-feedback";
 import { SignalBadge } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
@@ -44,7 +46,7 @@ export default async function CoachClientPage({
   // The roster and the summary go out together: the summary is filtered by
   // client id and RLS answers it, so it never needed the roster first. A client
   // the coach cannot see still 404s below — the wasted summary read is empty.
-  const [clients, summary, fitness, insights, posts, relationships, goal] = await Promise.all([
+  const [clients, summary, fitness, insights, posts, relationships, goal, workouts] = await Promise.all([
     getClients(),
     getClientWeeklySummary(id, choice),
     // Coach Pro. getPlan is request-cached off the layout's profile read.
@@ -62,6 +64,8 @@ export default async function CoachClientPage({
     getCoachClientRelationships("current"),
     // the goal the client picked in their setup steps (goals_coach_read)
     getClientGoal(id),
+    // their last finished workouts, set by set, to comment on (20261207110000)
+    getClientRecentWorkouts(id, locale === "ro" ? "ro" : "en"),
   ]);
   const relationship = relationships.find((r) => r.client_id === id && r.status === "active") ?? null;
   const plan = await getPlan();
@@ -135,6 +139,8 @@ export default async function CoachClientPage({
             <ClientReportDownload name={client.full_name} options={insights.reports} />
           </>
         ) : null}
+
+        <ClientWorkoutsFeedback clientId={id} sessions={workouts} name={client.full_name} />
 
         <section>
           <h2 className="mb-3 font-display text-lg font-bold tracking-tight">

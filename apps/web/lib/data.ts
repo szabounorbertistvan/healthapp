@@ -229,7 +229,7 @@ export async function getCheckIns(): Promise<CheckInRow[]> {
   const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("check_ins")
-    .select("*, user:users(id, full_name)")
+    .select("*, user:users(id, full_name), answers:check_in_answers(prompt, kind, value_num, value_bool, value_text, created_at)")
     .is("coach_reviewed_at", null)
     .order("submitted_at", { ascending: true });
   if (error) throw error;
@@ -248,6 +248,11 @@ export async function getCheckIns(): Promise<CheckInRow[]> {
       submitted_at: c.submitted_at, coach_reviewed_at: c.coach_reviewed_at,
       previous: previous.get(`${user.id}|${c.week_start}`) ?? null,
       context: "",
+      answers: ((c.answers ?? []) as (CheckInRow["answers"][number] & { created_at: string })[])
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .map(({ prompt, kind, value_num, value_bool, value_text }) => ({
+          prompt, kind, value_num: value_num === null ? null : Number(value_num), value_bool, value_text,
+        })),
     };
   });
 }
@@ -441,13 +446,17 @@ export async function getMessages(conversationId: string): Promise<MessageRow[]>
   const { supabase, userId } = live;
   const { data, error } = await supabase
     .from("messages")
-    .select("id, body, created_at, sender_id")
+    .select("id, body, created_at, sender_id, attachment_kind, attachment_seconds, attachment_width, attachment_height")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []).map((m) => ({
-    id: m.id, body: m.body, at: m.created_at,
+    id: m.id, body: m.body ?? "", at: m.created_at,
     mine: m.sender_id === userId,
+    attachment: m.attachment_kind
+      ? { kind: m.attachment_kind as "image" | "audio", seconds: m.attachment_seconds === null ? null : Number(m.attachment_seconds),
+          width: m.attachment_width, height: m.attachment_height }
+      : null,
   }));
 }
 

@@ -122,6 +122,12 @@ export function CoachCard({ card, signedIn }: { card: CoachCardModel; signedIn: 
           {card.accepting ? c.accepting : c.notAccepting}
           <span aria-hidden>·</span>
           {fill(c.followers, { n: card.followers })}
+          {card.distanceKm !== null ? (
+            <>
+              <span aria-hidden>·</span>
+              <span data-testid="card-distance">{fill(c.distance, { n: card.distanceKm < 10 ? card.distanceKm.toFixed(1) : Math.round(card.distanceKm) })}</span>
+            </>
+          ) : null}
         </p>
         {/* a free public slot within a week — from the database, never a score */}
         {card.availableSoon ? (
