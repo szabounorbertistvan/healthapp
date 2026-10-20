@@ -36,6 +36,9 @@ export default async function WorkoutPage() {
           <PillLink href="/exercises" icon="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM4 4v18M8 8h6">
             {t.clientApp.library.title}
           </PillLink>
+          <PillLink href="/workout/import" icon="M12 4v11M7 10l5 5 5-5M5 20h14">
+            {t.clientApp.workoutImport.link}
+          </PillLink>
           {groups.length > 0 && !coached ? (
             <PillLink href="/workout/build" icon={hasOwn ? "M4 20h4l10-10-4-4L4 16zM13 7l4 4" : "M12 5v14M5 12h14"}>
               {hasOwn ? t.clientApp.workout.editProgram : t.clientApp.builder.title}

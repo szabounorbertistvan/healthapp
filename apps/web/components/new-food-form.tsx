@@ -1,26 +1,36 @@
 "use client";
 import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
+import { parseDecimal } from "@healthapp/shared";
 import { createCustomFood } from "@/app/nutrition-actions";
 import { useI18n } from "@/lib/i18n/client";
 import type { FoodItem } from "@/lib/food-portions";
 
 const inputClass = "h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm tabular-nums outline-none focus:border-accent";
 const labelClass = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint";
+/** foods.portions holds at most 8 (is_valid_food_portions). */
+const MAX_PORTIONS = 8;
+
+type PortionDraft = { label: string; grams: string };
 
 /**
  * Create a food the search does not have: a name and the four numbers per
- * 100 g. Lives inside the food pickers so it opens where the search came up
- * short; on success the row is handed back so the caller logs or adds it in
- * the same motion. Mirrors NewExerciseForm for exercises.
+ * 100 g, and — folded away unless a scan brought the person here — what else
+ * the label says (saturates, sugars, salt), the barcode, and the person's own
+ * servings. Lives inside the food pickers so it opens where the search or the
+ * scan came up short; on success the row is handed back so the caller logs or
+ * adds it in the same motion. Mirrors NewExerciseForm for exercises.
  */
 export function NewFoodForm({
   initialName = "",
+  initialBarcode = "",
   primaryLabel,
   onCreated,
   onCancel,
 }: {
   initialName?: string;
+  /** The code a scan missed: saved with the food so the next scan finds it. */
+  initialBarcode?: string;
   /** What the primary button does after saving — "Save and add" or plain "Save food". */
   primaryLabel?: string;
   onCreated: (food: FoodItem) => void;
@@ -34,11 +44,24 @@ export function NewFoodForm({
   const [protein, setProtein] = useState("");
   const [carbs, setCarbs] = useState("");
   const [fat, setFat] = useState("");
+  const [saturated, setSaturated] = useState("");
+  const [sugar, setSugar] = useState("");
+  const [salt, setSalt] = useState("");
+  const [barcode, setBarcode] = useState(initialBarcode);
+  const [portions, setPortions] = useState<PortionDraft[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const num = (v: string) => Number(v.replace(",", "."));
-  const valid = name.trim().length >= 2 && kcal.trim() !== "" && Number.isFinite(num(kcal));
+  // Blank is "not given" (0 for a macro, null for a label nutrient); anything
+  // else must parse — "60,5" is how a Romanian keyboard types 60.5.
+  const given = (v: string) => v.trim() !== "";
+  const parses = (v: string) => !given(v) || parseDecimal(v) !== null;
+  const macro = (v: string) => (given(v) ? parseDecimal(v) ?? NaN : 0);
+  const nutrient = (v: string) => (given(v) ? parseDecimal(v) ?? NaN : null);
+  const valid =
+    name.trim().length >= 2 &&
+    given(kcal) &&
+    [kcal, protein, carbs, fat, saturated, sugar, salt].every(parses);
 
   function submit() {
     if (!valid) return;
@@ -47,12 +70,19 @@ export function NewFoodForm({
       const result = await settle(() => createCustomFood({
         name,
         brand,
-        kcal: num(kcal),
-        protein: protein.trim() === "" ? 0 : num(protein),
-        carbs: carbs.trim() === "" ? 0 : num(carbs),
-        fat: fat.trim() === "" ? 0 : num(fat),
+        kcal: macro(kcal),
+        protein: macro(protein),
+        carbs: macro(carbs),
+        fat: macro(fat),
+        saturatedFat: nutrient(saturated),
+        sugar: nutrient(sugar),
+        salt: nutrient(salt),
+        barcode: barcode.trim() || null,
+        portions: portions
+          .filter((p) => given(p.label) || given(p.grams))
+          .map((p) => ({ label: p.label, grams: parseDecimal(p.grams) ?? NaN })),
       }), t.common.actions.unreachable);
-      if (!result.ok) {
+      if (!result.ok || !("food" in result)) {
         setError(result.message || m.couldNotCreate);
         return;
       }
@@ -60,12 +90,14 @@ export function NewFoodForm({
     });
   }
 
-  const field = (label: string, value: string, set: (v: string) => void, placeholder = "0") => (
+  const field = (text: string, value: string, set: (v: string) => void, placeholder = "0") => (
     <label className="flex flex-col gap-1">
-      <span className={labelClass}>{label}</span>
+      <span className={labelClass}>{text}</span>
       <input value={value} onChange={(e) => set(e.target.value)} inputMode="decimal" placeholder={placeholder} className={inputClass} />
     </label>
   );
+  const setPortion = (index: number, patch: Partial<PortionDraft>) =>
+    setPortions((list) => list.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 
   return (
     <div className="space-y-3 rounded-2xl bg-bg p-3.5">
@@ -89,6 +121,77 @@ export function NewFoodForm({
         {field(m.carbs, carbs, setCarbs)}
         {field(m.fat, fat, setFat)}
       </div>
+
+      {/* Open by itself when a scan brought the person here: the barcode is
+          the point of the form then, and it should be seen being saved. */}
+      <details open={initialBarcode !== "" ? true : undefined} className="rounded-xl border border-line/70 px-3 py-2">
+        <summary className="cursor-pointer select-none text-xs font-semibold text-ink-soft hover:text-ink">{m.more}</summary>
+        <div className="mt-3 space-y-3 pb-1">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {field(m.saturatedFat, saturated, setSaturated, "")}
+            {field(m.sugar, sugar, setSugar, "")}
+            {field(m.salt, salt, setSalt, "")}
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="flex flex-col gap-1">
+              <span className={labelClass}>{m.barcode}</span>
+              <input value={barcode} onChange={(e) => setBarcode(e.target.value)} inputMode="numeric" className={inputClass} />
+            </label>
+            <p className="text-[11px] text-ink-faint">{m.barcodeHint}</p>
+          </div>
+          <div>
+            <p className={labelClass}>{m.portions}</p>
+            <p className="mt-0.5 text-[11px] text-ink-faint">{m.portionsHint}</p>
+            {portions.length > 0 ? (
+              <ul className="mt-2 space-y-2">
+                {portions.map((portion, index) => (
+                  <li key={index} className="flex items-center gap-2">
+                    <label className="min-w-0 flex-1">
+                      <span className="sr-only">{m.portionLabel}</span>
+                      <input
+                        value={portion.label}
+                        maxLength={16}
+                        onChange={(e) => setPortion(index, { label: e.target.value })}
+                        placeholder={m.portionLabelPlaceholder}
+                        className={inputClass}
+                      />
+                    </label>
+                    <label className="w-24 shrink-0">
+                      <span className="sr-only">{m.portionGrams}</span>
+                      <input
+                        value={portion.grams}
+                        inputMode="decimal"
+                        onChange={(e) => setPortion(index, { grams: e.target.value })}
+                        placeholder="g"
+                        className={inputClass}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setPortions((list) => list.filter((_, i) => i !== index))}
+                      aria-label={m.removePortion}
+                      title={m.removePortion}
+                      className="flex h-11 w-9 shrink-0 items-center justify-center rounded-lg text-lg leading-none text-ink-faint hover:text-risk"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {portions.length < MAX_PORTIONS ? (
+              <button
+                type="button"
+                onClick={() => setPortions((list) => [...list, { label: "", grams: "" }])}
+                className="mt-2 text-xs font-semibold text-accent-ink hover:underline"
+              >
+                + {m.addPortion}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </details>
+
       {error ? <p className="text-sm font-semibold text-risk">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
         <button

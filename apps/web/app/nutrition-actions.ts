@@ -41,6 +41,11 @@ const NewFoodShape = z.object({
   carbs: num,
   fat: num,
   brand: text().nullish(),
+  saturatedFat: num.nullish(),
+  sugar: num.nullish(),
+  salt: num.nullish(),
+  barcode: text(32).nullish(),
+  portions: z.array(z.object({ label: text(), grams: num })).max(20).nullish(),
 });
 
 /** How many foods one search returns — what the picker's scroll list holds. */
@@ -297,28 +302,71 @@ export type NewFoodInput = {
   carbs: number;
   fat: number;
   brand?: string | null;
+  /** Label nutrients per 100 g; null or absent = not on the label, never 0. */
+  saturatedFat?: number | null;
+  sugar?: number | null;
+  salt?: number | null;
+  /** The code that was scanned and missed, so the next scan finds this row. */
+  barcode?: string | null;
+  /** The person's own servings ("1 jar" = 400 g), shown as chips under the gram box. */
+  portions?: { label: string; grams: number }[] | null;
 };
 
-export type CreateFoodResult = { ok: true; food: FoodItem } | { ok: false; message: string };
+export type CreateFoodResult = (ActionResult & { ok: true; food: FoodItem }) | (ActionResult & { ok: false });
+
+/** foods.portions holds at most 8 entries (is_valid_food_portions). */
+const MAX_FOOD_PORTIONS = 8;
+/** The constraint's own ceiling for one serving. */
+const MAX_FOOD_PORTION_GRAMS = 2000;
 
 /**
- * Create a food the search does not have — a home dish, a local product. The
- * row lands in `foods` with source 'custom' and owner_id set (policy
- * foods_custom_insert requires exactly that). A coach in the plan builder and
- * a client in the food logger both call this; the created row comes back so
- * the caller can log or add it in the same motion.
+ * Create a food the search does not have — a home dish, a local product, a
+ * barcode Open Food Facts does not know. The row lands in `foods` with source
+ * 'custom' and owner_id set (policy foods_custom_insert requires exactly that,
+ * and foods_custom_write_scope keeps it so), which makes it searchable and
+ * scannable for its owner only: search_foods() and food_by_barcode() hide other
+ * people's customs. A coach in the plan builder and a client in the food logger
+ * both call this; the created row comes back so the caller can log or add it
+ * in the same motion.
  */
 export async function createCustomFood(input: NewFoodInput): Promise<CreateFoodResult> {
   const parsed = await parseInput(NewFoodShape, input);
-  if (!parsed.ok) return { ok: false, message: parsed.result.message ?? "" };
+  if (!parsed.ok) return parsed.result as CreateFoodResult;
+  const { t } = await getI18n();
+  const m = t.clientWidgets.newFoodForm;
+  const invalid = (message: string): CreateFoodResult => ({ ok: false, errorCode: "INVALID_INPUT", message });
+
   const name = input.name.trim();
-  if (name.length < 2) return { ok: false, message: "Give the food a name" };
-  const num = (v: number) => (Number.isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : NaN);
-  const per_100g = { kcal: num(input.kcal), protein: num(input.protein), carbs: num(input.carbs), fat: num(input.fat) };
-  if (Object.values(per_100g).some((v) => Number.isNaN(v))) return { ok: false, message: "Macros must be zero or more" };
-  if (per_100g.kcal > 900 || per_100g.protein > 100 || per_100g.carbs > 100 || per_100g.fat > 100) {
-    return { ok: false, message: "Those values are more than 100 g can hold" };
+  if (name.length < 2) return invalid(m.nameRequired);
+  const round = (v: number) => (Number.isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : NaN);
+  const per_100g = { kcal: round(input.kcal), protein: round(input.protein), carbs: round(input.carbs), fat: round(input.fat) };
+  if (Object.values(per_100g).some((v) => Number.isNaN(v))) return invalid(m.macrosNegative);
+  // 900 kcal is pure fat; three macros past 100 g (a little slack for label rounding) cannot fit in 100 g.
+  if (per_100g.kcal > 900 || per_100g.protein + per_100g.carbs + per_100g.fat > 101) return invalid(m.tooMuch);
+
+  // Optional label nutrients: blank stays null ("not measured"), a value is a part of its macro.
+  const optional = (v: number | null | undefined) => (v === null || v === undefined || Number.isNaN(v) ? null : round(v));
+  const saturated = optional(input.saturatedFat);
+  const sugar = optional(input.sugar);
+  const salt = optional(input.salt);
+  if ([saturated, sugar, salt].some((v) => Number.isNaN(v))) return invalid(m.macrosNegative);
+  if ((saturated ?? 0) > per_100g.fat || (sugar ?? 0) > per_100g.carbs || (salt ?? 0) > 100) return invalid(m.labelTooMuch);
+
+  const barcode = input.barcode?.trim() || null;
+  if (barcode && !/^\d{6,14}$/.test(barcode)) return invalid(m.barcodeInvalid);
+
+  // Same shape the foods_portions_shape constraint enforces, checked here so
+  // the person gets a sentence instead of a constraint name.
+  const portions = (input.portions ?? [])
+    .map((p) => ({ label: p.label.trim(), grams: Math.round(p.grams * 10) / 10 }))
+    .filter((p) => p.label !== "" || Number.isFinite(p.grams));
+  if (
+    portions.length > MAX_FOOD_PORTIONS ||
+    portions.some((p) => p.label.length < 1 || p.label.length > 16 || !Number.isFinite(p.grams) || p.grams <= 0 || p.grams > MAX_FOOD_PORTION_GRAMS)
+  ) {
+    return invalid(m.portionInvalid);
   }
+  const storedPortions = portions.map((p) => ({ label: p.label, grams: p.grams, note: "", origin: "curated" as const }));
   const brand = input.brand?.trim() || null;
 
   const live = await liveUser();
@@ -329,18 +377,39 @@ export async function createCustomFood(input: NewFoodInput): Promise<CreateFoodR
     .insert({
       source: "custom",
       owner_id: userId,
+      // One name in both columns: a custom food is never part of the folded
+      // English tail, whatever language it was typed in.
       name_en: name,
       name_ro: name,
       brand,
+      barcode,
       kcal_100g: per_100g.kcal,
       protein_100g: per_100g.protein,
       carbs_100g: per_100g.carbs,
       fat_100g: per_100g.fat,
+      saturated_fat_100g: saturated,
+      sugar_100g: sugar,
+      salt_100g: salt,
+      portions: storedPortions,
     })
     .select("id")
     .single();
-  if (error) return { ok: false, message: error.message };
-  return { ok: true, food: { id: data.id, name_en: name, name_ro: name, group: "", brand, per_100g, portions: [] } };
+  if (error) {
+    console.error("createCustomFood failed:", error.message);
+    return { ok: false, message: m.couldNotCreate };
+  }
+  return {
+    ok: true,
+    food: {
+      id: data.id,
+      name_en: name,
+      name_ro: name,
+      group: "",
+      brand,
+      per_100g,
+      portions: storedPortions.map(({ label, grams, note }) => ({ label, grams, note })),
+    },
+  };
 }
 
 /**

@@ -12,6 +12,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { liveUser, type LiveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
+import { setsOfExercise } from "@/lib/pr-history";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -213,37 +214,6 @@ async function openSession(
     .eq("client_generated_id", sessionKey)
     .maybeSingle();
   return raced ? { id: raced.id as string, created: false } : { ok: false, message: error.message };
-}
-
-
-
-type HistorySet = { id: string; weight_kg: number | null; reps: number | null; is_pr: boolean; received_at: string };
-
-
-
-/**
- * Every set of one lift, oldest first, paged past PostgREST's 1000-row cap so
- * the PR judge never decides on a truncated history.
- */
-async function setsOfExercise(
-  supabase: LiveUser["supabase"],
-  userId: string,
-  exerciseId: string,
-): Promise<HistorySet[]> {
-  const PAGE = 1000;
-  const rows: HistorySet[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data } = await supabase
-      .from("logged_sets")
-      .select("id, weight_kg, reps, is_pr, received_at")
-      .eq("user_id", userId)
-      .eq("exercise_id", exerciseId)
-      .order("received_at", { ascending: true })
-      .order("id", { ascending: true })
-      .range(from, from + PAGE - 1);
-    rows.push(...((data ?? []) as HistorySet[]));
-    if (!data || data.length < PAGE) return rows;
-  }
 }
 
 

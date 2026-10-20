@@ -72,7 +72,8 @@ export function FoodLogger({
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanned, setScanned] = useState<{ food: FoodItem; barcode: string } | null>(null);
-  const [creating, setCreating] = useState(false);
+  // Open with the code a scan missed, so the food saved is the one the next scan finds.
+  const [creating, setCreating] = useState<{ barcode: string } | null>(null);
   // Set when the database refused a star or a scan for the plan's limit.
   const [limit, setLimit] = useState<PlanFeature | null>(null);
   const { e: plan, upgrade } = usePlan();
@@ -315,12 +316,15 @@ export function FoodLogger({
                 setLimit("barcode");
                 return;
               }
+              // Nothing anywhere for this code: the form opens on it, and the
+              // food saved there is what this code finds from now on.
+              if (result.reason === "not_found") {
+                setCreating({ barcode: code });
+                setScanError(fill(fl.scanNotFound, { code }));
+                return;
+              }
               setScanError(
-                result.reason === "not_found"
-                  ? fill(fl.scanNotFound, { code })
-                  : result.reason === "invalid"
-                    ? fl.scanInvalid
-                    : fl.scanUnreachable,
+                result.reason === "invalid" ? fl.scanInvalid : fl.scanUnreachable,
               );
             })
           }
@@ -345,6 +349,7 @@ export function FoodLogger({
               type="button"
               onClick={() => {
                 setScanError(null);
+                setCreating(null);
                 setScanning(true);
               }}
               className="inline-flex h-[42px] shrink-0 items-center gap-2 rounded-2xl bg-bg px-3.5 text-[13px] font-semibold text-ink-soft hover:text-ink"
@@ -377,13 +382,18 @@ export function FoodLogger({
             <div className="mt-2">
               <NewFoodForm
                 initialName={q}
+                initialBarcode={creating.barcode}
                 primaryLabel={t.clientWidgets.newFoodForm.saveAndLog}
                 onCreated={(food) => {
                   // Straight to the grams step: creating a food is one motion, not two.
-                  setCreating(false);
+                  setCreating(null);
+                  setScanError(null);
                   pick(food);
                 }}
-                onCancel={() => setCreating(false)}
+                onCancel={() => {
+                  setCreating(null);
+                  setScanError(null);
+                }}
               />
             </div>
           ) : showQuick ? (
@@ -431,7 +441,7 @@ export function FoodLogger({
               ) : null}
             </ul>
           )}
-          {!creating ? <NotFoundNote question={fl.notFound} action={fl.createFood} onClick={() => setCreating(true)} /> : null}
+          {!creating ? <NotFoundNote question={fl.notFound} action={fl.createFood} onClick={() => setCreating({ barcode: "" })} /> : null}
         </>
       )}
 

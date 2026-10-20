@@ -69,9 +69,18 @@ copy-yesterday.
 `published` plan. No date ranges, no history, no training-day vs rest-day
 switching.
 
-**5. No custom food form.** Spec C12. `foods` supports owner-scoped custom rows
-and the schema is ready; there is no UI to create one, so a barcode miss
-funnels to search and stops there.
+**5. Custom foods: built (2026-10-20).** Spec C12. "Create a food" under the
+food logger's and the plan builder's search (`components/new-food-form.tsx` →
+`createCustomFood` in `app/nutrition-actions.ts`): name, brand, the four macros
+per 100 g, and folded under "More from the label" saturates / sugars / salt,
+the barcode and up to 8 of the person's own servings. A barcode miss in the
+logger opens the form on the scanned code, so the next scan of it finds the
+row. Owner-only: `search_foods()` / `food_by_barcode()` / `food_by_id()` hide
+other people's customs, and migration `20261206100000` (pgTAP
+`custom_foods.test.sql`) keeps an owner's row custom and unverified, so it
+cannot be turned into a shared-library row. Still missing: editing or deleting
+a custom food after it is saved (the policies allow it, no screen does it), and
+a per-account cap on how many can be created.
 
 ## Engagement
 
@@ -83,6 +92,43 @@ sessions (`lib/streak-data.ts`, `packages/shared/src/streaks.ts`), not from the
 `streaks` table. `adherence_snapshots`: the formula exists in
 `packages/shared`, the scheduled job that materialises weekly snapshots does
 not.
+
+## Workout import (Hevy / Strong) — built 2026-10-20
+
+`/workout/import` (link "Import history" on Training) takes a Hevy `workouts.csv`
+or a Strong export. The browser parses it (`lib/import/workout-csv.ts`, format
+from the headers, kg / lb — a Strong file without a unit column asks — timed
+sets as reps 0 + `duration_seconds`, every row held to `validateSetEdit`),
+names are matched to the library (`lib/import/exercise-match.ts`: own exercises
+first, an alias list for the common Hevy/Strong names, then a strict word match;
+the rest go to a review step — pick or skip), and `app/import-actions.ts` writes
+owner-scoped sessions and sets a few days per call, with derived
+`client_generated_id`s so a re-import adds nothing. PR flags are then re-derived
+per lift with `recomputePrFlags` / `estimated1RM` (`lib/pr-history.ts`).
+Verified on the live project 2026-10-20 with `client@healthapp.test`: a Hevy and
+a Strong sample (2024-03-26/28, 2023-01-15/17), a re-import (0 new), a day
+already logged and a future date (both skipped).
+
+Decided, and what it means:
+- **Imported sessions are history**: completed, dated when they happened,
+  `program_day_id` null, `received_at` = when the set was done (so every reader
+  ordered by it — PRs, exercise analytics — places them in the past). They count
+  in PRs / e1RM, charts, the workout calendar, the **streak** and badges, like a
+  session logged that day.
+- **Never in program adherence** — adherence measures following a program day.
+- **No double counting**: a day that already has a session in Voinic (logged
+  here, or imported from another file) is skipped whole; future dates too. This
+  is what keeps a running challenge or leaderboard from counting the same
+  workout twice during a switch.
+- **Warm-ups are left out**: the app marks a warm-up only through the
+  program's `set_type`; an imported set has no prescription, so it would count
+  as working volume. Distance-only cardio rows are left out too (a set holds
+  reps or time).
+
+Still missing: no `source` column — an imported session is told apart only by
+its title in `logged_sessions.notes`, and the history list shows it as an
+ad-hoc "Session"; no way to undo one import as a unit; badge notifications and
+`SET_LOGGED` audit rows fire per imported row; no other apps (Fitbod, JEFIT).
 
 ## Coaching
 
