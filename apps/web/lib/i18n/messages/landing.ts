@@ -226,7 +226,7 @@ const en = {
     errGeneric: "Something went wrong. Please try again.",
     // post-action states
     checkInboxTitle: "Check your inbox",
-    checkInboxBody: "We sent a confirmation link to {email}. Open it to activate your account.",
+    checkInboxBody: "We sent a confirmation link to {email}. Open it to activate your account. Not there in a few minutes? Check your spam folder too.",
     resendConfirmation: "Resend confirmation email",
     resendConfirmationSent:
       "If {email} has an account waiting for confirmation, a new link is on its way. Check your spam folder too.",
@@ -455,7 +455,7 @@ const ro: typeof en = {
     errWeakPassword: "Parola e prea slabă. Încearcă una mai lungă.",
     errGeneric: "Ceva n-a mers. Te rugăm să încerci din nou.",
     checkInboxTitle: "Verifică-ți inbox-ul",
-    checkInboxBody: "Am trimis un link de confirmare la {email}. Deschide-l ca să-ți activezi contul.",
+    checkInboxBody: "Am trimis un link de confirmare la {email}. Deschide-l ca să-ți activezi contul. Nu apare în câteva minute? Verifică și folderul Spam.",
     resendConfirmation: "Retrimite emailul de confirmare",
     resendConfirmationSent:
       "Dacă {email} are un cont care așteaptă confirmarea, un link nou este pe drum. Verifică și folderul Spam.",
