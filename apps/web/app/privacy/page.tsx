@@ -21,20 +21,21 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // NOTE: this is a working draft written from what the app actually does.
-// Have it reviewed by a lawyer before public launch, and fill in the
-// operator identity below.
+// Have it reviewed by a lawyer before public launch. There is no company yet:
+// name it under "Who we are" (and in /terms) once one runs the service.
 
 function EnglishContent() {
   return (
     <>
       <h1 className="text-3xl font-extrabold tracking-tight">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-ink-faint">Last updated: 16 October 2026</p>
+      <p className="mt-2 text-sm text-ink-faint">Last updated: 22 October 2026</p>
 
       <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-ink-soft">
         <section>
           <h2 className="mb-2 text-lg font-bold text-ink">Who we are</h2>
           <p>
-            {APP_NAME} is operated by <b className="text-ink">[operator name and address — fill in before launch]</b>.
+            {APP_NAME} is an independent project run by its developers, not yet by a
+            registered company; when a company takes over running it, it will be named here.
             For any privacy question or request, contact{" "}
             <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-accent-ink hover:underline">{CONTACT_EMAIL}</a>.
           </p>
@@ -195,13 +196,14 @@ function RomanianContent() {
   return (
     <>
       <h1 className="text-3xl font-extrabold tracking-tight">Politica de confidențialitate</h1>
-      <p className="mt-2 text-sm text-ink-faint">Ultima actualizare: 16 octombrie 2026</p>
+      <p className="mt-2 text-sm text-ink-faint">Ultima actualizare: 22 octombrie 2026</p>
 
       <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-ink-soft">
         <section>
           <h2 className="mb-2 text-lg font-bold text-ink">Cine suntem</h2>
           <p>
-            {APP_NAME} este operat de <b className="text-ink">[numele și adresa operatorului — de completat înainte de lansare]</b>.
+            {APP_NAME} este un proiect independent, administrat de dezvoltatorii săi, nu încă de
+            o firmă înregistrată; când o firmă va prelua administrarea, va fi menționată aici.
             Pentru orice întrebare sau solicitare privind confidențialitatea, contactați{" "}
             <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-accent-ink hover:underline">{CONTACT_EMAIL}</a>.
           </p>

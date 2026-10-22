@@ -19,21 +19,22 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// NOTE: working draft — have it reviewed by a lawyer before public launch, and
-// fill in the operator identity and governing law below.
+// NOTE: working draft — have it reviewed by a lawyer before public launch. There
+// is no company yet: name it in §1 (and in /privacy) once one runs the service.
 
 function EnglishContent() {
   return (
     <>
       <h1 className="text-3xl font-extrabold tracking-tight">Terms of Service</h1>
-      <p className="mt-2 text-sm text-ink-faint">Last updated: 26 August 2026</p>
+      <p className="mt-2 text-sm text-ink-faint">Last updated: 22 October 2026</p>
 
       <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-ink-soft">
         <section>
           <h2 className="mb-2 text-lg font-bold text-ink">1. The service</h2>
           <p>
-            {APP_NAME} is a training, nutrition and coaching platform operated by{" "}
-            <b className="text-ink">[operator name and address — fill in before launch]</b>.
+            {APP_NAME} is a training, nutrition and coaching platform. It is an independent
+            project run by its developers, not yet by a registered company; when a company
+            takes over running it, it will be named here and announced in the app.
             By creating an account you agree to these terms.
           </p>
         </section>
@@ -121,9 +122,8 @@ function EnglishContent() {
         <section>
           <h2 className="mb-2 text-lg font-bold text-ink">10. Governing law</h2>
           <p>
-            These terms are governed by the laws of <b className="text-ink">[jurisdiction —
-            fill in before launch]</b>, without affecting mandatory consumer protections of
-            your country of residence.
+            These terms are governed by Romanian law, without affecting mandatory consumer
+            protections of your country of residence.
           </p>
         </section>
 
@@ -143,14 +143,15 @@ function RomanianContent() {
   return (
     <>
       <h1 className="text-3xl font-extrabold tracking-tight">Termeni și condiții</h1>
-      <p className="mt-2 text-sm text-ink-faint">Ultima actualizare: 26 august 2026</p>
+      <p className="mt-2 text-sm text-ink-faint">Ultima actualizare: 22 octombrie 2026</p>
 
       <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-ink-soft">
         <section>
           <h2 className="mb-2 text-lg font-bold text-ink">1. Serviciul</h2>
           <p>
-            {APP_NAME} este o platformă de antrenament, nutriție și coaching operată de{" "}
-            <b className="text-ink">[numele și adresa operatorului — de completat înainte de lansare]</b>.
+            {APP_NAME} este o platformă de antrenament, nutriție și coaching. Este un proiect
+            independent, administrat de dezvoltatorii săi, nu încă de o firmă înregistrată; când
+            o firmă va prelua administrarea, va fi menționată aici și anunțată în aplicație.
             Prin crearea unui cont, sunteți de acord cu acești termeni.
           </p>
         </section>
@@ -244,9 +245,8 @@ function RomanianContent() {
         <section>
           <h2 className="mb-2 text-lg font-bold text-ink">10. Legea aplicabilă</h2>
           <p>
-            Acești termeni sunt guvernați de legile din <b className="text-ink">[jurisdicția —
-            de completat înainte de lansare]</b>, fără a afecta protecțiile obligatorii ale
-            consumatorilor din țara dumneavoastră de reședință.
+            Acești termeni sunt guvernați de legea română, fără a afecta protecțiile obligatorii
+            ale consumatorilor din țara dumneavoastră de reședință.
           </p>
         </section>
 
