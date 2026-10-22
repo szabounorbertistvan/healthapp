@@ -1,6 +1,6 @@
 "use client";
 import { settle } from "@/lib/settle-action";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ConversationContext, MessageRow } from "@/lib/types";
@@ -39,7 +39,13 @@ export function MessageThread({
   // The server's list wins whenever it changes (a refresh after a send, or a
   // message from the other side arriving through realtime below).
   useEffect(() => setMessages(initialMessages), [initialMessages]);
-  useEffect(() => endRef.current?.scrollIntoView({ block: "end" }), [messages.length]);
+  // Braces, not an expression body: recent Chrome returns a Promise from
+  // scrollIntoView, and an effect that returns one has React call it as the
+  // clean-up — "u is not a function", the thread replaced by the error screen
+  // the moment a message arrived (found by the soak suite).
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [messages.length]);
 
   // Live: a new row in this conversation (Supabase Realtime, which applies
   // msg_select to every change it delivers — 20261207130000) refreshes the
@@ -274,6 +280,9 @@ function Attachment({ messageId, attachment }: { messageId: string; attachment: 
   );
 }
 
+/** Whether the browser can record is fixed for the page's life: nothing to subscribe to. */
+const noSubscription = () => () => {};
+
 /**
  * Tap to record a voice note (MediaRecorder; webm on Chrome/Android, mp4 on
  * Safari), tap again to stop and send. Up to 5 minutes. The microphone is
@@ -286,7 +295,14 @@ function VoiceRecorder({ disabled, onRecorded }: { disabled: boolean; onRecorded
   const [elapsed, setElapsed] = useState(0);
   const recorder = useRef<MediaRecorder | null>(null);
   const timer = useRef<number | null>(null);
-  const supported = typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
+  // Read on the client only: the server cannot know, and answering "no" there
+  // while the browser answers "yes" rendered two different threads (React #418
+  // on every message page, found by the soak suite).
+  const supported = useSyncExternalStore(
+    noSubscription,
+    () => typeof window.MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia,
+    () => false,
+  );
 
   async function start() {
     let stream: MediaStream;
