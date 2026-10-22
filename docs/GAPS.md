@@ -12,7 +12,8 @@ Verified 2026-08-26; landing-page claims re-audited and several entries closed 2
 app" screen is a web route in `apps/web/app/(client)/`. Three things are built
 for it and unused: `supabase/functions/sync-ingest` (offline outbox),
 `supabase/functions/push-dispatch` (`users.push_token` is never written by any
-client), and `packages/shared/src/sync.ts`.
+client), and `packages/shared/src/sync.ts`. The plan for it (2026-10-22) is
+[ANDROID_PLAN.md](ANDROID_PLAN.md).
 
 **The nutrition builder is partly proven — 2026-09-19.** Driven against the live
 project as coach Andrei: `addPlanFood`, `removePlanFood` and
