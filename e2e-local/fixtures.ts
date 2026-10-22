@@ -14,12 +14,15 @@ import { isLocalRequest } from "../scripts/lib/local-target.mjs";
  * a page, fetch/XHR, a websocket — fails the test that made it.
  */
 const QUIET = new Set(["image", "font", "media", "stylesheet"]);
+// The gyms map's style and tiles (components/gym-map): public pictures fetched
+// with fetch(), carrying no session — aborted like an image, not a failure.
+const QUIET_HOSTS = new Set(["tiles.openfreemap.org"]);
 
 export async function fence(context: BrowserContext): Promise<() => string[]> {
   const violations: string[] = [];
   await context.route((url) => !isLocalRequest(url.toString()), (route) => {
     const request = route.request();
-    if (!QUIET.has(request.resourceType())) violations.push(`${request.method()} ${request.url()} (${request.resourceType()})`);
+    if (!QUIET.has(request.resourceType()) && !QUIET_HOSTS.has(new URL(request.url()).hostname)) violations.push(`${request.method()} ${request.url()} (${request.resourceType()})`);
     return route.abort("blockedbyclient");
   });
   return () => violations;

@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import { withSerwist } from "@serwist/turbopack";
 
 const nextConfig: NextConfig = {
+  // npm run e2e:soak builds into .next-soak, so a dev server on this tree keeps its .next
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // @healthapp/shared ships TypeScript source, not a build step (plan §2).
   transpilePackages: ["@healthapp/shared"],
   // The report PDF embeds its fonts, read from disk by the route handler

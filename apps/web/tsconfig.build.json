@@ -5,5 +5,7 @@
   // `npm run typecheck` still checks everything through tsconfig.json.
   "extends": "./tsconfig.json",
   "compilerOptions": { "plugins": [{ "name": "next" }] },
-  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx", "test/**"]
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx", "test/**"],
+  // .next-soak: the soak suite builds there (npm run e2e:soak); listed so next build leaves this file alone
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next-soak/types/**/*.ts"]
 }

@@ -38,6 +38,8 @@ const port = new URL(t.appUrl).port || "3210";
 
 export default defineConfig({
   testDir: "./e2e-local",
+  // e2e-local/soak/ is the round-after-round suite, run by `npm run e2e:soak` (playwright.soak.config.ts)
+  testIgnore: /[\\/]soak[\\/]/,
   outputDir: "./e2e-local/.results",
   timeout: 60_000,
   expect: { timeout: 15_000 },

@@ -83,12 +83,18 @@ npm run e2e:local
 This path has not been run yet: the machine this was written on has no Docker.
 `config.toml`'s `[auth]` must then allow `http://localhost:3210/**` as a redirect URL.
 
+## The soak suite
+
+`e2e-local/soak/` runs on the same stack and guard but is not part of `npm run e2e:local`:
+`npm run e2e:soak` plays a coach, their client and a solo trainee against each other in a loop.
+See [soak/README.md](soak/README.md).
+
 ## Machine notes
 
 - A sandbox whose preinstalled Chromium is not the build this Playwright pins can set `E2E_CHROMIUM_PATH`.
 - Next redirects to `localhost` even when called on `127.0.0.1`, and cookies are per host. Keep the app URL on `localhost`.
 - **Windows (run here 2026-10-16).** `bins.mjs` downloads Linux binaries only, so point it at
-  Windows ones: `PGRST_BIN` = PostgREST v16.1 `postgrest-v16.1-windows-x86-64.zip` (official
+  Windows ones (kept in the gitignored `.tools/gotrue/auth.exe` + `migrations/` and `.tools/postgrest/postgrest.exe`, where `npm run e2e:soak` finds them): `PGRST_BIN` = PostgREST v16.1 `postgrest-v16.1-windows-x86-64.zip` (official
   release, SHA-256 `ae4b3dca…2e87`), and put
   `scripts/pgtest/node_modules/@embedded-postgres/windows-x64/native/bin` on `PATH` — it carries
   the `libpq.dll` PostgREST needs (without it the exe dies with 0xC0000135). `GOTRUE_BIN` = GoTrue

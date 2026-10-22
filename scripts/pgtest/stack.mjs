@@ -159,11 +159,14 @@ export async function startStack({ log = console.log } = {}) {
     await db.query("insert into supabase_migrations.schema_migrations (version) values ($1) on conflict do nothing", [f.split("_")[0]]);
   }
   log(`[stack] applied ${migrations.length} migrations`);
-  for (const seed of ["exercises.sql", "e2e.sql"]) {
+  // STACK_EXTRA_SEEDS (comma-separated files of supabase/seed/) go in before e2e.sql:
+  // the soak suite (scripts/soak.mjs) adds usda-foods.sql so its trio can search and log food
+  const extra = (process.env.STACK_EXTRA_SEEDS ?? "").split(",").map((f) => f.trim()).filter(Boolean);
+  for (const seed of ["exercises.sql", ...extra, "e2e.sql"]) {
     await db.query("select set_config('voinic.e2e', 'on', false)");
     await db.query(readFileSync(path.join(REPO, "supabase/seed", seed), "utf8"));
   }
-  log("[stack] seeded exercises + e2e accounts");
+  log(`[stack] seeded exercises${extra.map((f) => ` + ${f}`).join("")} + e2e accounts`);
   await db.end();
 
   children.push(run(gotrueBin, ["serve"], gotrueEnv, "gotrue"));

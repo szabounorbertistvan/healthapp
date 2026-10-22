@@ -708,6 +708,13 @@ orphaned pages `$RC` ran with both targets present and `$RV` never ran, although
 being produced and the page was visible and focused. The client then rendered the unrevealed
 boundary itself.
 
+**Not a concurrency effect (2026-10-22).** The soak suite (`npm run e2e:soak`, one worker, one page at a
+time) meets it on most write journeys: two plan-name fields on `/nutrition/new`, two program-name fields on
+`/programs/new`, two message boxes on `/messages/[id]`, two request cards on `/requests`, a coach's workout
+comment twice on `/workout/session/[id]`, a check-in note twice on `/check-ins`. Its specs therefore act on
+visible elements only and record each orphan as a *finding* in `e2e-local/.soak/summary.md` — a count per
+page over many rounds, which is the data the next experiment needs.
+
 Not known: why the scheduled `$RV` never fires there. Ruled out by experiment: the onboarding
 provider's mount-time updates (made transitions — no change) and the service worker (suite run
 with workers blocked — same failures). Wrapping `requestAnimationFrame` / `setTimeout` to watch

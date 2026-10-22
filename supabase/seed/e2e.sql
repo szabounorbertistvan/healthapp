@@ -20,6 +20,12 @@
 --   new client e2e-new-client  signed up after onboarding existed: no onboarding row (onboarding.spec)
 --   new coach  e2e-new-coach   the same, as a coach
 --
+-- The soak trio (e2e-local/soak/, `npm run e2e:soak`), which plays the app
+-- against itself round after round and owns nothing the specs above touch:
+--   soak coach  e2e-soak-coach   published profile /coaches/e2e-soak-coach, accepting clients
+--   soak client e2e-soak-client  coached by the soak coach (active), a conversation, nothing else
+--   soak solo   e2e-soak-solo    no coach; requests the soak coach and ends it again each round
+--
 -- Every other account is an "existing" one, as 20261123100000 makes the accounts
 -- it finds: past the welcome cards (onboarding_state welcome = done), so its
 -- specs land where they always did.
@@ -78,6 +84,9 @@ declare
   reset_u uuid := pg_temp.e2e_account('e2e-reset@voinic.test', 'Reset E2E', 'e2e_reset', 'client');
   new_client uuid := pg_temp.e2e_account('e2e-new-client@voinic.test', 'New Client E2E', 'e2e_new_client', 'client');
   new_coach uuid := pg_temp.e2e_account('e2e-new-coach@voinic.test', 'New Coach E2E', 'e2e_new_coach', 'coach');
+  soak_coach uuid := pg_temp.e2e_account('e2e-soak-coach@voinic.test', 'Soak Coach E2E', 'e2e_soak_coach', 'coach');
+  soak_client uuid := pg_temp.e2e_account('e2e-soak-client@voinic.test', 'Soak Client E2E', 'e2e_soak_client', 'client');
+  soak_solo uuid := pg_temp.e2e_account('e2e-soak-solo@voinic.test', 'Soak Solo E2E', 'e2e_soak_solo', 'client');
   v_profile uuid;
   v_program uuid;
   v_day uuid;
@@ -151,6 +160,26 @@ begin
   insert into public.programs (coach_id, client_id, name, status) values (coach_b, client_f, 'E2E Stale Program', 'published')
     returning id into v_program;
   insert into public.program_days (program_id, week_index, day_index, name) values (v_program, 1, 1, 'Stale Day 1');
+
+  -- the soak trio: a published coach (made as coach A's is), one active client, one solo
+  insert into public.trainer_clients (coach_id, client_id, status, started_at) values (soak_coach, soak_client, 'active', now() - interval '14 days');
+  insert into public.conversations (coach_id, client_id) values (soak_coach, soak_client) on conflict do nothing;
+  perform set_config('request.jwt.claims', json_build_object('sub', soak_coach::text, 'role', 'authenticated')::text, true);
+  perform public.become_coach();
+  perform set_config('request.jwt.claims', '', true);
+  select id into v_profile from public.coach_profiles where user_id = soak_coach;
+  update public.coach_profiles set slug = 'e2e-soak-coach',
+    headline = 'Soak-test coach for the local round-after-round suite',
+    about = 'A seeded coach the soak suite plays against. Not a real person; this database is thrown away.',
+    coaching_since = 2018, online = true, in_person = false, accepting_clients = true
+  where id = v_profile;
+  insert into public.coach_specializations (coach_profile_id, specialization_id, is_primary)
+  select v_profile, s.id, true from public.specializations s where s.slug = 'strength';
+  insert into public.coach_languages (coach_profile_id, language_code) values (v_profile, 'ro'), (v_profile, 'en');
+  insert into public.coach_services (coach_profile_id, name, description, kind, delivery, price_cents, currency, price_unit, price_public, active, sort_order)
+  values (v_profile, 'Soak online coaching', 'Plan and weekly check-in.', 'online_coaching', 'online', 25000, 'RON', 'month', true, true, 0);
+  update public.coach_profiles set status = 'published', published_at = now(), submitted_at = now(), reviewed_at = now()
+  where id = v_profile;
 
   -- everyone but the two new accounts is past the welcome cards, like an account the migration found
   insert into public.onboarding_state (user_id, state)
