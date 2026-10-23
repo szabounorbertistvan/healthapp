@@ -1,4 +1,6 @@
 import { fill, type Locale } from "@healthapp/i18n";
+import { clientAppMessages } from "@healthapp/i18n/messages/client-app";
+import { clientWidgetsMessages } from "@healthapp/i18n/messages/client-widgets";
 import { commonMessages } from "@healthapp/i18n/messages/common";
 import { mobileMessages } from "@healthapp/i18n/messages/mobile";
 import { getLocales } from "expo-localization";
@@ -7,10 +9,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { setApiLocale } from "./api";
 
 // The same strings as the web (packages/i18n), per namespace so the bundle only
-// carries what the app shows: `common` (shared with every web screen) and
-// `mobile` (the phone's own). Later screens add their web namespace here.
+// carries what the app shows: `common`, the client screens' `clientApp` and
+// `clientWidgets` (the set logger's and the rest timer's words, exactly as on
+// the web), and `mobile` (the phone's own).
 function dictionary(locale: Locale) {
-  return { common: commonMessages[locale], mobile: mobileMessages[locale] };
+  return {
+    common: commonMessages[locale],
+    clientApp: clientAppMessages[locale],
+    clientWidgets: clientWidgetsMessages[locale],
+    mobile: mobileMessages[locale],
+  };
 }
 export type Dictionary = ReturnType<typeof dictionary>;
 

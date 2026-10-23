@@ -1,5 +1,6 @@
 import type { TodayV1 } from "@healthapp/api/v1";
 import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -79,6 +80,10 @@ export default function Today() {
             <>
               <T kind="heading">{next.day_name}</T>
               <T kind="soft">{`${next.program_name} · ${fill(t.mobile.today.exercises, { n: next.exercise_count })}`}</T>
+              <Button
+                label={t.clientApp.workoutDay.start}
+                onPress={() => router.push({ pathname: "/workout/[dayId]", params: { dayId: next.day_id } })}
+              />
             </>
           ) : today.sessions.planned > 0 ? (
             <T kind="soft">{t.mobile.today.allDone}</T>

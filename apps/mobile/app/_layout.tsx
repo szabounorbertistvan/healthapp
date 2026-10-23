@@ -7,6 +7,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ApiFailure } from "@/lib/api";
 import { I18nProvider } from "@/lib/i18n";
+import { OutboxProvider } from "@/lib/outbox";
+import { RestProvider } from "@/lib/rest";
+import { wipeUserData } from "@/lib/storage";
 import { useTheme } from "@/lib/theme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -29,7 +32,16 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
           <AuthProvider>
-            <Gate onSignOut={() => queryClient.clear()} />
+            <OutboxProvider>
+              <RestProvider>
+                <Gate
+                  onSignOut={() => {
+                    queryClient.clear();
+                    void wipeUserData();
+                  }}
+                />
+              </RestProvider>
+            </OutboxProvider>
           </AuthProvider>
         </I18nProvider>
       </QueryClientProvider>
@@ -57,6 +69,8 @@ function Gate({ onSignOut }: { onSignOut: () => void }) {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg } }}>
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="workout/[dayId]/index" />
+          <Stack.Screen name="workout/[dayId]/log" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" />

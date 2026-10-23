@@ -30,7 +30,14 @@
         }
       ],
       "expo-status-bar",
-      "expo-font"
+      "expo-font",
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "color": "#d4a938"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

@@ -303,6 +303,11 @@ See [apps/mobile/README.md](../apps/mobile/README.md).*
 - **Exit:** sign in on a real phone from the internal track, Today shows real data in RO and EN.
 
 ### Phase 2 — Client training MVP (offline) · 5–6 weeks
+*Started 2026-10-23 — done: workout list, day, set logger with the phone-first outbox (every set),
+offline day copies, Finish, rest timer with local notifications; `/api/v1/workouts`, `/workouts/[dayId]`,
+`/sets`, `/workouts/[dayId]/finish` over the web's own reads and actions. Open: edit/delete a set,
+supersets as rounds, the in-notification countdown, provisional offline PRs, build-your-own (solo),
+and the exit test on a real phone in airplane mode.*
 - Workout list (every published program), day overview with per-day history, the set logger
   (weight × reps / time, RPE slider or RIR as the program says, per-set notes, coach cue,
   supersets), previous workout, PR moments, finish workout.
