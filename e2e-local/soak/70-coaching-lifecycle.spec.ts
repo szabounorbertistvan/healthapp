@@ -9,9 +9,15 @@ import { expectHealthy, idOf, soakAs } from "./helpers";
 // one more past coach in their history. Both sides are checked at each step.
 test.setTimeout(300_000);
 
-/** A round that died half-way must not leave the next one with a coach or a pending request. */
+/**
+ * A round that died half-way must not leave the next one with a coach or a pending request.
+ * And the directory caps how many requests one person sends a day — a real rule the solo trainee
+ * meets after a dozen rounds — so earlier rounds' requests are moved back a day (history kept).
+ */
 async function soloAgain() {
   const solo = await idOf("solo");
+  const dayAgo = new Date(Date.now() - 25 * 3_600_000).toISOString();
+  await patch("coaching_requests", `client_id=eq.${solo}&created_at=gt.${dayAgo}`, { created_at: dayAgo }).catch(() => 0);
   await patch("coaching_requests", `client_id=eq.${solo}&status=eq.pending`, { status: "cancelled", resolved_at: new Date().toISOString() }).catch(() => 0);
   await patch("trainer_clients", `client_id=eq.${solo}&status=in.(active,paused,invited)`, { status: "ended", ended_at: new Date().toISOString(), ended_by: solo }).catch(() => 0);
 }

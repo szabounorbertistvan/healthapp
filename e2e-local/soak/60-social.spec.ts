@@ -43,8 +43,13 @@ test("client posts → coach follows, gives kudos, comments → client is notifi
     await expect(c.getByText(TEXT).filter({ visible: true })).toBeVisible();
     await c.getByRole("button", { name: /^Strong/ }).first().click();
     await expect.poll(async () => (await rows("social_reactions", `post_id=eq.${post!.id}&select=user_id`)).length).toBe(1);
-    await c.getByRole("textbox", { name: "Write a comment…" }).fill(comment);
-    await c.getByRole("textbox", { name: "Write a comment…" }).press("Enter");
+    // typed before the page has hydrated, a box can be wiped by React: type until it holds, then post
+    const box = c.getByRole("textbox", { name: "Write a comment…" });
+    await expect(async () => {
+      await box.fill(comment);
+      await expect(box).toHaveValue(comment, { timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
+    await box.locator("xpath=ancestor::form[1]").getByRole("button", { name: "Post", exact: true }).click();
     await expect(c.getByText(comment).filter({ visible: true })).toBeVisible();
     await expect.poll(async () => (await rows("social_comments", `post_id=eq.${post!.id}&select=id`)).length).toBe(1);
 

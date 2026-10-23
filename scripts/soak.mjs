@@ -123,6 +123,15 @@ const run = (cmd, argv, opts) => new Promise((resolve) => {
   child.on("exit", (code) => resolve(code ?? 1));
 });
 
+/** Working set of the app server (the process listening on APP_PORT, with its children), in MB; "" off Windows. */
+function appMemoryMb() {
+  if (!win) return "";
+  const ps = `$c = Get-NetTCPConnection -LocalPort ${APP_PORT} -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1; `
+    + "if ($c) { $ids = @($c.OwningProcess) + @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $c.OwningProcess } | ForEach-Object { $_.ProcessId }); "
+    + "[math]::Round((Get-Process -Id $ids -ErrorAction SilentlyContinue | Measure-Object WorkingSet64 -Sum).Sum / 1MB) }";
+  return (spawnSync("powershell", ["-NoProfile", "-Command", ps], { encoding: "utf8" }).stdout ?? "").trim();
+}
+
 // ---------- once: stack + app ----------
 
 mkdirSync(OUT, { recursive: true });
@@ -160,7 +169,7 @@ const testEnv = {
 };
 const logFile = path.join(OUT, "log.md");
 const summaryFile = path.join(OUT, "summary.md");
-if (!existsSync(logFile)) writeFileSync(logFile, "# Soak rounds\n\n| round | started | passed | failed | skipped | minutes | failures |\n|---|---|---|---|---|---|---|\n");
+if (!existsSync(logFile)) writeFileSync(logFile, "# Soak rounds\n\nserver MB = the app server's memory after the round (Windows): a number that only grows is a leak.\n\n| round | started | passed | failed | skipped | minutes | server MB | failures |\n|---|---|---|---|---|---|---|---|\n");
 const seen = existsSync(path.join(OUT, "failures.json")) ? JSON.parse(readFileSync(path.join(OUT, "failures.json"), "utf8")) : {};
 // things a round noticed without failing on (a test annotation of type "finding")
 const found = existsSync(path.join(OUT, "findings.json")) ? JSON.parse(readFileSync(path.join(OUT, "findings.json"), "utf8")) : {};
@@ -208,7 +217,7 @@ for (let i = 0; i < rounds && Date.now() < until; i++) {
   }
   const minutes = ((Date.now() - started.getTime()) / 60000).toFixed(1);
   const cell = failed.map((f) => f.title).join("<br>").replace(/\|/g, "\\|") || "—";
-  appendFileSync(logFile, `| ${round} | ${started.toISOString().slice(0, 16).replace("T", " ")} | ${st.expected ?? 0} | ${failed.length} | ${st.skipped ?? 0} | ${minutes} | ${cell} |\n`);
+  appendFileSync(logFile, `| ${round} | ${started.toISOString().slice(0, 16).replace("T", " ")} | ${st.expected ?? 0} | ${failed.length} | ${st.skipped ?? 0} | ${minutes} | ${appMemoryMb()} | ${cell} |\n`);
 
   for (const f of failed) {
     const s = (seen[f.title] ??= { count: 0, firstRound: round, lastRound: round, error: f.error });

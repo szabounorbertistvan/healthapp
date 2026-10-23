@@ -52,7 +52,7 @@ on this tree keeps working. It refuses to start if any of its ports is already t
 
 ## Reading the results
 
-- `e2e-local/.soak/log.md` — one line per round: passed, failed, skipped, minutes, what failed.
+- `e2e-local/.soak/log.md` — one line per round: passed, failed, skipped, minutes, the app server's memory, what failed.
 - `e2e-local/.soak/summary.md` — every failure seen so far, how many times, first and last round,
   first line of the error. Something that fails every round is a bug or a broken journey;
   something that fails once in thirty is a race worth a look.
