@@ -8,4 +8,5 @@
 //   supabase gen types typescript --project-id <ref> > src/database.types.ts
 // The shared client stays untyped. Reads adopt the generated types one at a time.
 export * from "./errors";
+export * from "./v1";
 export { createClient, type SupabaseClient } from "@supabase/supabase-js";

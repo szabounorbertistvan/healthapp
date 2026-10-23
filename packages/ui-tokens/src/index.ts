@@ -1,8 +1,13 @@
 // Design tokens, light + dark (plan §8 Phase 0).
 //
 // React Native has no CSS variables, so the values live in TypeScript and each
-// surface maps them: the web mirrors them into @theme in apps/web/app/globals.css,
-// the Expo app will feed them to its theme provider. One palette, two consumers.
+// surface maps them: the web declares them as --color-* in apps/web/app/globals.css,
+// the Expo app (apps/mobile) feeds them to its theme. One palette, two consumers —
+// index.test.ts fails the moment the two disagree.
+//
+// Voinic: near-black + gold. Dark is the brand look; light sits on a cool
+// graphite grey so the gold stays the only warm thing on screen. Text on gold is
+// always `accentFg`, never white; small accent text uses `accentInk`.
 
 export type ColorTokens = {
   bg: string;
@@ -12,44 +17,63 @@ export type ColorTokens = {
   inkFaint: string;
   line: string;
   accent: string;
+  accentFg: string;
   accentInk: string;
   accentSoft: string;
   warn: string;
   warnSoft: string;
   risk: string;
   riskSoft: string;
-};
-
-export const light: ColorTokens = {
-  bg: "#f4f6f5",
-  surface: "#ffffff",
-  ink: "#1d2422",
-  inkSoft: "#4c5652",
-  inkFaint: "#7a847f",
-  line: "#dde3df",
-  accent: "#0f9d6e",
-  accentInk: "#0b7a56",
-  accentSoft: "#e2f3ec",
-  warn: "#b97f10",
-  warnSoft: "#f7ecd8",
-  risk: "#c04545",
-  riskSoft: "#f7e2e2",
+  /** The inverse tile (a feed post's media): cream on dark, near-black on light. */
+  tile: string;
+  tileInk: string;
+  tileSoft: string;
+  tileAccent: string;
+  tileLine: string;
 };
 
 export const dark: ColorTokens = {
-  bg: "#141917",
-  surface: "#1c2320",
-  ink: "#e8ece9",
-  inkSoft: "#b4bdb7",
-  inkFaint: "#828c86",
-  line: "#2d3733",
-  accent: "#34c48f",
-  accentInk: "#4fd3a1",
-  accentSoft: "#1e332b",
-  warn: "#d9a441",
-  warnSoft: "#33290f",
-  risk: "#e07070",
-  riskSoft: "#3a1f1f",
+  bg: "#0b0b0d",
+  surface: "#16171a",
+  ink: "#f2efe8",
+  inkSoft: "#b9b5ab",
+  inkFaint: "#807c73",
+  line: "#2a2b30",
+  accent: "#d4a938",
+  accentFg: "#0b0b0d",
+  accentInk: "#e6c25a",
+  accentSoft: "#2a2312",
+  warn: "#e08a3c",
+  warnSoft: "#33200f",
+  risk: "#e06666",
+  riskSoft: "#3a1c1c",
+  tile: "#f2efe8",
+  tileInk: "#0b0b0d",
+  tileSoft: "#5b574f",
+  tileAccent: "#8a6510",
+  tileLine: "#dcd8cf",
+};
+
+export const light: ColorTokens = {
+  bg: "#e6e9ef",
+  surface: "#ffffff",
+  ink: "#121519",
+  inkSoft: "#464d56",
+  inkFaint: "#737b85",
+  line: "#dee3ea",
+  accent: "#c9a227",
+  accentFg: "#16161a",
+  accentInk: "#7f5c0b",
+  accentSoft: "#f4ebd6",
+  warn: "#b5601c",
+  warnSoft: "#fae7d8",
+  risk: "#bc4242",
+  riskSoft: "#f8e1e1",
+  tile: "#121519",
+  tileInk: "#f2efe8",
+  tileSoft: "#b9b5ab",
+  tileAccent: "#e6c25a",
+  tileLine: "#2f3339",
 };
 
 /** Adherence signals are the app's core vocabulary — one colour each, both themes. */

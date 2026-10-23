@@ -304,7 +304,9 @@ export function SetLogger({
               return;
             }
             // The workout is over: whatever rest was counting down is moot.
-            rest.clear();
+            // Awaited, so no server action is in flight when the push below
+            // is dispatched — one that is can abort the navigation.
+            await rest.clear();
             // The done screen offers to share the session; without an id it falls back to Today.
             router.push(result.sessionId ? `/workout/${day.day_id}/done?session=${result.sessionId}` : "/today");
           })

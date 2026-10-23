@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { categoryOf, filterTaxonomy, foldText, groupSpecializations, SPECIALIZATION_CATEGORIES, specializationName } from "./coach-taxonomy";
-import { coachProfileMessages } from "./i18n/messages/coach-profile";
+import { coachProfileMessages } from "@healthapp/i18n/messages/coach-profile";
 
 const e = (slug: string, category: string | null, parent: string | null = null, name_ro = slug) =>
   ({ slug, name_en: slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), name_ro, category, parent });

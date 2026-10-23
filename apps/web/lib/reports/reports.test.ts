@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { PDFDict, PDFDocument, PDFName, PDFString } from "pdf-lib";
 import type { FitnessScoreSession, NutritionDay, ProgressSession } from "@healthapp/shared";
-import { clientAppMessages } from "../i18n/messages/client-app";
+import { clientAppMessages } from "@healthapp/i18n/messages/client-app";
 import { CSV_BOM, csvCell, neutralizeFormula, toCsv } from "./csv";
 import {
   bodyCsv, exerciseProgressCsv, goalsCsv, isCsvKind, lengthOut, localTime, nutritionCsv, weightOut, workoutsCsv,

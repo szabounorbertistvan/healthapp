@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACHIEVEMENT_METRICS } from "@healthapp/shared";
-import { commonMessages } from "./i18n/messages/common";
+import { commonMessages } from "@healthapp/i18n/messages/common";
 import { metricExplanation, progressText, requirementText } from "./achievement-format";
 
 const en = commonMessages.en.achievements;

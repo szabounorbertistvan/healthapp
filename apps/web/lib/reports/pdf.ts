@@ -15,7 +15,7 @@ import { PDFDocument, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit";
 import type { GoalMetric, LabelNutrient, LengthUnit, WeightUnit } from "@healthapp/shared";
 import { GOAL_METRIC_SPEC } from "@healthapp/shared";
-import type { clientAppMessages } from "../i18n/messages/client-app";
+import type { clientAppMessages } from "@healthapp/i18n/messages/client-app";
 import type { ProgressReport } from "./report-model";
 
 export type ReportStrings = (typeof clientAppMessages)["en"]["reports"];

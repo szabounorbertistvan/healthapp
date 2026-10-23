@@ -287,6 +287,11 @@ spec's 6–7 months assumed two developers building the backend too; the backend
 - **Exit:** Voinic installable from Google Play.
 
 ### Phase 1 — Native foundations · 3–4 weeks
+*Started 2026-10-23 — done: `apps/mobile` (SDK 58, Expo Router), `packages/i18n`, `packages/ui-tokens`
+fixed + parity test, `/api/v1/me` + `/api/v1/today` with the bearer seam (`lib/supabase/bearer.ts`),
+email sign-in, the five tabs (Today native, More native, three opening the web). Still open in this
+phase: Google sign-in, Sentry, EAS project + build profiles, `android_min_build`, a first build on a phone.
+See [apps/mobile/README.md](../apps/mobile/README.md).*
 - `apps/mobile` (Expo Router, TypeScript strict, ESLint), wired into turbo `typecheck`/`lint`.
 - `packages/i18n` extraction; `packages/ui-tokens` fixed + parity test; theme provider.
 - Auth (§5): email, Google, password reset, complete-profile, sign-out wipe.

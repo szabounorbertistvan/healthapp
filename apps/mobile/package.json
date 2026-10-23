@@ -1,0 +1,37 @@
+{
+  "name": "@healthapp/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "export:android": "expo export --platform android --output-dir dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@healthapp/api": "*",
+    "@healthapp/i18n": "*",
+    "@healthapp/shared": "*",
+    "@healthapp/ui-tokens": "*",
+    "@supabase/supabase-js": "^2.49.0",
+    "@tanstack/react-query": "^5.104.5",
+    "expo": "~58.0.17",
+    "expo-constants": "~58.0.13",
+    "expo-font": "~58.0.9",
+    "expo-linking": "~58.0.14",
+    "expo-localization": "~58.0.5",
+    "expo-router": "~58.0.25",
+    "expo-secure-store": "~58.0.2",
+    "expo-splash-screen": "~58.0.11",
+    "expo-status-bar": "~58.0.4",
+    "react": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0"
+  }
+}

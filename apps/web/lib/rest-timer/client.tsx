@@ -43,8 +43,13 @@ type RestTimerContextValue = {
   skip: () => void;
   /** Close the "rest finished" banner (or a finished timer) without starting anything. */
   dismiss: () => void;
-  /** Drop the timer entirely — the workout was finished. */
-  clear: () => void;
+  /**
+   * Drop the timer entirely — the workout was finished. Resolves once the
+   * server has dropped its pending push too: a caller about to navigate awaits
+   * it, because a router.push dispatched while a server action is still in
+   * flight can be aborted by it (the soak's "finishes → done screen" flake).
+   */
+  clear: () => Promise<void>;
   /** True once the completion has been surfaced and until it is dismissed. */
   finished: boolean;
 };
@@ -212,11 +217,11 @@ export function RestTimerProvider({ prefs, children }: { prefs: RestPrefs; child
     if (current && !isRestActive(current)) setTimer(null);
   }, [setTimer]);
 
-  const clear = useCallback(() => {
+  const clear = useCallback(async () => {
     setFinished(false);
     const current = timerRef.current;
-    if (current && isRestActive(current)) void cancelRestPush(current.id).catch(() => undefined);
     setTimer(null);
+    if (current && isRestActive(current)) await cancelRestPush(current.id).then(() => undefined, () => undefined);
   }, [setTimer]);
 
   const remaining = timer ? remainingMs(timer, now) : 0;

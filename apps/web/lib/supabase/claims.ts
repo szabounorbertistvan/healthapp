@@ -28,13 +28,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function userIdFromClient(
   supabase: SupabaseClient,
   onFallback?: (error: unknown) => void,
+  /** An access token to check instead of the client's session (the app's bearer). */
+  jwt?: string,
 ): Promise<string | null> {
   try {
-    const { data, error } = await supabase.auth.getClaims();
+    const { data, error } = await supabase.auth.getClaims(jwt);
     if (!error) return data?.claims?.sub ?? null;
   } catch (error) {
     onFallback?.(error);
   }
-  const { data } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getUser(jwt);
   return data.user?.id ?? null;
 }

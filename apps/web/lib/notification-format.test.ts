@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commonMessages } from "./i18n/messages/common";
+import { commonMessages } from "@healthapp/i18n/messages/common";
 import { notificationHref, notificationSentence } from "./notification-href";
 import {
   READ_NONE, dayBucket, groupByDay, isRowRead, notificationHeadline, notificationKind, readReducer, unreadLeft,

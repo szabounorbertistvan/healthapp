@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { userIdFromClient } from "./claims";
+import { bearerContext } from "./bearer";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
@@ -64,7 +65,18 @@ function requireConfig() {
  */
 export const supabaseServer = cache(async () => {
   const config = requireConfig();
-  const cookieStore = await cookies();
+  // An /api/v1 request from the Android app (lib/supabase/bearer.ts): the
+  // person is the token's owner, and there are no cookies to read or set.
+  const bearer = bearerContext();
+  if (bearer) return bearerClient(bearer.token) as unknown as CookieClient;
+  return cookieClient(config, await cookies());
+});
+
+/** The web's client: the session in the request's cookies. */
+function cookieClient(
+  config: ReturnType<typeof requireConfig>,
+  cookieStore: Awaited<ReturnType<typeof cookies>>,
+) {
   return createServerClient(
     config.url,
     config.anonKey,
@@ -86,6 +98,26 @@ export const supabaseServer = cache(async () => {
       },
     },
   );
+}
+
+/** Exactly the cookie client's type, so every typed query keeps its inference. */
+type CookieClient = ReturnType<typeof cookieClient>;
+
+/**
+ * A client that acts as one access token's owner. Cached per token — never
+ * per request alone — so even a cache that outlived its request could only
+ * ever hand a token's client back to that same token. It holds no session of
+ * its own (nothing to refresh or rotate: the app refreshes its token itself).
+ */
+const bearerClient = cache((token: string) => {
+  const config = requireConfig();
+  return createClient(config.url, config.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: {
+      headers: { Authorization: `Bearer ${token}` },
+      ...(tracedFetch ? { fetch: tracedFetch } : {}),
+    },
+  });
 });
 
 /**
@@ -105,9 +137,10 @@ export const supabasePublic = cache(() => {
 /** The signed-in user's id, or null. Resolved once per request. */
 export const currentUserId = cache(async (): Promise<string | null> => {
   const supabase = await supabaseServer();
+  // A bearer client holds no session, so the token is checked explicitly.
   return userIdFromClient(supabase, (error) => {
     console.error("[auth] getClaims failed, falling back to getUser:", error);
-  });
+  }, bearerContext()?.token);
 });
 
 export type LiveUser = {

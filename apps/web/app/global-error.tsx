@@ -1,5 +1,5 @@
 "use client";
-import { commonMessages } from "@/lib/i18n/messages/common";
+import { commonMessages } from "@healthapp/i18n/messages/common";
 import { LOCALE_COOKIE, defaultLocale, isLocale } from "@/lib/i18n/config";
 import { ErrorReporter } from "@/components/error-reporter";
 

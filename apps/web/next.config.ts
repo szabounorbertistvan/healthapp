@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   // npm run e2e:soak builds into .next-soak, so a dev server on this tree keeps its .next
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // @healthapp/shared ships TypeScript source, not a build step (plan §2).
-  transpilePackages: ["@healthapp/shared"],
+  transpilePackages: ["@healthapp/shared", "@healthapp/i18n"],
   // The report PDF embeds its fonts, read from disk by the route handler
   // (lib/reports/fonts); file tracing cannot see a path built at runtime.
   // Both routes that render it (lib/reports/respond.ts) need them.

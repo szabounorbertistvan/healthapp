@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { liveUser } from "@/lib/supabase/server";
 import { searchGymsRpc, type GymHit } from "@/lib/gym-data";
-import { GYM_ERROR_CODES, type GymErrorCode } from "@/lib/i18n/messages/gyms";
+import { GYM_ERROR_CODES, type GymErrorCode } from "@healthapp/i18n/messages/gyms";
 
 /**
  * Gym writes (20261023100000, 20261024100000). Each is one RPC that validates in SQL; the

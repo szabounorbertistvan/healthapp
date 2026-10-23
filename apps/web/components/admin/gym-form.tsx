@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { readMapsLink, saveGym, type GymGoogle, type GymInput } from "@/app/admin-gym-actions";
 import { fill as fillText } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
-import type { GymErrorCode } from "@/lib/i18n/messages/gyms";
+import type { GymErrorCode } from "@healthapp/i18n/messages/gyms";
 
 const FIELD = "mt-1 h-10 w-full rounded-xl bg-bg px-3 text-[13.5px] text-ink outline-none ring-accent/50 focus:ring-2";
 const LABEL = "block text-[12px] font-semibold text-ink-soft";

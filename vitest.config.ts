@@ -22,6 +22,7 @@ export default defineConfig({
       "packages/**/src/**/*.test.ts",
       "apps/web/lib/**/*.test.ts",
       "apps/web/**/*.test.tsx",
+      "apps/mobile/lib/**/*.test.ts",
       "supabase/functions/_shared/**/*.test.ts",
       "scripts/lib/**/*.test.mjs",
     ],

@@ -1,7 +1,7 @@
-import { clientWidgetsMessages } from "./i18n/messages/client-widgets";
+import { clientWidgetsMessages } from "@healthapp/i18n/messages/client-widgets";
 
 // Seven starter habits, each with a short "what" and "why" in both languages
-// (lib/i18n/messages/client-widgets.ts → habitSuggestions). Seven on purpose:
+// (packages/i18n/src/messages/client-widgets.ts → habitSuggestions). Seven on purpose:
 // enough to cover water, movement, sleep, mind, mobility and food without
 // turning the picker into a catalogue.
 export const HABIT_SUGGESTION_KEYS = [

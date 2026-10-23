@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commonMessages } from "./i18n/messages/common";
+import { commonMessages } from "@healthapp/i18n/messages/common";
 import { REPORT_REASONS } from "@healthapp/shared";
 import { commentMenuActions, postMenuActions, profileMenuActions, sheetReducer, type SheetStep } from "./moderation-ui";
 

@@ -68,17 +68,24 @@ RLS tests.
 ## Layout
 
 ```
-apps/web/            Next.js 15 App Router, React 19, Tailwind v4 — the ONLY app
+apps/web/            Next.js 15 App Router, React 19, Tailwind v4 — the product
+apps/mobile/         Expo SDK 58 Android app — sign-in, Today, More; the rest opens the web
+apps/android-twa/    the Play Store TWA bridge (Bubblewrap manifest only; not a workspace)
 packages/shared/     domain math: macros, adherence, PRs, entitlements, billing, sync
-packages/api/        error shapes shared with edge functions
-packages/ui-tokens/  design tokens
+packages/api/        error shapes shared with edge functions; the /api/v1 contract (src/v1.ts)
+packages/i18n/       every RO + EN string, web and app (moved out of apps/web/lib/i18n 2026-10-23)
+packages/ui-tokens/  design tokens — the web palette as TS, a test keeps it equal to globals.css
 supabase/migrations/ schema + RLS — source of truth
 supabase/functions/  Deno edge functions
 ```
 
-**There is no `apps/mobile`.** The plan calls for an Expo app; nothing has been
-written. Every "client app" screen today is a web route under
-`apps/web/app/(client)/`.
+**`apps/mobile` is young** (2026-10-23, [docs/ANDROID_PLAN.md](docs/ANDROID_PLAN.md)): every
+real "client app" screen is still a web route under `apps/web/app/(client)/`. The app reads
+through **`/api/v1/*`** on the web app with a bearer token: `v1Route` (`lib/api/v1.ts`) runs the
+handler inside `withBearer` (`lib/supabase/bearer.ts`), and then `supabaseServer()`,
+`currentUserId()` and `getLocale()` answer from the token — so a handler reuses the web's own
+`lib/` reads under the same RLS. Never re-implement a read or a write for the app. The app needs
+React 19.3.0 exactly while the web is on 19.2; `apps/mobile/metro.config.js` pins its copy.
 
 Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,
 check-ins, messages, marketplace (the coach's overview; one sidebar entry that also covers requests, bookings (+ `bookings/availability`), reviews, `settings/coach-profile` and `marketplace/share` — the coach share-card generator — with `MarketplaceTabs` over them), settings (+ `settings/coach-profile`, the Coach Discovery wizard). `(admin)` = the admin panel under `/admin`
@@ -147,7 +154,7 @@ routes they touch. Client components call the action then `router.refresh()`.
 **3. i18n is cookie-based, not routed.** No `/en/` or `/ro/` prefixes — locale
 lives in the `bg-locale` cookie ([lib/i18n/config.ts](apps/web/lib/i18n/config.ts)).
 Server components use `await getI18n()`, client components `useI18n()`. Strings
-live in `lib/i18n/messages/{common,landing,coach-app,coach-widgets,client-app,client-widgets,admin,coach-profile}.ts`
+live in `packages/i18n/src/messages/{common,landing,coach-app,coach-widgets,client-app,client-widgets,admin,coach-profile,gyms,onboarding,mobile}.ts` (`@/lib/i18n` re-exports the package)
 and **every string must be added to both `en` and `ro`** in the same namespace
 file — the types enforce parity.
 

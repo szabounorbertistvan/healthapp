@@ -9,7 +9,7 @@ import {
 } from "./coach-share-card";
 import type { ShareCardItem, ShareTextItem } from "./share-card";
 import { qrModules } from "./qr";
-import { coachProfileMessages } from "./i18n/messages/coach-profile";
+import { coachProfileMessages } from "@healthapp/i18n/messages/coach-profile";
 
 /** 0.56 em per character plus tracking — the same shape as canvas measureText, deterministic. */
 const measure: MeasureText = (text, size, _w, _f, tracking) => text.length * size * 0.56 + tracking * size * Math.max(0, text.length - 1);
