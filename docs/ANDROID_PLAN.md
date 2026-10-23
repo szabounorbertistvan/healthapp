@@ -270,6 +270,9 @@ Estimates are for **one full-time developer** working with Claude, including tes
 spec's 6–7 months assumed two developers building the backend too; the backend now exists.)
 
 ### Phase 0 — TWA bridge and Play account · 1–2 weeks
+*Decided 2026-10-23: TWA first, personal account. Code side done — `apps/android-twa/`,
+`assetlinks.json`, `/delete-account`; the owner's steps are
+[ANDROID_PLAY_CHECKLIST.md](ANDROID_PLAY_CHECKLIST.md).*
 - Google Play developer account (USD 25 once). **Decision for the owner:** personal account
   (the 12-testers / 14-days closed test applies) or organization account (needs a D-U-N-S
   number; no tester gate).

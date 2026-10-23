@@ -77,6 +77,8 @@ export async function middleware(request: NextRequest) {
   // clicking a recovery link must still reach them, or the token is lost.
   if (
     path.startsWith("/privacy") || path.startsWith("/terms") ||
+    // Google Play requires the account-deletion explainer to open signed out
+    path === "/delete-account" ||
     path.startsWith("/auth/") || path.startsWith("/reset-password") ||
     // precached by the service worker, and shown to whoever is offline
     path === "/offline" ||
@@ -121,5 +123,8 @@ export const config = {
   // The worker (/serwist/sw.js) and the manifest are fetched by the browser
   // itself, session or no session (a worker update check runs in the
   // background); a redirect in place of the script would kill the registration.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|serwist/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // /.well-known/ (assetlinks.json, the Android app's Digital Asset Links) is
+  // read by Google's verifier without cookies: a redirect to /login there
+  // would unlink the Play app from the site and show it a browser bar.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|serwist/|\\.well-known/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
