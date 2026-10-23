@@ -1,6 +1,6 @@
 "use server";
 import { exerciseSearchTerms, isPlanLimitError, PLAN_LIMIT_REACHED, youtubeVideoId, type ExerciseFilter, type ExerciseSummary } from "@healthapp/shared";
-import { liveUser, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, liveUser, supabaseServer } from "@/lib/supabase/server";
 import { notSignedIn, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
 import { mutated } from "@/lib/supabase/mutate";
@@ -23,7 +23,9 @@ export async function searchExerciseLibrary(
 ): Promise<{ results: ExerciseSummary[]; total: number }> {
 
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
+  // the id only marks "mine" and picks the coach's links; RLS decides what is
+  // visible, so the local token check will do (no Auth round trip per keystroke)
+  const me = await currentUserId();
   let query = supabase
     .from("exercises")
     .select(
@@ -46,7 +48,6 @@ export async function searchExerciseLibrary(
 
   // The page, the coach lookup and the demo links answer independent
   // questions, so they go out together — one wave, as before the links.
-  const me = auth.user?.id ?? null;
   const [{ data, error, count }, coachId, linkRows] = await Promise.all([
     query,
     me ? activeCoachId(me) : Promise.resolve(null),

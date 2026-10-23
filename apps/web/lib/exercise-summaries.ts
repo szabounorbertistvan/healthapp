@@ -1,6 +1,6 @@
 import "server-only";
 import type { ExerciseSummary } from "@healthapp/shared";
-import { supabaseServer } from "./supabase/server";
+import { currentUserId, supabaseServer } from "./supabase/server";
 import { activeCoachId } from "./client-training";
 import { fetchVideoLinks, resolveVideo, videoLinksFor } from "./exercise-video-links";
 
@@ -14,8 +14,9 @@ export async function getExerciseSummaries(ids: string[]): Promise<Record<string
   const unique = [...new Set(ids)];
   if (unique.length === 0) return {};
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  const me = auth.user?.id ?? null;
+  // local token check: the id only marks "mine" and picks the coach's links, RLS
+  // decides what is visible (lib/supabase/claims.ts)
+  const me = await currentUserId();
   const [{ data, error }, coachId, linkRows] = await Promise.all([
     supabase
       .from("exercises")

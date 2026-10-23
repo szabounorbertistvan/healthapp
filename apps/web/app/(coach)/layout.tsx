@@ -18,6 +18,11 @@ import { OnboardingProvider } from "@/components/onboarding/provider";
 import { HelpLink } from "@/components/onboarding/help-link";
 
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
+  // The onboarding marks need only the session, not the profile: read them in
+  // the same wave, so the layout costs one round trip instead of two. Every
+  // page and prefetch under (coach) waits on this.
+  const onboardingRead = getOnboardingState();
+  void onboardingRead.catch(() => {}); // a redirect below must not leave it unhandled
   const profile = await getProfile();
   if (!profile) redirect("/");
   // an admin switched this account off; the page explains and offers sign-out
@@ -25,7 +30,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   // the coach web area is for coaches and admins; clients have their own surface
   if (profile.role === "client") redirect("/today");
   if (!profile.username || profile.consent_version !== CONSENT_VERSION) redirect("/complete-profile");
-  const [plan, onboarding] = await Promise.all([getPlan(), getOnboardingState()]);
+  const [plan, onboarding] = await Promise.all([getPlan(), onboardingRead]);
 
   return (
     <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade, libraryVideos: profile.role === "admin", later: plan.later, trialAvailable: plan.trialAvailable }}>

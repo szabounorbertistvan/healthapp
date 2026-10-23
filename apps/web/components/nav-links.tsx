@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { NavLink } from "./nav-link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
@@ -62,7 +62,7 @@ export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
       {visible.map((item) => {
         const active = navItemActive(item, pathname);
         return (
-          <Link
+          <NavLink
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
@@ -73,20 +73,20 @@ export function NavLinks({ isAdmin = false }: { isAdmin?: boolean }) {
             <NavIcon d={item.icon} />
             <span className="flex-1">{t.common.nav[item.key]}</span>
             <NavSpinner />
-          </Link>
+          </NavLink>
         );
       })}
       {/* Below a hairline, because it leaves the coaching workspace. The border
           sits on the wrapper: on the rounded row itself it would curve. */}
       <div className="mt-1 border-t border-line pt-1">
-        <Link
+        <NavLink
           href={myTrainingItem.href}
           className="flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium text-ink-soft hover:bg-surface hover:text-ink"
         >
           <NavIcon d={myTrainingItem.icon} />
           <span className="flex-1">{t.common.nav.myTraining}</span>
           <NavSpinner />
-        </Link>
+        </NavLink>
       </div>
     </nav>
   );
@@ -164,7 +164,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
               {rest.map((item) => {
                 const active = navItemActive(item, pathname);
                 return (
-                  <Link
+                  <NavLink
                     key={item.href}
                     href={item.href}
                     aria-current={active ? "page" : undefined}
@@ -175,20 +175,20 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
                     <NavIcon d={item.icon} />
                     <span className="flex-1">{t.common.nav[item.key]}</span>
                     <NavSpinner />
-                  </Link>
+                  </NavLink>
                 );
               })}
               {/* The way across to the coach's own training — a phone would
                   otherwise have no route to it at all. */}
               <div className="mt-1 border-t border-line pt-1">
-                <Link
+                <NavLink
                   href={myTrainingItem.href}
                   className="flex min-h-12 items-center gap-3 rounded-2xl px-3 text-sm font-medium text-ink-soft"
                 >
                   <NavIcon d={myTrainingItem.icon} />
                   <span className="flex-1">{t.common.nav.myTraining}</span>
                   <NavSpinner />
-                </Link>
+                </NavLink>
                 <HelpLink sheet />
                 <FeedbackButton sheet />
               </div>
@@ -202,7 +202,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
         {tabs.map((item) => {
           const active = navItemActive(item, pathname);
           return (
-            <Link
+            <NavLink
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
@@ -212,7 +212,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
               {t.common.nav[item.key]}
               <span aria-hidden className={`mt-px h-0.5 w-4 rounded-full ${active ? "bg-accent" : "bg-transparent"}`} />
               <NavSpinner className="absolute right-1 top-0 h-2 w-2" />
-            </Link>
+            </NavLink>
           );
         })}
         <button

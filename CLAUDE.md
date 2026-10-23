@@ -275,6 +275,12 @@ third-party text writes it.
   each other and every page crawls. If `http://localhost:3000` already
   answers, attach with the `web-attached` launch entry instead. Before killing
   a stray `next dev`, check whose it is (`Get-CimInstance Win32_Process`).
+- Navigation links (sidebars, tab bars, "More" sheets) are `NavLink`
+  (`components/nav-link.tsx`): they prefetch on hover / focus / touch, not on
+  sight, because every prefetch renders the target's layout on the server.
+  Keep the `router.refresh()` after an action even when the action revalidates
+  the page: without it the soak saw a stale page in 4 rounds of 10. Both in
+  [docs/PERFORMANCE.md](docs/PERFORMANCE.md) (2026-10-23).
 - `SUPABASE_TRACE=1` in `.env.local` logs every Supabase round trip with its
   duration to the dev server output — the first thing to reach for when a page
   is slow. Each PostgREST call from this box costs ~120–160 ms and an RPC

@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { NavLink } from "./nav-link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
@@ -58,7 +58,7 @@ function BackToCoaching({ sheet = false }: { sheet?: boolean }) {
     // The hairline belongs to the wrapper, not the link: a border on a rounded
     // row draws a curved edge that reads as half a box rather than a divider.
     <div className={sheet ? "mt-1 border-t border-line pt-1" : "mb-1 border-b border-line pb-1"}>
-      <Link
+      <NavLink
         href="/dashboard"
         className={
           sheet
@@ -69,7 +69,7 @@ function BackToCoaching({ sheet = false }: { sheet?: boolean }) {
         <NavIcon d={BACK_ICON} />
         <span className="flex-1">{t.common.nav.coaching}</span>
         <NavSpinner />
-      </Link>
+      </NavLink>
     </div>
   );
 }
@@ -129,7 +129,7 @@ export function ClientNav({ coach = false }: { coach?: boolean }) {
       {items.map((item) => {
         const active = pathname.startsWith(item.href);
         return (
-          <Link
+          <NavLink
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
@@ -140,7 +140,7 @@ export function ClientNav({ coach = false }: { coach?: boolean }) {
             <NavIcon d={item.icon} />
             <span className="flex-1">{t.common.nav[item.key]}</span>
             <NavSpinner />
-          </Link>
+          </NavLink>
         );
       })}
     </nav>
@@ -215,7 +215,7 @@ export function ClientTabBar({ coach = false, unread = 0 }: { coach?: boolean; u
               {rest.map((item) => {
                 const active = pathname.startsWith(item.href);
                 return (
-                  <Link
+                  <NavLink
                     key={item.href}
                     href={item.href}
                     aria-current={active ? "page" : undefined}
@@ -227,7 +227,7 @@ export function ClientTabBar({ coach = false, unread = 0 }: { coach?: boolean; u
                     <span className="flex-1">{t.common.nav[item.key]}</span>
                     {item.href === "/notifications" ? <UnreadBadge count={unread} /> : null}
                     <NavSpinner />
-                  </Link>
+                  </NavLink>
                 );
               })}
               {coach ? <BackToCoaching sheet /> : null}
@@ -246,7 +246,7 @@ export function ClientTabBar({ coach = false, unread = 0 }: { coach?: boolean; u
         {tabs.map((item) => {
           const active = pathname.startsWith(item.href);
           return (
-            <Link
+            <NavLink
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
@@ -256,7 +256,7 @@ export function ClientTabBar({ coach = false, unread = 0 }: { coach?: boolean; u
               {t.common.nav[item.key]}
               <span aria-hidden className={`mt-px h-0.5 w-4 rounded-full ${active ? "bg-accent" : "bg-transparent"}`} />
               <NavSpinner className="absolute right-1 top-0 h-2 w-2" />
-            </Link>
+            </NavLink>
           );
         })}
         <button

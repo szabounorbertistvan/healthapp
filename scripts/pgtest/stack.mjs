@@ -20,6 +20,7 @@
 //   54430 Postgres · 54431 GoTrue · 54432 PostgREST · 54433 gateway (the "Supabase URL")
 import EmbeddedPostgres from "embedded-postgres";
 import { spawn } from "node:child_process";
+import { generateKeyPairSync, randomUUID } from "node:crypto";
 import http from "node:http";
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -129,6 +130,19 @@ export async function startStack({ log = console.log } = {}) {
   await db.connect();
   await db.query(PRE_AUTH);
 
+  // Sessions are signed ES256, as on the live project (its JWKS publishes one
+  // P-256 key). With HS256 tokens supabase-js's getClaims() cannot verify
+  // locally and falls back to GET /auth/v1/user — which this GoTrue answers in
+  // ~0.75 s, on every middleware pass and every render — so the app here was
+  // several times slower than in production for a reason production does not
+  // have (docs/PERFORMANCE.md). A fresh key per start; the fixed anon and
+  // service keys stay HS256 under jwtSecret, which both servers still accept.
+  const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+  const kid = randomUUID();
+  const signingKey = { ...privateKey.export({ format: "jwk" }), kid, alg: "ES256", use: "sig", key_ops: ["sign", "verify"] };
+  const { d: _d, ...publicKey } = signingKey;
+  const jwks = { keys: [{ ...publicKey, key_ops: ["verify"] }, { kty: "oct", k: Buffer.from(STACK.jwtSecret).toString("base64url"), alg: "HS256" }] };
+
   // GoTrue: migrate (it creates and owns the auth schema), then serve
   const gotrueBin = await binary("gotrue");
   const gotrueEnv = {
@@ -137,7 +151,8 @@ export async function startStack({ log = console.log } = {}) {
     GOTRUE_DB_MIGRATIONS_PATH: path.join(path.dirname(gotrueBin), "migrations"),
     GOTRUE_API_HOST: "127.0.0.1", PORT: String(STACK.gotruePort), API_EXTERNAL_URL: `${SUPABASE_URL}/auth/v1`,
     GOTRUE_SITE_URL: STACK.siteUrl, GOTRUE_URI_ALLOW_LIST: `${STACK.siteUrl}/**`,
-    GOTRUE_JWT_SECRET: STACK.jwtSecret, GOTRUE_JWT_EXP: "3600", GOTRUE_JWT_AUD: "authenticated",
+    GOTRUE_JWT_SECRET: STACK.jwtSecret, GOTRUE_JWT_KEYS: JSON.stringify([signingKey]),
+    GOTRUE_JWT_EXP: "3600", GOTRUE_JWT_AUD: "authenticated",
     GOTRUE_JWT_DEFAULT_GROUP_NAME: "authenticated", GOTRUE_JWT_ADMIN_ROLES: "service_role",
     GOTRUE_DISABLE_SIGNUP: "false", GOTRUE_EXTERNAL_EMAIL_ENABLED: "true", GOTRUE_MAILER_AUTOCONFIRM: "true",
     // no mail server here: recovery links are minted through the admin API by the tests
@@ -173,7 +188,7 @@ export async function startStack({ log = console.log } = {}) {
   children.push(run(await binary("postgrest"), [], {
     PGRST_DB_URI: `postgres://authenticator:authenticator@127.0.0.1:${STACK.dbPort}/postgres`,
     PGRST_DB_SCHEMAS: "public", PGRST_DB_ANON_ROLE: "anon", PGRST_DB_EXTRA_SEARCH_PATH: "public,extensions",
-    PGRST_JWT_SECRET: STACK.jwtSecret, PGRST_SERVER_PORT: String(STACK.restPort), PGRST_SERVER_HOST: "127.0.0.1",
+    PGRST_JWT_SECRET: JSON.stringify(jwks), PGRST_SERVER_PORT: String(STACK.restPort), PGRST_SERVER_HOST: "127.0.0.1",
     PGRST_DB_MAX_ROWS: "1000",
   }, "postgrest"));
   const gw = gateway();

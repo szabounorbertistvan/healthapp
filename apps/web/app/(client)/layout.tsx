@@ -23,6 +23,11 @@ import { OnboardingProvider } from "@/components/onboarding/provider";
 import { HelpLink } from "@/components/onboarding/help-link";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
+  // The bell and the onboarding marks need only the session, not the profile:
+  // read them in the same wave, so the layout costs one round trip instead of
+  // two. Every page and prefetch under (client) waits on this.
+  const reads = Promise.all([getMyNotifications(), getUnreadNotificationCount(), getOnboardingState()]);
+  void reads.catch(() => {}); // a redirect below must not leave it unhandled
   const profile = await getProfile();
   if (!profile) redirect("/");
   // an admin switched this account off; the page explains and offers sign-out
@@ -38,14 +43,10 @@ export default async function ClientLayout({ children }: { children: React.React
   // health data here without the current consent on record (20261113110000).
   if (!profile.username || profile.consent_version !== CONSENT_VERSION) redirect("/complete-profile");
   const name = displayName(profile);
-  // One wave: the shell's reads go out together.
-  const [notifications, unread, plan, onboarding] = await Promise.all([
-    getMyNotifications(),
-    getUnreadNotificationCount(),
-    getPlan(),
-    // what guidance this person has seen (20261123100000); null = unknown, no tour opens by itself
-    getOnboardingState(),
-  ]);
+  // getPlan is free (it reads the request-cached profile); the onboarding
+  // marks are what guidance this person has seen (20261123100000) — null =
+  // unknown, no tour opens by itself.
+  const [[notifications, unread, onboarding], plan] = await Promise.all([reads, getPlan()]);
 
   return (
     <PlanProvider plan={{ e: plan.e, upgrade: plan.upgrade, libraryVideos: profile.role === "admin", later: plan.later, trialAvailable: plan.trialAvailable }}>
