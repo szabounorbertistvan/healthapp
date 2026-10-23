@@ -1463,7 +1463,7 @@ coach-side RLS policy — keys off.
   the offline outbox endpoint for the mobile app that does not exist yet.
   Append-only entities dedupe on `client_generated_id`, conflicts are
   last-write-wins by `client_ts`.
-- **Push:** `supabase/functions/push-dispatch`. No client registers a token.
+- **Push (native):** `supabase/functions/push-dispatch` ← pg_cron `push-dispatch-tick` (every minute, `tick_push_dispatch()`, vault `push_dispatch_url` / `push_dispatch_key`) → `claim_push_batch()` (service role only; retires rows older than 12 h and rows for people with no phone) → Expo Push → FCM, one Android channel per category; quiet hours, the engagement cap and `notification_prefs` as before; `DeviceNotRegistered` tokens are forgotten. Devices: `push_devices` (owner-read, written only by `register_push_device()` / `unregister_push_device()`, dropped on a deletion request) — migration 20261208100000, pgTAP `push_devices.test.sql`. **Not live yet** (apps/mobile/README.md).
 - **Exercise library:** `app/(coach)/library`, `lib/exercise-library.ts`,
   `supabase/functions/import-exercises`.
 

@@ -18,6 +18,9 @@ Expo SDK 58 (React Native 0.88, React 19.3.0), Expo Router, TanStack Query, supa
 | Food | native (Phase 3): the diary by day (`GET /api/v1/food` — targets, totals, entries, the coach's planned meals), "ate as planned", remove an entry; add by search (`/foods/search`), recent / favourites, or **barcode** (`expo-camera`, ML Kit; `/foods/barcode/[code]`, a miss falls through to search), then the portion (`portionMacros` from `packages/shared`). Logs go through the outbox (`POST /food/logs`, the phone's id as `clientId`). |
 | Habits | `app/habits.tsx`: tick / untick today, through the outbox as a state (`POST /habits/done` = `setHabitDone`) |
 | Progress | weigh-in and waist (`POST /measurements`, online), recent measurements with the change, best lifts (`GET /api/v1/progress`); charts, photos, goals stay on the web |
+| Coach thread | `app/messages.tsx`: the current coach's conversation (`GET /api/v1/coach-thread`), send (`POST /messages` = `sendMessage`, online only), read on open; new messages live through Supabase Realtime. Pictures and voice notes show as a line that opens the web. |
+| Notifications | `app/notifications.tsx`: the web's center (`GET /api/v1/notifications`, headline in the reader's language), mark read, open what it is about; the card that turns push on |
+| Push | `lib/push.tsx` / `lib/push-token.ts`: registers the Expo token (`POST /push-devices` → `register_push_device`) once permission exists, unregisters on sign-out; channels `messages`, `coaching`, `reminders`, `updates` (no sound or vibration requested); a tap routes by category (`lib/push-route.ts`, tested) |
 | Check-in | `app/check-in.tsx`: weight, the five 1–10 scales, the coach's questions, a note — through the outbox (`POST /check-in`; "already checked in" counts as delivered); last week's feedback |
 | More | who is signed in (`GET /api/v1/me`), language RO/EN, links (privacy, account deletion), sign out |
 | Strings | `@healthapp/i18n` — `common` plus the app's own `mobile` namespace, `en` + `ro` |
@@ -28,6 +31,23 @@ set, supersets shown as rounds (they log fine, listed per exercise), the live co
 the notification (Android's chronometer needs a native module), a PR mark before the server's
 answer, push, a custom food or a recipe of one's own, editing a food portion, progress photos, the coach screens —
 the phases in the plan. Not yet run on a device.
+
+## Push: what has to happen on the live project (not done)
+
+Nothing below is applied; until it is, the app works and simply receives no server pushes
+(the rest timer's local notification does not depend on any of it).
+
+1. Apply migration `20261208100000_push_devices.sql` to the live project (the usual path:
+   `npm run db:gate -- --remote <ledger>`, then push). It schedules `push-dispatch-tick`.
+2. Deploy the function: `supabase functions deploy push-dispatch`.
+3. Vault, once: `select vault.create_secret('https://<ref>.supabase.co/functions/v1/push-dispatch', 'push_dispatch_url');`
+   and `select vault.create_secret('<service role key>', 'push_dispatch_key');` — until both exist the tick does nothing.
+4. `eas init` in `apps/mobile` (writes `extra.eas.projectId` into the app config — the token needs it), and
+   upload an **FCM v1 service-account key** for `fit.voinic.app` in EAS → Credentials (Firebase project → Cloud Messaging).
+5. Check: sign in on a phone, allow notifications, send yourself a message from the coach account —
+   the push lands in the "Messages" channel, a tap opens the thread.
+
+Known gap: `notifications.title` is written by the database in one language; the push shows it as stored.
 
 ## How the app reaches the data
 

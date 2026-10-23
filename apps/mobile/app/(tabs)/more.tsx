@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
+import { router } from "expo-router";
 import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Screen, T } from "@/components/ui";
@@ -21,6 +22,12 @@ export default function More() {
         <ScrollView contentContainerStyle={styles.body}>
           <T kind="title">{t.mobile.tabs.more}</T>
           {me.data ? <T kind="soft">{fill(t.mobile.more.signedInAs, { name: me.data.display_name })}</T> : null}
+
+          <Card>
+            <Link label={t.mobile.menu.coach} onPress={() => router.push("/messages")} />
+            <Link label={t.mobile.menu.notifications} onPress={() => router.push("/notifications")} />
+            <Link label={t.mobile.menu.habits} onPress={() => router.push("/habits")} />
+          </Card>
 
           <Card>
             <T kind="faint">{t.mobile.more.language}</T>

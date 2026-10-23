@@ -256,3 +256,34 @@ export type CheckInSubmitV1 = {
 
 /** A write's answer with the web's machine-readable code (ALREADY_CHECKED_IN…). */
 export type CodedResultV1 = WriteResultV1 & { errorCode?: string };
+
+// ---------- messages, notifications, push (Phase 4) ----------
+
+export type MessageV1 = {
+  id: string;
+  body: string;
+  at: string;
+  mine: boolean;
+  /** A picture or a voice note: the app shows a placeholder and opens the thread on the web. */
+  attachment: "image" | "audio" | null;
+};
+
+export type CoachThreadV1 = { conversation_id: string; coach_name: string; messages: MessageV1[] } | { conversation_id: null };
+
+export type SendMessageV1 = { conversationId: string; body: string };
+
+export type NotificationV1 = {
+  id: string;
+  category: string;
+  /** In the reader's language, as the web's bell reads it. */
+  headline: string;
+  body: string | null;
+  created_at: string;
+  read: boolean;
+  /** The web path it points to, when it points anywhere. */
+  href: string | null;
+};
+
+export type NotificationsV1 = { items: NotificationV1[]; next_cursor: string | null };
+
+export type PushDeviceV1 = { token: string; platform: "android" | "ios"; build: string | null };

@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { ApiFailure } from "@/lib/api";
 import { I18nProvider } from "@/lib/i18n";
 import { OutboxProvider } from "@/lib/outbox";
+import { PushProvider } from "@/lib/push";
 import { RestProvider } from "@/lib/rest";
 import { wipeUserData } from "@/lib/storage";
 import { useTheme } from "@/lib/theme";
@@ -34,12 +35,14 @@ export default function RootLayout() {
           <AuthProvider>
             <OutboxProvider>
               <RestProvider>
-                <Gate
-                  onSignOut={() => {
-                    queryClient.clear();
-                    void wipeUserData();
-                  }}
-                />
+                <PushProvider>
+                  <Gate
+                    onSignOut={() => {
+                      queryClient.clear();
+                      void wipeUserData();
+                    }}
+                  />
+                </PushProvider>
               </RestProvider>
             </OutboxProvider>
           </AuthProvider>
@@ -74,6 +77,8 @@ function Gate({ onSignOut }: { onSignOut: () => void }) {
           <Stack.Screen name="food/add" />
           <Stack.Screen name="habits" />
           <Stack.Screen name="check-in" />
+          <Stack.Screen name="messages" />
+          <Stack.Screen name="notifications" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" />

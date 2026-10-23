@@ -7,6 +7,7 @@ import * as Notifications from "expo-notifications";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppState, Platform } from "react-native";
 import { useI18n } from "./i18n";
+import { enablePush } from "./push-token";
 import { readJson, REST_KEY, writeJson } from "./storage";
 
 // The rest timer between sets — the web's rules (packages/shared/src/rest-timer.ts:
@@ -100,7 +101,10 @@ export function RestProvider({ children }: { children: ReactNode }) {
         // Asked in context — the first time a rest starts — never at launch.
         permissionAsked.current = true;
         const current = await Notifications.getPermissionsAsync();
-        if (!current.granted && current.canAskAgain) await Notifications.requestPermissionsAsync();
+        if (!current.granted && current.canAskAgain) {
+          // A yes here covers the server's pushes too: register the phone right away.
+          if ((await Notifications.requestPermissionsAsync()).granted) void enablePush(false);
+        }
       }
       if (!(await Notifications.getPermissionsAsync()).granted) return null;
       await ensureChannels({ alert: t.clientWidgets.restTimer.title, quiet: `${t.clientWidgets.restTimer.title} · ${t.clientWidgets.restTimer.off}` });

@@ -330,6 +330,12 @@ editing a portion, copy a meal, progress charts and photos, recipes; the exit te
 - **Exit:** a client logs a full day in under two minutes; numbers match the web.
 
 ### Phase 4 — Messages and push · 3 weeks
+*Built 2026-10-24 — the coach thread (Realtime, text; pictures and voice notes open on the web), the
+notifications center, `push_devices` + register/unregister + `claim_push_batch` (migration 20261208100000,
+pgTAP), `push-dispatch` rewritten (Postgres decides who may call; devices table; dead tokens forgotten;
+12-hour cut-off so no backlog is ever pushed), per-category Android channels, taps open the right screen.
+**Not live:** the migration, the function deploy, EAS + FCM — see apps/mobile/README.md. Open: notification
+text in the recipient's language (rows carry the writer-side title today), attachments in the app.*
 - Coach thread (Supabase Realtime, as `message-thread.tsx`), unread badges, notifications list.
 - `push_devices` migration + `push-dispatch` fixes + cron (§7); deep links; per-category
   channels; notification settings screen.

@@ -1,5 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { disablePush } from "./push-token";
 import { supabase } from "./supabase";
 
 // The signed-in session, or null; `ready` is false until SecureStore was read,
@@ -43,6 +44,8 @@ export async function signInWithPassword(email: string, password: string): Promi
 }
 
 export async function signOut(): Promise<void> {
+  // First, while the token still works: this phone stops getting the person's pushes.
+  await disablePush();
   // local scope: this phone only — the person's other devices stay signed in.
   await supabase.auth.signOut({ scope: "local" });
 }

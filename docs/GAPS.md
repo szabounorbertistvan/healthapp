@@ -8,11 +8,7 @@ Verified 2026-08-26; landing-page claims re-audited and several entries closed 2
 
 ## Structural
 
-**Mobile app: a first slice only (2026-10-23).** `apps/mobile` (Expo) signs in and shows Today, Workout (the set logger, offline-first, with the rest timer), Food (search, barcode, planned meals), Habits, Progress (weigh-in, best lifts), the weekly check-in and More through `/api/v1`; sets, food logs, habit ticks and check-ins work offline. Never run on a device yet. Every real "client
-app" screen is a web route in `apps/web/app/(client)/`. Three things are built
-for it and unused: `supabase/functions/sync-ingest` (offline outbox),
-`supabase/functions/push-dispatch` (`users.push_token` is never written by any
-client), and `packages/shared/src/sync.ts`. The plan for it (2026-10-22) is
+**Mobile app: client side built, never run on a device (2026-10-24).** `apps/mobile` (Expo) signs in and shows Today, Workout (the set logger, offline-first, with the rest timer), Food (search, barcode, planned meals), Habits, Progress (weigh-in, best lifts), the weekly check-in, the coach thread (Realtime) and the notifications center, all through `/api/v1`; sets, food logs, habit ticks and check-ins work offline. **Push is wired but not live:** migration `20261208100000_push_devices` (devices, `claim_push_batch`, the `push-dispatch-tick` cron) is not applied to the live project, the rewritten `push-dispatch` is not deployed, and the app has no EAS project id or FCM key yet — apps/mobile/README.md lists the steps. Still unused: `supabase/functions/sync-ingest` (the app replays through the web's own actions instead), `packages/shared/src/sync.ts`, and `users.push_token` (superseded by `push_devices`). The plan for it (2026-10-22) is
 [ANDROID_PLAN.md](ANDROID_PLAN.md).
 
 **The nutrition builder is partly proven — 2026-09-19.** Driven against the live

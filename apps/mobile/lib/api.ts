@@ -1,7 +1,7 @@
 import {
   API_V1, LOCALE_HEADER, type ApiError, type BarcodeV1, type CheckInV1, type CodedResultV1, type FoodDayV1, type FoodItemV1,
-  type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type ProgressV1, type TodayV1, type WorkoutDayV1,
-  type WorkoutsV1, type WriteResultV1,
+  type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1,
+  type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
@@ -65,6 +65,14 @@ export const api = {
   progress: () => call<ProgressV1>("GET", "/progress"),
   addMeasurement: (m: MeasurementV1) => call<WriteResultV1>("POST", "/measurements", m),
   checkIn: () => call<CheckInV1>("GET", "/check-in"),
+  coachThread: () => call<CoachThreadV1>("GET", "/coach-thread"),
+  sendMessage: (conversationId: string, body: string) => call<CodedResultV1>("POST", "/messages", { conversationId, body }),
+  markThreadRead: (conversationId: string) => call<WriteResultV1>("POST", "/messages/read", { conversationId }),
+  notifications: (before?: string) =>
+    call<NotificationsV1>("GET", before ? `/notifications?before=${encodeURIComponent(before)}` : "/notifications"),
+  markNotificationRead: (id?: string) => call<WriteResultV1>("POST", "/notifications/read", id ? { id } : {}),
+  registerPush: (device: PushDeviceV1) => call<WriteResultV1>("POST", "/push-devices", device),
+  unregisterPush: (token: string) => call<WriteResultV1>("POST", "/push-devices/remove", { token }),
 };
 
 const PATHS: Record<OutboxPayload["kind"], string> = {
