@@ -61,6 +61,12 @@ owner, under the same RLS — no second implementation. The response types are
 
 ## Run it
 
+**On a phone:** [docs/ANDROID_PHONE_TEST.md](../../docs/ANDROID_PHONE_TEST.md) — EAS cloud builds
+(`npm run build:preview` / `build:dev` in this workspace; profiles in `eas.json`), no local
+Java or Android SDK needed. `expo-doctor` reports "duplicate react": that is the intended split
+(the web's 19.2 at the root, the app's 19.3 here, pinned by `metro.config.js`); the release
+bundle (`expo export:embed`, what the Android build runs) carries only 19.3.0.
+
 One-time: `apps/mobile/.env` from `.env.example` (the anon key is public; never a service
 key). Then, from the repo root:
 

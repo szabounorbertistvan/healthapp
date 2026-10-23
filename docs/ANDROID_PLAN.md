@@ -296,6 +296,8 @@ See [apps/mobile/README.md](../apps/mobile/README.md).*
 - `packages/i18n` extraction; `packages/ui-tokens` fixed + parity test; theme provider.
 - Auth (§5): email, Google, password reset, complete-profile, sign-out wipe.
 - API layer skeleton (§4): `bearerContext`, middleware exception, `/api/v1/me`, `/api/v1/today`.
+- *(2026-10-24: `eas.json` with the three profiles, `expo-dev-client`, the phone guide
+  [ANDROID_PHONE_TEST.md](ANDROID_PHONE_TEST.md); the EAS project itself waits for the owner's `eas init`.)*
 - Sentry, `android_min_build` check, EAS project, `development` / `preview` / `production`
   build profiles, internal testing track.
 - Shell: bottom tabs **Today · Workout · Food · Progress · More** (spec C-screens), More holds
