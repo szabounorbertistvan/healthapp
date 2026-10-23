@@ -13,6 +13,7 @@ import {
 import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { liveUser } from "@/lib/supabase/server";
+import { mutated } from "@/lib/supabase/mutate";
 import { uuidFrom } from "@/lib/stable-id";
 import { getMyPlanMeals } from "@/lib/client-nutrition";
 import type { ActionResult } from "./actions";
@@ -250,8 +251,10 @@ export async function deleteFoodLog(id: string): Promise<ActionResult> {
   const live = await liveUser();
   if (!live) return notSignedIn;
   const { supabase } = live;
-  const { error } = await supabase.from("food_logs").delete().eq("id", id);
-  if (error) return { ok: false, message: error.message };
+  // mutated(): a delete RLS filtered down to nothing (someone else's row, or one
+  // already gone) answers success with zero rows — that is not a delete.
+  const failed = await mutated(await supabase.from("food_logs").delete({ count: "exact" }).eq("id", id));
+  if (failed) return failed;
   revalidatePath("/food");
   revalidatePath("/today");
   return { ok: true };

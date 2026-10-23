@@ -46,8 +46,9 @@ export default function SetLoggerScreen() {
   useEffect(
     () =>
       outbox.onSynced((synced) => {
-        const hit = synced.find((s) => s.isPr && s.item.input.dayId === dayId);
-        if (hit) setPr(hit.item.input.exerciseName);
+        for (const { item, isPr } of synced) {
+          if (isPr && item.kind === "set" && item.input.dayId === dayId) setPr(item.input.exerciseName);
+        }
       }),
     [outbox, dayId],
   );

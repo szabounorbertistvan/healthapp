@@ -122,11 +122,13 @@ export default function Today() {
           ) : (
             <T kind="soft">{t.mobile.today.noHabits}</T>
           )}
+          <Button kind="quiet" label={t.mobile.habits.title} onPress={() => router.push("/habits")} />
         </Card>
 
         <Card>
           <T kind="faint">{t.mobile.today.checkIn}</T>
           <T kind="soft">{today.check_in.submitted ? t.mobile.today.checkInDone : t.mobile.today.checkInDue}</T>
+          {today.check_in.submitted ? null : <Button kind="quiet" label={t.mobile.progress.open} onPress={() => router.push("/check-in")} />}
         </Card>
       </>
     );

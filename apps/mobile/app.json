@@ -33,6 +33,13 @@
       "expo-font",
       "expo-sqlite",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Voinic uses the camera to scan food barcodes. / Voinic folosește camera ca să scaneze codurile de bare ale alimentelor.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#d4a938"

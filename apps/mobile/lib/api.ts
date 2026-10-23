@@ -1,10 +1,11 @@
 import {
-  API_V1, LOCALE_HEADER, type ApiError, type LogSetV1, type MeV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1,
-  type WriteResultV1,
+  API_V1, LOCALE_HEADER, type ApiError, type BarcodeV1, type CheckInV1, type CodedResultV1, type FoodDayV1, type FoodItemV1,
+  type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type ProgressV1, type TodayV1, type WorkoutDayV1,
+  type WorkoutsV1, type WriteResultV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
-import type { SendOutcome } from "./outbox-core";
+import type { OutboxPayload, SendOutcome } from "./outbox-core";
 import { supabase } from "./supabase";
 
 /** Why a call failed, in terms a screen can act on. */
@@ -55,15 +56,38 @@ export const api = {
   workouts: () => call<WorkoutsV1>("GET", "/workouts"),
   workoutDay: (dayId: string) => call<WorkoutDayV1>("GET", `/workouts/${encodeURIComponent(dayId)}`),
   finishWorkout: (dayId: string) => call<WriteResultV1>("POST", `/workouts/${encodeURIComponent(dayId)}/finish`, {}),
+  foodDay: (day?: string) => call<FoodDayV1>("GET", day ? `/food?day=${encodeURIComponent(day)}` : "/food"),
+  searchFoods: (q: string) => call<FoodItemV1[]>("GET", `/foods/search?q=${encodeURIComponent(q)}`),
+  barcode: (code: string) => call<BarcodeV1>("GET", `/foods/barcode/${encodeURIComponent(code)}`),
+  ateAsPlanned: (slot: MealSlotV1, day: string, mealId?: string) => call<WriteResultV1>("POST", "/food/planned", { slot, day, mealId }),
+  deleteFoodLog: (id: string) => call<WriteResultV1>("POST", "/food/logs/delete", { id }),
+  habits: () => call<HabitsV1>("GET", "/habits"),
+  progress: () => call<ProgressV1>("GET", "/progress"),
+  addMeasurement: (m: MeasurementV1) => call<WriteResultV1>("POST", "/measurements", m),
+  checkIn: () => call<CheckInV1>("GET", "/check-in"),
 };
 
-/** One outbox delivery, classified for flushOutbox(): a 5xx is "later", like no signal. */
-export async function sendSet(input: LogSetV1): Promise<SendOutcome> {
+const PATHS: Record<OutboxPayload["kind"], string> = {
+  set: "/sets",
+  food: "/food/logs",
+  habit: "/habits/done",
+  checkin: "/check-in",
+};
+
+/**
+ * One outbox delivery, classified for flushOutbox(): a 5xx is "later", like no
+ * signal. A check-in the server already has counts as delivered — the web's
+ * replay rule (lib/offline/sync.tsx).
+ */
+export async function sendItem(payload: OutboxPayload): Promise<SendOutcome> {
   try {
-    const result = await call<WriteResultV1>("POST", "/sets", input);
-    return result.ok ? { kind: "ok", isPr: Boolean(result.is_pr) } : { kind: "refused", message: result.message ?? "" };
+    const result = await call<CodedResultV1>("POST", PATHS[payload.kind], payload.input);
+    if (result.ok || result.errorCode === "ALREADY_CHECKED_IN") return { kind: "ok", isPr: Boolean(result.is_pr) };
+    return { kind: "refused", message: result.message ?? "" };
   } catch (error) {
     if (error instanceof ApiFailure && error.kind === "unauthorized") return { kind: "unauthorized" };
     return { kind: "offline" };
   }
 }
+
+

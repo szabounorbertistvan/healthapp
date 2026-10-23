@@ -17,7 +17,7 @@ function day(over: Partial<WorkoutDayV1> = {}): WorkoutDayV1 {
   };
 }
 const queued = (setIndex: number, error?: string): QueuedSet => ({
-  id: `q${setIndex}`, userId: "me", queuedAt: "2026-10-23T10:00:00Z", error,
+  kind: "set", id: `q${setIndex}`, userId: "me", queuedAt: "2026-10-23T10:00:00Z", error,
   input: { dayId: "day-1", dayName: "Day 1", exerciseName: "Squat", exerciseId: "ex-1", programExerciseId: "pe-1",
     setIndex, weightKg: 62.5, reps: 6, rpe: 8, rir: 2, loggedAt: `2026-10-23T10:0${setIndex}:00Z` },
 });

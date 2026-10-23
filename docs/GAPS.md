@@ -8,7 +8,7 @@ Verified 2026-08-26; landing-page claims re-audited and several entries closed 2
 
 ## Structural
 
-**Mobile app: a first slice only (2026-10-23).** `apps/mobile` (Expo) signs in and shows Today, Workout (the set logger, offline-first, with the rest timer) and More through `/api/v1`; Food and Progress open the web. Never run on a device yet. Every real "client
+**Mobile app: a first slice only (2026-10-23).** `apps/mobile` (Expo) signs in and shows Today, Workout (the set logger, offline-first, with the rest timer), Food (search, barcode, planned meals), Habits, Progress (weigh-in, best lifts), the weekly check-in and More through `/api/v1`; sets, food logs, habit ticks and check-ins work offline. Never run on a device yet. Every real "client
 app" screen is a web route in `apps/web/app/(client)/`. Three things are built
 for it and unused: `supabase/functions/sync-ingest` (offline outbox),
 `supabase/functions/push-dispatch` (`users.push_token` is never written by any

@@ -317,6 +317,10 @@ and the exit test on a real phone in airplane mode.*
   airplane mode, sets sync, coach sees them.
 
 ### Phase 3 — Food, habits, progress, check-in · 5–6 weeks
+*Started 2026-10-23 — done: food diary by day, search, barcode scanner, recent/favourites, portions,
+"ate as planned", habits, weigh-in + waist, best lifts, weekly check-in with the coach's questions; food
+logs, habit ticks and check-ins join the outbox (each replay-safe on the web side). Open: custom foods,
+editing a portion, copy a meal, progress charts and photos, recipes; the exit test on a phone.*
 - Food diary for a day, search (`search_foods`, the "more results in English" fold), barcode
   (§8), portions (`lib/food-portions.ts` logic moved to `packages/shared`), recents/favourites,
   "ate as planned" from the coach's plan (`mealsForWeekday`), My recipes logging.

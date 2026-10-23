@@ -13,9 +13,12 @@ Expo SDK 58 (React Native 0.88, React 19.3.0), Expo Router, TanStack Query, supa
 | Sign-in | email + password against the same Supabase project (`lib/auth.tsx`); the session in SecureStore, chunked (`lib/chunked-store.ts`, tested) |
 | Today | `GET /api/v1/today` — the web's own `getToday()`, so the same adherence %, streak, next workout, nutrition, habits, check-in |
 | Workout | native (2026-10-23): the program list (`GET /api/v1/workouts`), a day (`GET /api/v1/workouts/[dayId]` — prescription, today's sets, last time per lift), the set logger and Finish (`POST /api/v1/sets`, `POST …/finish` — the web's own `logSet()` / `finishWorkout()`) |
-| Offline | **every** set is saved on the phone first (`lib/outbox-core.ts`, tested; SQLite via `lib/storage.ts`) and sent by `lib/outbox.tsx` — on reconnect, on foreground, every 20 s. Replays are safe: `logSet` derives its keys from the set. The day and the list are kept on the phone (`lib/offline-query.ts`), so the logger opens with no signal once the day was opened online. Finish needs the outbox empty. |
+| Offline | **every** set, food log, habit tick and check-in is saved on the phone first (`lib/outbox-core.ts`, tested; SQLite via `lib/storage.ts`) and sent by `lib/outbox.tsx` — on reconnect, on foreground, every 20 s. Replays are safe: `logSet` derives its keys from the set. The day and the list are kept on the phone (`lib/offline-query.ts`), so the logger opens with no signal once the day was opened online. Finish needs the outbox empty. |
 | Rest timer | `packages/shared`'s rules, kept on the phone (`lib/rest.tsx`), started by `restAfterLoggedSet()` exactly as on the web; the end is a **local** notification (`expo-notifications`), so it fires offline and with the app closed. Channels `rest` (may show on the lock screen) / `rest-quiet`, chosen by `rest_prefs.alert`; no sound or vibration is ever requested. Permission is asked at the first rest. |
-| Food · Progress | placeholders that open the same screen on voinic.fit (`components/on-web.tsx`) |
+| Food | native (Phase 3): the diary by day (`GET /api/v1/food` — targets, totals, entries, the coach's planned meals), "ate as planned", remove an entry; add by search (`/foods/search`), recent / favourites, or **barcode** (`expo-camera`, ML Kit; `/foods/barcode/[code]`, a miss falls through to search), then the portion (`portionMacros` from `packages/shared`). Logs go through the outbox (`POST /food/logs`, the phone's id as `clientId`). |
+| Habits | `app/habits.tsx`: tick / untick today, through the outbox as a state (`POST /habits/done` = `setHabitDone`) |
+| Progress | weigh-in and waist (`POST /measurements`, online), recent measurements with the change, best lifts (`GET /api/v1/progress`); charts, photos, goals stay on the web |
+| Check-in | `app/check-in.tsx`: weight, the five 1–10 scales, the coach's questions, a note — through the outbox (`POST /check-in`; "already checked in" counts as delivered); last week's feedback |
 | More | who is signed in (`GET /api/v1/me`), language RO/EN, links (privacy, account deletion), sign out |
 | Strings | `@healthapp/i18n` — `common` plus the app's own `mobile` namespace, `en` + `ro` |
 | Colours | `@healthapp/ui-tokens`, the web's palette; follows the device's light/dark |
@@ -23,7 +26,8 @@ Expo SDK 58 (React Native 0.88, React 19.3.0), Expo Router, TanStack Query, supa
 Not yet: Google sign-in (needs the Android OAuth client, plan §5), editing or deleting a logged
 set, supersets shown as rounds (they log fine, listed per exercise), the live countdown *inside*
 the notification (Android's chronometer needs a native module), a PR mark before the server's
-answer, push, scanner, every other screen — the phases in the plan. Not yet run on a device.
+answer, push, a custom food or a recipe of one's own, editing a food portion, progress photos, the coach screens —
+the phases in the plan. Not yet run on a device.
 
 ## How the app reaches the data
 

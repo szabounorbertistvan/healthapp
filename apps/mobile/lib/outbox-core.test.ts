@@ -1,12 +1,12 @@
 import type { LogSetV1 } from "@healthapp/api/v1";
 import { describe, expect, it } from "vitest";
-import { dismissRefused, enqueue, flushOutbox, queuedForDay, type OutboxStore, type QueuedSet, type SendOutcome } from "./outbox-core";
+import { dismissRefused, enqueue, flushOutbox, pendingHabitState, queuedFoodFor, queuedForDay, type OutboxStore, type QueuedItem, type QueuedSet, type SendOutcome } from "./outbox-core";
 
-function memoryStore(initial: QueuedSet[] = []): OutboxStore & { items: QueuedSet[] } {
+function memoryStore(initial: QueuedItem[] = []): OutboxStore & { items: QueuedItem[] } {
   const store = {
     items: [...initial],
     load: async () => [...store.items],
-    save: async (items: QueuedSet[]) => void (store.items = [...items]),
+    save: async (items: QueuedItem[]) => void (store.items = [...items]),
   };
   return store;
 }
@@ -16,16 +16,17 @@ const input = (setIndex: number, at: string, dayId = "day-1"): LogSetV1 => ({
   setIndex, weightKg: 60, reps: 8, rpe: 8, loggedAt: at,
 });
 const item = (id: string, setIndex: number, at: string, userId = "me"): QueuedSet => ({
-  id, userId, input: input(setIndex, at), queuedAt: at,
+  kind: "set", id, userId, input: input(setIndex, at), queuedAt: at,
 });
 
 describe("flushOutbox", () => {
   it("sends oldest first and removes what the server took", async () => {
     const store = memoryStore([item("b", 2, "2026-10-23T10:02:00Z"), item("a", 1, "2026-10-23T10:01:00Z")]);
     const sent: number[] = [];
-    const result = await flushOutbox(store, "me", async (i) => {
-      sent.push(i.setIndex);
-      return { kind: "ok", isPr: i.setIndex === 2 };
+    const result = await flushOutbox(store, "me", async (p) => {
+      const setIndex = p.kind === "set" ? p.input.setIndex : 0;
+      sent.push(setIndex);
+      return { kind: "ok", isPr: setIndex === 2 };
     });
     expect(sent).toEqual([1, 2]);
     expect(store.items).toEqual([]);
@@ -55,7 +56,7 @@ describe("flushOutbox", () => {
   it("only ever sends the signed-in person's sets", async () => {
     const store = memoryStore([item("theirs", 1, "2026-10-23T10:01:00Z", "someone-else"), item("mine", 1, "2026-10-23T10:02:00Z")]);
     const sentIds: string[] = [];
-    await flushOutbox(store, "me", async (i) => (sentIds.push(i.loggedAt), { kind: "ok", isPr: false }));
+    await flushOutbox(store, "me", async (p) => (sentIds.push(p.kind === "set" ? p.input.loggedAt : ""), { kind: "ok", isPr: false }));
     expect(sentIds).toEqual(["2026-10-23T10:02:00Z"]);
     expect(store.items.map((i) => i.id)).toEqual(["theirs"]);
   });
@@ -77,5 +78,41 @@ describe("flushOutbox", () => {
     expect(store.items).toHaveLength(1);
     expect(queuedForDay(store.items, "me", "day-1")).toHaveLength(1);
     expect(queuedForDay(store.items, "me", "day-2")).toHaveLength(0);
+  });
+});
+
+describe("other kinds", () => {
+  const habit = (id: string, done: boolean, at: string): QueuedItem => ({
+    kind: "habit", id, userId: "me", queuedAt: at, input: { habitId: "h1", day: "2026-10-23", done },
+  });
+  const food = (id: string, at: string): QueuedItem => ({
+    kind: "food", id, userId: "me", queuedAt: at,
+    input: { slot: "lunch", foodName: "Rice", grams: 150, per100g: { kcal: 130, protein: 2.7, carbs: 28, fat: 0.3 }, foodId: null, day: "2026-10-23", clientId: id },
+  });
+
+  it("replays a habit ticked then unticked in that order, and shows the last state meanwhile", async () => {
+    const store = memoryStore([habit("h-off", false, "2026-10-23T10:05:00Z"), habit("h-on", true, "2026-10-23T10:01:00Z")]);
+    expect(pendingHabitState(store.items, "me", "h1", "2026-10-23")).toBe(false);
+    const order: boolean[] = [];
+    await flushOutbox(store, "me", async (p) => (p.kind === "habit" && order.push(p.input.done), { kind: "ok", isPr: false }));
+    expect(order).toEqual([true, false]);
+    expect(pendingHabitState(store.items, "me", "h1", "2026-10-23")).toBeUndefined();
+  });
+
+  it("sends a food log with its own id as the clientId, and lists it for its day only", async () => {
+    const store = memoryStore([food("f1", "2026-10-23T12:00:00Z")]);
+    expect(queuedFoodFor(store.items, "me", "2026-10-23")).toHaveLength(1);
+    expect(queuedFoodFor(store.items, "me", "2026-10-22")).toHaveLength(0);
+    const ids: string[] = [];
+    await flushOutbox(store, "me", async (p, id) => (ids.push(p.kind === "food" ? p.input.clientId + ":" + id : ""), { kind: "ok", isPr: false }));
+    expect(ids).toEqual(["f1:f1"]);
+  });
+
+  it("reads a record stored before kinds existed as a set", async () => {
+    const legacy = { id: "old", userId: "me", queuedAt: "2026-10-23T09:00:00Z", input: input(1, "2026-10-23T09:00:00Z") };
+    const store = memoryStore([legacy as unknown as QueuedItem]);
+    const kinds: string[] = [];
+    await flushOutbox(store, "me", async (p) => (kinds.push(p.kind), { kind: "ok", isPr: false }));
+    expect(kinds).toEqual(["set"]);
   });
 });

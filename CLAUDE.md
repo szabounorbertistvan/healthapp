@@ -69,7 +69,7 @@ RLS tests.
 
 ```
 apps/web/            Next.js 15 App Router, React 19, Tailwind v4 — the product
-apps/mobile/         Expo SDK 58 Android app — sign-in, Today, Workout (offline logger + rest timer), More
+apps/mobile/         Expo SDK 58 Android app — Today, Workout (offline logger + rest timer), Food (+ barcode), Habits, Progress, Check-in, More
 apps/android-twa/    the Play Store TWA bridge (Bubblewrap manifest only; not a workspace)
 packages/shared/     domain math: macros, adherence, PRs, entitlements, billing, sync
 packages/api/        error shapes shared with edge functions; the /api/v1 contract (src/v1.ts)

@@ -151,3 +151,108 @@ export type LogSetV1 = {
 
 /** The answer of a write: `ok: false` with a message the person can act on. */
 export type WriteResultV1 = { ok: boolean; message?: string; is_pr?: boolean };
+
+// ---------- food, habits, progress, check-in (Phase 3) ----------
+
+export type MealSlotV1 = "breakfast" | "lunch" | "dinner" | "snack";
+export const MEAL_SLOTS_V1: readonly MealSlotV1[] = ["breakfast", "lunch", "dinner", "snack"];
+
+export type FoodPortionV1 = { label: string; grams: number; note: string };
+
+/** A food the person can log: per 100 g, plus its own servings when it has any. */
+export type FoodItemV1 = {
+  id: string;
+  name_en: string;
+  name_ro: string;
+  brand: string | null;
+  per_100g: MacrosV1;
+  portions: FoodPortionV1[];
+  /** USDA generic row without a Romanian name yet. */
+  english_only: boolean;
+};
+
+export type QuickFoodV1 = {
+  food_id: string | null;
+  name: string;
+  per_100g: MacrosV1;
+  portions: FoodPortionV1[];
+  last_grams: number | null;
+  favorite: boolean;
+};
+
+export type FoodDayV1 = {
+  /** The diary day, on the person's own calendar. */
+  day: string;
+  /** The person's today, so the app knows which day "today" is. */
+  today: string;
+  plan_name: string | null;
+  plan_owner: "coach" | "self" | null;
+  target: MacrosV1;
+  totals: MacrosV1;
+  entries: { id: string; slot: MealSlotV1; food_name: string; grams: number; macros: MacrosV1 }[];
+  /** The plan's meals for this day (mealsForWeekday); "ate as planned" logs one. */
+  planned: {
+    id: string;
+    slot: MealSlotV1;
+    name: string;
+    extra: boolean;
+    foods: { name: string; grams: number; macros: MacrosV1 }[];
+  }[];
+  quick: { recent: QuickFoodV1[]; favorites: QuickFoodV1[] };
+};
+
+export type BarcodeV1 =
+  | { ok: true; food: FoodItemV1 }
+  | { ok: false; reason: "invalid" | "not_found" | "upstream" | "limit" };
+
+/** POST /api/v1/food/logs — the web's logFood input; `clientId` makes a replay a no-op. */
+export type FoodLogV1 = {
+  slot: MealSlotV1;
+  foodName: string;
+  grams: number;
+  per100g: MacrosV1;
+  foodId: string | null;
+  day: string;
+  clientId: string;
+};
+
+export type HabitV1 = { id: string; name: string; target_per_week: number; done_today: boolean; done_this_week: number };
+export type HabitsV1 = { today: string; habits: HabitV1[] };
+
+/** POST /api/v1/habits/done — a state, not a toggle, so it can be delivered twice. */
+export type HabitDoneV1 = { habitId: string; day: string; done: boolean };
+
+export type ProgressV1 = {
+  weight_unit: "kg" | "lb";
+  length_unit: "cm" | "in";
+  /** Newest first. */
+  measurements: { taken_on: string; weight_kg: number | null; waist_cm: number | null }[];
+  prs: { exercise: string; best_kg: number; at: string }[];
+};
+
+export type MeasurementV1 = { weightKg: number | null; waistCm: number | null; takenOn?: string };
+
+export type CheckInQuestionV1 = { id: string; prompt: string; kind: "scale" | "number" | "yes_no" | "text" };
+
+export type CheckInV1 = {
+  week_start: string;
+  submitted: boolean;
+  has_coach: boolean;
+  last: { week_start: string; weight_kg: number | null; note: string | null; coach_feedback: string | null; reviewed: boolean } | null;
+  questions: CheckInQuestionV1[];
+  weight_unit: "kg" | "lb";
+};
+
+export type CheckInSubmitV1 = {
+  weightKg: number | null;
+  sleep: number;
+  energy: number;
+  stress: number;
+  hunger: number;
+  recovery: number;
+  note: string;
+  answers: { questionId: string; value: number | boolean | string }[];
+};
+
+/** A write's answer with the web's machine-readable code (ALREADY_CHECKED_IN…). */
+export type CodedResultV1 = WriteResultV1 & { errorCode?: string };
