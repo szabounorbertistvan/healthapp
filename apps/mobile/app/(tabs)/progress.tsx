@@ -7,7 +7,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Circle, Line, Path } from "react-native-svg";
+import { PointsChart } from "@/components/charts";
+import { GoalsTab } from "@/components/goals";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { config } from "@/lib/config";
@@ -22,8 +23,8 @@ import { parseDay } from "@/lib/week";
 // the four headline figures, the insights, then Body / Strength / Consistency
 // / Goals. Every figure arrives folded on the server (GET /api/v1/progress/
 // overview runs the page's own reads through packages/shared); this screen
-// only formats. Goals, a single lift's charts, two-date comparison and photos
-// open on the web.
+// only formats. Goals have their own read (components/goals.tsx); a single
+// lift's charts, two-date comparison and photos open on the web.
 
 const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 type Tab = "body" | "strength" | "consistency" | "goals";
@@ -137,7 +138,7 @@ export default function Progress() {
                     key={x}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: on }}
-                    onPress={() => (x === "goals" ? web("/progress?tab=goals")() : setTab(x))}
+                    onPress={() => setTab(x)}
                     style={[styles.tab, on ? { backgroundColor: color.bg } : null]}
                   >
                     <Text numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: 12, color: on ? color.ink : color.inkSoft }}>{tabLabel[x]}</Text>
@@ -149,11 +150,22 @@ export default function Progress() {
             {tab === "body" ? <BodyTab data={data} f={f} /> : null}
             {tab === "strength" ? <StrengthTab data={data} f={f} /> : null}
             {tab === "consistency" ? <ConsistencyTab data={data} f={f} /> : null}
+            {tab === "goals" ? <GoalsSection /> : null}
           </>
         )}
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+/** Goals read on their own (GET /api/v1/goals): they do not follow the range. */
+function GoalsSection() {
+  const { t } = useI18n();
+  const { color } = useTheme();
+  const query = useOfflineQuery("goals", ["goals"], api.goals);
+  const data = query.data?.data;
+  if (data) return <GoalsTab data={data} />;
+  return query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} style={{ marginTop: 24 }} />;
 }
 
 // ---------- shared pieces ----------
@@ -266,72 +278,6 @@ function Insights({ insights, names, f }: { insights: ProgressInsight[]; names: 
   );
 }
 
-/** A line through the points (exercise-analytics.tsx LineChart): the first and last day and the change named. */
-function PointsChart({ title, points, unit, f }: { title: string; points: { day: string; value: number }[]; unit: string; f: Fmt }) {
-  const { color } = useTheme();
-  const d = f.t.clientApp.exerciseDetail;
-  const short = new Intl.DateTimeFormat(f.tag, { day: "numeric", month: "short" });
-  const [width, setWidth] = useState(0);
-  const H = 116;
-  const PAD = { top: 14, right: 10, bottom: 18, left: 10 };
-  let chart: ReactNode = null;
-  if (points.length >= 2 && width > 0) {
-    const W = width;
-    const values = points.map((p) => p.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const span = max - min || Math.max(max * 0.1, 1);
-    const lo = max === min ? min - span / 2 : min;
-    const first = parseDay(points[0]!.day).getTime();
-    const timeSpan = parseDay(points[points.length - 1]!.day).getTime() - first || 1;
-    const coords = points.map((p) => ({
-      ...p,
-      x: PAD.left + ((parseDay(p.day).getTime() - first) / timeSpan) * (W - PAD.left - PAD.right),
-      y: PAD.top + (1 - (p.value - lo) / span) * (H - PAD.top - PAD.bottom),
-    }));
-    const path = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
-    const peak = coords.reduce((best, c) => (c.value > best.value ? c : best), coords[0]!);
-    const last = coords[coords.length - 1]!;
-    chart = (
-      <Svg width={W} height={H}>
-        <Line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom} stroke={color.line} strokeWidth={1} />
-        <Path d={path} fill="none" stroke={color.accent} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-        {coords.map((c) => (
-          <Circle key={c.day + c.value} cx={c.x} cy={c.y} r={c === last || c === peak ? 4 : 3} fill={color.accent} stroke={color.surface} strokeWidth={2} />
-        ))}
-      </Svg>
-    );
-  }
-  const delta = points.length >= 2 ? points[points.length - 1]!.value - points[0]!.value : 0;
-  return (
-    <Card style={{ gap: 0 }}>
-      <Text style={styles.label(color.inkFaint, 11)}>{title}</Text>
-      {points.length === 0 ? (
-        <Text style={[styles.small(color.inkFaint, 13), { marginTop: 12 }]}>{d.noneInRange}</Text>
-      ) : points.length === 1 ? (
-        <>
-          <Text style={{ marginTop: 8, fontFamily: font.displayExtrabold, fontSize: 26, color: color.ink }}>
-            {points[0]!.value.toLocaleString(f.locale)}
-            <Text style={{ fontSize: 16, color: color.inkFaint }}>{` ${unit}`}</Text>
-          </Text>
-          <Text style={[styles.small(color.inkFaint), { marginTop: 6 }]}>{`${short.format(parseDay(points[0]!.day))} · ${d.notEnoughForChart}`}</Text>
-        </>
-      ) : (
-        <View style={{ marginTop: 8 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
-          {chart}
-          <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-            <Text style={styles.small(color.inkFaint, 11)}>{short.format(parseDay(points[0]!.day))}</Text>
-            <Text style={{ fontFamily: font.bold, fontSize: 11, color: delta > 0 ? color.accentInk : delta < 0 ? color.inkSoft : color.inkFaint }}>
-              {`${delta > 0 ? "+" : ""}${(Math.round(delta * 10) / 10).toLocaleString(f.locale)} ${unit}`}
-            </Text>
-            <Text style={styles.small(color.inkFaint, 11)}>{short.format(parseDay(points[points.length - 1]!.day))}</Text>
-          </View>
-        </View>
-      )}
-    </Card>
-  );
-}
-
 /** Bars per week or month (advanced-progress.tsx Bars); an empty bucket keeps a hairline. */
 function Bars({ title, unit, items, value, format, f }: {
   title: string; unit: "week" | "month"; items: PeriodBucket[]; value: (b: PeriodBucket) => number; format: (v: number) => string; f: Fmt;
@@ -395,7 +341,7 @@ function BodyCard({ title, metric, kind, data, f }: { title: string; metric: Bod
         </Text>
       ) : null}
       {data.charts ? (
-        <PointsChart f={f} title={title} unit={kind === "weight" ? f.wu : f.lu} points={metric.series.map((p) => ({ day: p.day, value: toUnit(p.value) }))} />
+        <PointsChart title={title} unit={kind === "weight" ? f.wu : f.lu} points={metric.series.map((p) => ({ day: p.day, value: toUnit(p.value) }))} />
       ) : null}
     </View>
   );

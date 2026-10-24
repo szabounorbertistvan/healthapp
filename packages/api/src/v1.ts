@@ -3,7 +3,8 @@
 // this only ever grows: a new field is additive, a breaking change is /api/v2.
 
 import type {
-  BodyProgress, PeriodBucket, ProgressInsight, ProgressRange, StrengthHighlight, TrainingProgress,
+  BodyProgress, ChallengeStatus, GoalDirection, Leaderboard, LeaderboardMetric, LeaderboardPeriod, LeaderboardScope, GoalMetric, GoalPoint, GoalProgress, GoalSeries, GoalStatus, PeriodBucket, ProgressInsight,
+  ProgressRange, StrengthHighlight, TrainingProgress,
 } from "@healthapp/shared";
 
 export const API_V1 = "/api/v1";
@@ -324,6 +325,143 @@ export type ProgressOverviewV1 = {
   streak: { current: number; longest: number } | null;
   /** Days in the program followed now; null without one. */
   planned_per_week: number | null;
+};
+
+/** The account form's fields (the web's AccountFields, components/account.tsx ProfileForm). */
+export type AccountFieldsV1 = {
+  fullName: string;
+  username: string;
+  city: string;
+  bio: string;
+  timezone: string;
+  /** 0 = Sunday … 6 = Saturday. */
+  checkInWeekday: number;
+  leaderboardVisibility: "public" | "followers" | "private";
+  weightUnit: "kg" | "lb";
+  lengthUnit: "cm" | "in";
+};
+
+/** GET /api/v1/settings — what /account (and the coach's /settings) edits. */
+export type SettingsV1 = {
+  role: "client" | "coach" | "both" | "admin";
+  account: AccountFieldsV1;
+  rest: { default_seconds: number; alert: boolean };
+  /** users.email_prefs, one switch per category the person sees. */
+  email: Record<string, boolean>;
+};
+
+/** POST /api/v1/settings/account — the form and what it showed before (only changed fields are written). */
+export type SaveAccountV1 = { input: AccountFieldsV1; baseline?: AccountFieldsV1 };
+
+/** One goal as the web's Goals tab shows it (lib/goals-data.ts GoalView); progress folded by packages/shared. */
+export type GoalV1 = {
+  id: string;
+  title: string;
+  metric: GoalMetric;
+  direction: GoalDirection;
+  target_value: number;
+  start_value: number | null;
+  start_date: string;
+  target_date: string | null;
+  status: GoalStatus;
+  exercise_id: string | null;
+  exercise_name: string | null;
+  measure_key: string | null;
+  achieved_at: string | null;
+  closed_at: string | null;
+  progress: GoalProgress;
+  points: GoalPoint[];
+};
+
+export type GoalCurrentV1 = { value: number | null; missing: GoalSeries["missing"] };
+
+/** GET /api/v1/goals — Progress → Goals (GoalDashboard), the person's units and the plan's active-goal limit. */
+export type GoalsV1 = {
+  today: string;
+  main_goal: string | null;
+  active: GoalV1[];
+  closed: GoalV1[];
+  current: {
+    body_weight: GoalCurrentV1;
+    weekly_workouts: GoalCurrentV1;
+    consistency: GoalCurrentV1;
+    kcal_on_target: GoalCurrentV1;
+    protein_avg: GoalCurrentV1;
+    circumference: Record<string, GoalCurrentV1>;
+  };
+  exercises: { id: string; name: string; current: number | null }[];
+  kcal_target: number | null;
+  weight_unit: "kg" | "lb";
+  length_unit: "cm" | "in";
+  /** null = no limit. */
+  max_active: number | null;
+};
+
+/** POST /api/v1/goals — createGoal(); values in canonical units (kg, cm, per week, %, g). */
+export type CreateGoalV1 = {
+  metric: string;
+  direction: string;
+  targetValue: number;
+  startValue: number | null;
+  targetDate: string | null;
+  exerciseId: string | null;
+  measureKey: string | null;
+  title: string | null;
+};
+
+/** GET /api/v1/leaderboard?metric&period&scope — one board (top 10 + the viewer's row), as /leaderboards. */
+export type LeaderboardV1 = {
+  metric: LeaderboardMetric;
+  period: LeaderboardPeriod;
+  scope: LeaderboardScope;
+  board: Leaderboard;
+  /** For the gym scope: whether a home gym is picked and its board opted into. */
+  gym: { home: boolean; board: boolean } | null;
+};
+
+/** GET /api/v1/achievements — every badge with the person's progress, worded as /achievements words it. */
+export type AchievementsV1 = {
+  earned: number;
+  total: number;
+  categories: { key: string; label: string }[];
+  rows: {
+    slug: string;
+    name: string;
+    icon: string | null;
+    category: string;
+    rarity: string;
+    rarity_label: string | null;
+    requirement: string;
+    awarded_at: string | null;
+    target: number;
+    percent: number;
+    progress_line: string;
+  }[];
+};
+
+/** GET /api/v1/challenges — every challenge the person can see, with their progress (challenge_cards). */
+export type ChallengesV1 = {
+  cards: {
+    id: string;
+    title: string;
+    description: string | null;
+    type: string;
+    /** The type's icon key and the uppercase line under the title (challengeSubtitle). */
+    subtitle: string;
+    unit_label: string;
+    target: number;
+    start_date: string;
+    end_date: string;
+    participants: number;
+    joined: boolean;
+    can_join: boolean;
+    completed_at: string | null;
+    progress: number;
+    pct: number;
+    status: ChallengeStatus;
+    days_remaining: number;
+    is_platform: boolean;
+  }[];
 };
 
 export type MeasurementV1 = { weightKg: number | null; waistCm: number | null; takenOn?: string };

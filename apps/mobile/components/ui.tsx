@@ -1,8 +1,7 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type TextStyle, type ViewStyle } from "react-native";
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from "react-native-svg";
-import { font, fontSize, minTouchTarget, radius, space, useTheme } from "@/lib/theme";
+import { alpha, font, fontSize, minTouchTarget, radius, space, useTheme } from "@/lib/theme";
 
 // The web's building blocks on the phone, each copied from its source:
 //   Screen + Backdrop  → body + body::before (the ambient gold / cool fields)
@@ -40,7 +39,18 @@ export function Screen({ children, style }: { children: ReactNode; style?: ViewS
 
 type Pane = "standard" | "strong" | "subtle";
 
-/** A Liquid Glass pane: a few percent of white, a lit rim at the top-left, a soft shadow. */
+/**
+ * A Liquid Glass pane, built from globals.css `.glass` layer for layer:
+ *  1. the body — white at a few percent on a 135° fall (more at the lit
+ *     top-left, a touch more again at the far corner);
+ *  2. the edge — an inset 1 px ring and the drop shadow, as one boxShadow
+ *     (a boxShadow survives overflow clipping, so iOS keeps it, and Android
+ *     draws it too, which the old shadow* props never did);
+ *  3. the rim — the light on the top and left edges (white, then the gold
+ *     catch), a faint return on the bottom and right;
+ *  4. the specular — a soft pool of light in the lit corner.
+ * The decoration sits under the content and never takes a touch.
+ */
 export function Glass({
   children,
   style,
@@ -52,43 +62,34 @@ export function Glass({
   pane?: Pane;
   radius?: number;
 }) {
-  const { glass, dark } = useTheme();
-  const fill = pane === "strong" ? glass.fillStrong : pane === "subtle" ? glass.fillSubtle : glass.fill;
+  const { glass } = useTheme();
+  const a = glass.alpha[pane];
+  const white = (alpha: number) => `rgba(255,255,255,${Math.max(0, alpha).toFixed(3)})`;
   return (
     <View
       style={[
         {
           borderRadius: r,
-          backgroundColor: fill,
-          borderWidth: StyleSheet.hairlineWidth * 2,
-          borderColor: glass.border,
-          shadowColor: glass.shadow,
-          shadowOpacity: dark ? 0.6 : 0.18,
-          shadowRadius: 22,
-          shadowOffset: { width: 0, height: 14 },
-          elevation: 0,
-          overflow: "hidden",
+          backgroundImage: `linear-gradient(135deg, ${white(a + glass.alpha.corner)} 0%, ${white(a)} 50%, ${white(a + 0.02)} 100%)`,
+          boxShadow: `inset 0px 0px 0px 1px ${glass.border}, ${glass.dropShadow}`,
         },
         style as ViewStyle,
       ]}
     >
-      {/* the 135° fall of light, strongest at the lit corner */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={[glass.corner, "rgba(255,255,255,0)"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.7, y: 0.7 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {/* the rim along the top edge: white where the light hits, then the gold catch */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={[glass.highlight, glass.highlightWarm, "rgba(255,255,255,0)"]}
-        locations={[0, 0.25, 0.7]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ position: "absolute", left: 0, right: 0, top: 0, height: StyleSheet.hairlineWidth * 2 }}
-      />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: r, overflow: "hidden" }]}>
+        {/* the specular: a pool of light in the lit corner */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            { opacity: 0.85, backgroundImage: `radial-gradient(90% 55% at 18% -8%, ${glass.specular}, transparent 60%)` },
+          ]}
+        />
+        {/* the rim: lit on the top and left, a faint return on the bottom and right */}
+        <View style={[styles.rimH, { top: 0, backgroundImage: `linear-gradient(90deg, ${glass.highlight} 0%, ${glass.highlightWarm} 16%, transparent 45%)` }]} />
+        <View style={[styles.rimV, { left: 0, backgroundImage: `linear-gradient(180deg, ${glass.highlight} 0%, ${glass.highlightWarm} 16%, transparent 45%)` }]} />
+        <View style={[styles.rimH, { bottom: 0, backgroundImage: `linear-gradient(90deg, transparent 55%, ${glass.highlightLow} 84%, ${glass.highlightLow} 100%)` }]} />
+        <View style={[styles.rimV, { right: 0, backgroundImage: `linear-gradient(180deg, transparent 55%, ${glass.highlightLow} 84%, ${glass.highlightLow} 100%)` }]} />
+      </View>
       {children}
     </View>
   );
@@ -237,18 +238,31 @@ export function Button({
       style={({ pressed }) => [{ opacity: off ? 0.5 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
     >
       {primary ? (
-        <LinearGradient
-          colors={[...accentStops]}
-          locations={[0, 0.48, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.button, { borderColor: accentStops[2], shadowColor: color.accent }]}
+        // .glass--accent: gold all the way through, a lit top line, a gold glow under it.
+        <View
+          style={[
+            styles.button,
+            {
+              backgroundImage: `linear-gradient(135deg, ${accentStops[0]} 0%, ${accentStops[1]} 48%, ${accentStops[2]} 100%)`,
+              boxShadow: `inset 0px 0px 0px 1px ${accentStops[2]}, inset 0px 1px 0px rgba(255,255,255,0.35), 0px 1px 1px rgba(0,0,0,0.15), 0px 8px 20px -8px ${alpha(color.accent, 0.55)}`,
+            },
+          ]}
         >
-          <View pointerEvents="none" style={styles.buttonSheen} />
           {content}
-        </LinearGradient>
+        </View>
       ) : (
-        <View style={[styles.button, { backgroundColor: glass.fillSubtle, borderColor: glass.border, shadowOpacity: 0 }]}>{content}</View>
+        // .glass--subtle: a thinner pane with the same ring.
+        <View
+          style={[
+            styles.button,
+            {
+              backgroundImage: `linear-gradient(135deg, rgba(255,255,255,${(glass.alpha.subtle + glass.alpha.corner).toFixed(3)}) 0%, rgba(255,255,255,${glass.alpha.subtle}) 50%, rgba(255,255,255,${(glass.alpha.subtle + 0.02).toFixed(3)}) 100%)`,
+              boxShadow: `inset 0px 0px 0px 1px ${glass.border}`,
+            },
+          ]}
+        >
+          {content}
+        </View>
       )}
     </Pressable>
   );
@@ -306,15 +320,9 @@ export function Bar({ ratio, over = false, height = 4 }: { ratio: number; over?:
 }
 
 const styles = StyleSheet.create({
-  button: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: "hidden",
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-  },
-  buttonSheen: { position: "absolute", left: 0, right: 0, top: 0, height: 1, backgroundColor: "rgba(255,255,255,0.35)" },
+  rimH: { position: "absolute", left: 0, right: 0, height: 1 },
+  rimV: { position: "absolute", top: 0, bottom: 0, width: 1 },
+  button: { borderRadius: 16 },
   buttonInner: {
     minHeight: minTouchTarget,
     paddingHorizontal: space.xl,

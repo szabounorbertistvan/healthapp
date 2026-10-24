@@ -507,9 +507,9 @@ export function CommunityCard({ d }: { d: DashboardV1 }) {
         <T kind="label">{x.community}</T>
       </View>
       <View style={{ marginTop: 8 }}>
-        <LinkRow icon={ICON.leaderboards} label={t.common.leaderboards.title} meta={d.community.leaderboard_rank ? `#${d.community.leaderboard_rank}` : undefined} onPress={web("/leaderboards")} />
+        <LinkRow icon={ICON.leaderboards} label={t.common.leaderboards.title} meta={d.community.leaderboard_rank ? `#${d.community.leaderboard_rank}` : undefined} onPress={() => router.push("/leaderboards")} />
         <Divider />
-        <LinkRow icon={ICON.challenges} label={t.common.challenges.title} meta={`${d.community.active_challenges} ${x.active}`} onPress={web("/challenges")} />
+        <LinkRow icon={ICON.challenges} label={t.common.challenges.title} meta={`${d.community.active_challenges} ${x.active}`} onPress={() => router.push("/challenges")} />
         <Divider />
         <LinkRow icon={ICON.feed} label={t.common.social.feed} onPress={web("/feed")} />
       </View>

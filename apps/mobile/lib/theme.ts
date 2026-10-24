@@ -19,6 +19,13 @@ export type Glass = {
   highlight: string;
   highlightWarm: string;
   shadow: string;
+  /** globals.css --glass-alpha*, as numbers: the pane is tint at this alpha (+ the corner at the lit side). */
+  alpha: { standard: number; strong: number; subtle: number; corner: number };
+  /** The rim on the shadow side, and the pool of light inside the lit corner. */
+  highlightLow: string;
+  specular: string;
+  /** --glass-shadow, as a CSS box-shadow list (outset layers only; the ring is added per pane). */
+  dropShadow: string;
   /** The ambient fields behind everything (globals.css body::before). */
   glows: { cx: string; cy: string; rx: string; ry: string; color: string; opacity: number }[];
 };
@@ -32,6 +39,10 @@ const glassDark: Glass = {
   highlight: "rgba(255,255,255,0.42)",
   highlightWarm: "rgba(230,194,90,0.26)",
   shadow: "#000000",
+  alpha: { standard: 0.058, strong: 0.11, subtle: 0.036, corner: 0.05 },
+  highlightLow: "rgba(255,255,255,0.08)",
+  specular: "rgba(255,255,255,0.055)",
+  dropShadow: "0px 1px 1px rgba(0,0,0,0.3), 0px 18px 44px -14px rgba(0,0,0,0.75)",
   glows: [
     { cx: "10%", cy: "-8%", rx: "70%", ry: "55%", color: "#d4a938", opacity: 0.26 },
     { cx: "100%", cy: "22%", rx: "55%", ry: "48%", color: "#7a92be", opacity: 0.2 },
@@ -49,6 +60,10 @@ const glassLight: Glass = {
   highlight: "rgba(255,255,255,1)",
   highlightWarm: "rgba(201,162,39,0.65)",
   shadow: "#121519",
+  alpha: { standard: 0.195, strong: 0.33, subtle: 0.12, corner: 0.055 },
+  highlightLow: "rgba(18,21,25,0.16)",
+  specular: "rgba(255,255,255,0.9)",
+  dropShadow: "0px 1px 1px rgba(18,21,25,0.06), 0px 2px 6px rgba(18,21,25,0.05), 0px 20px 48px -16px rgba(18,21,25,0.3)",
   glows: [
     { cx: "8%", cy: "-6%", rx: "70%", ry: "50%", color: "#c9a227", opacity: 0.42 },
     { cx: "102%", cy: "26%", rx: "55%", ry: "45%", color: "#6e8abe", opacity: 0.38 },

@@ -1,13 +1,13 @@
 import { BlurView } from "expo-blur";
 import { router, type Tabs } from "expo-router";
-import { useState, type ComponentProps } from "react";
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState, type ComponentProps } from "react";
+import { BackHandler, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Divider, Glass, ICON, NavIcon, T } from "@/components/ui";
 import { signOut } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
-import { font, useTheme } from "@/lib/theme";
+import { alpha, font, useTheme } from "@/lib/theme";
 
 // The web's phone navigation (components/client-nav.tsx ClientTabBar and
 // nav-links.tsx CoachTabBar): a floating glass pane a thumb's width off the
@@ -50,9 +50,9 @@ const CLIENT_SHEET: SheetItem[] = [
   { key: "programs", icon: ICON.programs, web: "/routines" },
   { key: "progress", icon: ICON.progress, route: "/progress" },
   { key: "checkIn", icon: ICON.checkIn, route: "/check-in" },
-  { key: "challenges", icon: ICON.challenges, web: "/challenges" },
+  { key: "challenges", icon: ICON.challenges, route: "/challenges" },
   { key: "gyms", icon: ICON.gyms, web: "/gyms" },
-  { key: "achievements", icon: ICON.achievements, web: "/achievements" },
+  { key: "achievements", icon: ICON.achievements, route: "/achievements" },
   { key: "feed", icon: ICON.feed, web: "/feed" },
   { key: "saved", icon: ICON.saved, web: "/saved" },
   { key: "notifications", icon: ICON.notifications, route: "/notifications" },
@@ -94,7 +94,7 @@ export function GlassTabBar({ state, coach }: BottomTabBarProps & { coach: boole
 
   return (
     <>
-      <MoreSheet open={open} onClose={() => setOpen(false)} items={coach ? COACH_SHEET : CLIENT_SHEET} />
+      <MoreSheet open={open} onClose={() => setOpen(false)} items={coach ? COACH_SHEET : CLIENT_SHEET} current={current} />
       <View pointerEvents="box-none" style={[styles.barWrap, { bottom: Math.max(12, insets.bottom), left: 12 + insets.left, right: 12 + insets.right }]}>
         <BlurView intensity={30} tint="default" style={styles.blur}>
           <Glass pane="strong" radius={26} style={styles.bar}>
@@ -113,10 +113,21 @@ export function GlassTabBar({ state, coach }: BottomTabBarProps & { coach: boole
 }
 
 /** The phone's "More" sheet (client-nav.tsx): every other section, then the account controls. */
-function MoreSheet({ open, onClose, items }: { open: boolean; onClose: () => void; items: SheetItem[] }) {
+// A layer under the bar, not a modal: the bar stays on top and tappable while the
+// sheet is open, as on the web (client-nav.tsx); Android's back button closes it.
+function MoreSheet({ open, onClose, items, current }: { open: boolean; onClose: () => void; items: SheetItem[]; current?: string }) {
   const { t, locale, setLocale } = useI18n();
   const { color } = useTheme();
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (!open) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [open, onClose]);
 
   const go = (item: SheetItem) => {
     onClose();
@@ -124,21 +135,31 @@ function MoreSheet({ open, onClose, items }: { open: boolean; onClose: () => voi
     else if (item.web) void Linking.openURL(`${config.webUrl}${item.web}`);
   };
 
+  if (!open) return null;
   return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable accessibilityLabel={t.common.moreSheet.close} onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: color.bg, opacity: 0.8 }]} />
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <Pressable accessibilityLabel={t.common.moreSheet.close} onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: alpha(color.bg, 0.8) }]} />
       <View style={styles.sheetWrap} pointerEvents="box-none">
-        <Glass pane="strong" radius={24} style={[styles.sheet, { paddingBottom: 96 + insets.bottom, backgroundColor: color.surface }]}>
+        <Glass pane="strong" radius={24} style={[styles.sheet, { paddingBottom: 88 + Math.max(12, insets.bottom), backgroundColor: alpha(color.surface, 0.96) }]}>
           <View style={[styles.grabber, { backgroundColor: color.line }]} />
           <T kind="label" style={{ paddingHorizontal: 4, marginBottom: 8 }}>{t.common.moreSheet.title}</T>
           <ScrollView style={{ maxHeight: 520 }}>
-            {items.map((item) => (
-              <Pressable key={item.key} accessibilityRole="link" onPress={() => go(item)} style={({ pressed }) => [styles.sheetRow, pressed && { backgroundColor: color.accentSoft }]}>
-                <NavIcon d={item.icon} size={20} color={color.inkSoft} />
-                <Text style={[styles.sheetLabel, { color: color.inkSoft }]}>{t.common.nav[item.key]}</Text>
+            {items.map((item) => {
+              const active = Boolean(item.route) && `/${current}` === item.route;
+              return (
+              <Pressable
+                key={item.key}
+                accessibilityRole="link"
+                accessibilityState={{ selected: active }}
+                onPress={() => go(item)}
+                style={({ pressed }) => [styles.sheetRow, (active || pressed) && { backgroundColor: color.accentSoft }]}
+              >
+                <NavIcon d={item.icon} size={20} color={active ? color.accentInk : color.inkSoft} />
+                <Text style={[styles.sheetLabel, { color: active ? color.accentInk : color.inkSoft, fontFamily: active ? font.semibold : font.medium }]}>{t.common.nav[item.key]}</Text>
                 {item.web ? <NavIcon d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6" size={14} color={color.inkFaint} /> : null}
               </Pressable>
-            ))}
+              );
+            })}
             <Divider />
             <View style={styles.prefs}>
               <View style={[styles.segment, { borderColor: color.line }]}>
@@ -169,7 +190,7 @@ function MoreSheet({ open, onClose, items }: { open: boolean; onClose: () => voi
           </ScrollView>
         </Glass>
       </View>
-    </Modal>
+    </View>
   );
 }
 

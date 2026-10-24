@@ -99,6 +99,9 @@ function Gate({ onSignOut }: { onSignOut: () => void }) {
           <Stack.Screen name="notifications" />
           <Stack.Screen name="thread/[id]" />
           <Stack.Screen name="coach/check-in/[id]" />
+          <Stack.Screen name="leaderboards" />
+          <Stack.Screen name="challenges" />
+          <Stack.Screen name="achievements" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" />

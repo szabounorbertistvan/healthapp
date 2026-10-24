@@ -1,18 +1,21 @@
 import Constants from "expo-constants";
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { EmailCard, ProfileCard, RestCard } from "@/components/settings-forms";
 import { Card, NavIcon, T } from "@/components/ui";
+import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
+import { useOfflineQuery } from "@/lib/offline-query";
 import { isCoachRole, useMe } from "@/lib/role";
 import { font, useTheme } from "@/lib/theme";
 
 // Account — the web's /account on a phone (app/(client)/account/page.tsx; the
 // coach's /settings carries the same cards): who is signed in, then one card
-// per setting, in the web's order. Language and signing out happen here; each
-// form (profile, gym, rest timer, email, privacy, coach profile, data export,
-// deletion) opens on voinic.fit, where it is the same form for every device.
+// per setting, in the web's order. Profile, rest timer and email are edited
+// right here (components/settings-forms.tsx, through the web's own actions);
+// the gym, social privacy, data export and deletion open on voinic.fit.
 
 const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 
@@ -20,6 +23,7 @@ export default function Account() {
   const { t, fill, locale, setLocale } = useI18n();
   const { color } = useTheme();
   const me = useMe().data?.data;
+  const settings = useOfflineQuery("settings", ["settings"], api.settings).data?.data;
   const coach = isCoachRole(me?.role);
   const a = t.clientApp.account;
   const settingsPath = coach ? "/settings" : "/account";
@@ -65,10 +69,10 @@ export default function Account() {
           </View>
         </Card>
 
-        <SettingRow title={a.profile} hint={`${a.fullName} · ${a.username} · ${a.units} · ${a.timezone}`} onPress={web(settingsPath)} />
+        {settings ? <ProfileCard key={`profile-${settings.account.username}`} settings={settings} /> : null}
         <SettingRow title={t.gyms.my.title} hint={t.gyms.my.hint} onPress={web(settingsPath)} />
-        <SettingRow title={t.clientWidgets.restTimer.title} onPress={web(settingsPath)} />
-        <SettingRow title={t.clientWidgets.emailPrefs.title} hint={t.clientWidgets.emailPrefs.intro} onPress={web(settingsPath)} />
+        {settings ? <RestCard settings={settings} /> : null}
+        {settings ? <EmailCard settings={settings} /> : null}
         <SettingRow title={t.common.social.privacyTitle} hint={a.leaderboardsHint} onPress={web(settingsPath)} />
         <SettingRow title={a.yourData} hint={a.exportBody} onPress={web(settingsPath)} />
         <SettingRow title={a.deleteTitle} hint={a.deleteBody} danger onPress={web(settingsPath)} />

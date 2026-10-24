@@ -219,6 +219,10 @@ const en = {
     signOut: "Sign out",
     version: "Version {version}",
   },
+  goals: {
+    weeks: "weeks",
+    goalsLimit: "Your plan holds {limit} active goals at a time. Finish or close one to start another.",
+  },
   errors: {
     offline: "No connection.",
     unauthorized: "Your session ended. Sign in again.",
@@ -443,6 +447,10 @@ const ro: typeof en = {
     deleteAccount: "Ștergerea contului",
     signOut: "Ieși din cont",
     version: "Versiunea {version}",
+  },
+  goals: {
+    weeks: "săpt.",
+    goalsLimit: "Planul tău ține {limit} obiective active în același timp. Încheie sau închide unul ca să începi altul.",
   },
   errors: {
     offline: "Nu există conexiune.",
