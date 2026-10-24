@@ -1,0 +1,11 @@
+appId: fit.voinic.app
+name: Habits and the weekly check-in open
+---
+- launchApp
+- tapOn: "More"
+- tapOn: "Habits"
+- assertVisible: "Habits"
+- back
+- tapOn: "Progress"
+- tapOn: "Weekly check-in"
+- assertVisible: "Weekly check-in"

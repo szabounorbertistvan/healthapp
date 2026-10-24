@@ -101,7 +101,8 @@ export async function middleware(request: NextRequest) {
     // (app/api/cron/calendar-sync/route.ts checks it); there is no session
     path === "/api/cron/calendar-sync" ||
     // the Android app's API: no cookies, a bearer token instead — every
-    // handler is wrapped in v1Route (lib/api/v1.ts), which refuses without one
+    // handler is wrapped in v1Route (lib/api/v1.ts), which refuses without one;
+    // the one exception is /api/v1/app-config (version minimums, nobody's data)
     path.startsWith("/api/v1/")
   ) return response;
   const isLanding = path === "/";

@@ -25,6 +25,7 @@ export type MacrosV1 = { kcal: number; protein: number; carbs: number; fat: numb
 export type TodayV1 = {
   display_name: string;
   has_coach: boolean;
+  /** Shares 0..1 (packages/shared adherence), not percentages. */
   adherence: {
     overall: number;
     workout: number;
@@ -94,6 +95,8 @@ export type WorkoutExerciseV1 = {
 };
 
 export type LoggedSetV1 = {
+  /** logged_sets.id — what an edit names. Absent from servers before 2026-10-24. */
+  id?: string;
   program_exercise_id: string | null;
   set_index: number;
   weight_kg: number;
@@ -287,3 +290,94 @@ export type NotificationV1 = {
 export type NotificationsV1 = { items: NotificationV1[]; next_cursor: string | null };
 
 export type PushDeviceV1 = { token: string; platform: "android" | "ios"; build: string | null };
+
+// ---------- coach on the go (Phase 5) ----------
+
+export type CoachClientV1 = {
+  client_id: string;
+  name: string;
+  signal: "on_track" | "needs_attention" | "at_risk";
+  /** 0..1, like TodayV1.adherence.overall. */
+  overall: number;
+  /** The signal's reason in the reader's language, as the web's dashboard writes it. */
+  why: string;
+  last_activity: string | null;
+  pending_checkin: boolean;
+  unread: number;
+};
+
+export type CoachDashboardV1 = { clients: CoachClientV1[]; checkins_pending: number; requests_pending: number };
+
+export type CheckInScoresV1 = {
+  sleep: number | null;
+  energy: number | null;
+  stress: number | null;
+  hunger: number | null;
+  recovery: number | null;
+};
+
+export type CoachCheckInV1 = {
+  id: string;
+  client_id: string;
+  name: string;
+  week_start: string;
+  submitted_at: string;
+  weight_kg: number | null;
+  scores: CheckInScoresV1;
+  previous: (CheckInScoresV1 & { weight_kg: number | null }) | null;
+  note: string | null;
+  answers: { prompt: string; value: string }[];
+};
+
+export type ReviewCheckInV1 = { checkInId: string; clientId: string; feedback: string };
+
+export type CoachConversationV1 = {
+  id: string;
+  client_id: string;
+  name: string;
+  last_message: string;
+  last_at: string;
+  unread: number;
+  open: boolean;
+};
+
+export type ThreadV1 = {
+  id: string;
+  other_name: string;
+  side: "coach" | "client";
+  open: boolean;
+  messages: MessageV1[];
+};
+
+export type CoachRequestV1 = {
+  id: string;
+  client_name: string;
+  service_name: string | null;
+  message: string | null;
+  goal: string | null;
+  created_at: string;
+};
+
+export type RespondRequestV1 = { requestId: string; accept: boolean };
+
+// ---------- hardening (Phase 6) ----------
+
+/** GET /api/v1/app-config — public, no token: what an app build needs to know before anything else. */
+export type AppConfigV1 = {
+  /** A build below this is told to update instead of failing in odd ways (old /api/v1 shapes). */
+  min_build: { android: number; ios: number };
+  /** Where "Update" sends the person. */
+  store_url: { android: string; ios: string };
+};
+
+/** POST /api/v1/sets/update — the web's updateLoggedSet(). */
+export type UpdateSetV1 = {
+  setId: string;
+  dayId: string | null;
+  weightKg: number;
+  reps: number;
+  rpe: number | null;
+  rir: number | null;
+  notes: string | null;
+  durationSeconds: number | null;
+};

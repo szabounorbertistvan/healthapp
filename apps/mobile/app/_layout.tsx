@@ -3,10 +3,12 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { AppGate } from "@/components/app-gate";
+import { Button, Screen, T } from "@/components/ui";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ApiFailure } from "@/lib/api";
-import { I18nProvider } from "@/lib/i18n";
+import { I18nProvider, useI18n } from "@/lib/i18n";
 import { OutboxProvider } from "@/lib/outbox";
 import { PushProvider } from "@/lib/push";
 import { RestProvider } from "@/lib/rest";
@@ -36,12 +38,14 @@ export default function RootLayout() {
             <OutboxProvider>
               <RestProvider>
                 <PushProvider>
-                  <Gate
-                    onSignOut={() => {
-                      queryClient.clear();
-                      void wipeUserData();
-                    }}
-                  />
+                  <AppGate>
+                    <Gate
+                      onSignOut={() => {
+                        queryClient.clear();
+                        void wipeUserData();
+                      }}
+                    />
+                  </AppGate>
                 </PushProvider>
               </RestProvider>
             </OutboxProvider>
@@ -79,11 +83,40 @@ function Gate({ onSignOut }: { onSignOut: () => void }) {
           <Stack.Screen name="check-in" />
           <Stack.Screen name="messages" />
           <Stack.Screen name="notifications" />
+          <Stack.Screen name="thread/[id]" />
+          <Stack.Screen name="coach/check-in/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" />
         </Stack.Protected>
       </Stack>
     </>
+  );
+}
+
+/**
+ * A screen that threw renders this instead of a blank app (expo-router's error
+ * boundary). Nothing is lost: logged sets and meals wait in the phone's outbox.
+ */
+export function ErrorBoundary({ retry }: { error: Error; retry: () => Promise<void> }) {
+  return (
+    <SafeAreaProvider>
+      <I18nProvider>
+        <CrashScreen retry={retry} />
+      </I18nProvider>
+    </SafeAreaProvider>
+  );
+}
+
+function CrashScreen({ retry }: { retry: () => Promise<void> }) {
+  const { t } = useI18n();
+  return (
+    <Screen>
+      <SafeAreaView style={{ flex: 1, padding: 24, gap: 12, justifyContent: "center" }}>
+        <T kind="title">{t.mobile.crash.title}</T>
+        <T kind="soft">{t.mobile.crash.body}</T>
+        <Button label={t.mobile.crash.retry} onPress={() => void retry()} />
+      </SafeAreaView>
+    </Screen>
   );
 }

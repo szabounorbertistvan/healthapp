@@ -1,0 +1,12 @@
+appId: fit.voinic.app
+name: A coach sees the coach tabs
+# Run with a coach test account: --env EMAIL=… --env PASSWORD=…
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Clients"
+    timeout: 20000
+- tapOn: "Inbox"
+- assertVisible: "Check-ins to review"
+- tapOn: "Chats"
+- assertVisible: "Chats"

@@ -345,6 +345,9 @@ text in the recipient's language (rows carry the writer-side title today), attac
   to client.
 
 ### Phase 5 — Coach on the go · 3–4 weeks
+*Built 2026-10-24 — coach tabs Clients (priority list, signal, the web's "why"), Inbox (check-in review with
+feedback; requests accept/decline), Chats (every thread, shared ThreadView), My training; client detail and
+bookings open the web. Endpoints `/api/v1/coach/*`, `/threads/[id]`.*
 - Same app, coach mode (role from `users`); the coach can also use **My training** exactly as
   on the web (`(client)` is not client-only).
 - Priority-sorted client list (On Track / Needs Attention / At Risk with the "why"), client
@@ -355,6 +358,9 @@ text in the recipient's language (rows carry the writer-side title today), attac
 - **Exit:** a coach clears their check-in queue from the phone.
 
 ### Phase 6 — Hardening and release · 2–3 weeks
+*Code side 2026-10-24 — version gate (`/api/v1/app-config`), crash screen, edit a logged set, Maestro flows
+(`apps/mobile/.maestro`), the adherence % fix (shares 0..1 were shown unscaled), release checklist
+[ANDROID_RELEASE.md](ANDROID_RELEASE.md). The rest is device testing and the stores — owner steps.*
 - Maestro flows for the mandatory journeys (sign-in, log offline → sync, kill mid-sync,
   duplicate flush, food by barcode, check-in, message + push); accessibility (44 pt targets,
   TalkBack labels, font scaling); dark/light QA; low-end device pass (2–3 GB RAM phones);

@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Screen, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { signOut } from "@/lib/auth";
+import { percent } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { radius, space, useTheme } from "@/lib/theme";
 
@@ -63,7 +64,7 @@ export default function Today() {
         <Card>
           <T kind="faint">{t.mobile.today.week}</T>
           <View style={styles.row}>
-            <T kind="title">{Math.round(today.adherence.overall)}%</T>
+            <T kind="title">{percent(today.adherence.overall)}</T>
             <View style={[styles.pill, { backgroundColor: signalColor }]}>
               <T style={{ color: color.accentFg, fontWeight: "700" }}>{t.mobile.today.signal[today.adherence.signal]}</T>
             </View>

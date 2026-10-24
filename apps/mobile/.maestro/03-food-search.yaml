@@ -1,0 +1,24 @@
+appId: fit.voinic.app
+name: Search a food and add it to lunch
+---
+- launchApp
+- tapOn: "Food"
+- extendedWaitUntil:
+    visible: "Lunch"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "\+ Add"
+    direction: DOWN
+- tapOn:
+    text: "\+ Add"
+    index: 1
+- inputText: "rice"
+- extendedWaitUntil:
+    visible:
+      text: ".*kcal / 100 g"
+    timeout: 20000
+- tapOn:
+    text: ".*kcal / 100 g"
+    index: 0
+- tapOn: "Add to lunch"
+- assertVisible: "Lunch"

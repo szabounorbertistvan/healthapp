@@ -2,6 +2,8 @@ import {
   API_V1, LOCALE_HEADER, type ApiError, type BarcodeV1, type CheckInV1, type CodedResultV1, type FoodDayV1, type FoodItemV1,
   type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1,
   type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
+  type AppConfigV1, type CoachCheckInV1, type CoachConversationV1, type CoachDashboardV1, type CoachRequestV1, type ThreadV1,
+  type UpdateSetV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
@@ -73,7 +75,26 @@ export const api = {
   markNotificationRead: (id?: string) => call<WriteResultV1>("POST", "/notifications/read", id ? { id } : {}),
   registerPush: (device: PushDeviceV1) => call<WriteResultV1>("POST", "/push-devices", device),
   unregisterPush: (token: string) => call<WriteResultV1>("POST", "/push-devices/remove", { token }),
+  updateSet: (edit: UpdateSetV1) => call<WriteResultV1>("POST", "/sets/update", edit),
+  thread: (id: string) => call<ThreadV1>("GET", `/threads/${encodeURIComponent(id)}`),
+  coachDashboard: () => call<CoachDashboardV1>("GET", "/coach/dashboard"),
+  coachCheckIns: () => call<CoachCheckInV1[]>("GET", "/coach/check-ins"),
+  reviewCheckIn: (checkInId: string, clientId: string, feedback: string) =>
+    call<WriteResultV1>("POST", "/coach/check-ins/review", { checkInId, clientId, feedback }),
+  coachConversations: () => call<CoachConversationV1[]>("GET", "/coach/conversations"),
+  coachRequests: () => call<CoachRequestV1[]>("GET", "/coach/requests"),
+  respondRequest: (requestId: string, accept: boolean) => call<WriteResultV1>("POST", "/coach/requests/respond", { requestId, accept }),
 };
+
+/** The one call made without a token: version minimums, before sign-in. Null when unreachable. */
+export async function fetchAppConfig(): Promise<AppConfigV1 | null> {
+  try {
+    const response = await fetch(`${config.apiUrl}${API_V1}/app-config`, { headers: { Accept: "application/json" } });
+    return response.ok ? ((await response.json()) as AppConfigV1) : null;
+  } catch {
+    return null;
+  }
+}
 
 const PATHS: Record<OutboxPayload["kind"], string> = {
   set: "/sets",

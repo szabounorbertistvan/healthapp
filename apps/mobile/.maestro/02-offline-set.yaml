@@ -1,0 +1,22 @@
+appId: fit.voinic.app
+name: Log a set with no signal, then sync it
+---
+- launchApp
+- tapOn: "Workout"
+- extendedWaitUntil:
+    visible:
+      text: ".*exercises"
+    timeout: 20000
+- tapOn:
+    text: ".*exercises"
+    index: 0
+- tapOn: "Start workout|Continue workout|Add more sets"
+- setAirplaneMode: enabled
+- tapOn:
+    text: "Log set.*"
+    index: 0
+- assertVisible: "Waiting for signal"
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    notVisible: "Waiting for signal"
+    timeout: 60000

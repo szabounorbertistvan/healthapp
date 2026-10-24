@@ -22,14 +22,19 @@ Expo SDK 58 (React Native 0.88, React 19.3.0), Expo Router, TanStack Query, supa
 | Notifications | `app/notifications.tsx`: the web's center (`GET /api/v1/notifications`, headline in the reader's language), mark read, open what it is about; the card that turns push on |
 | Push | `lib/push.tsx` / `lib/push-token.ts`: registers the Expo token (`POST /push-devices` → `register_push_device`) once permission exists, unregisters on sign-out; channels `messages`, `coaching`, `reminders`, `updates` (no sound or vibration requested); a tap routes by category (`lib/push-route.ts`, tested) |
 | Check-in | `app/check-in.tsx`: weight, the five 1–10 scales, the coach's questions, a note — through the outbox (`POST /check-in`; "already checked in" counts as delivered); last week's feedback |
+| Coach mode | a coach (role coach / both) gets Clients (`GET /api/v1/coach/dashboard` — the web's priority list and "why"), Inbox (check-ins to review → `app/coach/check-in/[id].tsx`, `POST /coach/check-ins/review` = `reviewCheckIn`; coaching requests accept / decline), Chats (`/coach/conversations` → the shared `components/thread-view.tsx` via `/threads/[id]`), My training (Today) and More (Workout / Food / Progress). Builders stay on the web. |
+| Edit a set | tap a synced set in the logger → `components/edit-set.tsx`, `POST /sets/update` = `updateLoggedSet` (online) |
+| Update check | `components/app-gate.tsx`: `GET /api/v1/app-config` (public) → "Update" screen when this build is below `min_build` (`lib/app-version.ts`, tested); offline never locks anyone out |
+| Crash screen | `ErrorBoundary` in `app/_layout.tsx` — retry instead of a blank app |
+| Device tests | Maestro flows in `.maestro/` (not in CI) |
 | More | who is signed in (`GET /api/v1/me`), language RO/EN, links (privacy, account deletion), sign out |
 | Strings | `@healthapp/i18n` — `common` plus the app's own `mobile` namespace, `en` + `ro` |
 | Colours | `@healthapp/ui-tokens`, the web's palette; follows the device's light/dark |
 
-Not yet: Google sign-in (needs the Android OAuth client, plan §5), editing or deleting a logged
-set, supersets shown as rounds (they log fine, listed per exercise), the live countdown *inside*
+Not yet: Google sign-in (needs the Android OAuth client, plan §5), deleting a logged
+set (the web has no delete either), supersets shown as rounds (they log fine, listed per exercise), the live countdown *inside*
 the notification (Android's chronometer needs a native module), a PR mark before the server's
-answer, push, a custom food or a recipe of one's own, editing a food portion, progress photos, the coach screens —
+answer, a custom food or a recipe of one's own, editing a food portion, progress photos, a coach's client detail screen (opens the web) —
 the phases in the plan. Not yet run on a device.
 
 ## Push: what has to happen on the live project (not done)

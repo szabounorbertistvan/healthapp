@@ -37,6 +37,7 @@ export function workoutDay(
     notes: e.notes ?? null,
   }));
   const logged: LoggedSetV1[] = day.logged.map((s) => ({
+    id: s.id,
     program_exercise_id: s.program_exercise_id,
     set_index: s.set_index,
     weight_kg: s.weight_kg,

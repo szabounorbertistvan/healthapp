@@ -7,7 +7,9 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { EditSet } from "@/components/edit-set";
 import { RestBar } from "@/components/rest-bar";
+import { Stepper } from "@/components/stepper";
 import { Button, Card, Screen, T } from "@/components/ui";
 import { BackHeader, prescription, Previous, setText } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
@@ -221,6 +223,7 @@ function ExerciseCard({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
 
   // A new set number: the boxes move on to what that set should be.
   useEffect(() => {
@@ -304,7 +307,10 @@ function ExerciseCard({
         <View style={{ gap: 4 }}>
           <T kind="faint">{t.mobile.workout.today}</T>
           {sets.map((s) => (
-            <SetRow key={`${s.set_index}:${s.at}`} s={s} unit={unit} t={t} />
+            <View key={`${s.set_index}:${s.at}`}>
+              <SetRow s={s} unit={unit} t={t} onPress={s.state === "synced" && s.id ? () => setEditing(s.id ?? null) : undefined} />
+              {editing && editing === s.id ? <EditSet set={s} exercise={e} day={day} onClose={() => setEditing(null)} /> : null}
+            </View>
           ))}
         </View>
       ) : null}
@@ -331,7 +337,7 @@ function ExerciseCard({
 
       <View style={styles.stepperRow}>
         <T kind="faint" style={{ flex: 1 }}>{t.mobile.workout.intensity}</T>
-        <Stepper value={rpe} onChange={setRpe} label={t.clientWidgets.setLogger.intensity} />
+        <Stepper value={rpe} onChange={setRpe} label={t.clientWidgets.setLogger.intensity} format={(v) => `${v}/10`} />
       </View>
       <TextInput
         accessibilityLabel={t.clientWidgets.setLogger.note}
@@ -348,7 +354,7 @@ function ExerciseCard({
   );
 }
 
-function SetRow({ s, unit, t }: { s: DisplaySet; unit: WorkoutDayV1["weight_unit"]; t: Dictionary }) {
+function SetRow({ s, unit, t, onPress }: { s: DisplaySet; unit: WorkoutDayV1["weight_unit"]; t: Dictionary; onPress?: () => void }) {
   const { color } = useTheme();
   const { fill } = useI18n();
   const mark = s.state === "synced" ? "✓" : s.state === "pending" ? "◷" : "!";
@@ -359,14 +365,21 @@ function SetRow({ s, unit, t }: { s: DisplaySet; unit: WorkoutDayV1["weight_unit
     s.is_pr ? t.clientWidgets.setLogger.pr : null,
   ].filter(Boolean);
   return (
-    <View style={styles.setRow}>
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityHint={onPress ? t.clientWidgets.setLogger.editSet : undefined}
+      disabled={!onPress}
+      onPress={onPress}
+      style={styles.setRow}
+    >
       <T style={{ color: tone, width: 22 }}>{mark}</T>
       <T style={{ color: tone, flex: 1 }}>
         {`${s.set_index}. ${setText(s, unit, t)}${extras.length ? ` · ${extras.join(" · ")}` : ""}`}
       </T>
       {s.state === "pending" ? <T kind="faint">{t.mobile.workout.waiting}</T> : null}
       {s.state === "refused" && s.error ? <T style={{ color: color.risk }}>{fill(t.mobile.workout.refused, { message: s.error })}</T> : null}
-    </View>
+      {onPress ? <T kind="faint">✎</T> : null}
+    </Pressable>
   );
 }
 
@@ -375,28 +388,6 @@ function Labeled({ label, children }: { label: string; children: ReactNode }) {
     <View style={{ flex: 1, gap: 4 }}>
       <T kind="faint">{label}</T>
       {children}
-    </View>
-  );
-}
-
-function Stepper({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
-  const { color } = useTheme();
-  const step = (d: number) => onChange(Math.max(1, Math.min(10, value + d)));
-  const button = (text: string, d: number) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${label} ${text}`}
-      onPress={() => step(d)}
-      style={[styles.stepButton, { borderColor: color.line }]}
-    >
-      <T style={{ fontWeight: "800", fontSize: fontSize.lg }}>{text}</T>
-    </Pressable>
-  );
-  return (
-    <View style={styles.stepper} accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ min: 1, max: 10, now: value }}>
-      {button("−", -1)}
-      <T kind="heading" style={{ minWidth: 48, textAlign: "center" }}>{`${value}/10`}</T>
-      {button("+", 1)}
     </View>
   );
 }
@@ -416,13 +407,4 @@ const styles = StyleSheet.create({
   },
   setRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   stepperRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  stepper: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  stepButton: {
-    minWidth: minTouchTarget,
-    minHeight: minTouchTarget,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });

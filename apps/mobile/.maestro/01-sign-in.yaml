@@ -1,0 +1,14 @@
+appId: fit.voinic.app
+name: Sign in and see Today
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email"
+- inputText: ${EMAIL}
+- tapOn: "Password"
+- inputText: ${PASSWORD}
+- tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: "This week"
+    timeout: 20000
+- assertVisible: "Next workout"

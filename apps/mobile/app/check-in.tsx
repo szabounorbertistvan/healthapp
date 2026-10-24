@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Screen, T } from "@/components/ui";
+import { Stepper } from "@/components/stepper";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -192,28 +193,9 @@ function Question({ q, value, onChange }: { q: CheckInQuestionV1; value: number 
   );
 }
 
-function Stepper({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
-  const { color } = useTheme();
-  const step = (d: number) => onChange(Math.max(1, Math.min(10, value + d)));
-  const button = (text: string, d: number) => (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${label} ${text}`} onPress={() => step(d)} style={[styles.step, { borderColor: color.line }]}>
-      <T style={{ fontWeight: "800", fontSize: fontSize.lg }}>{text}</T>
-    </Pressable>
-  );
-  return (
-    <View style={styles.stepper} accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ min: 1, max: 10, now: value }}>
-      {button("−", -1)}
-      <T kind="heading" style={{ minWidth: 40, textAlign: "center" }}>{String(value)}</T>
-      {button("+", 1)}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   body: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
   row: { flexDirection: "row", alignItems: "center", gap: space.sm },
   field: { minHeight: minTouchTarget + 4, borderWidth: 1, borderRadius: radius.lg, paddingHorizontal: space.md, fontSize: fontSize.base },
-  stepper: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  step: { minWidth: minTouchTarget, minHeight: minTouchTarget, borderWidth: 1, borderRadius: radius.lg, alignItems: "center", justifyContent: "center" },
   choice: { flex: 1, minHeight: minTouchTarget, borderWidth: 1, borderRadius: radius.lg, alignItems: "center", justifyContent: "center" },
 });

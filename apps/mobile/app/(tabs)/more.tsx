@@ -1,19 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Screen, T } from "@/components/ui";
-import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
+import { isCoachRole, useMe } from "@/lib/role";
 import { minTouchTarget, radius, space, useTheme } from "@/lib/theme";
 
 export default function More() {
   const { t, fill, locale, setLocale } = useI18n();
   const { color } = useTheme();
-  const me = useQuery({ queryKey: ["me"], queryFn: api.me });
+  const me = useMe();
+  const coach = isCoachRole(me.data?.data.role);
   const open = (path: string) => () => Linking.openURL(`${config.webUrl}${path}`);
 
   return (
@@ -21,10 +21,19 @@ export default function More() {
       <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.body}>
           <T kind="title">{t.mobile.tabs.more}</T>
-          {me.data ? <T kind="soft">{fill(t.mobile.more.signedInAs, { name: me.data.display_name })}</T> : null}
+          {me.data ? <T kind="soft">{fill(t.mobile.more.signedInAs, { name: me.data.data.display_name })}</T> : null}
+
+          {coach ? (
+            <Card>
+              <T kind="faint">{t.mobile.training.title}</T>
+              <Link label={t.mobile.tabs.workout} onPress={() => router.push("/workout")} />
+              <Link label={t.mobile.tabs.food} onPress={() => router.push("/food")} />
+              <Link label={t.mobile.tabs.progress} onPress={() => router.push("/progress")} />
+            </Card>
+          ) : null}
 
           <Card>
-            <Link label={t.mobile.menu.coach} onPress={() => router.push("/messages")} />
+            {coach ? null : <Link label={t.mobile.menu.coach} onPress={() => router.push("/messages")} />}
             <Link label={t.mobile.menu.notifications} onPress={() => router.push("/notifications")} />
             <Link label={t.mobile.menu.habits} onPress={() => router.push("/habits")} />
           </Card>

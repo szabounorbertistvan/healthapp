@@ -37,7 +37,9 @@ export default function NotificationsScreen() {
 
   async function open(n: NotificationV1) {
     if (!n.read) void api.markNotificationRead(n.id).then(() => queryClient.invalidateQueries({ queryKey: ["notifications"] })).catch(() => {});
-    const native = routeFor({ category: n.category });
+    // The web's link names the conversation (/messages/<id>), which opens that exact thread.
+    const conversation = /\/messages\/([0-9a-f-]{36})/i.exec(n.href ?? "")?.[1];
+    const native = routeFor({ category: n.category, conversation_id: conversation });
     if (native !== "/notifications") router.push(native);
     else if (n.href) void Linking.openURL(`${config.webUrl}${n.href}`);
   }
