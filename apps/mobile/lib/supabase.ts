@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "./secure-store";
 import { AppState } from "react-native";
 import { chunkedStore } from "./chunked-store";
 import { config } from "./config";

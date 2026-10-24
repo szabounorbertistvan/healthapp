@@ -1,7 +1,7 @@
 import type { MessageV1 } from "@healthapp/api/v1";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Screen, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
@@ -10,7 +10,7 @@ import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { supabase } from "@/lib/supabase";
-import { fontSize, minTouchTarget, radius, space, useTheme } from "@/lib/theme";
+import { font, useTheme } from "@/lib/theme";
 
 // One conversation, from either side — the client's thread with their coach
 // and every thread on the coach's Chats tab. GET /api/v1/threads/[id] is the
@@ -76,7 +76,7 @@ export function ThreadView({ conversationId, back }: { conversationId: string; b
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={styles.header}>
             <BackHeader label={back} />
-            <T kind="title">{thread?.other_name ?? t.mobile.messages.title}</T>
+            <T kind="title" numberOfLines={1}>{thread?.other_name ?? t.mobile.messages.title}</T>
             {query.data?.fromPhone ? <T kind="faint">{t.mobile.workout.fromPhone}</T> : null}
           </View>
           {!thread ? (
@@ -115,12 +115,14 @@ export function ThreadView({ conversationId, back }: { conversationId: string; b
                     {sending ? (
                       <ActivityIndicator color={color.accentFg} />
                     ) : (
-                      <T style={{ color: color.accentFg, fontWeight: "700" }}>{t.mobile.messages.send}</T>
+                      <Text style={{ fontFamily: font.displayBold, fontSize: 14, color: color.accentFg }}>{t.mobile.messages.send}</Text>
                     )}
                   </Pressable>
                 </View>
               ) : (
-                <T kind="faint" style={{ ...styles.pad, paddingBottom: space.lg }}>{t.mobile.coach.closedThread}</T>
+                <View style={[styles.closed, { backgroundColor: color.surface }]}>
+                  <Text style={{ fontFamily: font.regular, fontSize: 13, color: color.inkSoft }}>{t.mobile.coach.closedThread}</Text>
+                </View>
               )}
             </>
           )}
@@ -130,35 +132,31 @@ export function ThreadView({ conversationId, back }: { conversationId: string; b
   );
 }
 
+/** One message (message-thread.tsx): mine on the soft gold, theirs on the surface, 80 % wide at most. */
 function Bubble({ m }: { m: MessageV1 }) {
   const { t } = useI18n();
   const { color } = useTheme();
-  const text = m.attachment === "image" ? t.mobile.messages.photo : m.attachment === "audio" ? t.mobile.messages.voice : m.body;
-  const time = new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const label = m.attachment === "image" ? t.mobile.messages.photo : m.attachment === "audio" ? t.mobile.messages.voice : null;
   return (
     <Pressable
       disabled={!m.attachment}
       onPress={() => Linking.openURL(`${config.webUrl}/messages`)}
-      style={[
-        styles.bubble,
-        m.mine
-          ? { alignSelf: "flex-end", backgroundColor: color.accent }
-          : { alignSelf: "flex-start", backgroundColor: color.surface, borderColor: color.line, borderWidth: 1 },
-      ]}
+      style={[styles.bubble, { alignSelf: m.mine ? "flex-end" : "flex-start", backgroundColor: m.mine ? color.accentSoft : color.surface }]}
     >
-      <T style={{ color: m.mine ? color.accentFg : color.ink, fontStyle: m.attachment ? "italic" : "normal" }}>{text}</T>
-      {m.attachment && m.body ? <T style={{ color: m.mine ? color.accentFg : color.ink }}>{m.body}</T> : null}
-      <T style={{ fontSize: fontSize.xs, color: m.mine ? color.accentFg : color.inkFaint, alignSelf: "flex-end" }}>{time}</T>
+      {label ? <Text style={[styles.text, { color: color.inkSoft, fontStyle: "italic" }]}>{label}</Text> : null}
+      {m.body ? <Text style={[styles.text, { color: color.ink }, label ? { marginTop: 6 } : null]}>{m.body}</Text> : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: space.lg, paddingTop: space.sm, gap: 2 },
-  pad: { paddingHorizontal: space.lg },
-  list: { padding: space.lg, gap: space.sm },
-  bubble: { maxWidth: "82%", borderRadius: radius.xl, paddingHorizontal: space.md, paddingVertical: space.sm, gap: 2 },
-  composer: { flexDirection: "row", gap: space.sm, padding: space.md, borderTopWidth: 1, alignItems: "flex-end" },
-  input: { flex: 1, minHeight: minTouchTarget + 4, maxHeight: 140, borderWidth: 1, borderRadius: radius.lg, paddingHorizontal: space.md, paddingVertical: space.sm, fontSize: fontSize.base },
-  send: { minHeight: minTouchTarget + 4, borderRadius: radius.lg, paddingHorizontal: space.lg, alignItems: "center", justifyContent: "center" },
+  header: { paddingHorizontal: 16, paddingTop: 12, gap: 2 },
+  pad: { paddingHorizontal: 16 },
+  list: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  bubble: { maxWidth: "80%", borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
+  text: { fontFamily: font.regular, fontSize: 13.5, lineHeight: 21 },
+  composer: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, alignItems: "flex-end" },
+  input: { flex: 1, minHeight: 44, maxHeight: 140, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11, fontFamily: font.regular, fontSize: 14 },
+  send: { height: 44, borderRadius: 16, paddingHorizontal: 18, alignItems: "center", justifyContent: "center" },
+  closed: { marginHorizontal: 16, marginTop: 12, marginBottom: 16, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
 });

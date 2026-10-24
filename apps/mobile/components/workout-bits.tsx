@@ -1,10 +1,10 @@
 import type { PreviousSetV1, WorkoutDayV1, WorkoutExerciseV1 } from "@healthapp/api/v1";
 import { kgToDisplay, type WeightUnit } from "@healthapp/shared";
 import { router } from "expo-router";
-import { Pressable, StyleSheet, View } from "react-native";
-import { T } from "@/components/ui";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { NavIcon, T } from "@/components/ui";
 import type { Dictionary } from "@/lib/i18n";
-import { minTouchTarget, space, useTheme } from "@/lib/theme";
+import { font, minTouchTarget, useTheme } from "@/lib/theme";
 
 // Small pieces the day overview and the logger share.
 
@@ -33,15 +33,17 @@ export function setText(
   return `${kgToDisplay(s.weight_kg, unit)} ${unit} × ${s.reps}`;
 }
 
+/** The web's back link (a chevron and the place it goes back to, 12 px, faint) — every pushed screen's first line. */
 export function BackHeader({ label }: { label: string }) {
   const { color } = useTheme();
   return (
     <Pressable
-      accessibilityRole="button"
-      onPress={() => (router.canGoBack() ? router.back() : router.replace("/workout"))}
+      accessibilityRole="link"
+      onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
       style={styles.back}
     >
-      <T style={{ color: color.inkFaint, fontWeight: "600" }}>{`‹  ${label}`}</T>
+      <NavIcon d="m15 6-6 6 6 6" size={14} color={color.inkFaint} />
+      <Text style={{ fontFamily: font.semibold, fontSize: 12, color: color.inkFaint }}>{label}</Text>
     </Pressable>
   );
 }
@@ -57,5 +59,5 @@ export function Previous({ e, day, t }: { e: WorkoutExerciseV1; day: WorkoutDayV
 }
 
 const styles = StyleSheet.create({
-  back: { minHeight: minTouchTarget, justifyContent: "center", marginBottom: space.xs },
+  back: { minHeight: minTouchTarget, flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" },
 });

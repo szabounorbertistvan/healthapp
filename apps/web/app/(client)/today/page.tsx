@@ -19,13 +19,11 @@ import { TrainingLoadSummaryCard } from "@/components/training-load";
 import { StreakRow } from "@/components/streak";
 import { FitnessScoreCard } from "@/components/fitness-score";
 import { WeeklySummaryCard } from "@/components/weekly-summary";
-import { pct, timeAgo } from "@/lib/format";
 import { parseDay } from "@/lib/week";
 import { getI18n } from "@/lib/i18n/server";
-import { fill } from "@/lib/i18n";
-import { daysSince } from "@/lib/dates";
 import { myCalendar } from "@/lib/my-today";
-import { atRiskCause, localDay } from "@healthapp/shared";
+import { todayNudge } from "@/lib/today-nudge";
+import { localDay } from "@healthapp/shared";
 
 /**
  * Today. Three columns once there is room, one on a phone, in this order: the
@@ -89,7 +87,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const d = t.clientApp.today;
   const {
     adherence, next_workout: next, nutrition, habits, check_in: checkIn,
-    sessions_done: done, sessions_planned: planned, streak_days: streak, last_activity: last,
+    sessions_done: done, sessions_planned: planned, streak_days: streak,
   } = today;
   // The person's own calendar (lib/my-today), not the server's: at 00:30 in
   // Bucharest the header already says the new day. The profile it reads is
@@ -101,25 +99,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const doneToday = recent.find((s) => localDay(s.at, timeZone) === todayIso) ?? null;
   const workoutDays = today.training_load.daily.filter((x) => x.load > 0).map((x) => x.day);
   const activeChallenges = challenges.filter((c) => c.joined && c.status === "active").length;
-  // At risk has two causes and they need different words (BUG-10): a stalled
-  // week gets "one set is enough to restart"; an active week whose % is low
-  // (a workout done, food / habits / check-in still open) says what is open.
-  const cause = atRiskCause(adherence.signal, daysSince(last));
-  const open = [
-    adherence.workout < 1 ? d.openWorkouts : null,
-    adherence.nutrition < 1 ? d.openFood : null,
-    habits.length > 0 && adherence.habits < 1 ? d.openHabits : null,
-    !adherence.checkin ? d.openCheckIn : null,
-  ].filter((p): p is string => p !== null);
-  const nudge =
-    cause === "stalled"
-      ? fill(today.has_coach ? d.atRiskBody : d.atRiskBodySolo, { time: timeAgo(last, locale) })
-      : cause === "score"
-        ? fill(today.has_coach ? d.atRiskScoreBody : d.atRiskScoreBodySolo, {
-            score: pct(adherence.overall),
-            open: new Intl.ListFormat(locale, { type: "conjunction" }).format(open.length > 0 ? open : [d.openFood]),
-          })
-        : null;
+  // The at-risk line, shared with the app's /api/v1/dashboard (lib/today-nudge.ts).
+  const nudge = todayNudge(today, d, locale);
 
   return (
     // Capped at 1600px: a dashboard of cards, three columns wide at most.

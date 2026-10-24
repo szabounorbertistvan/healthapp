@@ -1,9 +1,9 @@
 import {
   API_V1, LOCALE_HEADER, type ApiError, type BarcodeV1, type CheckInV1, type CodedResultV1, type FoodDayV1, type FoodItemV1,
-  type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1,
+  type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1, type ProgressOverviewV1,
   type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
   type AppConfigV1, type CoachCheckInV1, type CoachConversationV1, type CoachDashboardV1, type CoachRequestV1, type ThreadV1,
-  type UpdateSetV1,
+  type UpdateSetV1, type DashboardV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
@@ -55,6 +55,7 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
 export const api = {
   me: () => call<MeV1>("GET", "/me"),
   today: () => call<TodayV1>("GET", "/today"),
+  dashboard: () => call<DashboardV1>("GET", "/dashboard"),
   workouts: () => call<WorkoutsV1>("GET", "/workouts"),
   workoutDay: (dayId: string) => call<WorkoutDayV1>("GET", `/workouts/${encodeURIComponent(dayId)}`),
   finishWorkout: (dayId: string) => call<WriteResultV1>("POST", `/workouts/${encodeURIComponent(dayId)}/finish`, {}),
@@ -63,8 +64,13 @@ export const api = {
   barcode: (code: string) => call<BarcodeV1>("GET", `/foods/barcode/${encodeURIComponent(code)}`),
   ateAsPlanned: (slot: MealSlotV1, day: string, mealId?: string) => call<WriteResultV1>("POST", "/food/planned", { slot, day, mealId }),
   deleteFoodLog: (id: string) => call<WriteResultV1>("POST", "/food/logs/delete", { id }),
+  updateFoodLog: (id: string, grams: number) => call<WriteResultV1>("POST", "/food/logs/update", { id, grams }),
+  copyMeal: (slot: MealSlotV1, from: string, to: string) => call<CodedResultV1>("POST", "/food/copy", { slot, from, to }),
   habits: () => call<HabitsV1>("GET", "/habits"),
+  addHabit: (name: string, targetPerWeek: number) => call<WriteResultV1>("POST", "/habits/add", { name, targetPerWeek }),
+  archiveHabit: (habitId: string) => call<WriteResultV1>("POST", "/habits/archive", { habitId }),
   progress: () => call<ProgressV1>("GET", "/progress"),
+  progressOverview: (range: string) => call<ProgressOverviewV1>("GET", `/progress/overview?range=${encodeURIComponent(range)}`),
   addMeasurement: (m: MeasurementV1) => call<WriteResultV1>("POST", "/measurements", m),
   checkIn: () => call<CheckInV1>("GET", "/check-in"),
   coachThread: () => call<CoachThreadV1>("GET", "/coach-thread"),

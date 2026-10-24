@@ -1,4 +1,4 @@
-import Storage from "expo-sqlite/kv-store";
+import Storage from "./kv";
 
 // The phone's own copy of what the workout screens need offline: the outbox,
 // the rest timer, and the last answer of each training read. SQLite-backed

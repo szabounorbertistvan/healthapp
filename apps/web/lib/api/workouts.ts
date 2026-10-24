@@ -1,7 +1,7 @@
 import "server-only";
-import type { LoggedSetV1, WorkoutDaySummaryV1, WorkoutDayV1, WorkoutExerciseV1 } from "@healthapp/api/v1";
+import type { LoggedSetV1, SessionCardV1, WorkoutDaySummaryV1, WorkoutDayV1, WorkoutExerciseV1 } from "@healthapp/api/v1";
 import type { PreviousWorkout } from "@healthapp/shared";
-import type { ClientWorkoutDay, Profile } from "@/lib/types";
+import type { ClientWorkoutDay, Profile, SessionSummaryRow } from "@/lib/types";
 
 // The web's training reads (lib/client-training.ts) mapped onto the /api/v1
 // contract. Only the mapping lives here — every number comes from the same
@@ -14,6 +14,30 @@ export function daySummary(day: ClientWorkoutDay): WorkoutDaySummaryV1 {
     exercise_count: day.exercises.length,
     completed: day.completed,
     in_progress: !day.completed && day.logged.length > 0,
+    type: day.type,
+    exercises: day.exercises.map((e) => ({
+      id: e.id,
+      name: e.exercise,
+      sets: e.sets,
+      reps: e.reps,
+      measure: e.measure === "time" ? "time" : "reps",
+    })),
+    logged: day.logged.length,
+  };
+}
+
+/** A finished session as the history rows and Today's training card show it. */
+export function sessionCard(s: SessionSummaryRow): SessionCardV1 {
+  return {
+    id: s.id,
+    day_id: s.day_id,
+    day_name: s.day_name,
+    at: s.at,
+    sets: s.sets,
+    volume_kg: s.volume_kg,
+    prs: s.prs,
+    duration_min: s.load.duration_min,
+    load: { score: s.load.score, category: s.load.category },
   };
 }
 

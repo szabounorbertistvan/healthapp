@@ -1,48 +1,51 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { Tabs } from "expo-router";
-import type { ComponentProps } from "react";
-import type { ColorValue } from "react-native";
-import { useI18n } from "@/lib/i18n";
+import { router, Tabs, useIsFocused, usePathname } from "expo-router";
+import { useEffect, useRef, type ReactNode } from "react";
+import { View } from "react-native";
+import { GlassTabBar } from "@/components/tab-bar";
 import { isCoachRole, useMe } from "@/lib/role";
-import { useTheme } from "@/lib/theme";
 
-type Icon = ComponentProps<typeof Ionicons>["name"];
-
-// The spec's client tabs (C-screens): Today · Workout · Food · Progress · More.
-// A coach gets the coach-on-the-go tabs instead — Clients · Inbox · Chats ·
-// My training · More — and reaches Workout / Food / Progress from More: a
-// coach trains too (CLAUDE.md: "(client) is not client-only"). Hidden tabs keep
-// their routes, so a link or a notification can still open them.
+// The web's phone navigation (components/client-nav.tsx, nav-links.tsx):
+// a client gets Today · Training · Nutrition · Habits · More; a coach gets
+// Dashboard · Check-ins · Messages · My training · More. Every screen below is
+// a tab route; the bar (components/tab-bar.tsx) shows the role's four and
+// opens the rest from "More", so a link or a notification can reach any of them.
 export default function TabsLayout() {
-  const { t } = useI18n();
-  const { color } = useTheme();
-  const coach = isCoachRole(useMe().data?.data.role);
-  const tab = (title: string, icon: Icon, shown = true) => ({
-    title,
-    href: shown ? undefined : null,
-    tabBarIcon: ({ color: tint, size }: { color: ColorValue; size: number }) => (
-      // the tints set below are hex strings
-      <Ionicons name={icon} color={tint as string} size={size} />
-    ),
-  });
+  const me = useMe();
+  const coach = isCoachRole(me.data?.data.role);
+  const pathname = usePathname();
+  const landed = useRef(false);
+  // A coach opens on the Dashboard, as /dashboard on the web — once, when the
+  // app starts on Today; after that Today is their own "My training".
+  useEffect(() => {
+    if (landed.current || !me.data) return;
+    landed.current = true;
+    if (coach && pathname === "/") router.replace("/clients");
+  }, [coach, me.data, pathname]);
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: color.accent,
-        tabBarInactiveTintColor: color.inkFaint,
-        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.line },
-        sceneStyle: { backgroundColor: color.bg },
-      }}
+      tabBar={(props) => <GlassTabBar {...props} coach={coach} />}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: "transparent" } }}
+      screenLayout={({ children }) => <FocusedOnly>{children}</FocusedOnly>}
     >
-      <Tabs.Screen name="clients" options={tab(t.mobile.coach.clients, "people-outline", coach)} />
-      <Tabs.Screen name="inbox" options={tab(t.mobile.coach.inbox, "file-tray-full-outline", coach)} />
-      <Tabs.Screen name="chats" options={tab(t.mobile.coach.chats, "chatbubbles-outline", coach)} />
-      <Tabs.Screen name="index" options={tab(coach ? t.mobile.training.title : t.mobile.tabs.today, "today-outline")} />
-      <Tabs.Screen name="workout" options={tab(t.mobile.tabs.workout, "barbell-outline", !coach)} />
-      <Tabs.Screen name="food" options={tab(t.mobile.tabs.food, "restaurant-outline", !coach)} />
-      <Tabs.Screen name="progress" options={tab(t.mobile.tabs.progress, "trending-up-outline", !coach)} />
-      <Tabs.Screen name="more" options={tab(t.mobile.tabs.more, "menu-outline")} />
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="workout" />
+      <Tabs.Screen name="food" />
+      <Tabs.Screen name="habits" />
+      <Tabs.Screen name="progress" />
+      <Tabs.Screen name="more" />
+      <Tabs.Screen name="clients" />
+      <Tabs.Screen name="inbox" />
+      <Tabs.Screen name="chats" />
     </Tabs>
   );
+}
+
+/**
+ * The scenes are transparent so the Backdrop's light shows through, which
+ * means a tab left behind would show through too: the navigator only moves it
+ * under the focused one. Hidden instead — mounted, so its state and scroll stay.
+ */
+function FocusedOnly({ children }: { children: ReactNode }) {
+  const focused = useIsFocused();
+  return <View style={{ flex: 1, display: focused ? "flex" : "none" }}>{children}</View>;
 }

@@ -2,6 +2,10 @@
 // the Android app (apps/mobile). Old app builds stay installed for months, so
 // this only ever grows: a new field is additive, a breaking change is /api/v2.
 
+import type {
+  BodyProgress, PeriodBucket, ProgressInsight, ProgressRange, StrengthHighlight, TrainingProgress,
+} from "@healthapp/shared";
+
 export const API_V1 = "/api/v1";
 
 /** The header the app sends its language in; the answer's text follows it. */
@@ -58,6 +62,12 @@ export type WorkoutDaySummaryV1 = {
   completed: boolean;
   /** Sets were logged today and the session is not finished. */
   in_progress: boolean;
+  /** What the day trains (exercise-types) — picks the athlete on the card; null shows none. */
+  type?: string | null;
+  /** The day's exercises as the web's day card lists them. */
+  exercises?: { id: string; name: string; sets: number; reps: string; measure: "reps" | "time" }[];
+  /** Sets logged today on this day. */
+  logged?: number;
 };
 
 export type WorkoutsV1 = {
@@ -72,6 +82,12 @@ export type WorkoutsV1 = {
   /** The day Today calls "next", when there is one. */
   next_day_id: string | null;
   has_coach: boolean;
+  /** users.sex — which athlete the day cards show (the web's athleteSex). */
+  sex?: "male" | "female" | "other" | null;
+  /** Finished sessions, newest first, inside the plan's history window. */
+  sessions?: (SessionCardV1 & { ago: string })[];
+  /** Older sessions exist that the plan's history window hides. */
+  history_capped?: boolean;
 };
 
 export type WorkoutExerciseV1 = {
@@ -132,6 +148,42 @@ export type WorkoutDayV1 = {
   previous: Record<string, { at: string; sets: PreviousSetV1[] }>;
   rest: { default_seconds: number; alert: boolean; exercises: Record<string, number> };
   weight_unit: "kg" | "lb";
+  /** What the day trains — the athlete in the header (null: none). */
+  type?: string | null;
+  /** users.sex, for the athlete (the web's athleteSex). */
+  sex?: "male" | "female" | "other" | null;
+  /** Past sessions of this day, newest first, inside the plan's history window (the web's WorkoutHistory). */
+  history?: WorkoutHistoryV1[];
+  /** Older sessions exist that the plan's history window hides. */
+  history_capped?: boolean;
+};
+
+/** packages/shared TrainingLoad, as the day page's load card shows it. */
+export type TrainingLoadV1 = {
+  score: number;
+  category: "very_light" | "light" | "moderate" | "hard" | "very_hard";
+  volume_kg: number;
+  sets: number;
+  duration_min: number | null;
+  intensity: number | null;
+  exercises: number;
+};
+
+/** One past session of a training day, with its sets per lift. */
+export type WorkoutHistoryV1 = {
+  id: string;
+  at: string;
+  /** "today", "3 days ago" — the web's timeAgo in the person's language. */
+  ago: string;
+  sets: number;
+  volume_kg: number;
+  prs: number;
+  load: TrainingLoadV1;
+  exercises: {
+    name: string;
+    exercise_id: string | null;
+    sets: { id: string; set_index: number; weight_kg: number; reps: number; duration_seconds: number | null; rpe: number | null; rir: number | null; notes: string | null; is_pr: boolean }[];
+  }[];
 };
 
 /** POST /api/v1/sets — the web's LogSetInput, as the set logger sends it. */
@@ -202,6 +254,10 @@ export type FoodDayV1 = {
     foods: { name: string; grams: number; macros: MacrosV1 }[];
   }[];
   quick: { recent: QuickFoodV1[]; favorites: QuickFoodV1[] };
+  /** Days of the shown day's week (Mon–Sun) with anything logged — the week strip's marks. */
+  logged_days?: string[];
+  /** The day before, per meal that had anything in it — "same as yesterday" on an empty meal. */
+  previous_day?: { day: string; slots: Partial<Record<MealSlotV1, { items: number; kcal: number }>> };
 };
 
 export type BarcodeV1 =
@@ -231,6 +287,43 @@ export type ProgressV1 = {
   /** Newest first. */
   measurements: { taken_on: string; weight_kg: number | null; waist_cm: number | null }[];
   prs: { exercise: string; best_kg: number; at: string }[];
+};
+
+/**
+ * GET /api/v1/progress/overview?range=7|30|90|365|all — what the web's /progress
+ * folds on the server for its headline, insights and the Body, Strength and
+ * Consistency tabs (packages/shared/progress over the person's own rows). The
+ * app only formats, as the web's components/advanced-progress.tsx does.
+ */
+export type ProgressOverviewV1 = {
+  range: ProgressRange;
+  /** A previous window exists to compare with. */
+  has_previous: boolean;
+  /** The session read hit its cap: the figures cover the newest sessions only. */
+  truncated: boolean;
+  weight_unit: "kg" | "lb";
+  length_unit: "cm" | "in";
+  /** The plan shows charts (progressCharts); without it the web shows an upgrade hint instead. */
+  charts: boolean;
+  stats: { current_weight_kg: number | null; sessions: number; total_volume_kg: number; prs: number };
+  insights: ProgressInsight[];
+  /** exercises.id → name, for insights and highlights. */
+  names: Record<string, string>;
+  body: BodyProgress;
+  /** Inside the plan's history window, newest first. */
+  measurements: { id: string; taken_on: string; weight_kg: number | null; waist_cm: number | null }[];
+  history_capped: boolean;
+  training: TrainingProgress;
+  highlights: StrengthHighlight[];
+  buckets: { unit: "week" | "month"; items: PeriodBucket[] };
+  fitness: { score: number | null; trend: { current: number; previous: number; delta: number } | null } | null;
+  /** Best estimated 1RMs, heaviest first (cut to a few without progressCharts). */
+  prs: { exercise: string; exercise_id: string | null; best_kg: number; ago: string }[];
+  prs_hidden: number;
+  this_week: number;
+  streak: { current: number; longest: number } | null;
+  /** Days in the program followed now; null without one. */
+  planned_per_week: number | null;
 };
 
 export type MeasurementV1 = { weightKg: number | null; waistCm: number | null; takenOn?: string };
@@ -306,7 +399,13 @@ export type CoachClientV1 = {
   unread: number;
 };
 
-export type CoachDashboardV1 = { clients: CoachClientV1[]; checkins_pending: number; requests_pending: number };
+export type CoachDashboardV1 = {
+  clients: CoachClientV1[];
+  checkins_pending: number;
+  requests_pending: number;
+  /** Coach Pro (advancedAnalytics): the signal, its reason, the % and the at-risk count; a Starter desk shows none of them. */
+  pro?: boolean;
+};
 
 export type CheckInScoresV1 = {
   sleep: number | null;
@@ -380,4 +479,65 @@ export type UpdateSetV1 = {
   rir: number | null;
   notes: string | null;
   durationSeconds: number | null;
+};
+
+// ---------- the Today dashboard, 1:1 with the web (2026-10-24) ----------
+
+export type SessionCardV1 = {
+  id: string;
+  day_id: string | null;
+  day_name: string;
+  at: string;
+  sets: number;
+  volume_kg: number;
+  prs: number;
+  duration_min: number | null;
+  /** The session's training load (packages/shared training-load): "Load 82 · Hard". */
+  load: { score: number; category: "very_light" | "light" | "moderate" | "hard" | "very_hard" };
+};
+
+/**
+ * GET /api/v1/dashboard — what the web's /today renders (app/(client)/today/page.tsx),
+ * from the same reads. Words the web composes on the server (the at-risk line)
+ * come composed; everything else is data the app lays out with the same strings.
+ */
+export type DashboardV1 = {
+  /** The person's own calendar day and zone. */
+  today: string;
+  time_zone: string;
+  has_coach: boolean;
+  /** Shares 0..1. */
+  adherence: { overall: number; workout: number; nutrition: number; habits: number; checkin: boolean; signal: "on_track" | "needs_attention" | "at_risk" };
+  sessions: { done: number; planned: number };
+  streak_days: number;
+  /** The at-risk line, in the reader's language, or null. */
+  nudge: string | null;
+  /** Days of this week with a workout logged (for the Mon–Sun strip). */
+  workout_days: string[];
+  load: { this_week: number; delta_pct: number | null; direction: "increased" | "decreased" | "stable" | string };
+  fitness: { status: "building" | "active"; score: number | null; band: string | null; completed_workouts: number; min_workouts: number } | null;
+  next: {
+    day_id: string;
+    day_name: string;
+    program_name: string;
+    is_own: boolean;
+    completed: boolean;
+    logged: number;
+    total_sets: number;
+    exercises: { id: string; name: string; sets: number; reps: string; weight: string; measure: "reps" | "time" }[];
+  } | null;
+  done_today: SessionCardV1 | null;
+  recent: SessionCardV1[];
+  streak: { current: number; longest: number; active_today: boolean; active_yesterday: boolean } | null;
+  nutrition: {
+    plan_name: string | null;
+    plan_owner: "coach" | "self" | null;
+    target: MacrosV1;
+    totals: MacrosV1;
+    entries: { slot: MealSlotV1; food_name: string; kcal: number }[];
+  };
+  habits: { id: string; name: string; done_today: boolean }[];
+  check_in: { submitted: boolean; coach_feedback: string | null };
+  unread_from_coach: number;
+  community: { leaderboard_rank: number | null; active_challenges: number };
 };

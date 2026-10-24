@@ -60,9 +60,10 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
         const touched = [...result.synced.map((s) => s.item), ...result.refused];
         for (const item of touched) {
           if (item.kind === "set") void queryClient.invalidateQueries({ queryKey: ["workout", item.input.dayId] });
-          if (item.kind === "food") void queryClient.invalidateQueries({ queryKey: ["food", item.input.day] });
         }
         const kinds = new Set(touched.map((item) => item.kind));
+        // Every cached diary day: the one shown first is cached as "today", not by its date.
+        if (kinds.has("food")) void queryClient.invalidateQueries({ queryKey: ["food"] });
         if (kinds.has("set")) void queryClient.invalidateQueries({ queryKey: ["workouts"] });
         if (kinds.has("habit")) void queryClient.invalidateQueries({ queryKey: ["habits"] });
         if (kinds.has("checkin")) {

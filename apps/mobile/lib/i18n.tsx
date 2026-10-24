@@ -1,10 +1,14 @@
 import { fill, type Locale } from "@healthapp/i18n";
 import { clientAppMessages } from "@healthapp/i18n/messages/client-app";
 import { clientWidgetsMessages } from "@healthapp/i18n/messages/client-widgets";
+import { coachAppMessages } from "@healthapp/i18n/messages/coach-app";
+import { coachWidgetsMessages } from "@healthapp/i18n/messages/coach-widgets";
 import { commonMessages } from "@healthapp/i18n/messages/common";
+import { gymsMessages } from "@healthapp/i18n/messages/gyms";
+import { landingMessages } from "@healthapp/i18n/messages/landing";
 import { mobileMessages } from "@healthapp/i18n/messages/mobile";
 import { getLocales } from "expo-localization";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "./secure-store";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { setApiLocale } from "./api";
 
@@ -17,6 +21,10 @@ function dictionary(locale: Locale) {
     common: commonMessages[locale],
     clientApp: clientAppMessages[locale],
     clientWidgets: clientWidgetsMessages[locale],
+    coachApp: coachAppMessages[locale],
+    coachWidgets: coachWidgetsMessages[locale],
+    gyms: gymsMessages[locale],
+    login: landingMessages[locale].login,
     mobile: mobileMessages[locale],
   };
 }

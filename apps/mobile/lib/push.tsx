@@ -39,7 +39,8 @@ export function PushProvider({ children }: { children: ReactNode }) {
   const signedIn = Boolean(session);
 
   useEffect(() => {
-    if (!signedIn) return;
+    // No push on the web build (the browser preview): the module throws there.
+    if (!signedIn || Platform.OS === "web") return;
     void ensureChannels(t);
     // Already allowed (an earlier grant, or the rest timer's): register quietly.
     void enablePush(false);
