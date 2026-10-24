@@ -457,4 +457,5 @@ is pushed.
 2. Play account type: personal (14-day tester gate) or organization (D-U-N-S).
 3. `sync-ingest`: delete after launch (recommended) or keep as a batch wrapper.
 4. When the paywall is switched on: Play Billing via RevenueCat, or EEA alternative billing.
-5. iOS: after Android launch, or not planned.
+5. iOS: after Android launch, or not planned. *(2026-10-24: the owner tests on an iPhone — Expo Go first,
+   [IPHONE_TEST.md](IPHONE_TEST.md); a TestFlight build needs an Apple Developer account.)*

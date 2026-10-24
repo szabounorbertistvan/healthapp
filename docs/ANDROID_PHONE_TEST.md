@@ -1,5 +1,7 @@
 # Testing the Android app on your phone
 
+**Have an iPhone?** See [IPHONE_TEST.md](IPHONE_TEST.md) — the fastest way needs no build at all.
+
 Written 2026-10-24. The app (`apps/mobile`) has never run on a device yet; this is how to put
 it on yours. The build happens in Expo's cloud (**EAS Build**), so this Windows computer needs
 no Java or Android SDK. You run the commands below yourself, because they sign in to **your**
@@ -20,17 +22,17 @@ account or your own — what you log is real.
 ## One-time setup (about 10 minutes)
 
 1. Create a free account at https://expo.dev (sign-up in the browser).
-2. In a terminal, from the repository root (after `npm install`, the EAS tool is part of the project):
+2. In a terminal, from the repository root:
 
    ```bash
-   cd apps/mobile && npx eas login
+   cd apps/mobile && npx -y eas-cli@24.12.1 login
    ```
 
 3. Still in `apps/mobile`, link the app to your Expo account (creates the project and writes its id into
    `apps/mobile/app.json` — commit that change, or tell Claude to):
 
    ```bash
-   npx eas init
+   npx -y eas-cli@24.12.1 init
    ```
 
 4. Give the cloud build the three public settings the app needs. The values are the same as the
@@ -39,15 +41,15 @@ account or your own — what you log is real.
    in every browser that opens the website — but never put the **service role** key here.
 
    ```bash
-   npx eas env:create --environment preview --environment development --name EXPO_PUBLIC_SUPABASE_URL --value https://YOUR-REF.supabase.co --visibility plaintext
+   npx -y eas-cli@24.12.1 env:create --environment preview --environment development --name EXPO_PUBLIC_SUPABASE_URL --value https://YOUR-REF.supabase.co --visibility plaintext
    ```
 
    ```bash
-   npx eas env:create --environment preview --environment development --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value YOUR-ANON-KEY --visibility plaintext
+   npx -y eas-cli@24.12.1 env:create --environment preview --environment development --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value YOUR-ANON-KEY --visibility plaintext
    ```
 
    ```bash
-   npx eas env:create --environment preview --environment development --name EXPO_PUBLIC_API_URL --value https://www.voinic.fit --visibility plaintext
+   npx -y eas-cli@24.12.1 env:create --environment preview --environment development --name EXPO_PUBLIC_API_URL --value https://www.voinic.fit --visibility plaintext
    ```
 
 5. Set an Android signing key when the first build asks: answer **Yes, generate a new keystore**.

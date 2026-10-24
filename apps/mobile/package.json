@@ -8,8 +8,10 @@
     "android": "expo run:android",
     "export:android": "expo export --platform android --output-dir dist",
     "typecheck": "tsc --noEmit",
-    "build:preview": "eas build --profile preview --platform android",
-    "build:dev": "eas build --profile development --platform android"
+    "build:preview": "npx -y eas-cli@24.12.1 build --profile preview --platform android",
+    "build:dev": "npx -y eas-cli@24.12.1 build --profile development --platform android",
+    "start:go": "expo start --go",
+    "start:go:tunnel": "expo start --go --tunnel"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -41,7 +43,6 @@
     "react-native-screens": "~4.30.0"
   },
   "devDependencies": {
-    "@types/react": "~19.3.0",
-    "eas-cli": "~24.12.1"
+    "@types/react": "~19.3.0"
   }
 }

@@ -61,6 +61,10 @@ owner, under the same RLS — no second implementation. The response types are
 
 ## Run it
 
+**On an iPhone, today:** [docs/IPHONE_TEST.md](../../docs/IPHONE_TEST.md) — `npm run start:go` and Expo Go
+(every module the app uses is in Expo Go for SDK 58; checked 2026-10-24: the dev server serves the iOS
+manifest and bundle). `ios.bundleIdentifier` is `fit.voinic.app` for a later TestFlight build.
+
 **On a phone:** [docs/ANDROID_PHONE_TEST.md](../../docs/ANDROID_PHONE_TEST.md) — EAS cloud builds
 (`npm run build:preview` / `build:dev` in this workspace; profiles in `eas.json`), no local
 Java or Android SDK needed. `expo-doctor` reports "duplicate react": that is the intended split
