@@ -51,6 +51,9 @@ const en = {
     loadFailed: "Could not load today.",
     retry: "Try again",
   },
+  builder: {
+    noMatch: "Nothing matches. Try another word or muscle.",
+  },
   workout: {
     fromPhone: "No connection — showing what this phone saved last.",
     noProgram: "No program yet.",
@@ -279,6 +282,9 @@ const ro: typeof en = {
     signal: { on_track: "Pe drumul bun", needs_attention: "Necesită atenție", at_risk: "În risc" },
     loadFailed: "Nu am putut încărca ziua de azi.",
     retry: "Încearcă din nou",
+  },
+  builder: {
+    noMatch: "Nimic nu se potrivește. Încearcă alt cuvânt sau altă grupă.",
   },
   workout: {
     fromPhone: "Fără conexiune — vezi ce a salvat ultima dată telefonul.",

@@ -1,7 +1,7 @@
 import { BlurView } from "expo-blur";
 import { router, type Tabs } from "expo-router";
 import { useEffect, useState, type ComponentProps } from "react";
-import { BackHandler, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Divider, Glass, ICON, NavIcon, T } from "@/components/ui";
 import { signOut } from "@/lib/auth";
@@ -47,17 +47,17 @@ type SheetKey =
 type SheetItem = { key: SheetKey; icon: string; route?: string; web?: string };
 
 const CLIENT_SHEET: SheetItem[] = [
-  { key: "programs", icon: ICON.programs, web: "/routines" },
+  { key: "programs", icon: ICON.programs, route: "/routines" },
   { key: "progress", icon: ICON.progress, route: "/progress" },
   { key: "checkIn", icon: ICON.checkIn, route: "/check-in" },
   { key: "challenges", icon: ICON.challenges, route: "/challenges" },
   { key: "gyms", icon: ICON.gyms, web: "/gyms" },
   { key: "achievements", icon: ICON.achievements, route: "/achievements" },
   { key: "feed", icon: ICON.feed, route: "/feed" },
-  { key: "saved", icon: ICON.saved, web: "/saved" },
+  { key: "saved", icon: ICON.saved, route: "/saved" },
   { key: "notifications", icon: ICON.notifications, route: "/notifications" },
   { key: "coach", icon: ICON.coach, route: "/messages" },
-  { key: "bookings", icon: ICON.bookings, web: "/coaches/bookings" },
+  { key: "bookings", icon: ICON.bookings, route: "/bookings" },
   { key: "account", icon: ICON.account, route: "/more" },
 ];
 
@@ -121,7 +121,8 @@ function MoreSheet({ open, onClose, items, current }: { open: boolean; onClose: 
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (!open) return;
+    // Android's back button closes the sheet; there is no such button on the web preview.
+    if (!open || Platform.OS === "web") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       onClose();
       return true;

@@ -11,7 +11,7 @@ import { router } from "expo-router";
 
 // Training — the web's /workout on a phone (app/(client)/workout/page.tsx):
 // the page actions, every published program with its day cards, then the
-// history. Building and editing a program stay on the web for now.
+// history. Building and editing your own program is app/build.tsx.
 
 const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 
@@ -40,7 +40,7 @@ export default function Workout() {
             <Pill
               icon={hasOwn ? "M4 20h4l10-10-4-4L4 16zM13 7l4 4" : "M12 5v14M5 12h14"}
               label={hasOwn ? w.editProgram : t.clientApp.builder.title}
-              onPress={web("/workout/build")}
+              onPress={() => router.push("/build")}
             />
           ) : null}
         </View>
@@ -61,7 +61,7 @@ export default function Workout() {
                   <T kind="faint" style={{ marginTop: 4, lineHeight: 18 }}>{data.has_coach ? w.noProgramHint : w.noProgramHintSolo}</T>
                 </View>
                 <View style={{ alignSelf: "flex-start" }}>
-                  <Button height={40} label={t.clientApp.builder.title} onPress={web("/workout/build")} />
+                  <Button height={40} label={t.clientApp.builder.title} onPress={() => router.push("/build")} />
                 </View>
               </View>
             ) : (
@@ -80,7 +80,7 @@ export default function Workout() {
                   {group.is_own && !data.has_coach ? (
                     <Pressable
                       accessibilityRole="link"
-                      onPress={web("/workout/build")}
+                      onPress={() => router.push({ pathname: "/build", params: { program: group.program_id } })}
                       style={[styles.addDay, { borderColor: color.line }]}
                     >
                       <Text style={{ fontFamily: font.semibold, fontSize: 18, color: color.inkFaint }}>+</Text>

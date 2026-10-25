@@ -3,6 +3,7 @@ import { clientAppMessages } from "@healthapp/i18n/messages/client-app";
 import { clientWidgetsMessages } from "@healthapp/i18n/messages/client-widgets";
 import { coachAppMessages } from "@healthapp/i18n/messages/coach-app";
 import { coachWidgetsMessages } from "@healthapp/i18n/messages/coach-widgets";
+import { coachProfileMessages } from "@healthapp/i18n/messages/coach-profile";
 import { commonMessages } from "@healthapp/i18n/messages/common";
 import { gymsMessages } from "@healthapp/i18n/messages/gyms";
 import { landingMessages } from "@healthapp/i18n/messages/landing";
@@ -24,6 +25,7 @@ function dictionary(locale: Locale) {
     coachApp: coachAppMessages[locale],
     coachWidgets: coachWidgetsMessages[locale],
     gyms: gymsMessages[locale],
+    bookings: coachProfileMessages[locale].bookings,
     login: landingMessages[locale].login,
     mobile: mobileMessages[locale],
   };

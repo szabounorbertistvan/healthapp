@@ -2,9 +2,12 @@ import type { AccountFieldsV1, SettingsV1 } from "@healthapp/api/v1";
 import { EMAIL_PREF_CATEGORIES, REST_MAX_SECONDS, REST_MIN_SECONDS, REST_PRESETS } from "@healthapp/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Switch as NativeSwitch, Text, TextInput, View } from "react-native";
+import { File, Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch as NativeSwitch, Text, TextInput, View } from "react-native";
 import { Card } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
+import { signOut } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
 
@@ -500,6 +503,97 @@ export function GymCard({ settings }: { settings: SettingsV1 }) {
           ) : null}
         </View>
       ) : null}
+      {error ? <Hint tone={color.risk}>{error}</Hint> : null}
+    </Card>
+  );
+}
+
+/** Download everything the account holds as one JSON file, handed to the phone's share sheet (DataExportCard). */
+export function DataCard() {
+  const { t } = useI18n();
+  const { color } = useTheme();
+  const a = t.clientApp.account;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { filename, json } = await api.exportData();
+      if (Platform.OS === "web") {
+        // The browser preview: a plain download, as the web's own card does it.
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+        link.download = filename;
+        link.click();
+        return;
+      }
+      const file = new File(Paths.cache, filename);
+      file.create({ overwrite: true });
+      file.write(json);
+      await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: filename, UTI: "public.json" });
+    } catch (e) {
+      setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : a.errGeneric);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card style={{ gap: 12 }}>
+      <CardTitle>{a.yourData}</CardTitle>
+      <Hint>{a.exportBody}</Hint>
+      <Pressable accessibilityRole="button" disabled={busy} onPress={() => void download()} style={[styles.quiet, { alignSelf: "flex-start", backgroundColor: color.bg, opacity: busy ? 0.5 : 1 }]}>
+        <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkSoft }}>{busy ? a.exportPending : a.exportButton}</Text>
+      </Pressable>
+      {error ? <Hint tone={color.risk}>{error}</Hint> : null}
+    </Card>
+  );
+}
+
+/** Delete this account (DeleteAccountCard): "DELETE" typed is the confirmation, then the app signs out. */
+export function DeleteCard() {
+  const { t, fill, locale } = useI18n();
+  const { color } = useTheme();
+  const a = t.clientApp.account;
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const ready = confirm.trim().toUpperCase() === "DELETE";
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.deleteAccount(confirm);
+      if (!r.ok) return setError(r.message ?? a.errGeneric);
+      const date = r.purgeAfter ? new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date(r.purgeAfter)) : "";
+      setDone(fill(a.deleteDone, { date }));
+      // The account is anonymised now: nothing more to do in it.
+      setTimeout(() => void signOut().catch(() => {}), 4000);
+    } catch (e) {
+      setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : a.errGeneric);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card style={{ gap: 12 }}>
+      <Text style={{ fontFamily: font.displayBold, fontSize: 16, color: color.risk }}>{a.deleteTitle}</Text>
+      <Hint>{a.deleteBody}</Hint>
+      {done ? (
+        <Text style={{ fontFamily: font.regular, fontSize: 13.5, lineHeight: 20, color: color.risk }}>{done}</Text>
+      ) : (
+        <>
+          <Field plain label={a.deleteConfirm} value={confirm} onChange={setConfirm} />
+          <Pressable accessibilityRole="button" disabled={busy || !ready} onPress={() => void remove()} style={[styles.quiet, { alignSelf: "flex-start", backgroundColor: color.risk, opacity: busy || !ready ? 0.4 : 1 }]}>
+            <Text style={{ fontFamily: font.bold, fontSize: 13, color: color.bg }}>{busy ? a.deletePending : a.deleteButton}</Text>
+          </Pressable>
+        </>
+      )}
       {error ? <Hint tone={color.risk}>{error}</Hint> : null}
     </Card>
   );

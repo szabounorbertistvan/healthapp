@@ -1,21 +1,21 @@
 import Constants from "expo-constants";
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { EmailCard, GymCard, PrivacyCard, ProfileCard, RestCard } from "@/components/settings-forms";
+import { DataCard, DeleteCard, EmailCard, GymCard, PrivacyCard, ProfileCard, RestCard } from "@/components/settings-forms";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
-import { isCoachRole, useMe } from "@/lib/role";
+import { useMe } from "@/lib/role";
 import { font, useTheme } from "@/lib/theme";
 
 // Account — the web's /account on a phone (app/(client)/account/page.tsx; the
 // coach's /settings carries the same cards): who is signed in, then one card
 // per setting, in the web's order. Profile, gym, rest timer, email and privacy are edited
 // right here (components/settings-forms.tsx, through the web's own actions);
-// data export and deletion open on voinic.fit.
+// the data export and deletion too — all through the web's own actions.
 
 const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 
@@ -24,9 +24,7 @@ export default function Account() {
   const { color } = useTheme();
   const me = useMe().data?.data;
   const settings = useOfflineQuery("settings", ["settings"], api.settings).data?.data;
-  const coach = isCoachRole(me?.role);
   const a = t.clientApp.account;
-  const settingsPath = coach ? "/settings" : "/account";
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
@@ -74,8 +72,8 @@ export default function Account() {
         {settings ? <RestCard settings={settings} /> : null}
         {settings ? <EmailCard settings={settings} /> : null}
         {settings ? <PrivacyCard settings={settings} /> : null}
-        <SettingRow title={a.yourData} hint={a.exportBody} onPress={web(settingsPath)} />
-        <SettingRow title={a.deleteTitle} hint={a.deleteBody} danger onPress={web(settingsPath)} />
+        <DataCard />
+        <DeleteCard />
 
         <Card style={{ padding: 0, gap: 0, overflow: "hidden" }}>
           <LinkRow label={t.mobile.more.openWeb} onPress={web("/today")} />
@@ -93,24 +91,6 @@ export default function Account() {
         <Text style={styles.foot(color.inkFaint)}>{fill(t.mobile.more.version, { version: Constants.expoConfig?.version ?? "?" })}</Text>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-/** One settings card: its title, what it holds, the chevron to the web form. */
-function SettingRow({ title, hint, onPress, danger = false }: { title: string; hint?: string; onPress: () => void; danger?: boolean }) {
-  const { color } = useTheme();
-  return (
-    <Pressable accessibilityRole="link" onPress={onPress}>
-      {({ pressed }) => (
-        <Card style={{ flexDirection: "row", alignItems: "center", gap: 12, ...(pressed ? { opacity: 0.85 } : null) }}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ fontFamily: font.displayBold, fontSize: 16, color: danger ? color.risk : color.ink }}>{title}</Text>
-            {hint ? <Text numberOfLines={2} style={{ marginTop: 4, fontFamily: font.regular, fontSize: 12.5, lineHeight: 18, color: color.inkFaint }}>{hint}</Text> : null}
-          </View>
-          <NavIcon d="m9 6 6 6-6 6" size={16} color={color.inkFaint} />
-        </Card>
-      )}
-    </Pressable>
   );
 }
 

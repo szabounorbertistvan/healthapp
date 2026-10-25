@@ -1,9 +1,9 @@
 import {
   API_V1, LOCALE_HEADER, type ApiError, type BarcodeV1, type CheckInV1, type CodedResultV1, type FoodDayV1, type FoodItemV1,
-  type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1, type ProgressOverviewV1, type SettingsV1, type SaveAccountV1, type GoalsV1, type CreateGoalV1, type LeaderboardV1, type AchievementsV1, type ChallengesV1, type FeedV1, type GymV1, type ChallengeDetailV1, type CreateChallengeV1,
+  type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1, type ProgressOverviewV1, type SettingsV1, type SaveAccountV1, type GoalsV1, type CreateGoalV1, type LeaderboardV1, type AchievementsV1, type ChallengesV1, type PostDetailV1, type FeedV1, type GymV1, type ChallengeDetailV1, type CreateChallengeV1,
   type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
   type AppConfigV1, type CoachCheckInV1, type CoachConversationV1, type CoachDashboardV1, type CoachRequestV1, type ThreadV1,
-  type UpdateSetV1, type DashboardV1,
+  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
@@ -57,6 +57,11 @@ export const api = {
   today: () => call<TodayV1>("GET", "/today"),
   dashboard: () => call<DashboardV1>("GET", "/dashboard"),
   workouts: () => call<WorkoutsV1>("GET", "/workouts"),
+  builder: (program?: string) => call<BuilderV1>("GET", `/builder${program ? `?program=${encodeURIComponent(program)}` : ""}`),
+  /** One builder action by name (app/api/v1/builder): the web runs the same builder-actions. */
+  build: (op: string, body: Record<string, unknown> = {}) => call<WriteResultV1 & { id?: string }>("POST", "/builder", { op, ...body }),
+  searchExercises: (q: string, muscle: string, offset = 0) =>
+    call<ExerciseSearchV1>("GET", `/exercises/search?${new URLSearchParams({ q, muscle, offset: String(offset) })}`),
   workoutDay: (dayId: string) => call<WorkoutDayV1>("GET", `/workouts/${encodeURIComponent(dayId)}`),
   finishWorkout: (dayId: string) => call<WriteResultV1>("POST", `/workouts/${encodeURIComponent(dayId)}/finish`, {}),
   foodDay: (day?: string) => call<FoodDayV1>("GET", day ? `/food?day=${encodeURIComponent(day)}` : "/food"),
@@ -68,6 +73,8 @@ export const api = {
   copyMeal: (slot: MealSlotV1, from: string, to: string) => call<CodedResultV1>("POST", "/food/copy", { slot, from, to }),
   habits: () => call<HabitsV1>("GET", "/habits"),
   settings: () => call<SettingsV1>("GET", "/settings"),
+  exportData: () => call<{ filename: string; json: string }>("GET", "/account/export"),
+  deleteAccount: (confirm: string) => call<WriteResultV1 & { purgeAfter?: string }>("POST", "/account/delete", { confirm }),
   goals: () => call<GoalsV1>("GET", "/goals"),
   leaderboard: (metric: string, period: string, scope: string) =>
     call<LeaderboardV1>("GET", `/leaderboard?metric=${encodeURIComponent(metric)}&period=${encodeURIComponent(period)}&scope=${encodeURIComponent(scope)}`),
@@ -76,6 +83,20 @@ export const api = {
   feed: (scope: string, before?: string) =>
     call<FeedV1>("GET", `/feed?scope=${encodeURIComponent(scope)}${before ? `&before=${encodeURIComponent(before)}` : ""}`),
   react: (postId: string, type: "kudos" | "love") => call<WriteResultV1>("POST", "/feed/react", { postId, type }),
+  routines: (tab: string, q = "", page = 1) => call<RoutinesV1>("GET", `/routines?${new URLSearchParams({ tab, q, page: String(page) })}`),
+  routine: (id: string) => call<RoutineDetailV1>("GET", `/routines/${encodeURIComponent(id)}`),
+  copyRoutine: (id: string, name: string) => call<WriteResultV1 & { id?: string }>("POST", "/routines/copy", { id, name }),
+  saveRoutine: (id: string, saved: boolean) => call<WriteResultV1 & { saved?: boolean }>("POST", "/routines/save", { id, saved }),
+  bookings: () => call<BookingsV1>("GET", "/bookings"),
+  cancelBooking: (id: string, reason: string | null) => call<CodedResultV1>("POST", "/bookings/cancel", { id, reason }),
+  savedPosts: (before?: string) => call<FeedV1>("GET", `/feed/saved${before ? `?before=${encodeURIComponent(before)}` : ""}`),
+  savePost: (postId: string, save: boolean) => call<WriteResultV1>("POST", "/feed/save", { postId, save }),
+  createPost: (text: string, visibility: string) => call<WriteResultV1 & { postId?: string }>("POST", "/feed", { text, visibility }),
+  post: (id: string, before?: string) =>
+    call<PostDetailV1>("GET", `/feed/${encodeURIComponent(id)}${before ? `?before=${encodeURIComponent(before)}` : ""}`),
+  addComment: (postId: string, body: string, parentId: string | null) => call<WriteResultV1 & { id?: string }>("POST", "/feed/comment", { postId, body, parentId }),
+  deleteComment: (commentId: string, postId: string) => call<WriteResultV1>("POST", "/feed/comment/delete", { commentId, postId }),
+  deletePost: (postId: string) => call<WriteResultV1>("POST", "/feed/delete", { postId }),
   challenge: (id: string) => call<ChallengeDetailV1>("GET", `/challenges/${encodeURIComponent(id)}`),
   createChallenge: (body: CreateChallengeV1) => call<WriteResultV1 & { id?: string }>("POST", "/challenges", body),
   deleteChallenge: (id: string) => call<WriteResultV1>("POST", "/challenges/delete", { id }),

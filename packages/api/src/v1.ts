@@ -4,7 +4,7 @@
 
 import type {
   BodyProgress, ChallengeStatus, PostPayload, PostType, ReactionType, GoalDirection, Leaderboard, LeaderboardMetric, LeaderboardPeriod, LeaderboardScope, GoalMetric, GoalPoint, GoalProgress, GoalSeries, GoalStatus, PeriodBucket, ProgressInsight,
-  ProgressRange, StrengthHighlight, TrainingProgress,
+  ProgressRange, RoutineCard, StrengthHighlight, TrainingProgress,
 } from "@healthapp/shared";
 
 export const API_V1 = "/api/v1";
@@ -516,8 +516,28 @@ export type FeedPostV1 = {
   comment_count: number;
   my_reaction: ReactionType | null;
   mine: boolean;
+  /** In the reader's own saved posts (/saved); only they can see it. */
+  saved: boolean;
   /** Pictures, in order: short-lived links to /api/media (relative to the API's origin). */
   media: { id: string; kind: "image" | "video"; url: string; width: number; height: number }[];
+};
+
+export type CommentV1 = {
+  id: string;
+  parent_id: string | null;
+  user_id: string;
+  author_name: string;
+  author_avatar: string | null;
+  body: string;
+  created_at: string;
+  edited_at: string | null;
+  mine: boolean;
+};
+
+/** GET /api/v1/feed/[id] — one post and its comments, replies one level under each. */
+export type PostDetailV1 = {
+  post: FeedPostV1;
+  comments: { items: (CommentV1 & { replies: CommentV1[] })[]; next_cursor: string | null };
 };
 
 /** GET /api/v1/feed?scope=following|all|mine&before=<cursor> — the home feed (social_feed()). */
@@ -737,4 +757,114 @@ export type DashboardV1 = {
   check_in: { submitted: boolean; coach_feedback: string | null };
   unread_from_coach: number;
   community: { leaderboard_rank: number | null; active_challenges: number };
+};
+
+// ---------- the program builder (own programs) ----------
+
+/** One prescribed exercise as the builder edits it — raw values, not display strings. */
+export type BuilderExerciseV1 = {
+  id: string;
+  exercise: string;
+  sets: number;
+  reps: string;
+  weight_kg: number | null;
+  /** RIR for an RIR program (every solo program is), RPE otherwise — what was typed. */
+  rpe: number | null;
+  rest_seconds: number | null;
+  measure: "reps" | "time";
+  notes: string | null;
+};
+
+/** /builder: the person's own programs and the one open in the builder. */
+export type BuilderV1 = {
+  /** A client with an active coach does not build programs; nothing else is filled then. */
+  coached: boolean;
+  programs: { id: string; name: string; status: string; days: number; updated_at: string }[];
+  open: {
+    id: string;
+    name: string;
+    status: "draft" | "published" | "archived";
+    intensity_mode: "rpe" | "rir" | "simple";
+    days: { id: string; name: string; muscle_groups: string[]; exercises: BuilderExerciseV1[] }[];
+    /** Whether the next workout comes from it; null when that could not be read. */
+    activation: { published: boolean; followed: boolean } | null;
+  } | null;
+};
+
+/** One match from the exercise library (/exercises/search). */
+export type ExerciseHitV1 = {
+  id: string;
+  name: string;
+  equipment: string | null;
+  primary_muscles: string[];
+  image: string | null;
+  mine: boolean;
+};
+
+export type ExerciseSearchV1 = { results: ExerciseHitV1[]; total: number };
+
+// ---------- bookings (the client's side) ----------
+
+/** One session the reader booked (my_bookings()), its time already written in the booking's own zone. */
+export type BookingV1 = {
+  id: string;
+  status: "pending" | "confirmed" | "declined" | "cancelled" | "completed" | "no_show";
+  coach_name: string;
+  coach_avatar: string | null;
+  coach_slug: string | null;
+  service_name: string;
+  start_at: string;
+  /** "Tue 4 Nov" and "10:00 – 11:00" in the booking's zone, in the reader's language. */
+  date: string;
+  time: string;
+  /** The zone's short name ("Bucharest"). */
+  zone: string;
+  price: string | null;
+  note: string | null;
+  cancellation_reason: string | null;
+  cancelled_by_me: boolean;
+  conversation_id: string | null;
+  /** bookingMoves(): may the reader cancel it now. */
+  can_cancel: boolean;
+};
+
+export type BookingsV1 = { items: BookingV1[] };
+
+// ---------- routines (the program library) ----------
+
+/** /routines?tab=mine|discover|saved — RoutineCard is the shared card shape, unchanged. */
+export type RoutinesV1 = {
+  cards: RoutineCard[];
+  /** Discover's admin-curated shelf, on its unfiltered first page only. */
+  featured: RoutineCard[];
+  has_more: boolean;
+};
+
+/** /routines/[id] — one routine front to back, and what the reader may do with it. */
+export type RoutineDetailV1 = {
+  card: RoutineCard;
+  intensity_mode: "rpe" | "rir" | "simple";
+  /** One session's estimated minutes (sessionMinutes()). */
+  session_minutes: number;
+  may_copy: boolean;
+  /** The reader's own solo program: it opens in the builder. */
+  may_edit: boolean;
+  days: {
+    id: string;
+    name: string;
+    minutes: number;
+    exercises: {
+      id: string;
+      name: string;
+      circuit: number | null;
+      sets: number;
+      reps: string;
+      measure: "reps" | "time";
+      rpe: number | null;
+      weight_kg: number | null;
+      rest_seconds: number | null;
+      set_type: string;
+      equipment: string | null;
+    }[];
+  }[];
 };
