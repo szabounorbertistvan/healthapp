@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { EmailCard, ProfileCard, RestCard } from "@/components/settings-forms";
+import { EmailCard, GymCard, PrivacyCard, ProfileCard, RestCard } from "@/components/settings-forms";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -13,9 +13,9 @@ import { font, useTheme } from "@/lib/theme";
 
 // Account — the web's /account on a phone (app/(client)/account/page.tsx; the
 // coach's /settings carries the same cards): who is signed in, then one card
-// per setting, in the web's order. Profile, rest timer and email are edited
+// per setting, in the web's order. Profile, gym, rest timer, email and privacy are edited
 // right here (components/settings-forms.tsx, through the web's own actions);
-// the gym, social privacy, data export and deletion open on voinic.fit.
+// data export and deletion open on voinic.fit.
 
 const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 
@@ -70,10 +70,10 @@ export default function Account() {
         </Card>
 
         {settings ? <ProfileCard key={`profile-${settings.account.username}`} settings={settings} /> : null}
-        <SettingRow title={t.gyms.my.title} hint={t.gyms.my.hint} onPress={web(settingsPath)} />
+        {settings ? <GymCard settings={settings} /> : null}
         {settings ? <RestCard settings={settings} /> : null}
         {settings ? <EmailCard settings={settings} /> : null}
-        <SettingRow title={t.common.social.privacyTitle} hint={a.leaderboardsHint} onPress={web(settingsPath)} />
+        {settings ? <PrivacyCard settings={settings} /> : null}
         <SettingRow title={a.yourData} hint={a.exportBody} onPress={web(settingsPath)} />
         <SettingRow title={a.deleteTitle} hint={a.deleteBody} danger onPress={web(settingsPath)} />
 

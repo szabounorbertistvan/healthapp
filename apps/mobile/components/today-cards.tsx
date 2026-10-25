@@ -511,7 +511,7 @@ export function CommunityCard({ d }: { d: DashboardV1 }) {
         <Divider />
         <LinkRow icon={ICON.challenges} label={t.common.challenges.title} meta={`${d.community.active_challenges} ${x.active}`} onPress={() => router.push("/challenges")} />
         <Divider />
-        <LinkRow icon={ICON.feed} label={t.common.social.feed} onPress={web("/feed")} />
+        <LinkRow icon={ICON.feed} label={t.common.social.feed} onPress={() => router.push("/feed")} />
       </View>
     </Card>
   );

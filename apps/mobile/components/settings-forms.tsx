@@ -1,8 +1,8 @@
 import type { AccountFieldsV1, SettingsV1 } from "@healthapp/api/v1";
 import { EMAIL_PREF_CATEGORIES, REST_MAX_SECONDS, REST_MIN_SECONDS, REST_PRESETS } from "@healthapp/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Switch as NativeSwitch, Text, TextInput, View } from "react-native";
+import { useEffect, useState, type ReactNode } from "react";
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Switch as NativeSwitch, Text, TextInput, View } from "react-native";
 import { Card } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -343,7 +343,171 @@ export function EmailCard({ settings }: { settings: SettingsV1 }) {
   );
 }
 
+type Visibility = "public" | "followers" | "private";
+
+/** Who sees the social profile's numbers, and publishing the Fitness Score (SocialPrivacyCard). */
+export function PrivacyCard({ settings }: { settings: SettingsV1 }) {
+  const { t, fill, locale } = useI18n();
+  const { color } = useTheme();
+  const queryClient = useQueryClient();
+  const s = t.common.social;
+  const privacy = settings.privacy;
+  const [stats, setStats] = useState<Visibility>(privacy?.stats_visibility ?? "public");
+  const [score, setScore] = useState<Visibility>(privacy?.fitness_score_visibility ?? "public");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  if (!privacy) return null;
+  const df = new Intl.DateTimeFormat(locale === "ro" ? "ro-RO" : "en-GB", { day: "numeric", month: "short" });
+  const options = (["public", "followers", "private"] as const).map((v) => ({ value: v, label: s.visibility[v] }));
+
+  async function run(work: () => Promise<{ ok: boolean; message?: string }>) {
+    setBusy(true);
+    try {
+      const r = await work();
+      setNote(r.ok ? { ok: true, text: s.privacySaved } : { ok: false, text: r.message ?? s.loadFailed });
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+    } catch {
+      setNote({ ok: false, text: s.loadFailed });
+    } finally {
+      setBusy(false);
+    }
+  }
+  const save = (nextStats: Visibility, nextScore: Visibility) => {
+    setStats(nextStats);
+    setScore(nextScore);
+    void run(() => api.savePrivacy(nextStats, nextScore));
+  };
+
+  return (
+    <Card style={{ gap: 14 }}>
+      <View>
+        <Text style={{ fontFamily: font.displayBold, fontSize: 18, color: color.ink }}>{s.privacyTitle}</Text>
+        <Hint>{s.privacyHint}</Hint>
+      </View>
+      <Pills label={s.statsVisibility} value={stats} onChange={(v) => save(v, score)} options={options} />
+      <View>
+        <Pills label={s.fitnessVisibility} value={score} onChange={(v) => save(stats, v)} options={options} />
+        <Hint>{s.fitnessVisibilityHint}</Hint>
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+        <Pressable accessibilityRole="button" disabled={busy} onPress={() => void run(api.publishScore)} style={[styles.quiet, { backgroundColor: color.bg, opacity: busy ? 0.5 : 1 }]}>
+          <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{s.publishScore}</Text>
+        </Pressable>
+        <Text style={{ flexShrink: 1, fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>
+          {privacy.fitness_score_public !== null && privacy.fitness_score_public_at
+            ? fill(s.scorePublished, { score: privacy.fitness_score_public, date: df.format(new Date(privacy.fitness_score_public_at)) })
+            : s.scoreNotPublished}
+        </Text>
+      </View>
+      {note ? <Text style={{ fontFamily: font.regular, fontSize: 12, color: note.ok ? color.accentInk : color.risk }}>{note.text}</Text> : null}
+    </Card>
+  );
+}
+
+/** The home gym: what it is, its board switch, and the search to pick or change it (MyGymCard). */
+export function GymCard({ settings }: { settings: SettingsV1 }) {
+  const { t } = useI18n();
+  const { color } = useTheme();
+  const queryClient = useQueryClient();
+  const m = t.gyms.my;
+  const home = settings.gym?.home ?? null;
+  const board = settings.gym?.board ?? false;
+  const [picking, setPicking] = useState(!home);
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<Awaited<ReturnType<typeof api.searchGyms>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // The search follows the typing, a moment after it stops (GymSearch).
+  useEffect(() => {
+    if (!picking) return;
+    const handle = setTimeout(() => {
+      api.searchGyms(query.trim()).then(setHits).catch(() => setHits([]));
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [query, picking]);
+
+  async function save(gymId: string | null, nextBoard: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.saveGym(gymId, nextBoard);
+      if (!r.ok) return setError(r.message ?? t.gyms.errors.generic);
+      setPicking(false);
+      setQuery("");
+      await queryClient.invalidateQueries({ queryKey: ["settings"] });
+    } catch (e) {
+      setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : t.gyms.errors.generic);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card style={{ gap: 14 }}>
+      <CardTitle>{m.title}</CardTitle>
+      {home ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <View style={{ flexShrink: 1 }}>
+            <Text style={{ fontFamily: font.displayBold, fontSize: 18, color: color.ink }}>{home.name}</Text>
+            <Text style={{ fontFamily: font.regular, fontSize: 13, color: color.inkFaint }}>{[home.address, home.city].filter(Boolean).join(", ")}</Text>
+            <Text accessibilityRole="link" onPress={() => void Linking.openURL(home.map_url)} style={{ marginTop: 4, fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>
+              {`${m.openMap} ↗`}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {!picking ? (
+              <Pressable accessibilityRole="button" onPress={() => setPicking(true)} style={[styles.quiet, { backgroundColor: color.bg }]}>
+                <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{m.change}</Text>
+              </Pressable>
+            ) : null}
+            <Pressable accessibilityRole="button" disabled={busy} onPress={() => void save(null, false)} style={[styles.quiet, { backgroundColor: color.bg, opacity: busy ? 0.5 : 1 }]}>
+              <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{m.remove}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <View>
+          <Text style={{ fontFamily: font.semibold, fontSize: 14, color: color.ink }}>{m.none}</Text>
+          <Hint>{m.hint}</Hint>
+        </View>
+      )}
+      {home ? <Switch label={m.board} hint={m.boardHint} value={board} onChange={(v) => void save(home.id, v)} disabled={busy} onLabel={m.on} offLabel={m.off} /> : null}
+      {picking ? (
+        <View>
+          <Field plain label={m.searchLabel} value={query} onChange={setQuery} placeholder={m.searchPlaceholder} />
+          <View style={{ marginTop: 8, gap: 6 }}>
+            {(hits ?? [])
+              .filter((g) => g.id !== home?.id)
+              .slice(0, 8)
+              .map((g) => (
+                <Pressable
+                  key={g.id}
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={() => void save(g.id, false)}
+                  style={({ pressed }) => [styles.hit, { backgroundColor: pressed ? color.accentSoft : color.bg }]}
+                >
+                  <Text style={{ fontFamily: font.semibold, fontSize: 14, color: color.ink }}>{g.name}</Text>
+                  <Text style={{ marginTop: 2, fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>{[g.address, g.city].filter(Boolean).join(", ")}</Text>
+                </Pressable>
+              ))}
+          </View>
+          {home ? (
+            <Text accessibilityRole="button" onPress={() => setPicking(false)} style={{ marginTop: 8, fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>
+              {m.cancel}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+      {error ? <Hint tone={color.risk}>{error}</Hint> : null}
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
+  quiet: { height: 36, borderRadius: 18, paddingHorizontal: 14, justifyContent: "center" },
+  hit: { borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
   input: { marginTop: 6, height: 44, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, fontFamily: font.regular, fontSize: 14 },
   pill: { height: 36, borderRadius: 18, borderWidth: 1, paddingHorizontal: 14, justifyContent: "center" },
   save: { height: 44, minWidth: 96, borderRadius: 16, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },

@@ -1,39 +1,25 @@
-import type { ChallengesV1 } from "@healthapp/api/v1";
+import type { ChallengeCardV1 } from "@healthapp/api/v1";
+import { CHALLENGE_DIFFICULTIES, CHALLENGE_TYPES, isChallengeType, requiresExercise } from "@healthapp/shared";
 import { useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ChallengeBar, CLOCK, deadlineText, PEOPLE, statusTone, TYPE_ICON } from "@/components/challenge-bits";
 import { Card, NavIcon, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { font, useTheme } from "@/lib/theme";
 import { parseDay } from "@/lib/week";
 
-// Challenges — the web's /challenges on a phone: every challenge the person
-// can see, grouped by where it stands for them (active, upcoming, completed,
-// ended), each card with its progress from the database. Join and leave work
-// here; a challenge's own page and creating one open on the web.
+// Challenges — the web's /challenges on a phone: start your own (collapsed by
+// default), then every challenge the person can see, grouped by where it
+// stands for them, each card with its progress from the database and join /
+// leave. A card opens the challenge's own page (app/challenge/[id].tsx).
 
-type ChallengeItem = ChallengesV1["cards"][number];
-type Status = ChallengeItem["status"];
-
-const CLOCK = "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 7v5l3 2";
-const PEOPLE = "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2 20a7 7 0 0 1 14 0M17 11a3 3 0 0 0 0-6M18 20h4a6 6 0 0 0-3-5.2";
-/** challenges.tsx TYPE_ICON: what the challenge counts. */
-const TYPE_ICON: Record<string, string> = {
-  workouts: "M2 10v4M22 10v4M5 8v8M19 8v8M8 6v12M16 6v12M8 12h8",
-  training_load: "M4 18a8 8 0 1 1 16 0M12 18l4-5",
-  volume: "M4 19h16M7 19V9M12 19V5M17 19v-6",
-  active_days: "M8 3v3M16 3v3M5 6h14v14H5zM4 10h16M9 15l2 2 4-4",
-  exercise_sessions: "M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11",
-  strength_gain: "M4 17l5-5 3 3 7-7M15 8h5v5",
-  check_ins: "M9 4h6v3H9zM6 5h12v16H6zM9 13l2 2 4-4",
-  nutrition_days: "M7 3v7a2 2 0 0 0 4 0V3M9 10v11M16 3c-1.5 2-2 4-2 7h4c0-3-.5-5-2-7zM16 10v11",
-  habit_completions: "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M8 12l3 3 5-6",
-};
+type Status = ChallengeCardV1["status"];
 
 export default function Challenges() {
   const { t } = useI18n();
@@ -47,16 +33,12 @@ export default function Challenges() {
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={color.accent} />}
       >
         <BackHeader label={t.common.nav.today} />
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <T kind="title">{ch.title}</T>
-          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`${config.webUrl}/challenges`)} style={[styles.pill, { backgroundColor: color.accent }]}>
-            <NavIcon d="M12 5v14M5 12h14" size={16} color={color.accentFg} strokeWidth={2.4} />
-            <Text style={{ fontFamily: font.bold, fontSize: 12.5, color: color.accentFg }}>{ch.create}</Text>
-          </Pressable>
-        </View>
+        <T kind="title">{ch.title}</T>
+        <CreateChallenge exercises={query.data?.data.exercises ?? []} />
 
         {!cards ? (
           query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} style={{ marginTop: 32 }} />
@@ -87,7 +69,144 @@ export default function Challenges() {
   );
 }
 
-function ChallengeCard({ c }: { c: ChallengeItem }) {
+/** Today and the last day of this month — the usual window (challenge-create.tsx). */
+function defaultWindow() {
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+  return { start: iso(now), end: iso(end) };
+}
+
+/** Start your own challenge (challenge-create.tsx): collapsed until asked for. */
+function CreateChallenge({ exercises }: { exercises: { id: string; name: string }[] }) {
+  const { t } = useI18n();
+  const { color } = useTheme();
+  const queryClient = useQueryClient();
+  const ch = t.common.challenges;
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const window0 = defaultWindow();
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    type: "workouts" as string,
+    targetValue: "12",
+    startDate: window0.start,
+    endDate: window0.end,
+    visibility: "public" as "public" | "private",
+    difficulty: "" as string,
+    exerciseId: "" as string,
+  });
+  const needsExercise = isChallengeType(form.type) && requiresExercise(form.type);
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api.createChallenge({
+        ...form,
+        targetValue: Number(form.targetValue.replace(",", ".")),
+        difficulty: form.difficulty || null,
+        exerciseId: needsExercise ? form.exerciseId || null : null,
+      });
+      if (!result.ok) return setError(result.message ?? ch.unknownType);
+      setOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["challenges"] });
+      if (result.id) router.push({ pathname: "/challenge/[id]", params: { id: result.id } });
+    } catch (e) {
+      setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : ch.unknownType);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <Pressable accessibilityRole="button" onPress={() => setOpen(true)} style={[styles.openButton, { backgroundColor: color.surface }]}>
+        <NavIcon d="M12 5v14M5 12h14" size={16} color={color.inkSoft} strokeWidth={2.4} />
+        <Text style={{ fontFamily: font.displayBold, fontSize: 14, color: color.inkSoft }}>{ch.createTitle}</Text>
+      </Pressable>
+    );
+  }
+
+  const label = (text: string) => <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkSoft }}>{text}</Text>;
+  const input = (value: string, onChange: (v: string) => void, extra: object = {}) => (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholderTextColor={color.inkFaint}
+      style={[styles.input, { color: color.ink, backgroundColor: color.bg, borderColor: color.line }]}
+      {...extra}
+    />
+  );
+  const chips = (values: readonly string[], value: string, onPick: (v: string) => void, text: (v: string) => string) => (
+    <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+      {values.map((v) => {
+        const on = v === value;
+        return (
+          <Pressable key={v || "none"} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => onPick(v)} style={[styles.chip, { backgroundColor: on ? color.accent : color.bg, borderColor: on ? color.accent : color.line }]}>
+            <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: on ? color.accentFg : color.inkSoft }}>{text(v)}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  return (
+    <Card style={{ gap: 14 }}>
+      <View>
+        <Text style={{ fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: color.inkFaint }}>{ch.createTitle}</Text>
+        <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 12.5, lineHeight: 18, color: color.inkFaint }}>{ch.createHint}</Text>
+      </View>
+      <View>{label(ch.nameLabel)}{input(form.name, (v) => set("name", v), { placeholder: ch.namePlaceholder, accessibilityLabel: ch.nameLabel })}</View>
+      <View>{label(ch.descriptionLabel)}{input(form.description, (v) => set("description", v), { accessibilityLabel: ch.descriptionLabel })}</View>
+      <View>
+        {label(ch.typeLabel)}
+        {chips(CHALLENGE_TYPES, form.type, (v) => set("type", v), (v) => ch.type[v as keyof typeof ch.type])}
+        <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 12, lineHeight: 17, color: color.inkFaint }}>{isChallengeType(form.type) ? ch.typeHint[form.type] : ""}</Text>
+      </View>
+      {needsExercise ? (
+        <View>
+          {label(ch.exerciseLabel)}
+          {exercises.length === 0 ? (
+            <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>{ch.noLoggedExercises}</Text>
+          ) : (
+            chips(exercises.map((x) => x.id), form.exerciseId, (v) => set("exerciseId", v), (v) => exercises.find((x) => x.id === v)?.name ?? v)
+          )}
+        </View>
+      ) : null}
+      <View>
+        {label(`${ch.targetLabel} (${ch.unit[form.type as keyof typeof ch.unit] ?? ""})`)}
+        {input(form.targetValue, (v) => set("targetValue", v), { keyboardType: "decimal-pad", accessibilityLabel: ch.targetLabel })}
+      </View>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ flex: 1 }}>{label(ch.startLabel)}{input(form.startDate, (v) => set("startDate", v), { placeholder: "yyyy-mm-dd", autoCapitalize: "none", accessibilityLabel: ch.startLabel })}</View>
+        <View style={{ flex: 1 }}>{label(ch.endLabel)}{input(form.endDate, (v) => set("endDate", v), { placeholder: "yyyy-mm-dd", autoCapitalize: "none", accessibilityLabel: ch.endLabel })}</View>
+      </View>
+      <View>{label(ch.difficultyLabel)}{chips(["", ...CHALLENGE_DIFFICULTIES], form.difficulty, (v) => set("difficulty", v), (v) => (v ? ch.difficulty[v as keyof typeof ch.difficulty] : "—"))}</View>
+      <View>
+        {label(ch.visibilityLabel)}
+        {chips(["public", "private"], form.visibility, (v) => set("visibility", v as "public" | "private"), (v) => (v === "public" ? ch.visibilityPublic : ch.visibilityPrivate))}
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy || form.name.trim().length < 3}
+          onPress={() => void submit()}
+          style={[styles.create, { backgroundColor: color.accent, opacity: busy || form.name.trim().length < 3 ? 0.5 : 1 }]}
+        >
+          {busy ? <ActivityIndicator color={color.accentFg} /> : <Text style={{ fontFamily: font.displayBold, fontSize: 14, color: color.accentFg }}>{ch.create}</Text>}
+        </Pressable>
+        <Text accessibilityRole="button" onPress={() => setOpen(false)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{t.common.actions.cancel}</Text>
+      </View>
+      {error ? <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.risk }}>{error}</Text> : null}
+    </Card>
+  );
+}
+
+function ChallengeCard({ c }: { c: ChallengeCardV1 }) {
   const { t, fill, locale } = useI18n();
   const { color } = useTheme();
   const queryClient = useQueryClient();
@@ -98,23 +217,7 @@ function ChallengeCard({ c }: { c: ChallengeItem }) {
   const nf = new Intl.NumberFormat(tag, { maximumFractionDigits: 1 });
   const df = new Intl.DateTimeFormat(tag, { day: "numeric", month: "short" });
   const completed = c.status === "completed";
-  const tone = {
-    active: { bg: color.accentSoft, ink: color.accentInk },
-    upcoming: { bg: color.bg, ink: color.inkSoft },
-    completed: { bg: color.accent, ink: color.accentFg },
-    ended: { bg: color.bg, ink: color.inkFaint },
-  }[c.status];
-
-  // challenges.tsx deadlineText
-  const deadline = (() => {
-    if (c.status === "upcoming") {
-      const days = Math.max(1, Math.round((parseDay(c.start_date).getTime() - Date.now()) / 86_400_000));
-      return days === 1 ? ch.startsTomorrow : fill(ch.startsIn, { days });
-    }
-    if (c.status === "ended") return fill(ch.endedOn, { date: df.format(parseDay(c.end_date)) });
-    if (c.status === "completed" && c.completed_at) return fill(ch.completedOn, { date: df.format(parseDay(c.completed_at.slice(0, 10))) });
-    return c.days_remaining === 1 ? ch.oneDayRemaining : fill(ch.daysRemaining, { days: c.days_remaining });
-  })();
+  const tone = statusTone(c.status, color);
 
   async function act(join: boolean) {
     setBusy(true);
@@ -132,7 +235,7 @@ function ChallengeCard({ c }: { c: ChallengeItem }) {
   }
 
   return (
-    <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`${config.webUrl}/challenges/${c.id}`)}>
+    <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: "/challenge/[id]", params: { id: c.id } })}>
       <Card style={{ gap: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -165,15 +268,15 @@ function ChallengeCard({ c }: { c: ChallengeItem }) {
             )}
             {c.joined ? <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{`${nf.format(c.pct)}%`}</Text> : null}
           </View>
-          <View style={{ marginTop: 6, height: 8, borderRadius: 999, overflow: "hidden", backgroundColor: color.bg }}>
-            <View style={{ height: "100%", borderRadius: 999, width: `${Math.min(100, c.joined ? c.pct : 0)}%`, backgroundColor: completed || c.pct >= 50 ? color.accent : color.inkSoft }} />
+          <View style={{ marginTop: 6 }}>
+            <ChallengeBar pct={c.joined ? c.pct : 0} completed={completed} />
           </View>
         </View>
 
         <View style={{ marginTop: 12, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <NavIcon d={CLOCK} size={18} color={color.accentInk} />
-            <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>{deadline}</Text>
+            <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>{deadlineText(c, ch, fill, (d) => df.format(parseDay(d)))}</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <NavIcon d={PEOPLE} size={18} color={color.accentInk} />
@@ -208,4 +311,8 @@ function ChallengeCard({ c }: { c: ChallengeItem }) {
 const styles = StyleSheet.create({
   body: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 48, gap: 16 },
   pill: { height: 36, flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 18, paddingHorizontal: 14 },
+  openButton: { height: 44, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 16, paddingHorizontal: 20 },
+  input: { marginTop: 6, height: 44, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, fontFamily: font.regular, fontSize: 14 },
+  chip: { minHeight: 36, borderRadius: 18, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8, justifyContent: "center" },
+  create: { height: 44, minWidth: 120, borderRadius: 16, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },
 });

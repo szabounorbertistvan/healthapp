@@ -3,7 +3,7 @@
 // this only ever grows: a new field is additive, a breaking change is /api/v2.
 
 import type {
-  BodyProgress, ChallengeStatus, GoalDirection, Leaderboard, LeaderboardMetric, LeaderboardPeriod, LeaderboardScope, GoalMetric, GoalPoint, GoalProgress, GoalSeries, GoalStatus, PeriodBucket, ProgressInsight,
+  BodyProgress, ChallengeStatus, PostPayload, PostType, ReactionType, GoalDirection, Leaderboard, LeaderboardMetric, LeaderboardPeriod, LeaderboardScope, GoalMetric, GoalPoint, GoalProgress, GoalSeries, GoalStatus, PeriodBucket, ProgressInsight,
   ProgressRange, StrengthHighlight, TrainingProgress,
 } from "@healthapp/shared";
 
@@ -348,7 +348,18 @@ export type SettingsV1 = {
   rest: { default_seconds: number; alert: boolean };
   /** users.email_prefs, one switch per category the person sees. */
   email: Record<string, boolean>;
+  /** Who sees the social profile's numbers (SocialPrivacyCard); null when it could not be read. */
+  privacy?: {
+    stats_visibility: "public" | "followers" | "private";
+    fitness_score_visibility: "public" | "followers" | "private";
+    fitness_score_public: number | null;
+    fitness_score_public_at: string | null;
+  } | null;
+  /** The home gym and whether its board is opted into (MyGymCard). */
+  gym?: { home: GymV1 | null; board: boolean };
 };
+
+export type GymV1 = { id: string; name: string; city: string; address: string | null; map_url: string };
 
 /** POST /api/v1/settings/account — the form and what it showed before (only changed fields are written). */
 export type SaveAccountV1 = { input: AccountFieldsV1; baseline?: AccountFieldsV1 };
@@ -439,30 +450,78 @@ export type AchievementsV1 = {
   }[];
 };
 
-/** GET /api/v1/challenges — every challenge the person can see, with their progress (challenge_cards). */
-export type ChallengesV1 = {
-  cards: {
-    id: string;
-    title: string;
-    description: string | null;
-    type: string;
-    /** The type's icon key and the uppercase line under the title (challengeSubtitle). */
-    subtitle: string;
-    unit_label: string;
-    target: number;
-    start_date: string;
-    end_date: string;
-    participants: number;
-    joined: boolean;
-    can_join: boolean;
-    completed_at: string | null;
-    progress: number;
-    pct: number;
-    status: ChallengeStatus;
-    days_remaining: number;
-    is_platform: boolean;
-  }[];
+/** One challenge card as /challenges shows it (challenge_cards — progress computed in SQL). */
+export type ChallengeCardV1 = {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  /** The type's icon key and the uppercase line under the title (challengeSubtitle). */
+  subtitle: string;
+  unit_label: string;
+  target: number;
+  start_date: string;
+  end_date: string;
+  participants: number;
+  joined: boolean;
+  can_join: boolean;
+  completed_at: string | null;
+  progress: number;
+  pct: number;
+  status: ChallengeStatus;
+  days_remaining: number;
+  is_platform: boolean;
 };
+
+/** GET /api/v1/challenges — every challenge the person can see, and the lifts an exercise challenge can be about. */
+export type ChallengesV1 = {
+  cards: ChallengeCardV1[];
+  exercises?: { id: string; name: string }[];
+};
+
+/** GET /api/v1/challenges/[id] — one challenge's page: the card, what it counts, the steps reached, the board. */
+export type ChallengeDetailV1 = ChallengeCardV1 & {
+  type_hint: string;
+  milestones: number[];
+  /** The viewer created it — only then is deleting offered. */
+  mine: boolean;
+  leaderboard: { rank: number; name: string; value: number; me: boolean; completed: boolean }[] | null;
+};
+
+/** POST /api/v1/challenges — createChallenge(). */
+export type CreateChallengeV1 = {
+  name: string;
+  description: string;
+  type: string;
+  targetValue: number;
+  startDate: string;
+  endDate: string;
+  visibility: "public" | "private";
+  difficulty: string | null;
+  exerciseId: string | null;
+};
+
+/** One post as the feed card shows it (FeedPost, slimmed to what the phone draws). */
+export type FeedPostV1 = {
+  id: string;
+  user_id: string;
+  author_name: string;
+  author_avatar: string | null;
+  type: PostType;
+  text: string | null;
+  payload: PostPayload;
+  created_at: string;
+  kudos_count: number;
+  love_count: number;
+  comment_count: number;
+  my_reaction: ReactionType | null;
+  mine: boolean;
+  /** Pictures, in order: short-lived links to /api/media (relative to the API's origin). */
+  media: { id: string; kind: "image" | "video"; url: string; width: number; height: number }[];
+};
+
+/** GET /api/v1/feed?scope=following|all|mine&before=<cursor> — the home feed (social_feed()). */
+export type FeedV1 = { items: FeedPostV1[]; next_cursor: string | null };
 
 export type MeasurementV1 = { weightKg: number | null; waistCm: number | null; takenOn?: string };
 

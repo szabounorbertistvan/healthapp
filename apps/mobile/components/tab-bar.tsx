@@ -53,7 +53,7 @@ const CLIENT_SHEET: SheetItem[] = [
   { key: "challenges", icon: ICON.challenges, route: "/challenges" },
   { key: "gyms", icon: ICON.gyms, web: "/gyms" },
   { key: "achievements", icon: ICON.achievements, route: "/achievements" },
-  { key: "feed", icon: ICON.feed, web: "/feed" },
+  { key: "feed", icon: ICON.feed, route: "/feed" },
   { key: "saved", icon: ICON.saved, web: "/saved" },
   { key: "notifications", icon: ICON.notifications, route: "/notifications" },
   { key: "coach", icon: ICON.coach, route: "/messages" },
