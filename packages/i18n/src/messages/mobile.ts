@@ -51,6 +51,10 @@ const en = {
     loadFailed: "Could not load today.",
     retry: "Try again",
   },
+  exercise: {
+    historyCut: "Older sessions are outside your plan's history window.",
+    watchDemo: "Watch the demo",
+  },
   builder: {
     noMatch: "Nothing matches. Try another word or muscle.",
   },
@@ -282,6 +286,10 @@ const ro: typeof en = {
     signal: { on_track: "Pe drumul bun", needs_attention: "Necesită atenție", at_risk: "În risc" },
     loadFailed: "Nu am putut încărca ziua de azi.",
     retry: "Încearcă din nou",
+  },
+  exercise: {
+    historyCut: "Sesiunile mai vechi sunt în afara istoricului inclus în planul tău.",
+    watchDemo: "Vezi demonstrația",
   },
   builder: {
     noMatch: "Nimic nu se potrivește. Încearcă alt cuvânt sau altă grupă.",

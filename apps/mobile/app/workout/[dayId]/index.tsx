@@ -160,7 +160,7 @@ function ExerciseRow({ e, mode }: { e: WorkoutExerciseV1; mode: "rpe" | "rir" | 
       <Pressable
         accessibilityRole={e.exercise_id ? "link" : undefined}
         disabled={!e.exercise_id}
-        onPress={e.exercise_id ? web(`/exercises/${e.exercise_id}`) : undefined}
+        onPress={e.exercise_id ? () => router.push({ pathname: "/exercise/[id]", params: { id: e.exercise_id! } }) : undefined}
         style={[styles.exercise, { backgroundColor: color.surface }]}
       >
         <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: font.semibold, fontSize: 15, color: color.ink }}>{e.name}</Text>

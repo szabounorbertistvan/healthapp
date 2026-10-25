@@ -4,7 +4,7 @@
 
 import type {
   BodyProgress, ChallengeStatus, PostPayload, PostType, ReactionType, GoalDirection, Leaderboard, LeaderboardMetric, LeaderboardPeriod, LeaderboardScope, GoalMetric, GoalPoint, GoalProgress, GoalSeries, GoalStatus, PeriodBucket, ProgressInsight,
-  ProgressRange, RoutineCard, StrengthHighlight, TrainingProgress,
+  ProgressRange, RepRecord, RoutineCard, StrengthHighlight, TrainingProgress, ExerciseSessionEntry, ExerciseStats,
 } from "@healthapp/shared";
 
 export const API_V1 = "/api/v1";
@@ -867,4 +867,160 @@ export type RoutineDetailV1 = {
       equipment: string | null;
     }[];
   }[];
+};
+
+// ---------- gyms ----------
+
+/** One gym in the /gyms list. */
+export type GymPinV1 = {
+  id: string;
+  name: string;
+  city: string;
+  google_rating: number | null;
+  members: number;
+  coaches: number;
+};
+
+/** GET /api/v1/gyms — the web's /gyms list under the map: the reader's town, best rated first. */
+export type GymsV1 = {
+  home: GymV1 | null;
+  /** The town the list is for, null when it is the overall top. */
+  city: string | null;
+  items: GymPinV1[];
+  /** Every gym in the directory, for the phone's own search. */
+  total: number;
+};
+
+/** GET /api/v1/gyms/[id] — one gym's page: where, rating, open now, its records, numbers and coaches. */
+export type GymDetailV1 = {
+  id: string;
+  name: string;
+  where: string;
+  map_url: string;
+  rating: number | null;
+  ratings_total: number | null;
+  open_state: "open" | "closed" | "unknown";
+  phone: string | null;
+  website: string | null;
+  summary: string | null;
+  closed_for_good: boolean;
+  opening_hours: string[];
+  is_home: boolean;
+  on_boards: boolean;
+  members: number;
+  coaches_count: number;
+  board: number;
+  week: { workouts: number; athletes: number } | null;
+  month: { workouts: number; athletes: number; volume_kg: number } | null;
+  my_month: number;
+  busy_hours: number[] | null;
+  busy_days: number[] | null;
+  lifts: { exercise_id: string; name: string; lifters: number }[];
+  /** The lift, kind and period the records below are for. */
+  lift: string | null;
+  kind: "e1rm" | "weight";
+  period: "all" | "year" | "month";
+  records: {
+    rank: number;
+    user_id: string;
+    display_name: string;
+    avatar_url: string | null;
+    weight_kg: number;
+    reps: number;
+    achieved_at: string;
+    is_me: boolean;
+  }[];
+  coaches: { id: string; slug: string; display_name: string; avatar_url: string | null; headline: string | null }[];
+};
+
+// ---------- one exercise (the library's page) ----------
+
+/** GET /api/v1/exercises/[id] — the exercise and what the reader has done with it (the web's /exercises/[id]). */
+export type ExerciseDetailV1 = {
+  id: string;
+  name: string;
+  primary_muscles: string[];
+  secondary_muscles: string[];
+  facts: { key: "equipment" | "level" | "category" | "mechanic" | "force"; value: string }[];
+  image: string | null;
+  /** The demo this person sees (their own link, their coach's, the row's) — a YouTube link. */
+  video_url: string | null;
+  steps: string[];
+  stats: ExerciseStats;
+  records: RepRecord[];
+  /** Newest first; already cut to what the plan's history window shows. */
+  sessions: ExerciseSessionEntry[];
+  /** More sessions exist than the plan shows. */
+  history_cut: boolean;
+  charts_locked: boolean;
+  truncated: boolean;
+  today: string;
+};
+
+// ---------- the coach's programs ----------
+
+/** GET /api/v1/coach/programs — the coach's /programs list, and the clients a new one can be for. */
+export type CoachProgramsV1 = {
+  programs: { id: string; name: string; client_name: string; status: "draft" | "published" | "archived"; days: number; updated_at: string }[];
+  roster: { id: string; name: string }[];
+};
+
+/** GET /api/v1/coach/programs/[id] — one program in the builder, with whose it is and whether it can still be edited. */
+export type CoachProgramV1 = NonNullable<BuilderV1["open"]> & {
+  client_name: string;
+  /** can_edit_program(): false once that coaching ended or is paused; null when it could not be checked. */
+  can_edit: boolean | null;
+};
+
+// ---------- the coach's nutrition plans ----------
+
+/** GET /api/v1/coach/nutrition — the coach's /nutrition list, and the clients a new plan can be for. */
+export type CoachNutritionV1 = {
+  plans: { id: string; name: string; client_name: string; status: "draft" | "published" | "archived"; kcal_target: number; protein_target_g: number; carbs_target_g: number; fat_target_g: number }[];
+  roster: { id: string; name: string }[];
+};
+
+/** GET /api/v1/coach/nutrition/[id] — one plan as the builder reads it (getNutritionPlan). */
+export type CoachPlanV1 = {
+  id: string;
+  name: string;
+  client_name: string;
+  status: "draft" | "published" | "archived";
+  target: MacrosV1;
+  meals: {
+    id: string;
+    slot: MealSlotV1;
+    name: string;
+    /** 0 = every day, 1..7 = that ISO weekday only. */
+    day_index: number;
+    extra: boolean;
+    recipe_title: string | null;
+    foods: { id: string; food_name: string; grams: number; macros: MacrosV1 }[];
+    totals: MacrosV1;
+  }[];
+  /** Monday..Sunday: what each day's meals add up to. */
+  days: MacrosV1[];
+  /** can_edit_nutrition_plan(); null when it could not be checked. */
+  can_edit: boolean | null;
+  /** The coach's plan has foods in meals (Coach Pro, ingredientPlans). */
+  foods_allowed: boolean;
+};
+
+// ---------- the coach's marketplace overview ----------
+
+/** GET /api/v1/coach/marketplace — the web's /marketplace: the profile's state and completeness, and every count. */
+export type CoachMarketplaceV1 = {
+  /** No Coach Discovery profile yet: the page invites the coach to make one. */
+  has_profile: boolean;
+  state: "draft" | "ready" | "pending_review" | "published" | "hidden" | "suspended" | null;
+  revision_status: string | null;
+  verified: boolean;
+  public_url: string | null;
+  completeness: { pct: number; items: { key: string; done: boolean; required: boolean; earned: number; weight: number }[] } | null;
+  requests: { pending: number; accepted: number };
+  bookings: { pending: number; upcoming: number; needs_outcome: number; next: { when: string; client: string; service: string } | null };
+  clients: { active: number; invited: number; paused: number };
+  messages: { unread: number; conversations_unread: number };
+  services: { active: number; bookable: number };
+  reviews: { count: number; avg: string | null; latest: { id: string; rating: number; body: string | null; reviewer_name: string }[] };
 };

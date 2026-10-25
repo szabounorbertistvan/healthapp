@@ -4,6 +4,7 @@ import {
   type BodyMetric, type PeriodBucket, type PeriodChange, type ProgressInsight, type ProgressRange,
 } from "@healthapp/shared";
 import { useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -527,7 +528,7 @@ function StrengthTab({ data, f }: { data: ProgressOverviewV1; f: Fmt }) {
         ) : (
           data.highlights.slice(0, 6).map((h, i) => (
             <View key={h.exercise_id} style={[styles.listRow, i > 0 ? { borderTopWidth: 1, borderTopColor: alpha(color.line, 0.6) } : null]}>
-              <Text numberOfLines={1} onPress={web(`/exercises/${h.exercise_id}`)} style={{ flex: 1, fontFamily: font.semibold, fontSize: 14, color: color.ink }}>
+              <Text numberOfLines={1} onPress={() => router.push({ pathname: "/exercise/[id]", params: { id: h.exercise_id } })} style={{ flex: 1, fontFamily: font.semibold, fontSize: 14, color: color.ink }}>
                 {data.names[h.exercise_id] ?? "—"}
               </Text>
               <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>
@@ -569,7 +570,7 @@ function StrengthTab({ data, f }: { data: ProgressOverviewV1; f: Fmt }) {
             <View key={pr.exercise} style={[styles.listRow, { paddingVertical: 14 }, i > 0 ? { borderTopWidth: 1, borderTopColor: alpha(color.line, 0.6) } : null]}>
               <Text
                 numberOfLines={1}
-                onPress={pr.exercise_id ? web(`/exercises/${pr.exercise_id}`) : undefined}
+                onPress={pr.exercise_id ? () => router.push({ pathname: "/exercise/[id]", params: { id: pr.exercise_id! } }) : undefined}
                 style={{ flex: 1, fontFamily: font.semibold, fontSize: 14, color: color.ink }}
               >
                 {pr.exercise}

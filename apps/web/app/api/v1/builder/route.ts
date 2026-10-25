@@ -1,9 +1,11 @@
 import type { BuilderV1, WriteResultV1 } from "@healthapp/api/v1";
 import { apiJson, v1Route } from "@/lib/api/v1";
+import { builderProgram } from "@/lib/api/builder";
 import { getProgram, getProgramActivation } from "@/lib/data";
 import { hasActiveCoach } from "@/lib/client-data";
 import {
   activateProgram,
+  createProgram,
   addProgramExercise,
   addSoloProgramDay,
   createSoloProgram,
@@ -37,29 +39,7 @@ export const GET = v1Route(async (request) => {
   return apiJson<BuilderV1>({
     coached: false,
     programs,
-    open: program && {
-      id: program.id,
-      name: program.name,
-      status: program.status,
-      intensity_mode: program.intensity_mode,
-      activation,
-      days: program.days.map((d) => ({
-        id: d.id,
-        name: d.name,
-        muscle_groups: d.muscle_groups,
-        exercises: d.exercises.map((e) => ({
-          id: e.id,
-          exercise: e.exercise,
-          sets: e.sets,
-          reps: e.reps,
-          weight_kg: e.weight_kg,
-          rpe: e.rpe_value,
-          rest_seconds: e.rest_seconds,
-          measure: e.measure === "time" ? "time" : "reps",
-          notes: e.notes ?? null,
-        })),
-      })),
-    },
+    open: program && builderProgram(program, activation),
   });
 });
 
@@ -77,6 +57,16 @@ export const POST = v1Route(async (request) => {
     case "create":
       // Every solo program is RIR, as the web's create form makes it.
       result = await createSoloProgram({ name: str(b.name), intensityMode: "rir" });
+      break;
+    case "createForClient":
+      // The coach's new program for one of their clients (programs_coach_all decides).
+      result = await createProgram({
+        name: str(b.name),
+        clientId: str(b.clientId),
+        clientName: str(b.clientName),
+        weeks: typeof b.weeks === "number" ? b.weeks : 1,
+        intensityMode: b.intensityMode === "rpe" || b.intensityMode === "simple" ? b.intensityMode : "rir",
+      });
       break;
     case "addDay":
       result = await addSoloProgramDay(program, str(b.name), Array.isArray(b.muscleGroups) ? b.muscleGroups.filter((g): g is string => typeof g === "string") : []);

@@ -26,6 +26,8 @@ function dictionary(locale: Locale) {
     coachWidgets: coachWidgetsMessages[locale],
     gyms: gymsMessages[locale],
     bookings: coachProfileMessages[locale].bookings,
+    marketplace: coachProfileMessages[locale].marketplace,
+    coachBecome: coachProfileMessages[locale].become,
     login: landingMessages[locale].login,
     mobile: mobileMessages[locale],
   };

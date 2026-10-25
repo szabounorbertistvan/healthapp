@@ -34,7 +34,7 @@ export default function Workout() {
       >
         <T kind="title">{t.common.nav.training}</T>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: -4 }}>
-          <Pill icon="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM4 4v18M8 8h6" label={t.clientApp.library.title} onPress={web("/exercises")} />
+          <Pill icon="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM4 4v18M8 8h6" label={t.clientApp.library.title} onPress={() => router.push("/exercises")} />
           <Pill icon="M12 4v11M7 10l5 5 5-5M5 20h14" label={t.clientApp.workoutImport.link} onPress={web("/workout/import")} />
           {data && programs.length > 0 && !data.has_coach ? (
             <Pill

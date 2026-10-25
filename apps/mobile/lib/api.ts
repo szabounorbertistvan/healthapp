@@ -3,7 +3,7 @@ import {
   type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1, type ProgressOverviewV1, type SettingsV1, type SaveAccountV1, type GoalsV1, type CreateGoalV1, type LeaderboardV1, type AchievementsV1, type ChallengesV1, type PostDetailV1, type FeedV1, type GymV1, type ChallengeDetailV1, type CreateChallengeV1,
   type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
   type AppConfigV1, type CoachCheckInV1, type CoachConversationV1, type CoachDashboardV1, type CoachRequestV1, type ThreadV1,
-  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1,
+  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
@@ -57,9 +57,16 @@ export const api = {
   today: () => call<TodayV1>("GET", "/today"),
   dashboard: () => call<DashboardV1>("GET", "/dashboard"),
   workouts: () => call<WorkoutsV1>("GET", "/workouts"),
+  coachPrograms: () => call<CoachProgramsV1>("GET", "/coach/programs"),
+  coachProgram: (id: string) => call<CoachProgramV1>("GET", `/coach/programs/${encodeURIComponent(id)}`),
+  coachMarketplace: () => call<CoachMarketplaceV1>("GET", "/coach/marketplace"),
+  coachNutrition: () => call<CoachNutritionV1>("GET", "/coach/nutrition"),
+  coachPlan: (id: string) => call<CoachPlanV1>("GET", `/coach/nutrition/${encodeURIComponent(id)}`),
+  coachNutritionWrite: (op: string, body: Record<string, unknown> = {}) => call<WriteResultV1 & { id?: string }>("POST", "/coach/nutrition/write", { op, ...body }),
   builder: (program?: string) => call<BuilderV1>("GET", `/builder${program ? `?program=${encodeURIComponent(program)}` : ""}`),
   /** One builder action by name (app/api/v1/builder): the web runs the same builder-actions. */
   build: (op: string, body: Record<string, unknown> = {}) => call<WriteResultV1 & { id?: string }>("POST", "/builder", { op, ...body }),
+  exercise: (id: string) => call<ExerciseDetailV1>("GET", `/exercises/${encodeURIComponent(id)}`),
   searchExercises: (q: string, muscle: string, offset = 0) =>
     call<ExerciseSearchV1>("GET", `/exercises/search?${new URLSearchParams({ q, muscle, offset: String(offset) })}`),
   workoutDay: (dayId: string) => call<WorkoutDayV1>("GET", `/workouts/${encodeURIComponent(dayId)}`),
@@ -112,6 +119,11 @@ export const api = {
   savePrivacy: (stats: string, fitnessScore: string) => call<WriteResultV1>("POST", "/settings/privacy", { stats, fitnessScore }),
   publishScore: () => call<WriteResultV1>("POST", "/settings/publish-score"),
   saveGym: (gymId: string | null, board: boolean) => call<CodedResultV1>("POST", "/settings/gym", { gymId, board }),
+  gyms: () => call<GymsV1>("GET", "/gyms"),
+  gym: (id: string, board: { lift?: string; kind?: string; period?: string } = {}) => {
+    const q = new URLSearchParams(Object.entries(board).filter((e): e is [string, string] => typeof e[1] === "string")).toString();
+    return call<GymDetailV1>("GET", `/gyms/${encodeURIComponent(id)}${q ? `?${q}` : ""}`);
+  },
   searchGyms: (q: string) => call<(GymV1 & { members: number; coaches: number })[]>("GET", `/gyms/search?q=${encodeURIComponent(q)}`),
   addHabit: (name: string, targetPerWeek: number) => call<WriteResultV1>("POST", "/habits/add", { name, targetPerWeek }),
   archiveHabit: (habitId: string) => call<WriteResultV1>("POST", "/habits/archive", { habitId }),

@@ -51,7 +51,7 @@ const CLIENT_SHEET: SheetItem[] = [
   { key: "progress", icon: ICON.progress, route: "/progress" },
   { key: "checkIn", icon: ICON.checkIn, route: "/check-in" },
   { key: "challenges", icon: ICON.challenges, route: "/challenges" },
-  { key: "gyms", icon: ICON.gyms, web: "/gyms" },
+  { key: "gyms", icon: ICON.gyms, route: "/gyms" },
   { key: "achievements", icon: ICON.achievements, route: "/achievements" },
   { key: "feed", icon: ICON.feed, route: "/feed" },
   { key: "saved", icon: ICON.saved, route: "/saved" },
@@ -62,10 +62,10 @@ const CLIENT_SHEET: SheetItem[] = [
 ];
 
 const COACH_SHEET: SheetItem[] = [
-  { key: "programs", icon: ICON.training, web: "/programs" },
-  { key: "library", icon: ICON.library, web: "/library" },
-  { key: "nutrition", icon: ICON.nutrition, web: "/nutrition" },
-  { key: "marketplace", icon: ICON.marketplace, web: "/marketplace" },
+  { key: "programs", icon: ICON.training, route: "/coach/programs" },
+  { key: "library", icon: ICON.library, route: "/exercises" },
+  { key: "nutrition", icon: ICON.nutrition, route: "/coach/nutrition" },
+  { key: "marketplace", icon: ICON.marketplace, route: "/coach/marketplace" },
   { key: "training", icon: ICON.training, route: "/workout" },
   { key: "habits", icon: ICON.habits, route: "/habits" },
   { key: "progress", icon: ICON.progress, route: "/progress" },
