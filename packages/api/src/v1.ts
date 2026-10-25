@@ -7,7 +7,7 @@ import type {
   ProgressRange, RepRecord, RoutineCard, StrengthHighlight, TrainingProgress, ExerciseSessionEntry, ExerciseStats,
   CalendarDay, FitnessScore, FitnessScoreTrend, MilestoneReached, StreakStatus, StreakSummary,
   MealDistribution, NutritionBucket, NutritionDay, NutritionInsight, NutritionPeriod, NutritionProgress,
-  ProgressionAnalysis, WeeklyComparison,
+  ProgressionAnalysis, WeeklyComparison, MeasurementComparison,
 } from "@healthapp/shared";
 
 export const API_V1 = "/api/v1";
@@ -998,6 +998,8 @@ export type CoachPlanV1 = {
     day_index: number;
     extra: boolean;
     recipe_title: string | null;
+    /** The linked recipe's id, null when none or when the reader cannot follow it. */
+    recipe_id?: string | null;
     foods: { id: string; food_name: string; grams: number; macros: MacrosV1 }[];
     totals: MacrosV1;
   }[];
@@ -1007,6 +1009,8 @@ export type CoachPlanV1 = {
   can_edit: boolean | null;
   /** The coach's plan has foods in meals (Coach Pro, ingredientPlans). */
   foods_allowed: boolean;
+  /** The editor's own recipes — the only ones a meal can link (planned_meals_guard). */
+  recipes?: { id: string; title: string }[];
 };
 
 // ---------- the coach's marketplace overview ----------
@@ -1140,6 +1144,145 @@ export type CoachClientPageV1 = {
   /** What the client put on their feed, as a follower sees it. */
   posts: FeedPostV1[];
 };
+
+// ---------- progress photos and two weigh-in dates ----------
+
+/** GET /api/v1/progress/body?from=&to= — the Body tab's compare card and photos (the web's /progress?tab=body). */
+export type ProgressBodyV1 = {
+  /** Every day with a measurement the plan shows, oldest first. */
+  days: string[];
+  from: string | null;
+  to: string | null;
+  comparison: MeasurementComparison | null;
+  photos: {
+    /** Cloudinary is set up on this deployment. */
+    configured: boolean;
+    /** Side by side is in the plan (photoCompare). */
+    compare: boolean;
+    /** Signed, short-lived links, newest first. */
+    items: { id: string; date: string; pose: "front" | "side" | "back"; url: string }[];
+    older_hidden_days: number | null;
+  };
+};
+
+/** POST /api/v1/photos/ticket — permission to upload one pose straight to Cloudinary (requestPhotoUpload). */
+export type PhotoTicketV1 = WriteResultV1 & {
+  ticket?: { cloudName: string; apiKey: string; timestamp: number; signature: string; publicId: string; folder: string };
+};
+
+// ---------- the coach's bookings and reviews ----------
+
+/** GET /api/v1/coach/bookings?tab= — the web's /bookings: one row per booking, with the moves bookingMoves() allows. */
+export type CoachBookingsV1 = {
+  tab: "upcoming" | "pending" | "confirmed" | "past" | "completed" | "cancelled";
+  items: {
+    id: string;
+    status: BookingV1["status"];
+    person_id: string;
+    person_name: string;
+    person_avatar: string | null;
+    service_name: string;
+    start_at: string;
+    date: string;
+    time: string;
+    zone: string;
+    price: string | null;
+    note: string | null;
+    cancellation_reason: string | null;
+    cancelled_by_me: boolean;
+    conversation_id: string | null;
+    moves: ("accept" | "decline" | "cancel" | "complete" | "no_show")[];
+  }[];
+};
+
+/** GET /api/v1/coach/reviews — the coach's reviews about themselves (coach_my_reviews), null without a profile. */
+export type CoachReviewsV1 = {
+  count: number;
+  average: number | null;
+  distribution: number[];
+  slug: string;
+  items: {
+    id: string; rating: number; body: string | null; created_at: string; edited_at: string | null;
+    reviewer_name: string; reviewer_avatar: string | null; basis: "coaching" | "booking";
+    coach_response: string | null; coach_response_at: string | null; status: "published" | "hidden";
+  }[];
+} | null;
+
+// ---------- finding a coach (Coach Discovery) ----------
+
+/** One coach card (lib/coach-discovery toCoachCard), in the reader's language. */
+export type CoachCardV1 = {
+  slug: string;
+  name: string;
+  avatar_url: string | null;
+  headline: string | null;
+  verified: boolean;
+  city: string | null;
+  formats: ("online" | "in_person")[];
+  years: number | null;
+  specializations: string[];
+  more_specializations: number;
+  starting_price: string | null;
+  accepting: boolean;
+  rating: { average: number; count: number } | null;
+  profile_id: string | null;
+  saved: boolean | null;
+  available_soon: boolean;
+};
+
+/** GET /api/v1/coaches?q=&online=1&in_person=1&spec=&all=1&page=&saved=1 — search_coaches(), the web's /coaches listing. */
+export type CoachSearchV1 = {
+  total: number;
+  has_more: boolean;
+  items: CoachCardV1[];
+  /** Specializations that have published coaches, for the filter chips. */
+  specializations: { slug: string; name: string; coaches: number }[];
+};
+
+/** GET /api/v1/coaches/[slug] — a coach's public page as a signed-in reader sees it. */
+export type CoachPageV1 = {
+  id: string;
+  slug: string;
+  name: string;
+  avatar_url: string | null;
+  cover_url: string | null;
+  headline: string | null;
+  about: string | null;
+  approach: string | null;
+  experience_summary: string | null;
+  years: number | null;
+  coaching_since: number | null;
+  accepting: boolean;
+  online: boolean;
+  in_person: boolean;
+  verified: boolean;
+  followers: number;
+  specializations: string[];
+  languages: string[];
+  locations: { city: string; country: string; gym: string | null }[];
+  certifications: { name: string; issuer: string | null; year: number | null; verified: boolean }[];
+  services: {
+    id: string; name: string; description: string | null; price: string | null; duration: string | null;
+    /** The reader may book it now; else why not (a booking error code), null when it is not bookable at all. */
+    book: "ok" | string | null;
+  }[];
+  next_slot: string | null;
+  timezone: string | null;
+  /** startCoachingState(): what the contact button says and does. */
+  state: "sign_in" | "self" | "client" | "paused" | "pending" | "accepted" | "not_accepting" | "start_new" | "contact_again" | "available" | "preview";
+  pending_request_id: string | null;
+  has_other_coach: boolean;
+  saved: boolean;
+  reviews: {
+    count: number; average: number | null; distribution: number[];
+    items: { id: string; rating: number; body: string | null; created_at: string; reviewer_name: string; reviewer_avatar: string | null; basis: "coaching" | "booking"; coach_response: string | null; is_mine: boolean }[];
+  };
+  /** The reader's own review of this coach and whether they may write one. */
+  my_review: { eligible: boolean; review: { id: string; rating: number; body: string | null; status: "published" | "hidden" } | null } | null;
+};
+
+/** GET /api/v1/coaches/slots?service=&from=&days= — free starts for one service (coach_booking_slots). */
+export type CoachSlotsV1 = { start_at: string; end_at: string }[];
 
 // ---------- workout import ----------
 

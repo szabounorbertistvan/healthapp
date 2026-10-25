@@ -41,7 +41,7 @@ export const COACH_TABS: TabItem[] = [
 type SheetKey =
   | "programs" | "progress" | "checkIn" | "challenges" | "gyms" | "achievements" | "feed" | "saved"
   | "notifications" | "coach" | "bookings" | "account" | "library" | "nutrition" | "marketplace" | "settings"
-  | "training" | "habits";
+  | "training" | "habits" | "findCoach";
 
 /** A section in the sheet: a native route, or a path on the web. */
 type SheetItem = { key: SheetKey; icon: string; route?: string; web?: string };
@@ -57,6 +57,7 @@ const CLIENT_SHEET: SheetItem[] = [
   { key: "saved", icon: ICON.saved, route: "/saved" },
   { key: "notifications", icon: ICON.notifications, route: "/notifications" },
   { key: "coach", icon: ICON.coach, route: "/messages" },
+  { key: "findCoach", icon: ICON.coach, route: "/coaches" },
   { key: "bookings", icon: ICON.bookings, route: "/bookings" },
   { key: "account", icon: ICON.account, route: "/more" },
 ];
@@ -156,7 +157,7 @@ function MoreSheet({ open, onClose, items, current }: { open: boolean; onClose: 
                 style={({ pressed }) => [styles.sheetRow, (active || pressed) && { backgroundColor: color.accentSoft }]}
               >
                 <NavIcon d={item.icon} size={20} color={active ? color.accentInk : color.inkSoft} />
-                <Text style={[styles.sheetLabel, { color: active ? color.accentInk : color.inkSoft, fontFamily: active ? font.semibold : font.medium }]}>{t.common.nav[item.key]}</Text>
+                <Text style={[styles.sheetLabel, { color: active ? color.accentInk : color.inkSoft, fontFamily: active ? font.semibold : font.medium }]}>{item.key === "findCoach" ? t.coachProfile.discovery.explore : t.common.nav[item.key]}</Text>
                 {item.web ? <NavIcon d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6" size={14} color={color.inkFaint} /> : null}
               </Pressable>
               );

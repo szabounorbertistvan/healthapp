@@ -56,7 +56,7 @@ export default function Bookings() {
         ) : rows.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: color.surface }]}>
             <Text style={{ fontFamily: font.displayBold, fontSize: 18, color: color.ink, textAlign: "center" }}>{m.empty}</Text>
-            <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`${config.webUrl}/coaches`)} style={[styles.cta, { backgroundColor: color.accent }]}>
+            <Pressable accessibilityRole="link" onPress={() => router.push("/coaches")} style={[styles.cta, { backgroundColor: color.accent }]}>
               <Text style={{ fontFamily: font.displayBold, fontSize: 14, color: color.accentFg }}>{m.emptyCta}</Text>
             </Pressable>
           </View>
@@ -123,7 +123,7 @@ function BookingCard({ row }: { row: BookingV1 }) {
           <Text
             numberOfLines={1}
             accessibilityRole={row.coach_slug ? "link" : undefined}
-            onPress={row.coach_slug ? () => void Linking.openURL(`${config.webUrl}/coaches/${row.coach_slug}`) : undefined}
+            onPress={row.coach_slug ? () => router.push({ pathname: "/coaches/[slug]", params: { slug: row.coach_slug! } }) : undefined}
             style={{ fontFamily: font.semibold, fontSize: 14.5, color: color.ink }}
           >
             {row.coach_name}

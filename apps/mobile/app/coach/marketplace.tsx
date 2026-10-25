@@ -59,7 +59,7 @@ export default function CoachMarketplace() {
                 </>
               )}
             </Tile>
-            <Tile title={c.bookings} onOpen={web("/bookings")}>
+            <Tile title={c.bookings} onOpen={() => router.push("/coach/bookings")}>
               {o.services.bookable === 0 && !o.bookings.next ? <Line>{c.bookingsNoBookable}</Line> : (
                 <>
                   {o.bookings.next ? <Line strong>{fill(c.bookingsNext, { when: o.bookings.next.when, client: o.bookings.next.client, service: o.bookings.next.service })}</Line> : <Line>{c.bookingsNone}</Line>}
@@ -81,7 +81,7 @@ export default function CoachMarketplace() {
             <Tile title={c.messages} onOpen={() => router.navigate("/chats")}>
               <Line strong={o.messages.unread > 0}>{o.messages.unread ? fill(c.messagesUnread, { n: o.messages.unread, c: o.messages.conversations_unread }) : c.messagesNone}</Line>
             </Tile>
-            <Tile title={c.reviews} onOpen={web("/reviews")}>
+            <Tile title={c.reviews} onOpen={() => router.push("/coach/reviews")}>
               {o.reviews.count === 0 || o.reviews.avg === null ? <Line>{c.reviewsNone}</Line> : (
                 <>
                   <Line strong>{fill(o.reviews.count === 1 ? c.reviewsOne : c.reviewsAvg, { avg: o.reviews.avg, n: o.reviews.count })}</Line>

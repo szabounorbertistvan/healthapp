@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { BodyExtras } from "@/components/body-extras";
 import { PointsChart } from "@/components/charts";
 import { GoalsTab } from "@/components/goals";
 import { Card, NavIcon, T } from "@/components/ui";
@@ -367,14 +368,7 @@ function BodyTab({ data, f }: { data: ProgressOverviewV1; f: Fmt }) {
 
       <MeasurementForm data={data} />
 
-      <Pressable accessibilityRole="link" onPress={web("/progress?tab=body")}>
-        <Card style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <Text style={{ flex: 1, fontFamily: font.semibold, fontSize: 13.5, color: color.ink }}>
-            {`${f.a.compareDates} · ${t.clientApp.progress.photos}`}
-          </Text>
-          <NavIcon d="m9 6 6 6-6 6" size={16} color={color.inkFaint} />
-        </Card>
-      </Pressable>
+      <BodyExtras />
 
       {data.measurements.length === 0 ? (
         <View style={{ paddingVertical: 8 }}>

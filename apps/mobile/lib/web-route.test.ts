@@ -9,6 +9,7 @@ describe("nativeRoute", () => {
     expect(nativeRoute(`/feed/${ID}`)).toBe(`/post/${ID}`);
     expect(nativeRoute(`/clients/${ID}`)).toBe(`/coach/client/${ID}`);
     expect(nativeRoute(`/coach/messages/${ID}`)).toBe(`/thread/${ID}`);
+    expect(nativeRoute("/coaches/ana-pop")).toBe("/coaches/ana-pop");
   });
   it("maps plain pages, ignoring the query and the hash", () => {
     expect(nativeRoute("/today?week=current#weekly-report")).toBe("/");
@@ -17,7 +18,8 @@ describe("nativeRoute", () => {
     expect(nativeRoute("/coaches/bookings/")).toBe("/bookings");
   });
   it("leaves what the app does not have to the web", () => {
-    expect(nativeRoute("/coaches/some-coach")).toBeNull();
+    expect(nativeRoute("/coaches/city/cluj-napoca")).toBeNull();
+    expect(nativeRoute("/coaches/ana-pop/book")).toBeNull();
     expect(nativeRoute("/admin")).toBeNull();
     expect(nativeRoute(`/workout/session/not-an-id`)).toBeNull();
     expect(nativeRoute("https://voinic.fit/today")).toBeNull();

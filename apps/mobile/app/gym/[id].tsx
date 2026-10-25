@@ -165,7 +165,7 @@ export default function GymScreen() {
               </View>
               {g.coaches.length === 0 ? <T kind="faint">{s.noCoaches}</T> : null}
               {g.coaches.map((c) => (
-                <Pressable key={c.id} accessibilityRole="link" onPress={() => void Linking.openURL(`${config.webUrl}/coaches/${c.slug}`)} style={[styles.person, { backgroundColor: color.bg }]}>
+                <Pressable key={c.id} accessibilityRole="link" onPress={() => router.push({ pathname: "/coaches/[slug]", params: { slug: c.slug } })} style={[styles.person, { backgroundColor: color.bg }]}>
                   <Avatar name={c.display_name} url={c.avatar_url} size={40} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: 14, color: color.ink }}>{c.display_name}</Text>

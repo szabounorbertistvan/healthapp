@@ -51,6 +51,9 @@ const en = {
     loadFailed: "Could not load today.",
     retry: "Try again",
   },
+  photos: {
+    olderHidden: "Photos older than {days} days are outside your plan's history.",
+  },
   exercise: {
     historyCut: "Older sessions are outside your plan's history window.",
     watchDemo: "Watch the demo",
@@ -286,6 +289,9 @@ const ro: typeof en = {
     signal: { on_track: "Pe drumul bun", needs_attention: "Necesită atenție", at_risk: "În risc" },
     loadFailed: "Nu am putut încărca ziua de azi.",
     retry: "Încearcă din nou",
+  },
+  photos: {
+    olderHidden: "Pozele mai vechi de {days} zile sunt în afara istoricului inclus în planul tău.",
   },
   exercise: {
     historyCut: "Sesiunile mai vechi sunt în afara istoricului inclus în planul tău.",

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
+import { TargetsForm } from "@/components/targets-form";
 import { Pill } from "@/components/training";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
@@ -213,6 +214,7 @@ function WeekStrip({ data, onPick }: { data: FoodDayV1; onPick: (day: string) =>
 function Summary({ data, totals }: { data: FoodDayV1; totals: MacrosV1 }) {
   const { t } = useI18n();
   const { color } = useTheme();
+  const [editing, setEditing] = useState(false);
   const f = t.clientApp.food;
   const target = data.target;
   const hasTarget = target.kcal > 0;
@@ -234,41 +236,44 @@ function Summary({ data, totals }: { data: FoodDayV1; totals: MacrosV1 }) {
   );
 
   return (
-    <Card style={{ gap: 0 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <Text numberOfLines={1} style={[styles.kicker(color.inkFaint), { flexShrink: 1 }]}>{data.plan_name ?? t.common.macros.todayTitle}</Text>
-        <Pressable accessibilityRole="link" onPress={web("/food")} style={[styles.smallPill, { backgroundColor: color.bg }]}>
-          <NavIcon d="M4 20h4l10-10-4-4L4 16zM13 7l4 4" size={15} color={color.accentInk} />
-          <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{f.editTargets}</Text>
-        </Pressable>
-      </View>
+    <>
+      <Card style={{ gap: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <Text numberOfLines={1} style={[styles.kicker(color.inkFaint), { flexShrink: 1 }]}>{data.plan_name ?? t.common.macros.todayTitle}</Text>
+          <Pressable accessibilityRole="button" onPress={() => setEditing((v) => !v)} style={[styles.smallPill, { backgroundColor: color.bg }]}>
+            <NavIcon d="M4 20h4l10-10-4-4L4 16zM13 7l4 4" size={15} color={color.accentInk} />
+            <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{f.editTargets}</Text>
+          </Pressable>
+        </View>
 
-      <View style={{ marginTop: 14, flexDirection: "row", gap: 10 }}>
-        {tile(f.goal, hasTarget ? String(Math.round(target.kcal)) : "—", (
-          <Text numberOfLines={1} style={{ marginTop: 6, fontFamily: font.regular, fontSize: 11, color: color.accentInk }}>{source}</Text>
-        ))}
-        {tile(f.consumed, String(consumed), hasTarget ? (
-          <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 11, color: color.inkFaint }}>{`${Math.round((totals.kcal / target.kcal) * 100)}%`}</Text>
-        ) : null)}
-      </View>
+        <View style={{ marginTop: 14, flexDirection: "row", gap: 10 }}>
+          {tile(f.goal, hasTarget ? String(Math.round(target.kcal)) : "—", (
+            <Text numberOfLines={1} style={{ marginTop: 6, fontFamily: font.regular, fontSize: 11, color: color.accentInk }}>{source}</Text>
+          ))}
+          {tile(f.consumed, String(consumed), hasTarget ? (
+            <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 11, color: color.inkFaint }}>{`${Math.round((totals.kcal / target.kcal) * 100)}%`}</Text>
+          ) : null)}
+        </View>
 
-      <View style={{ marginTop: 18, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-        <Text style={{ fontFamily: font.displayExtrabold, fontSize: 34, lineHeight: 36, color: over ? color.warn : color.ink }}>
-          {hasTarget ? Math.abs(remaining) : consumed}
-          <Text style={{ fontFamily: font.medium, fontSize: 13, color: color.inkFaint }}>{`  ${hasTarget ? (over ? f.kcalOver : f.kcalLeft) : "kcal"}`}</Text>
-        </Text>
-        {hasTarget ? <Text style={{ fontFamily: font.regular, fontSize: 11, color: color.inkFaint }}>{`0 – ${Math.round(target.kcal)}`}</Text> : null}
-      </View>
-      <View style={{ marginTop: 10, height: 10, borderRadius: 6, overflow: "hidden", backgroundColor: color.bg }}>
-        <View style={{ height: "100%", borderRadius: 6, width: `${over ? 100 : ratio * 100}%`, backgroundColor: over ? color.warn : color.accent }} />
-      </View>
+        <View style={{ marginTop: 18, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+          <Text style={{ fontFamily: font.displayExtrabold, fontSize: 34, lineHeight: 36, color: over ? color.warn : color.ink }}>
+            {hasTarget ? Math.abs(remaining) : consumed}
+            <Text style={{ fontFamily: font.medium, fontSize: 13, color: color.inkFaint }}>{`  ${hasTarget ? (over ? f.kcalOver : f.kcalLeft) : "kcal"}`}</Text>
+          </Text>
+          {hasTarget ? <Text style={{ fontFamily: font.regular, fontSize: 11, color: color.inkFaint }}>{`0 – ${Math.round(target.kcal)}`}</Text> : null}
+        </View>
+        <View style={{ marginTop: 10, height: 10, borderRadius: 6, overflow: "hidden", backgroundColor: color.bg }}>
+          <View style={{ height: "100%", borderRadius: 6, width: `${over ? 100 : ratio * 100}%`, backgroundColor: over ? color.warn : color.accent }} />
+        </View>
 
-      <View style={{ marginTop: 16, flexDirection: "row", gap: 10 }}>
-        <MacroRing label={t.common.macros.protein} value={totals.protein} target={target.protein} />
-        <MacroRing label={t.common.macros.carbs} value={totals.carbs} target={target.carbs} />
-        <MacroRing label={t.common.macros.fat} value={totals.fat} target={target.fat} />
-      </View>
-    </Card>
+        <View style={{ marginTop: 16, flexDirection: "row", gap: 10 }}>
+          <MacroRing label={t.common.macros.protein} value={totals.protein} target={target.protein} />
+          <MacroRing label={t.common.macros.carbs} value={totals.carbs} target={target.carbs} />
+          <MacroRing label={t.common.macros.fat} value={totals.fat} target={target.fat} />
+        </View>
+      </Card>
+      {editing ? <TargetsForm target={data.target} planOwner={data.plan_owner} onClose={() => setEditing(false)} /> : null}
+    </>
   );
 }
 

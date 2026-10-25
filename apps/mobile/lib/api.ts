@@ -3,7 +3,7 @@ import {
   type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1, type ProgressOverviewV1, type SettingsV1, type SaveAccountV1, type GoalsV1, type CreateGoalV1, type LeaderboardV1, type AchievementsV1, type ChallengesV1, type PostDetailV1, type FeedV1, type GymV1, type ChallengeDetailV1, type CreateChallengeV1,
   type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
   type AppConfigV1, type CoachCheckInV1, type CoachConversationV1, type CoachDashboardV1, type CoachRequestV1, type ThreadV1,
-  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1, type FeedbackSessionV1, type StreakV1, type FitnessScoreV1, type NutritionTrendsV1, type MyMealPlanV1, type RecipeV1, type ReportPreviewV1, type ImportPreviewV1, type ImportChunkResultV1, type CoachClientPageV1, type WeeklySummaryV1,
+  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1, type FeedbackSessionV1, type StreakV1, type FitnessScoreV1, type NutritionTrendsV1, type MyMealPlanV1, type RecipeV1, type ReportPreviewV1, type ImportPreviewV1, type ImportChunkResultV1, type CoachClientPageV1, type WeeklySummaryV1, type ProgressBodyV1, type PhotoTicketV1, type CoachBookingsV1, type CoachReviewsV1, type CoachSearchV1, type CoachPageV1, type CoachSlotsV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
@@ -85,6 +85,14 @@ export const api = {
   workouts: () => call<WorkoutsV1>("GET", "/workouts"),
   coachPrograms: () => call<CoachProgramsV1>("GET", "/coach/programs"),
   coachProgram: (id: string) => call<CoachProgramV1>("GET", `/coach/programs/${encodeURIComponent(id)}`),
+  coaches: (query: string) => call<CoachSearchV1>("GET", `/coaches?${query}`),
+  coachPage: (slug: string) => call<CoachPageV1>("GET", `/coaches/${encodeURIComponent(slug)}`),
+  coachSlots: (service: string, from: string, days: number) => call<CoachSlotsV1>("GET", `/coaches/slots?service=${service}&from=${from}&days=${days}`),
+  coachAct: (body: Record<string, unknown>) => call<CodedResultV1 & { id?: string }>("POST", "/coaches/act", body),
+  coachBookings: (tab: string) => call<CoachBookingsV1>("GET", `/coach/bookings?tab=${tab}`),
+  coachBookingMove: (id: string, move: string, reason: string | null) => call<CodedResultV1>("POST", "/coach/bookings", { id, move, reason }),
+  coachReviews: () => call<CoachReviewsV1>("GET", "/coach/reviews"),
+  respondReview: (reviewId: string, body: string) => call<CodedResultV1>("POST", "/coach/reviews", { reviewId, body }),
   coachMarketplace: () => call<CoachMarketplaceV1>("GET", "/coach/marketplace"),
   coachNutrition: () => call<CoachNutritionV1>("GET", "/coach/nutrition"),
   coachPlan: (id: string) => call<CoachPlanV1>("GET", `/coach/nutrition/${encodeURIComponent(id)}`),
@@ -96,6 +104,9 @@ export const api = {
   startMealPlan: () => call<WriteResultV1 & { id?: string }>("POST", "/food/plan/start"),
   recipes: () => call<RecipeV1[]>("GET", "/recipes"),
   recipeWrite: (op: string, body: Record<string, unknown>) => call<WriteResultV1 & { id?: string; errorCode?: string }>("POST", "/recipes/write", { op, ...body }),
+  progressBody: (from?: string, to?: string) => call<ProgressBodyV1>("GET", `/progress/body${from && to ? `?from=${from}&to=${to}` : ""}`),
+  photos: (op: string, body: Record<string, unknown>) => call<PhotoTicketV1>("POST", "/photos", { op, ...body }),
+  saveTargets: (kcal: number, split: { protein: number; carbs: number; fat: number }) => call<WriteResultV1>("POST", "/food/targets", { kcal, split }),
   foodTrends: (range: string) => call<NutritionTrendsV1>("GET", `/food/trends?range=${range}`),
   streak: () => call<StreakV1>("GET", "/streak"),
   shareStreak: (milestone: number, streakStart: string, visibility: string) => call<WriteResultV1>("POST", "/streak/share", { milestone, streakStart, visibility }),

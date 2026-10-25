@@ -345,27 +345,27 @@ const styles = StyleSheet.create({
 export { fontSize, radius };
 
 /**
- * 1..10 on a track, like the web's range input: tap or drag anywhere on it.
+ * min..max (1..10 unless told) on a track, like the web's range input: tap or drag anywhere on it.
  * Plain responder events, so it needs no native slider module.
  */
-export function Slider({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
+export function Slider({ value, onChange, label, min = 1, max = 10 }: { value: number; onChange: (v: number) => void; label: string; min?: number; max?: number }) {
   const { color } = useTheme();
   const [width, setWidth] = useState(0);
   const pick = (x: number) => {
     if (width <= 0) return;
-    const v = Math.round(1 + (Math.min(Math.max(x, 0), width) / width) * 9);
+    const v = Math.round(min + (Math.min(Math.max(x, 0), width) / width) * (max - min));
     if (v !== value) onChange(v);
   };
-  const ratio = (value - 1) / 9;
+  const ratio = (value - min) / (max - min);
   return (
     <View
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel={label}
-      accessibilityValue={{ min: 1, max: 10, now: value }}
+      accessibilityValue={{ min, max, now: value }}
       onAccessibilityAction={(ev) => {
-        if (ev.nativeEvent.actionName === "increment") onChange(Math.min(10, value + 1));
-        if (ev.nativeEvent.actionName === "decrement") onChange(Math.max(1, value - 1));
+        if (ev.nativeEvent.actionName === "increment") onChange(Math.min(max, value + 1));
+        if (ev.nativeEvent.actionName === "decrement") onChange(Math.max(min, value - 1));
       }}
       accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
       onLayout={(ev) => setWidth(ev.nativeEvent.layout.width)}

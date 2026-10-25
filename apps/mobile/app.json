@@ -58,7 +58,15 @@
           "color": "#d4a938"
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Voinic uses your photos so you can add progress photos. / Voinic folosește pozele tale ca să poți adăuga poze de progres.",
+          "cameraPermission": "Voinic uses the camera to take progress photos. / Voinic folosește camera ca să faci poze de progres.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

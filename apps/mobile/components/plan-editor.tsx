@@ -11,8 +11,8 @@ import { font, useTheme } from "@/lib/theme";
 // Every day (the base menu) and each weekday, the meals with their foods in
 // grams (change the grams, remove a food, add one from the food search at
 // 100 g), what the day adds up to, and Publish to client. A weekday shows the
-// base menu's meal where it has no version of its own. Weekday versions, extra
-// meals and recipe links are edited on the web; here they are shown.
+// base menu's meal where it has no version of its own, and can get its own
+// version of a meal, or extra meals of its own; a meal can link a recipe.
 
 type Plan = CoachPlanV1;
 type Meal = Plan["meals"][number];
@@ -117,32 +117,69 @@ export function PlanEditor({ plan, solo = false }: { plan: Plan; solo?: boolean 
           meal={meal}
           inherited={inherited}
           editable={editable && !inherited && plan.foods_allowed}
+          canChange={editable}
+          day={day}
+          recipes={plan.recipes ?? []}
           busy={busy}
           write={write}
         />
       ))}
+      {day > 0 && editable ? <ExtraMeals day={day} count={plan.meals.filter((m) => m.extra && m.day_index === day).length} busy={busy} write={write} /> : null}
       {error ? <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.risk }}>{error}</Text> : null}
     </>
   );
 }
 
-function MealCard({ meal, inherited, editable, busy, write }: {
-  meal: Meal; inherited: boolean; editable: boolean; busy: boolean;
+function MealCard({ meal, inherited, editable, canChange, day, recipes, busy, write }: {
+  meal: Meal; inherited: boolean; editable: boolean;
+  /** The plan may be changed at all (read-only once the coaching ended). */
+  canChange: boolean;
+  /** 0 = Every day, 1..7 = that weekday. */
+  day: number;
+  recipes: { id: string; title: string }[];
+  busy: boolean;
   write: (op: string, body: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const { t } = useI18n();
+  const { t, fill } = useI18n();
   const { color } = useTheme();
   const nb = t.coachWidgets.nutritionBuilder;
   const n = t.coachApp.nutrition;
   const [adding, setAdding] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [name, setName] = useState(meal.name);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  const dayName = day > 0 ? nb.weekdaysLong[day - 1] : "";
+  const ownVersion = day > 0 && !inherited && !meal.extra && meal.day_index === day;
   return (
     <Card style={{ gap: 10 }}>
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-        <Text numberOfLines={1} style={{ flex: 1, fontFamily: font.displayBold, fontSize: 16, color: color.ink }}>{meal.name}</Text>
+        {renaming ? (
+          <TextInput
+            autoFocus
+            value={name}
+            onChangeText={setName}
+            maxLength={60}
+            placeholder={nb.extraNamePlaceholder}
+            placeholderTextColor={color.inkFaint}
+            accessibilityLabel={nb.extraName}
+            onSubmitEditing={() => { setRenaming(false); if (name.trim() && name.trim() !== meal.name) void write("renameExtra", { mealId: meal.id, name: name.trim() }); }}
+            style={[styles.search, { flex: 1, color: color.ink, backgroundColor: color.bg, borderColor: color.accent }]}
+          />
+        ) : (
+          <Text numberOfLines={1} style={{ flex: 1, fontFamily: font.displayBold, fontSize: 16, color: color.ink }}>{meal.name}</Text>
+        )}
         <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{`${Math.round(meal.totals.kcal)} ${n.kcal}`}</Text>
       </View>
+      {meal.extra ? <Text style={{ marginTop: -6, fontFamily: font.semibold, fontSize: 11.5, color: color.accentInk }}>{fill(nb.extraBadge, { day: dayName })}</Text> : null}
       {inherited ? <Text style={{ marginTop: -6, fontFamily: font.semibold, fontSize: 11.5, color: color.inkFaint }}>{nb.inherited}</Text> : null}
-      {meal.recipe_title ? <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.accentInk }}>{`${nb.recipe}: ${meal.recipe_title}`}</Text> : null}
+
+      {meal.recipe_title ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Text style={{ flex: 1, fontFamily: font.regular, fontSize: 12.5, color: color.accentInk }}>{`${nb.recipe}: ${meal.recipe_title}`}</Text>
+          {editable && canChange ? <Text accessibilityRole="button" onPress={busy ? undefined : () => void write("recipe", { mealId: meal.id, recipeId: null })} style={{ fontFamily: font.semibold, fontSize: 12, color: color.inkFaint }}>{nb.unlinkRecipe}</Text> : null}
+        </View>
+      ) : null}
       {meal.foods.length === 0 ? <T kind="faint">{nb.nothingPlanned}</T> : null}
       {meal.foods.map((f) => (
         <FoodRow key={f.id} food={f} editable={editable} busy={busy} write={write} />
@@ -162,6 +199,111 @@ function MealCard({ meal, inherited, editable, busy, write }: {
         </Text>
       ) : null}
       {adding ? <T kind="faint">{nb.addedAt100}</T> : null}
+
+      {/* the meal's recipe link: one of the editor's own recipes, for cooking only */}
+      {editable && canChange && !meal.recipe_title ? (
+        choosing ? (
+          <View style={{ gap: 6 }}>
+            <T kind="faint">{nb.recipeHint}</T>
+            {recipes.length === 0 ? <T kind="faint">{nb.noRecipes}</T> : null}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+              {recipes.map((r) => (
+                <Pressable key={r.id} accessibilityRole="button" disabled={busy} onPress={async () => { if (await write("recipe", { mealId: meal.id, recipeId: r.id })) setChoosing(false); }} style={[styles.chip, { backgroundColor: color.bg }]}>
+                  <Text numberOfLines={1} style={{ maxWidth: 200, fontFamily: font.semibold, fontSize: 12, color: color.inkSoft }}>{r.title}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text accessibilityRole="button" onPress={() => setChoosing(false)} style={{ fontFamily: font.semibold, fontSize: 12, color: color.inkFaint }}>{t.common.actions.cancel}</Text>
+          </View>
+        ) : (
+          <Text accessibilityRole="button" onPress={() => setChoosing(true)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{nb.chooseRecipe}</Text>
+        )
+      ) : null}
+
+      {/* a weekday: make this meal its own, or go back to the every-day one */}
+      {canChange && inherited ? (
+        <View style={{ gap: 6 }}>
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => void write("variant", { mealId: meal.id, dayIndex: day, copyFoods: true })} style={[styles.quiet, { backgroundColor: color.bg }]}>
+            <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.ink }}>{fill(nb.customize, { day: dayName })}</Text>
+            <Text style={{ fontFamily: font.regular, fontSize: 11, color: color.inkFaint }}>{fill(nb.customizeHint, { day: dayName })}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => void write("variant", { mealId: meal.id, dayIndex: day, copyFoods: false })} style={[styles.quiet, { backgroundColor: color.bg }]}>
+            <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.ink }}>{fill(nb.replaceEmpty, { day: dayName })}</Text>
+            <Text style={{ fontFamily: font.regular, fontSize: 11, color: color.inkFaint }}>{fill(nb.replaceEmptyHint, { day: dayName })}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {canChange && ownVersion ? (
+        <Text accessibilityRole="button" onPress={busy ? undefined : () => void write("removeVariant", { mealId: meal.id })} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{nb.backToEveryDay}</Text>
+      ) : null}
+
+      {/* an extra meal: rename, remove */}
+      {canChange && meal.extra ? (
+        confirmRemove ? (
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.ink }}>{fill(nb.removeExtraConfirm, { name: meal.name, day: dayName })}</Text>
+            <View style={{ flexDirection: "row", gap: 14 }}>
+              <Text accessibilityRole="button" onPress={busy ? undefined : () => void write("removeExtra", { mealId: meal.id })} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.risk }}>{nb.removeExtraYes}</Text>
+              <Text accessibilityRole="button" onPress={() => setConfirmRemove(false)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{t.common.actions.cancel}</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={{ flexDirection: "row", gap: 14 }}>
+            <Text accessibilityRole="button" onPress={() => { setName(meal.name); setRenaming(true); }} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{nb.rename}</Text>
+            <Text accessibilityRole="button" onPress={() => setConfirmRemove(true)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{nb.removeExtra}</Text>
+          </View>
+        )
+      ) : null}
+    </Card>
+  );
+}
+
+/** Extra meals on one weekday, on top of the slot meals: a name and the diary meal it logs into, at most four. */
+function ExtraMeals({ day, count, busy, write }: { day: number; count: number; busy: boolean; write: (op: string, body: Record<string, unknown>) => Promise<boolean> }) {
+  const { t, fill } = useI18n();
+  const { color } = useTheme();
+  const nb = t.coachWidgets.nutritionBuilder;
+  const slots = t.clientApp.food as unknown as Record<string, string>;
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [slot, setSlot] = useState<"breakfast" | "lunch" | "dinner" | "snack">("snack");
+  const dayName = nb.weekdaysLong[day - 1]!;
+  return (
+    <Card style={{ gap: 8 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+        <T kind="label">{fill(nb.extraMeals, { day: dayName })}</T>
+        <Text style={{ fontFamily: font.regular, fontSize: 11.5, color: color.inkFaint }}>{fill(nb.extraCount, { n: count })}</Text>
+      </View>
+      <T kind="faint">{fill(nb.extraMealsHint, { day: dayName })}</T>
+      {open ? (
+        <View style={{ gap: 8 }}>
+          <TextInput autoFocus value={name} onChangeText={setName} maxLength={60} placeholder={nb.extraNamePlaceholder} placeholderTextColor={color.inkFaint} accessibilityLabel={nb.extraName} style={[styles.search, { color: color.ink, backgroundColor: color.bg, borderColor: color.line }]} />
+          <Text style={{ fontFamily: font.semibold, fontSize: 11.5, color: color.inkSoft }}>{nb.extraLogsInto}</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {(["breakfast", "lunch", "dinner", "snack"] as const).map((s) => (
+              <Pressable key={s} accessibilityRole="radio" accessibilityState={{ checked: s === slot }} onPress={() => setSlot(s)} style={[styles.chip, { backgroundColor: s === slot ? color.accent : color.bg }]}>
+                <Text style={{ fontFamily: font.semibold, fontSize: 12, color: s === slot ? color.accentFg : color.inkSoft }}>{slots[s]}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+            <Button
+              height={38}
+              label={nb.save}
+              busy={busy}
+              disabled={!name.trim()}
+              onPress={async () => {
+                if (await write("addExtra", { dayIndex: day, slot, name: name.trim() })) { setName(""); setOpen(false); }
+              }}
+            />
+            <Text accessibilityRole="button" onPress={() => setOpen(false)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{t.common.actions.cancel}</Text>
+          </View>
+        </View>
+      ) : count < 4 ? (
+        <Pressable accessibilityRole="button" disabled={busy} onPress={() => setOpen(true)} style={[styles.add, { borderColor: color.line }]}>
+          <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{nb.addExtra}</Text>
+        </Pressable>
+      ) : <T kind="faint">{nb.extraLimit}</T>}
     </Card>
   );
 }
@@ -265,5 +407,7 @@ const styles = StyleSheet.create({
   add: { height: 40, borderRadius: 14, borderWidth: 1, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
   picker: { borderRadius: 16, borderWidth: 1, padding: 12, gap: 8 },
   search: { height: 44, borderRadius: 14, borderWidth: 1, paddingHorizontal: 12, fontFamily: font.regular, fontSize: 14 },
+  chip: { minHeight: 32, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, justifyContent: "center" },
+  quiet: { borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
   hit: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 14, padding: 10 },
 });
