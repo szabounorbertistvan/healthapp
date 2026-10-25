@@ -119,6 +119,16 @@ function Gate({ onSignOut }: { onSignOut: () => void }) {
           <Stack.Screen name="coach/nutrition" />
           <Stack.Screen name="coach/plan/[id]" />
           <Stack.Screen name="coach/marketplace" />
+          <Stack.Screen name="session/[id]" />
+          <Stack.Screen name="streak" />
+          <Stack.Screen name="fitness-score" />
+          <Stack.Screen name="food-trends" />
+          <Stack.Screen name="meal-plan" />
+          <Stack.Screen name="recipes" />
+          <Stack.Screen name="reports" />
+          <Stack.Screen name="workout-import" />
+          <Stack.Screen name="weekly" />
+          <Stack.Screen name="coach/client/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" />

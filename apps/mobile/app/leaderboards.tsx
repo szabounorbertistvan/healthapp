@@ -1,5 +1,6 @@
 import type { LeaderboardRow } from "@healthapp/shared";
 import { LEADERBOARD_METRICS, LEADERBOARD_PERIODS, LEADERBOARD_SCOPES, type LeaderboardMetric, type LeaderboardPeriod, type LeaderboardScope } from "@healthapp/shared";
+import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,6 +8,7 @@ import { Card, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
 import { config } from "@/lib/config";
+import { nativeRoute } from "@/lib/web-route";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { alpha, font, useTheme } from "@/lib/theme";
@@ -74,7 +76,7 @@ export default function Leaderboards() {
       <T kind="heading">{title}</T>
       <T kind="faint">{hint}</T>
       {action ? (
-        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`${config.webUrl}${action.path}`)} style={[styles.pill, { backgroundColor: color.surface, marginTop: 8 }]}>
+        <Pressable accessibilityRole="link" onPress={() => { const to = nativeRoute(action.path); if (to) router.push(to as never); else void Linking.openURL(`${config.webUrl}${action.path}`); }} style={[styles.pill, { backgroundColor: color.surface, marginTop: 8 }]}>
           <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{action.label}</Text>
         </Pressable>
       ) : null}

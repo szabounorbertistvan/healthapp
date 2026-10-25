@@ -1,8 +1,8 @@
 import { MEAL_SLOTS_V1, type FoodDayV1, type MacrosV1, type MealSlotV1 } from "@healthapp/api/v1";
 import { isValidPortionGrams, MAX_PORTION_GRAMS, portionMacros } from "@healthapp/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
@@ -43,6 +43,11 @@ export default function Food() {
   const outbox = useOutbox();
   const queryClient = useQueryClient();
   const [day, setDay] = useState<string | null>(null);
+  // A day opened from the trends (a bar, a history row) arrives as ?day=.
+  const params = useLocalSearchParams<{ day?: string }>();
+  useEffect(() => {
+    if (params.day && /^d{4}-d{2}-d{2}$/.test(params.day)) setDay(params.day);
+  }, [params.day]);
   const query = useOfflineQuery(`food:${day ?? "today"}`, ["food", day ?? "today"], () => api.foodDay(day ?? undefined));
   const data = query.data?.data;
   const [busy, setBusy] = useState<string | null>(null);
@@ -82,12 +87,12 @@ export default function Food() {
             <Segmented
               items={[
                 { label: t.clientApp.nutritionTrends.diary, active: true, onPress: () => {} },
-                { label: t.clientApp.nutritionTrends.trends, active: false, onPress: web("/food?view=trends") },
+                { label: t.clientApp.nutritionTrends.trends, active: false, onPress: () => router.push("/food-trends") },
               ]}
             />
           </View>
-          {data && data.plan_owner !== "coach" ? <Pill label={t.clientApp.mealPlan.link} onPress={web("/food/plan")} /> : null}
-          <Pill label={t.clientApp.recipes.link} onPress={web("/recipes")} />
+          {data && data.plan_owner !== "coach" ? <Pill label={t.clientApp.mealPlan.link} onPress={() => router.push("/meal-plan")} /> : null}
+          <Pill label={t.clientApp.recipes.link} onPress={() => router.push("/recipes")} />
         </View>
 
         {data ? <WeekStrip data={data} onPick={setDay} /> : null}

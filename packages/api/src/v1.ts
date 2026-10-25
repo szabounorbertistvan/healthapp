@@ -5,6 +5,9 @@
 import type {
   BodyProgress, ChallengeStatus, PostPayload, PostType, ReactionType, GoalDirection, Leaderboard, LeaderboardMetric, LeaderboardPeriod, LeaderboardScope, GoalMetric, GoalPoint, GoalProgress, GoalSeries, GoalStatus, PeriodBucket, ProgressInsight,
   ProgressRange, RepRecord, RoutineCard, StrengthHighlight, TrainingProgress, ExerciseSessionEntry, ExerciseStats,
+  CalendarDay, FitnessScore, FitnessScoreTrend, MilestoneReached, StreakStatus, StreakSummary,
+  MealDistribution, NutritionBucket, NutritionDay, NutritionInsight, NutritionPeriod, NutritionProgress,
+  ProgressionAnalysis, WeeklyComparison,
 } from "@healthapp/shared";
 
 export const API_V1 = "/api/v1";
@@ -1024,3 +1027,164 @@ export type CoachMarketplaceV1 = {
   services: { active: number; bookable: number };
   reviews: { count: number; avg: string | null; latest: { id: string; rating: number; body: string | null; reviewer_name: string }[] };
 };
+
+// ---------- one finished workout, with the coach's comments ----------
+
+export type SessionCommentV1 = { id: string; body: string; created_at: string; coach_id: string; mine: boolean };
+
+/** A finished workout set by set (lib/workout-feedback FeedbackSession): the client's own page and the coach's client page. */
+export type FeedbackSessionV1 = {
+  id: string;
+  name: string | null;
+  started_at: string;
+  completed_at: string | null;
+  sets: {
+    id: string; set_index: number; exercise: string; reps: number; weight_kg: number | null;
+    duration_seconds: number | null; rpe: number | null; rir: number | null; notes: string | null;
+    comments: SessionCommentV1[];
+  }[];
+  comments: SessionCommentV1[];
+};
+
+// ---------- streak and fitness score ----------
+
+/** GET /api/v1/streak — the web's /streak: the summary, the 12-week calendar, every milestone. */
+export type StreakV1 = {
+  today: string;
+  timezone: string;
+  summary: StreakSummary;
+  status: StreakStatus;
+  /** The last 12 weeks, Monday → Sunday, oldest week first. */
+  calendar: CalendarDay[][];
+  milestones: (MilestoneReached & { shared: boolean })[];
+  next_milestone: number | null;
+  /** STREAK_SHARE_MIN: a milestone from this long can go on the feed. */
+  share_min: number;
+};
+
+/** GET /api/v1/fitness-score — the web's /fitness-score: both 28-day windows and the trend. */
+export type FitnessScoreV1 = {
+  current: FitnessScore;
+  previous: FitnessScore;
+  trend: FitnessScoreTrend;
+  today: string;
+  /** The plan shows the trend and the breakdown (progressCharts). */
+  charts: boolean;
+};
+
+// ---------- nutrition trends ----------
+
+/** GET /api/v1/food/trends?range=7|30|90|365|all — the web's /food?view=trends, every number folded on the server. */
+export type NutritionTrendsV1 = {
+  range: number | null;
+  today: { totals: MacrosV1; target: MacrosV1 | null; meals: number };
+  progress: NutritionProgress;
+  insights: NutritionInsight[];
+  series: { unit: "day" | "week" | "month"; items: NutritionBucket[] };
+  week: { current: NutritionPeriod; previous: NutritionPeriod };
+  plan: { name: string; owner: "coach" | "self"; planned_kcal: number | null; planned_meals: number } | null;
+  truncated: boolean;
+  /** Null when the bounded entry read did not reach the whole period. */
+  meals: MealDistribution | null;
+  /** The period's logged days, newest first. */
+  days: NutritionDay[];
+  today_iso: string;
+};
+
+// ---------- my meal plan and my recipes ----------
+
+/** GET /api/v1/food/plan — the web's /food/plan: a coach's plan applies while coached; else the person's own. */
+export type MyMealPlanV1 = {
+  coached: boolean;
+  /** Null: no targets yet, so no plan to fill. */
+  solo: { id: string; has_meals: boolean } | null;
+  plan: CoachPlanV1 | null;
+};
+
+/** One of the person's recipes (lib/recipes-data MyRecipe). */
+export type RecipeV1 = {
+  id: string;
+  title: string;
+  servings: number;
+  serving_grams: number;
+  per_serving: MacrosV1;
+  nutrition_source: "dishfinder" | "voinic";
+  dishfinder_url: string | null;
+  image_url: string | null;
+  lines: { label: string; grams: number | null; food_name: string | null }[];
+  steps: string[];
+  prep_minutes: number | null;
+  cook_minutes: number | null;
+};
+
+// ---------- the weekly summary ----------
+
+/** GET /api/v1/weekly?week=current|previous — this week against the last (packages/shared compareWeeks), on the person's calendar. */
+export type WeeklySummaryV1 = WeeklyComparison & { choice: "current" | "previous" };
+
+// ---------- the coach's page for one client ----------
+
+/** GET /api/v1/coach/clients/[id]?week= — the web's /clients/[id]: everything under RLS, computed by the client's own code. */
+export type CoachClientPageV1 = {
+  id: string;
+  name: string;
+  signal: string;
+  goal: string | null;
+  /** Coach Pro: the signal, the score, the goals, the lift verdicts. */
+  analytics: boolean;
+  fitness: { current: FitnessScore; previous: FitnessScore; trend: FitnessScoreTrend } | null;
+  weekly: WeeklySummaryV1 | null;
+  lifts: { id: string; name: string; analysis: ProgressionAnalysis }[] | null;
+  /** The client's last finished workouts, set by set, to comment on. */
+  workouts: FeedbackSessionV1[];
+  /** What the client put on their feed, as a follower sees it. */
+  posts: FeedPostV1[];
+};
+
+// ---------- workout import ----------
+
+/** One imported workout as the file reader returns it (lib/import/workout-csv ImportedSession). */
+export type ImportSessionV1 = {
+  key: string;
+  title: string;
+  startLocal: string;
+  durationMinutes: number | null;
+  notes: string | null;
+  sets: { ordinal: number; exercise: string; weightKg: number; reps: number; durationSeconds: number | null; rpe: number | null; notes: string | null }[];
+};
+
+/** POST /api/v1/import/preview — the file read on the server (lib/import/workout-csv.ts) and each name matched to the library. */
+export type ImportPreviewV1 =
+  | {
+      ok: true;
+      format: "hevy" | "strong" | "fitbod" | "fitnotes" | "voinic";
+      weight_unit: "kg" | "lb";
+      unit_from_file: boolean;
+      sessions: ImportSessionV1[];
+      skipped: { warmups: number; cardio: number; invalid: number };
+      names: { name: string; sets: number; match: string | null; suggestions: { id: string; name: string }[] }[];
+    }
+  | { ok: false; error: "empty" | "unknownFormat" | "noSessions" | "tooLarge" };
+
+export type ImportChunkResultV1 = WriteResultV1 & { sessions?: number; sets?: number; already?: number; dayTaken?: number; future?: number };
+
+// ---------- reports ----------
+
+/** GET /api/v1/reports/preview?type=&range= | from=&to= — what the period holds (the web's /reports preview). */
+export type ReportPreviewV1 =
+  | {
+      ok: true;
+      from: string;
+      to: string;
+      days: number;
+      /** Progress only; a CSV is one table read on download. */
+      sections: { key: "training" | "body" | "nutrition" | "goals" | "fitness"; ok: boolean; extra: string | null }[] | null;
+      nothing: boolean;
+      labels_missing: "failed" | "incomplete" | null;
+      /** The plan allows the file (reportExports). */
+      can_export: boolean;
+      /** The path under /api/v1/reports/file/ to download. */
+      file: string;
+      file_name: string;
+    }
+  | { ok: false; code: string; message: string };

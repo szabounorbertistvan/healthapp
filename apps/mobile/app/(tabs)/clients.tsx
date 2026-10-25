@@ -149,7 +149,7 @@ function ClientRow({ r, pro, first, locale }: { r: CoachClientV1; pro: boolean; 
         </View>
         <Pressable
           accessibilityRole="button"
-          onPress={() => (review ? router.navigate("/inbox") : void Linking.openURL(`${config.webUrl}/clients?focus=${r.client_id}`))}
+          onPress={() => (review ? router.navigate("/inbox") : router.push({ pathname: "/coach/client/[id]", params: { id: r.client_id } }))}
           style={({ pressed }) => [styles.action, { backgroundColor: color.bg, opacity: pressed ? 0.8 : 1 }]}
         >
           <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{review ? d.review : d.open}</Text>

@@ -266,7 +266,7 @@ function History({ sessions, locale }: { sessions: WorkoutHistoryV1[]; locale: s
                 <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 18, gap: 14 }}>
                   <Pressable
                     accessibilityRole="link"
-                    onPress={web(`/workout/session/${s.id}`)}
+                    onPress={() => router.push({ pathname: "/session/[id]", params: { id: s.id } })}
                     style={[styles.smallPill, { backgroundColor: color.bg }]}
                   >
                     <Text style={{ fontFamily: font.semibold, fontSize: 12, color: color.inkSoft }}>{t.coachWidgets.workoutFeedback.openWorkout}</Text>

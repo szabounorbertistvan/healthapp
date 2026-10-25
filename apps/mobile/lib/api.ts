@@ -3,7 +3,7 @@ import {
   type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1, type ProgressOverviewV1, type SettingsV1, type SaveAccountV1, type GoalsV1, type CreateGoalV1, type LeaderboardV1, type AchievementsV1, type ChallengesV1, type PostDetailV1, type FeedV1, type GymV1, type ChallengeDetailV1, type CreateChallengeV1,
   type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
   type AppConfigV1, type CoachCheckInV1, type CoachConversationV1, type CoachDashboardV1, type CoachRequestV1, type ThreadV1,
-  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1,
+  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1, type FeedbackSessionV1, type StreakV1, type FitnessScoreV1, type NutritionTrendsV1, type MyMealPlanV1, type RecipeV1, type ReportPreviewV1, type ImportPreviewV1, type ImportChunkResultV1, type CoachClientPageV1, type WeeklySummaryV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
@@ -52,8 +52,34 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
   return (await response.json()) as T;
 }
 
+/** A file from /api/v1 (a report), as bytes — the same token and language as every call. */
+async function download(path: string): Promise<Uint8Array> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new ApiFailure("unauthorized", "not signed in");
+  let response: Response;
+  try {
+    response = await fetch(`${config.apiUrl}${API_V1}${path}`, { headers: { Authorization: `Bearer ${token}`, [LOCALE_HEADER]: currentLocale } });
+  } catch (error) {
+    throw new ApiFailure("offline", error instanceof Error ? error.message : "network error");
+  }
+  if (!response.ok) {
+    const err = (await response.json().catch(() => null)) as { message?: string; error?: string } | null;
+    throw new ApiFailure("server", err?.message ?? err?.error ?? `HTTP ${response.status}`);
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
 export const api = {
   me: () => call<MeV1>("GET", "/me"),
+  weekly: (week: string) => call<WeeklySummaryV1 | null>("GET", `/weekly?week=${week}`),
+  coachClient: (id: string, week: string) => call<CoachClientPageV1>("GET", `/coach/clients/${encodeURIComponent(id)}?week=${week}`),
+  workoutFeedback: (body: Record<string, unknown>) => call<CodedResultV1>("POST", "/coach/workout-feedback", body),
+  reportPreview: (query: string) => call<ReportPreviewV1>("GET", `/reports/preview?${query}`),
+  reportFile: (file: string) => download(`/reports/file/${file}`),
+  importPreview: (csv: string, unit?: string) => call<ImportPreviewV1>("POST", "/import/preview", { csv, unit }),
+  importChunk: (sessions: unknown[]) => call<ImportChunkResultV1>("POST", "/import/chunk", { sessions }),
+  importFinish: (exerciseIds: string[]) => call<WriteResultV1>("POST", "/import/finish", { exerciseIds }),
   today: () => call<TodayV1>("GET", "/today"),
   dashboard: () => call<DashboardV1>("GET", "/dashboard"),
   workouts: () => call<WorkoutsV1>("GET", "/workouts"),
@@ -66,6 +92,16 @@ export const api = {
   builder: (program?: string) => call<BuilderV1>("GET", `/builder${program ? `?program=${encodeURIComponent(program)}` : ""}`),
   /** One builder action by name (app/api/v1/builder): the web runs the same builder-actions. */
   build: (op: string, body: Record<string, unknown> = {}) => call<WriteResultV1 & { id?: string }>("POST", "/builder", { op, ...body }),
+  mealPlan: () => call<MyMealPlanV1>("GET", "/food/plan"),
+  startMealPlan: () => call<WriteResultV1 & { id?: string }>("POST", "/food/plan/start"),
+  recipes: () => call<RecipeV1[]>("GET", "/recipes"),
+  recipeWrite: (op: string, body: Record<string, unknown>) => call<WriteResultV1 & { id?: string; errorCode?: string }>("POST", "/recipes/write", { op, ...body }),
+  foodTrends: (range: string) => call<NutritionTrendsV1>("GET", `/food/trends?range=${range}`),
+  streak: () => call<StreakV1>("GET", "/streak"),
+  shareStreak: (milestone: number, streakStart: string, visibility: string) => call<WriteResultV1>("POST", "/streak/share", { milestone, streakStart, visibility }),
+  fitnessScore: () => call<FitnessScoreV1>("GET", "/fitness-score"),
+  shareFitnessScore: (visibility: string) => call<WriteResultV1>("POST", "/fitness-score/share", { visibility }),
+  session: (id: string) => call<FeedbackSessionV1>("GET", `/sessions/${encodeURIComponent(id)}`),
   exercise: (id: string) => call<ExerciseDetailV1>("GET", `/exercises/${encodeURIComponent(id)}`),
   searchExercises: (q: string, muscle: string, offset = 0) =>
     call<ExerciseSearchV1>("GET", `/exercises/search?${new URLSearchParams({ q, muscle, offset: String(offset) })}`),

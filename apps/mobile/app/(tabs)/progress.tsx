@@ -88,7 +88,7 @@ export default function Progress() {
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <T kind="title">{t.common.nav.progress}</T>
-            <Pressable accessibilityRole="link" onPress={web("/reports")} style={[styles.pill, { backgroundColor: color.surface }]}>
+            <Pressable accessibilityRole="link" onPress={() => router.push("/reports")} style={[styles.pill, { backgroundColor: color.surface }]}>
               <NavIcon d={ICON.report} size={16} color={color.inkSoft} />
               <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{t.clientApp.reports.link}</Text>
             </Pressable>
@@ -513,7 +513,7 @@ function StrengthTab({ data, f }: { data: ProgressOverviewV1; f: Fmt }) {
             <Text style={styles.prose(color.inkSoft)}>{a.aboutLoad}</Text>
             <Text style={styles.prose(color.inkSoft)}>{f.fill(a.aboutFitness, { count: FITNESS_SCORE_MIN_WORKOUTS })}</Text>
             <Text style={styles.prose(color.inkSoft)}>{a.aboutRecovery}</Text>
-            <Text onPress={web("/fitness-score")} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{`${a.fitnessBreakdown} →`}</Text>
+            <Text onPress={() => router.push("/fitness-score")} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{`${a.fitnessBreakdown} →`}</Text>
           </View>
         ) : null}
       </Pressable>
@@ -552,7 +552,7 @@ function StrengthTab({ data, f }: { data: ProgressOverviewV1; f: Fmt }) {
         </>
       ) : null}
 
-      <Pressable accessibilityRole="link" onPress={web("/progress?tab=strength")}>
+      <Pressable accessibilityRole="link" onPress={() => router.push("/exercises")}>
         <Card style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <Text style={{ flex: 1, fontFamily: font.semibold, fontSize: 13.5, color: color.ink }}>{a.exercise}</Text>
           <NavIcon d="m9 6 6 6-6 6" size={16} color={color.inkFaint} />
@@ -638,7 +638,7 @@ function ConsistencyTab({ data, f }: { data: ProgressOverviewV1; f: Fmt }) {
       {data.charts ? (
         <Bars f={f} title={a.workoutsChart} unit={data.buckets.unit} items={data.buckets.items} value={(b) => b.workouts} format={f.count} />
       ) : null}
-      <Text onPress={web("/streak")} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{`${a.streakCalendar} →`}</Text>
+      <Text onPress={() => router.push("/streak")} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{`${a.streakCalendar} →`}</Text>
     </View>
   );
 }

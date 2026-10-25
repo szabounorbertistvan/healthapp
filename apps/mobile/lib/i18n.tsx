@@ -8,6 +8,7 @@ import { commonMessages } from "@healthapp/i18n/messages/common";
 import { gymsMessages } from "@healthapp/i18n/messages/gyms";
 import { landingMessages } from "@healthapp/i18n/messages/landing";
 import { mobileMessages } from "@healthapp/i18n/messages/mobile";
+import { onboardingMessages } from "@healthapp/i18n/messages/onboarding";
 import { getLocales } from "expo-localization";
 import * as SecureStore from "./secure-store";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -28,6 +29,7 @@ function dictionary(locale: Locale) {
     bookings: coachProfileMessages[locale].bookings,
     marketplace: coachProfileMessages[locale].marketplace,
     coachBecome: coachProfileMessages[locale].become,
+    coachView: onboardingMessages[locale].coachView,
     login: landingMessages[locale].login,
     mobile: mobileMessages[locale],
   };

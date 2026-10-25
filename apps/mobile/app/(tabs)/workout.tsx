@@ -35,7 +35,7 @@ export default function Workout() {
         <T kind="title">{t.common.nav.training}</T>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: -4 }}>
           <Pill icon="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM4 4v18M8 8h6" label={t.clientApp.library.title} onPress={() => router.push("/exercises")} />
-          <Pill icon="M12 4v11M7 10l5 5 5-5M5 20h14" label={t.clientApp.workoutImport.link} onPress={web("/workout/import")} />
+          <Pill icon="M12 4v11M7 10l5 5 5-5M5 20h14" label={t.clientApp.workoutImport.link} onPress={() => router.push("/workout-import")} />
           {data && programs.length > 0 && !data.has_coach ? (
             <Pill
               icon={hasOwn ? "M4 20h4l10-10-4-4L4 16zM13 7l4 4" : "M12 5v14M5 12h14"}
@@ -99,11 +99,10 @@ export default function Workout() {
                 sessions.map((s) => (
                   <View key={s.id}>
                     <Divider />
-                    <View style={styles.historyRow}>
+                    <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: "/session/[id]", params: { id: s.id } })} style={styles.historyRow}>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <Text
                           numberOfLines={1}
-                          onPress={s.day_id ? () => router.push({ pathname: "/workout/[dayId]", params: { dayId: s.day_id! } }) : undefined}
                           style={{ fontFamily: font.semibold, fontSize: 14, color: color.ink }}
                         >
                           {s.day_name}
@@ -121,7 +120,7 @@ export default function Workout() {
                         </Text>
                         <LoadBadge load={s.load} />
                       </View>
-                    </View>
+                    </Pressable>
                   </View>
                 ))
               )}

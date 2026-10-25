@@ -9,6 +9,7 @@ import { Button, Card, NavIcon, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
 import { config } from "@/lib/config";
+import { nativeRoute } from "@/lib/web-route";
 import { useI18n } from "@/lib/i18n";
 import { enablePush, routeFor, type PushState } from "@/lib/push";
 import { alpha, font, useTheme } from "@/lib/theme";
@@ -58,7 +59,10 @@ export default function NotificationsScreen() {
 
   async function open(row: NotificationV1) {
     if (!row.read) void api.markNotificationRead(row.id).then(() => queryClient.invalidateQueries({ queryKey: ["notifications"] })).catch(() => {});
-    // The web's link names the conversation (/messages/<id>), which opens that exact thread.
+    // The exact screen the web's link names (a workout, a post, a thread), when the app has it;
+    // else the screen for the category; else the page on voinic.fit.
+    const exact = nativeRoute(row.href);
+    if (exact) return void router.push(exact as never);
     const conversation = /\/messages\/([0-9a-f-]{36})/i.exec(row.href ?? "")?.[1];
     const native = routeFor({ category: row.category, conversation_id: conversation });
     if (native !== "/notifications") router.push(native);

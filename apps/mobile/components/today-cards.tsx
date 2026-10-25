@@ -143,9 +143,9 @@ export function WeekCard({ d }: { d: DashboardV1 }) {
       <View style={{ flexDirection: "row", paddingTop: 14 }}>
         <Stat onPress={() => router.navigate("/workout")} label={x.workouts} value={String(d.sessions.done)} unit={`/ ${planned}`} />
         <View style={[styles.vrule, { backgroundColor: color.line }]} />
-        <Stat onPress={web("/streak")} label={x.streak} value={String(d.streak_days)} unit={d.streak_days === 1 ? x.day : x.days} />
+        <Stat onPress={() => router.push("/streak")} label={x.streak} value={String(d.streak_days)} unit={d.streak_days === 1 ? x.day : x.days} />
         <View style={[styles.vrule, { backgroundColor: color.line }]} />
-        <Stat onPress={web("/today?week=current#weekly-report")} label={t.common.trainingLoad.short} value={String(d.load.this_week)} unit={deltaText} unitColor={deltaTone} />
+        <Stat onPress={() => router.push("/weekly")} label={t.common.trainingLoad.short} value={String(d.load.this_week)} unit={deltaText} unitColor={deltaTone} />
       </View>
     </Card>
   );
@@ -195,7 +195,7 @@ export function FitnessCard({ d }: { d: DashboardV1 }) {
           </View>
         )}
       </View>
-      <Pressable accessibilityRole="link" onPress={web("/fitness-score")} style={{ marginTop: 14 }}>
+      <Pressable accessibilityRole="link" onPress={() => router.push("/fitness-score")} style={{ marginTop: 14 }}>
         <T kind="accent" style={{ fontSize: 12.5 }}>{`${f.viewDetails} →`}</T>
       </Pressable>
     </Card>
@@ -274,7 +274,7 @@ export function TrainingCard({ d }: { d: DashboardV1 }) {
             </View>
           </>
         ) : (
-          <Pressable accessibilityRole="button" onPress={() => (d.has_coach ? router.navigate("/workout") : web("/workout/build")())} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+          <Pressable accessibilityRole="button" onPress={() => (d.has_coach ? router.navigate("/workout") : router.push("/build"))} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
             <Dot done={false} />
             <T kind="faint" style={{ flex: 1, lineHeight: 17 }}>{d.has_coach ? x.noProgram : x.noProgramSolo}</T>
             <Chevron />
@@ -318,7 +318,7 @@ function StreakRow({ streak }: { streak: NonNullable<DashboardV1["streak"]> }) {
   const consecutive = streak.current === 1 ? s.consecutiveDaysOne : fill(s.consecutiveDays, { count: streak.current });
   const body = none ? s.startBody : streak.active_today ? consecutive : streak.active_yesterday ? s.keepGoing : consecutive;
   return (
-    <Pressable accessibilityRole="link" onPress={web("/streak")} style={({ pressed }) => [styles.row, pressed && { backgroundColor: color.bg }]}>
+    <Pressable accessibilityRole="link" onPress={() => router.push("/streak")} style={({ pressed }) => [styles.row, pressed && { backgroundColor: color.bg }]}>
       <View style={[styles.iconDot, { backgroundColor: color.accentSoft }]}>
         <NavIcon d={FLAME} size={16} color={color.accent} />
       </View>
@@ -521,7 +521,7 @@ export function WeeklyReportRow() {
   const { t } = useI18n();
   const { color } = useTheme();
   return (
-    <Pressable accessibilityRole="link" onPress={web("/today?week=current#weekly-report")}>
+    <Pressable accessibilityRole="link" onPress={() => router.push("/weekly")}>
       <Card style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: 20 }}>
         <Text style={{ fontFamily: font.semibold, fontSize: 14.5, color: color.ink }}>{t.clientApp.today.weeklyReport}</Text>
         <NavIcon d={ICON.down} size={16} color={color.inkFaint} />
