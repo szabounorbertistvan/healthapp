@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const GET = v1Route(async (request) => {
   const q = new URL(request.url).searchParams.get("q") ?? "";
   const hits = await searchGyms(q);
-  return apiJson<(GymV1 & { members: number; coaches: number })[]>(
-    hits.map((g) => ({ id: g.id, name: g.name, city: g.city, address: g.address, map_url: gymMapHref(g), members: g.members, coaches: g.coaches })),
+  return apiJson<(GymV1 & { members: number; coaches: number; status?: "active" | "pending" })[]>(
+    hits.map((g) => ({ id: g.id, name: g.name, city: g.city, address: g.address, map_url: gymMapHref(g), members: g.members, coaches: g.coaches, status: g.status })),
   );
 });

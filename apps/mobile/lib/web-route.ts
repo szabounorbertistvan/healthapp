@@ -13,6 +13,7 @@ const RULES: [RegExp, (m: RegExpExecArray) => string][] = [
   [new RegExp(`^/programs/${ID}$`, "i"), (m) => `/coach/program/${m[1]}`],
   [new RegExp(`^/nutrition/${ID}$`, "i"), (m) => `/coach/plan/${m[1]}`],
   [new RegExp(`^/clients/${ID}$`, "i"), (m) => `/coach/client/${m[1]}`],
+  [new RegExp(`^/clients/relationship/${ID}$`, "i"), (m) => `/coach/relationship/${m[1]}`],
   [new RegExp(`^/gyms/${ID}$`, "i"), (m) => `/gym/${m[1]}`],
   // a coach's page; the static /coaches/* pages and the landing listings are not coaches
   [/^\/coaches\/(?!bookings$|requests$|saved$)([a-z0-9]+(?:-[a-z0-9]+)*)$/, (m) => `/coaches/${m[1]}`],
@@ -51,16 +52,20 @@ const PLAIN: Record<string, string> = {
   "/coaches": "/coaches",
   "/coaches/saved": "/coaches",
   "/coaches/bookings": "/bookings",
+  "/coaches/requests": "/coaches/requests",
   "/bookings": "/coach/bookings",
+  "/bookings/availability": "/coach/availability",
   "/reviews": "/coach/reviews",
   "/dashboard": "/clients",
-  "/clients": "/clients",
+  "/clients": "/coach/clients",
+  "/clients/challenges": "/coach/client-challenges",
   "/check-ins": "/inbox",
-  "/requests": "/inbox",
+  "/requests": "/coach/requests",
   "/messages": "/chats",
   "/programs": "/coach/programs",
   "/nutrition": "/coach/nutrition",
   "/marketplace": "/coach/marketplace",
+  "/settings/coach-profile": "/coach/profile",
 };
 
 export function nativeRoute(href: string | null | undefined): string | null {

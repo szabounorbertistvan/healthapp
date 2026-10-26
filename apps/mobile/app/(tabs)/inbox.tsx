@@ -94,6 +94,7 @@ export default function Inbox() {
 
         <View style={{ gap: 8 }}>
           {section(c.requestsTitle, requests.data ? requests.data.data.length : null)}
+          <Text accessibilityRole="link" onPress={() => router.push("/coach/requests")} style={{ paddingHorizontal: 4, fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{`${t.coachProfile.requests.title} · ${t.coachProfile.requests.tabs.all} →`}</Text>
           {!requests.data ? (
             requests.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} />
           ) : requests.data.data.length === 0 ? (

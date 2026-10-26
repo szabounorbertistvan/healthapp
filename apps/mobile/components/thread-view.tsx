@@ -1,12 +1,12 @@
 import type { MessageV1 } from "@healthapp/api/v1";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Screen, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
-import { config } from "@/lib/config";
+import { shareFile } from "@/lib/share-file";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { supabase } from "@/lib/supabase";
@@ -136,17 +136,50 @@ export function ThreadView({ conversationId, back }: { conversationId: string; b
 function Bubble({ m }: { m: MessageV1 }) {
   const { t } = useI18n();
   const { color } = useTheme();
+  const [picture, setPicture] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const label = m.attachment === "image" ? t.mobile.messages.photo : m.attachment === "audio" ? t.mobile.messages.voice : null;
+
+  // The file is fetched only when tapped (message-thread.tsx Attachment): a
+  // picture shows in the bubble, a voice note goes to the phone's player.
+  async function open() {
+    if (loading || picture) return;
+    setLoading(true);
+    try {
+      const { bytes, type } = await api.messageAttachment(m.id);
+      if (m.attachment === "image") setPicture(`data:${type};base64,${toBase64(bytes)}`);
+      else await shareFile(`voice-note.${type.split("/")[1]?.split(";")[0] ?? "m4a"}`, bytes, type);
+    } catch {
+      // a failed fetch leaves the placeholder; another tap tries again
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <Pressable
       disabled={!m.attachment}
-      onPress={() => Linking.openURL(`${config.webUrl}/messages`)}
+      onPress={() => void open()}
       style={[styles.bubble, { alignSelf: m.mine ? "flex-end" : "flex-start", backgroundColor: m.mine ? color.accentSoft : color.surface }]}
     >
-      {label ? <Text style={[styles.text, { color: color.inkSoft, fontStyle: "italic" }]}>{label}</Text> : null}
+      {picture ? (
+        <Image source={{ uri: picture }} accessibilityLabel={t.coachWidgets.messageThread.photo} resizeMode="cover" style={{ width: 220, height: 220, borderRadius: 12 }} />
+      ) : label ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {loading ? <ActivityIndicator size="small" color={color.inkSoft} /> : null}
+          <Text style={[styles.text, { color: color.inkSoft, fontStyle: "italic" }]}>{label}</Text>
+        </View>
+      ) : null}
       {m.body ? <Text style={[styles.text, { color: color.ink }, label ? { marginTop: 6 } : null]}>{m.body}</Text> : null}
     </Pressable>
   );
+}
+
+/** Bytes → base64, for a picture shown from memory (btoa takes a binary string). */
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
 }
 
 const styles = StyleSheet.create({

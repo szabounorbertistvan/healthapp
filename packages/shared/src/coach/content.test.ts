@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CLIENT_GOALS, MAX_CLIENT_GOALS, cleanClientGoals, cleanSocialLinks, hasRiskyClaim, socialEntries, socialUrl, validSocialValue,
-} from "./coach-content";
+} from "./content";
 
 describe("social links: handles, never URLs", () => {
   it("accepts handles and an https website", () => {

@@ -3,7 +3,7 @@ import {
   STEPS, centsToPrice, formatPrice, coachingSinceError, identityErrors, missingFor, moveItem, nextStep, parseStep,
   previousStep, priceToCents, serviceErrors, slugify, statusView, stepForMissing, stepsTouched, summary,
   toggleSpecialization, type DraftState, PRICING_MODELS, credentialLabel, verificationView, parseDuration, pricingOf, takesPrice, unitsFor,
-} from "./coach-onboarding";
+} from "./onboarding";
 
 const empty: DraftState = {
   slug: "andrei-pop", headline: "", about: "", coachingSince: null, online: false, inPerson: false,

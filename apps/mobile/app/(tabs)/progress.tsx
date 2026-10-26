@@ -6,14 +6,13 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState, type ReactNode } from "react";
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BodyExtras } from "@/components/body-extras";
 import { PointsChart } from "@/components/charts";
 import { GoalsTab } from "@/components/goals";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { parseDecimal } from "@/lib/logger-model";
 import { useOfflineQuery } from "@/lib/offline-query";
@@ -25,10 +24,9 @@ import { parseDay } from "@/lib/week";
 // the four headline figures, the insights, then Body / Strength / Consistency
 // / Goals. Every figure arrives folded on the server (GET /api/v1/progress/
 // overview runs the page's own reads through packages/shared); this screen
-// only formats. Goals have their own read (components/goals.tsx); a single
-// lift's charts, two-date comparison and photos open on the web.
+// only formats. Goals have their own read (components/goals.tsx); the two-date
+// comparison and the photos are Body's (components/body-extras.tsx).
 
-const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 type Tab = "body" | "strength" | "consistency" | "goals";
 
 const ICON = {

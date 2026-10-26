@@ -3,7 +3,7 @@ import {
   type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1, type ProgressOverviewV1, type SettingsV1, type SaveAccountV1, type GoalsV1, type CreateGoalV1, type LeaderboardV1, type AchievementsV1, type ChallengesV1, type PostDetailV1, type FeedV1, type GymV1, type ChallengeDetailV1, type CreateChallengeV1,
   type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
   type AppConfigV1, type CoachCheckInV1, type CoachConversationV1, type CoachDashboardV1, type CoachRequestV1, type ThreadV1,
-  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1, type FeedbackSessionV1, type StreakV1, type FitnessScoreV1, type NutritionTrendsV1, type MyMealPlanV1, type RecipeV1, type ReportPreviewV1, type ImportPreviewV1, type ImportChunkResultV1, type CoachClientPageV1, type WeeklySummaryV1, type ProgressBodyV1, type PhotoTicketV1, type CoachBookingsV1, type CoachReviewsV1, type CoachSearchV1, type CoachPageV1, type CoachSlotsV1,
+  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1, type FeedbackSessionV1, type StreakV1, type FitnessScoreV1, type NutritionTrendsV1, type MyMealPlanV1, type RecipeV1, type ReportPreviewV1, type ImportPreviewV1, type ImportChunkResultV1, type CoachClientPageV1, type WeeklySummaryV1, type ProgressBodyV1, type PhotoTicketV1, type CoachBookingsV1, type CoachReviewsV1, type CoachSearchV1, type CoachPageV1, type CoachSlotsV1, type CoachAvailabilityV1, type CoachProfileEditorV1, type CoachProfileWriteV1, type MyCoachingRequestV1, type CoachClientsV1, type CoachClientsWriteV1, type CoachRelationshipPageV1, type CoachChallengesV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
@@ -52,8 +52,8 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
   return (await response.json()) as T;
 }
 
-/** A file from /api/v1 (a report), as bytes — the same token and language as every call. */
-async function download(path: string): Promise<Uint8Array> {
+/** A file from /api/v1 (a report, a document, a message's picture), as bytes and its type — the same token and language as every call. */
+async function downloadTyped(path: string): Promise<{ bytes: Uint8Array; type: string }> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new ApiFailure("unauthorized", "not signed in");
@@ -67,7 +67,11 @@ async function download(path: string): Promise<Uint8Array> {
     const err = (await response.json().catch(() => null)) as { message?: string; error?: string } | null;
     throw new ApiFailure("server", err?.message ?? err?.error ?? `HTTP ${response.status}`);
   }
-  return new Uint8Array(await response.arrayBuffer());
+  return { bytes: new Uint8Array(await response.arrayBuffer()), type: response.headers.get("content-type") ?? "application/octet-stream" };
+}
+
+async function download(path: string): Promise<Uint8Array> {
+  return (await downloadTyped(path)).bytes;
 }
 
 export const api = {
@@ -91,6 +95,12 @@ export const api = {
   coachAct: (body: Record<string, unknown>) => call<CodedResultV1 & { id?: string }>("POST", "/coaches/act", body),
   coachBookings: (tab: string) => call<CoachBookingsV1>("GET", `/coach/bookings?tab=${tab}`),
   coachBookingMove: (id: string, move: string, reason: string | null) => call<CodedResultV1>("POST", "/coach/bookings", { id, move, reason }),
+  coachProfile: () => call<CoachProfileEditorV1>("GET", "/coach/profile"),
+  coachProfileWrite: (op: string, body: Record<string, unknown> = {}) => call<CoachProfileWriteV1>("POST", "/coach/profile", { op, ...body }),
+  coachDocument: (id: string) => download(`/coach/documents/${encodeURIComponent(id)}`),
+  messageAttachment: (id: string) => downloadTyped(`/messages/${encodeURIComponent(id)}/attachment`),
+  coachAvailabilityRead: () => call<CoachAvailabilityV1>("GET", "/coach/availability"),
+  coachAvailability: (body: { op: string } & Record<string, unknown>) => call<CodedResultV1>("POST", "/coach/availability", body),
   coachReviews: () => call<CoachReviewsV1>("GET", "/coach/reviews"),
   respondReview: (reviewId: string, body: string) => call<CodedResultV1>("POST", "/coach/reviews", { reviewId, body }),
   coachMarketplace: () => call<CoachMarketplaceV1>("GET", "/coach/marketplace"),
@@ -171,7 +181,7 @@ export const api = {
     const q = new URLSearchParams(Object.entries(board).filter((e): e is [string, string] => typeof e[1] === "string")).toString();
     return call<GymDetailV1>("GET", `/gyms/${encodeURIComponent(id)}${q ? `?${q}` : ""}`);
   },
-  searchGyms: (q: string) => call<(GymV1 & { members: number; coaches: number })[]>("GET", `/gyms/search?q=${encodeURIComponent(q)}`),
+  searchGyms: (q: string) => call<(GymV1 & { members: number; coaches: number; status?: "active" | "pending" })[]>("GET", `/gyms/search?q=${encodeURIComponent(q)}`),
   addHabit: (name: string, targetPerWeek: number) => call<WriteResultV1>("POST", "/habits/add", { name, targetPerWeek }),
   archiveHabit: (habitId: string) => call<WriteResultV1>("POST", "/habits/archive", { habitId }),
   progress: () => call<ProgressV1>("GET", "/progress"),
@@ -195,6 +205,16 @@ export const api = {
   coachConversations: () => call<CoachConversationV1[]>("GET", "/coach/conversations"),
   coachRequests: () => call<CoachRequestV1[]>("GET", "/coach/requests"),
   respondRequest: (requestId: string, accept: boolean) => call<WriteResultV1>("POST", "/coach/requests/respond", { requestId, accept }),
+  coachRequestList: (tab: string) => call<CoachRequestV1[]>("GET", `/coach/requests?tab=${tab}`),
+  requestAct: (op: "accept" | "decline" | "start" | "message", requestId: string) =>
+    call<CodedResultV1 & { conversationId?: string }>("POST", "/coach/requests/act", { op, requestId }),
+  myRequests: () => call<MyCoachingRequestV1[]>("GET", "/coaches/requests"),
+  coachClients: () => call<CoachClientsV1>("GET", "/coach/clients"),
+  coachClientsWrite: (op: "invite" | "bulk", input?: Record<string, unknown>) => call<CoachClientsWriteV1>("POST", "/coach/clients", { op, input }),
+  coachRelationship: (id: string) => call<CoachRelationshipPageV1>("GET", `/coach/relationships/${encodeURIComponent(id)}`),
+  coachChallenges: () => call<CoachChallengesV1>("GET", "/coach/challenges"),
+  transitionCoaching: (relationshipId: string, to: "paused" | "active" | "ended", reason: string | null) =>
+    call<CodedResultV1>("POST", "/coaching/transition", { relationshipId, to, reason }),
 };
 
 /** The one call made without a token: version minimums, before sign-in. Null when unreachable. */

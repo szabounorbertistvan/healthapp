@@ -143,8 +143,8 @@ const en = {
     send: "Send",
     closed: "This conversation no longer takes messages.",
     couldNotSend: "Could not send. Check the connection and try again.",
-    photo: "Photo — open on voinic.fit to see it",
-    voice: "Voice note — open on voinic.fit to listen",
+    photo: "Photo — tap to see it",
+    voice: "Voice note — tap to listen",
   },
   notifications: {
     title: "Notifications",
@@ -184,7 +184,7 @@ const en = {
     noRequests: "No requests waiting.",
     accept: "Accept",
     decline: "Decline",
-    acceptHint: "Accepting opens a conversation. You start coaching from voinic.fit when you are both ready.",
+    acceptHint: "Accepting opens a conversation. When you are both ready, start coaching from the accepted request.",
     review: "Review",
     weight: "Weight",
     previousWeek: "last week {value}",
@@ -232,6 +232,10 @@ const en = {
   goals: {
     weeks: "weeks",
     goalsLimit: "Your plan holds {limit} active goals at a time. Finish or close one to start another.",
+  },
+  forms: {
+    share: "Share",
+    dateFormat: "Type dates like {example}.",
   },
   errors: {
     offline: "No connection.",
@@ -382,8 +386,8 @@ const ro: typeof en = {
     send: "Trimite",
     closed: "Conversația nu mai primește mesaje.",
     couldNotSend: "Nu s-a trimis. Verifică conexiunea și încearcă din nou.",
-    photo: "Poză — deschide pe voinic.fit ca s-o vezi",
-    voice: "Mesaj vocal — deschide pe voinic.fit ca să-l asculți",
+    photo: "Poză — atinge ca s-o vezi",
+    voice: "Mesaj vocal — atinge ca să-l asculți",
   },
   notifications: {
     title: "Notificări",
@@ -423,7 +427,7 @@ const ro: typeof en = {
     noRequests: "Nicio cerere în așteptare.",
     accept: "Acceptă",
     decline: "Refuză",
-    acceptHint: "Acceptarea deschide o conversație. Începi colaborarea de pe voinic.fit când sunteți amândoi pregătiți.",
+    acceptHint: "Acceptarea deschide o conversație. Când sunteți amândoi pregătiți, începe colaborarea din solicitarea acceptată.",
     review: "Revizuiește",
     weight: "Greutate",
     previousWeek: "săptămâna trecută {value}",
@@ -471,6 +475,10 @@ const ro: typeof en = {
   goals: {
     weeks: "săpt.",
     goalsLimit: "Planul tău ține {limit} obiective active în același timp. Încheie sau închide unul ca să începi altul.",
+  },
+  forms: {
+    share: "Trimite",
+    dateFormat: "Scrie datele ca {example}.",
   },
   errors: {
     offline: "Nu există conexiune.",

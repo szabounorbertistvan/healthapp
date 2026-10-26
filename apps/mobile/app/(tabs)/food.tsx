@@ -3,7 +3,7 @@ import { isValidPortionGrams, MAX_PORTION_GRAMS, portionMacros } from "@healthap
 import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import { TargetsForm } from "@/components/targets-form";
@@ -11,7 +11,6 @@ import { Pill } from "@/components/training";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { config } from "@/lib/config";
 import { diary, shiftDay, sumMacros, totalsWithPending, type DiaryEntry } from "@/lib/food-model";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
@@ -27,7 +26,6 @@ import { capitalize, parseDay, weekDaysOf } from "@/lib/week";
 // here goes through the outbox, so it shows at once and is sent when there is
 // signal; edits and removals need the server.
 
-const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 
 /** A 24-box icon per slot (meal-card.tsx SLOT_ICON): a cup, the midday sun, a moon, a piece of fruit. */
 const SLOT_ICON: Record<MealSlotV1, string> = {

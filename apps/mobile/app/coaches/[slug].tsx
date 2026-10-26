@@ -203,7 +203,12 @@ function Cta({ c, busy, onContact, onCancel }: { c: CoachPageV1; busy: boolean; 
         <Text accessibilityRole="button" onPress={busy ? undefined : onCancel} style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkFaint }}>{p.cancelRequest}</Text>
       </View>
     );
-    case "accepted": return line(fill(p.acceptedHint, { name: c.name }));
+    case "accepted": return (
+      <View style={{ gap: 6 }}>
+        {line(fill(p.acceptedHint, { name: c.name }))}
+        <Text accessibilityRole="link" onPress={() => router.push("/coaches/requests")} style={{ fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{t.coachProfile.requests.mine.title}</Text>
+      </View>
+    );
     case "not_accepting": return line(fill(p.whyFull, { name: c.name }));
     default: return (
       <View style={{ alignSelf: "flex-start" }}>

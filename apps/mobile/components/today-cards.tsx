@@ -2,10 +2,9 @@ import type { DashboardV1, SessionCardV1 } from "@healthapp/api/v1";
 import { MEAL_SLOTS_V1 } from "@healthapp/api/v1";
 import { router } from "expo-router";
 import { useState, type ReactNode } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { Bar, Button, Card, CardLabel, Chevron, Divider, Dot, ICON, NavIcon, T } from "@/components/ui";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
 import { parseDay, weekDaysOf } from "@/lib/week";
@@ -17,7 +16,6 @@ import { parseDay, weekDaysOf } from "@/lib/week";
 
 const FLAME = "M12 22c4 0 7-3 7-7 0-3-2-5-3-7-1 2-2 3-3 3 0-3-1-6-4-8 0 4-4 6-4 12 0 4 3 7 7 7z";
 
-const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 
 function useNumbers() {
   const { locale } = useI18n();

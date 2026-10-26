@@ -1,9 +1,8 @@
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DayCard, LoadBadge, Pill } from "@/components/training";
 import { Button, Card, Divider, T } from "@/components/ui";
 import { api } from "@/lib/api";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { font, useTheme } from "@/lib/theme";
@@ -13,7 +12,6 @@ import { router } from "expo-router";
 // the page actions, every published program with its day cards, then the
 // history. Building and editing your own program is app/build.tsx.
 
-const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 
 export default function Workout() {
   const { t, locale } = useI18n();

@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch as NativeSwitch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch as NativeSwitch, Text, TextInput, View, type ViewStyle } from "react-native";
 import { Card } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -18,27 +18,36 @@ import { font, useTheme } from "@/lib/theme";
 
 const USERNAME = /^[a-zA-Z0-9_.]{3,24}$/;
 
-function Label({ children }: { children: ReactNode }) {
+export function Label({ children }: { children: ReactNode }) {
   const { color } = useTheme();
   return <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkSoft }}>{children}</Text>;
 }
 
-function Hint({ children, tone }: { children: ReactNode; tone?: string }) {
+export function Hint({ children, tone }: { children: ReactNode; tone?: string }) {
   const { color } = useTheme();
   return <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 12.5, lineHeight: 18, color: tone ?? color.inkFaint }}>{children}</Text>;
 }
 
-function Field({ label, value, onChange, multiline = false, placeholder, error, plain = false }: {
+export function Field({ label, value, onChange, multiline = false, placeholder, error, plain = false, keyboardType, maxLength, style, onBlur, editable, tall = false, a11y }: {
   label: string; value: string; onChange: (v: string) => void; multiline?: boolean; placeholder?: string; error?: string | null;
   /** No capitalising or correcting: usernames, time zones, numbers. */
   plain?: boolean;
+  keyboardType?: "default" | "number-pad" | "numbers-and-punctuation" | "email-address" | "url";
+  maxLength?: number;
+  onBlur?: () => void;
+  editable?: boolean;
+  /** A longer text: a taller box. */
+  tall?: boolean;
+  /** The field's name for a screen reader when the label is drawn elsewhere (label=""). */
+  a11y?: string;
+  style?: ViewStyle;
 }) {
   const { color } = useTheme();
   return (
-    <View>
-      <Label>{label}</Label>
+    <View style={style}>
+      {label ? <Label>{label}</Label> : null}
       <TextInput
-        accessibilityLabel={label}
+        accessibilityLabel={label || a11y}
         value={value}
         onChangeText={onChange}
         multiline={multiline}
@@ -46,7 +55,11 @@ function Field({ label, value, onChange, multiline = false, placeholder, error, 
         placeholderTextColor={color.inkFaint}
         autoCapitalize={plain ? "none" : "sentences"}
         autoCorrect={!plain}
-        style={[styles.input, multiline ? { height: 88, paddingTop: 10, textAlignVertical: "top" } : null, { color: color.ink, backgroundColor: color.bg, borderColor: color.line }]}
+        keyboardType={keyboardType}
+        maxLength={maxLength}
+        onBlur={onBlur}
+        editable={editable}
+        style={[styles.input, multiline ? { height: tall ? 160 : 88, paddingTop: 10, textAlignVertical: "top" } : null, { color: color.ink, backgroundColor: color.bg, borderColor: color.line }]}
       />
       {error ? <Hint tone={color.risk}>{error}</Hint> : null}
     </View>
@@ -54,13 +67,13 @@ function Field({ label, value, onChange, multiline = false, placeholder, error, 
 }
 
 /** A choice of a few: the picked one in gold. */
-function Pills<V extends string | number>({ label, options, value, onChange }: {
+export function Pills<V extends string | number>({ label, options, value, onChange }: {
   label: string; options: { value: V; label: string }[]; value: V; onChange: (v: V) => void;
 }) {
   const { color } = useTheme();
   return (
     <View>
-      <Label>{label}</Label>
+      {label ? <Label>{label}</Label> : null}
       <View accessibilityRole="radiogroup" style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
         {options.map((o) => {
           const on = o.value === value;
@@ -82,7 +95,7 @@ function Pills<V extends string | number>({ label, options, value, onChange }: {
 }
 
 /** components/ui.tsx Switch: label and hint on the left, the switch and its state on the right. */
-function Switch({ label, hint, value, onChange, disabled, onLabel, offLabel }: {
+export function Switch({ label, hint, value, onChange, disabled, onLabel, offLabel }: {
   label: string; hint?: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean; onLabel: string; offLabel: string;
 }) {
   const { color } = useTheme();
@@ -108,7 +121,7 @@ function Switch({ label, hint, value, onChange, disabled, onLabel, offLabel }: {
   );
 }
 
-function SaveRow({ label, busy, onPress, saved, error }: { label: string; busy: boolean; onPress: () => void; saved: string | null; error: string | null }) {
+export function SaveRow({ label, busy, onPress, saved, error }: { label: string; busy: boolean; onPress: () => void; saved: string | null; error: string | null }) {
   const { color } = useTheme();
   return (
     <View style={{ marginTop: 16, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
@@ -121,7 +134,7 @@ function SaveRow({ label, busy, onPress, saved, error }: { label: string; busy: 
   );
 }
 
-function CardTitle({ children }: { children: ReactNode }) {
+export function CardTitle({ children }: { children: ReactNode }) {
   const { color } = useTheme();
   return <Text style={{ fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: color.inkFaint }}>{children}</Text>;
 }

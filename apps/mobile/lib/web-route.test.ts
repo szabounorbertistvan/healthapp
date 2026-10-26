@@ -8,6 +8,7 @@ describe("nativeRoute", () => {
     expect(nativeRoute(`/workout/session/${ID}`)).toBe(`/session/${ID}`);
     expect(nativeRoute(`/feed/${ID}`)).toBe(`/post/${ID}`);
     expect(nativeRoute(`/clients/${ID}`)).toBe(`/coach/client/${ID}`);
+    expect(nativeRoute(`/clients/relationship/${ID}`)).toBe(`/coach/relationship/${ID}`);
     expect(nativeRoute(`/coach/messages/${ID}`)).toBe(`/thread/${ID}`);
     expect(nativeRoute("/coaches/ana-pop")).toBe("/coaches/ana-pop");
   });
@@ -16,6 +17,13 @@ describe("nativeRoute", () => {
     expect(nativeRoute("/food/plan")).toBe("/meal-plan");
     expect(nativeRoute("/leaderboards?scope=gym")).toBe("/leaderboards");
     expect(nativeRoute("/coaches/bookings/")).toBe("/bookings");
+    expect(nativeRoute("/coaches/requests")).toBe("/coaches/requests");
+    expect(nativeRoute("/requests?tab=accepted")).toBe("/coach/requests");
+    expect(nativeRoute("/bookings/availability")).toBe("/coach/availability");
+    expect(nativeRoute("/settings/coach-profile?step=5")).toBe("/coach/profile");
+    expect(nativeRoute("/settings/coach-profile#verification")).toBe("/coach/profile");
+    expect(nativeRoute("/clients")).toBe("/coach/clients");
+    expect(nativeRoute("/clients/challenges")).toBe("/coach/client-challenges");
   });
   it("leaves what the app does not have to the web", () => {
     expect(nativeRoute("/coaches/city/cluj-napoca")).toBeNull();

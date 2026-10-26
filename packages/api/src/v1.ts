@@ -580,7 +580,7 @@ export type MessageV1 = {
   body: string;
   at: string;
   mine: boolean;
-  /** A picture or a voice note: the app shows a placeholder and opens the thread on the web. */
+  /** A picture or a voice note: the app fetches it from /api/v1/messages/[id]/attachment when tapped. */
   attachment: "image" | "audio" | null;
 };
 
@@ -675,6 +675,15 @@ export type CoachRequestV1 = {
   message: string | null;
   goal: string | null;
   created_at: string;
+  /** The rest arrived with the requests screen (2026-10-26); an older server leaves them out. */
+  status?: "pending" | "accepted" | "declined" | "cancelled" | "closed";
+  client_id?: string;
+  client_avatar?: string | null;
+  preferred_format?: "online" | "in_person" | "hybrid" | null;
+  gym_name?: string | null;
+  /** Accepted and made a client (start_coaching_from_request). */
+  started?: boolean;
+  relationship_status?: "active" | "paused" | "ended" | null;
 };
 
 export type RespondRequestV1 = { requestId: string; accept: boolean };
@@ -1331,3 +1340,111 @@ export type ReportPreviewV1 =
       file_name: string;
     }
   | { ok: false; code: string; message: string };
+
+// ---------- the coach's availability ----------
+
+/** GET /api/v1/coach/availability — the web's /bookings/availability: the week, time off ahead, each service's booking settings, all in the coach's zone. */
+export type CoachAvailabilityV1 = {
+  timezone: string;
+  /** Today in that zone (YYYY-MM-DD): time off starts no earlier. */
+  today: string;
+  has_profile: boolean;
+  blocks: { id: string; weekday: number; start: string; end: string; active: boolean }[];
+  exceptions: { id: string; start_date: string; end_date: string; all_day: boolean; start: string | null; end: string | null; title: string | null }[];
+  services: {
+    id: string; name: string; active: boolean; delivery: string; bookable: boolean;
+    duration_minutes: number | null; buffer_before_minutes: number; buffer_after_minutes: number;
+    min_notice_minutes: number; max_advance_days: number; access: "public" | "clients"; confirmation: "instant" | "approval";
+  }[];
+};
+
+// ---------- the coach's own profile (Coach Discovery editor) ----------
+
+/** GET /api/v1/coach/profile — the web's /settings/coach-profile: the profile with every list, the catalog, the application review. */
+export type CoachProfileEditorV1 = {
+  /** Null: no coach profile yet (become_coach() not called). */
+  mine: import("@healthapp/shared/coach/profile").MyCoachProfile | null;
+  catalog: import("@healthapp/shared/coach/profile").CoachCatalog;
+  application: import("@healthapp/shared/coach/application").MyCoachApplication | null;
+  display_name: string;
+  avatar_url: string | null;
+  /** Cloudinary is configured: photo and document uploads work. */
+  uploads: boolean;
+};
+
+/** A signed Cloudinary upload (cover, avatar, coach document): post these fields with the file. */
+export type SignedUploadV1 = { cloudName: string; apiKey: string; fields: Record<string, string> };
+
+/** POST /api/v1/coach/profile — one coach-profile write; `missing` when the checklist refused it. */
+export type CoachProfileWriteV1 = CodedResultV1 & {
+  id?: string;
+  missing?: import("@healthapp/shared/coach/profile").CoachProfileMissing[];
+  ticket?: SignedUploadV1;
+};
+
+/** GET /api/v1/coaches/requests — the coaches the reader contacted (the web's /coaches/requests), pending first. */
+export type MyCoachingRequestV1 = {
+  id: string;
+  status: "pending" | "accepted" | "declined" | "cancelled" | "closed";
+  coach_name: string;
+  coach_slug: string | null;
+  coach_avatar: string | null;
+  service_name: string | null;
+  message: string | null;
+  goal: string | null;
+  preferred_format: "online" | "in_person" | "hybrid" | null;
+  created_at: string;
+  resolved_at: string | null;
+  started: boolean;
+  relationship_status?: "active" | "paused" | "ended" | null;
+};
+
+// ---------- the coach's clients (roster, relationships, bulk actions) ----------
+
+/** One coaching relationship from the coach's side (coach_client_relationships, 20261109110000). */
+export type CoachRelationshipV1 = {
+  id: string;
+  status: "invited" | "active" | "paused" | "ended";
+  started_at: string;
+  paused_at: string | null;
+  paused_by_me: boolean | null;
+  pause_reason: string | null;
+  ended_at: string | null;
+  ended_by_me: boolean | null;
+  end_reason: string | null;
+  conversation_id: string | null;
+  completed_bookings: number;
+  client_id: string;
+  client_name: string;
+  client_avatar: string | null;
+  next_booking_at: string | null;
+};
+
+/** GET /api/v1/coach/clients — the web's /clients: the roster, the plan's slots, the paused and past clients, what bulk actions offer. */
+export type CoachClientsV1 = {
+  clients: {
+    client_id: string; name: string; status: "invited" | "active" | "ended"; signal: "on_track" | "needs_attention" | "at_risk";
+    overall_pct: number; last_activity: string | null; started_at: string | null; load_7d: number; next_booking_at: string | null;
+  }[];
+  slots: { used: number; max: number };
+  /** Signal and adherence are Coach Pro. */
+  pro: boolean;
+  can_copy_programs: boolean;
+  programs: { id: string; name: string; client: string }[];
+  relationships: CoachRelationshipV1[];
+};
+
+/** POST /api/v1/coach/clients — invite (a new code) or bulk (one action for several clients). */
+export type CoachClientsWriteV1 = CodedResultV1 & { code?: string; done?: number; failed?: number };
+
+/** GET /api/v1/coach/relationships/[id] — one relationship and its history, from the coach's side. */
+export type CoachRelationshipPageV1 = {
+  relationship: CoachRelationshipV1;
+  history: { from_status: string | null; to_status: string; actor: "me" | "other" | "system"; reason: string | null; created_at: string }[];
+};
+
+/** GET /api/v1/coach/challenges — the challenges the coach's active clients joined, each with every client's progress. */
+export type CoachChallengesV1 = {
+  challenge: { id: string; title: string; type: string; target: number; status: ChallengeStatus };
+  clients: { client_id: string; name: string; progress: number; pct: number; completed: boolean }[];
+}[];

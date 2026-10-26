@@ -2,13 +2,12 @@ import type { TrainingLoadV1, WorkoutExerciseV1, WorkoutHistoryV1 } from "@healt
 import { circuitSegments, formatSetDuration } from "@healthapp/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AthleteFigure, LoadBadge, loadTone } from "@/components/training";
 import { Card, Divider, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { setsByExercise } from "@/lib/logger-model";
 import { useOfflineQuery } from "@/lib/offline-query";
@@ -22,7 +21,6 @@ import { alpha, font, useTheme } from "@/lib/theme";
 // and every past session with its sets. Opening it also keeps the day on the
 // phone, so the logger behind it works with no signal.
 
-const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 
 export default function WorkoutDayScreen() {
   const { dayId } = useLocalSearchParams<{ dayId: string }>();

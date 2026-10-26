@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryOf, filterTaxonomy, foldText, groupSpecializations, SPECIALIZATION_CATEGORIES, specializationName } from "./coach-taxonomy";
+import { categoryOf, filterTaxonomy, foldText, groupSpecializations, SPECIALIZATION_CATEGORIES, specializationName } from "./taxonomy";
 import { coachProfileMessages } from "@healthapp/i18n/messages/coach-profile";
 
 const e = (slug: string, category: string | null, parent: string | null = null, name_ro = slug) =>

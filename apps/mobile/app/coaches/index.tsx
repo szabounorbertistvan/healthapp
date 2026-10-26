@@ -65,6 +65,11 @@ export default function Coaches() {
         <View>
           <T kind="title">{d.title}</T>
           <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 13.5, lineHeight: 19, color: color.inkSoft }}>{d.subtitle}</Text>
+          {/* the web's header links (coaches/layout.tsx): the reader's requests and bookings */}
+          <View style={{ marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
+            <Text accessibilityRole="link" onPress={() => router.push("/coaches/requests")} style={{ fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{t.coachProfile.requests.mine.title}</Text>
+            <Text accessibilityRole="link" onPress={() => router.push("/bookings")} style={{ fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{t.coachProfile.bookings.mine.title}</Text>
+          </View>
         </View>
         <View style={[styles.seg, { backgroundColor: color.surface }]}>
           {(["all", "saved"] as const).map((k) => (

@@ -2,19 +2,18 @@ import type { CoachBookingsV1 } from "@healthapp/api/v1";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
 
 // The coach's bookings — the web's /bookings on a phone (components/bookings.tsx
 // CoachBookingList): a tab at a time, each booking with who, what, when in its
 // own zone, and the moves it allows (confirm, decline or cancel with a reason,
-// completed, no-show). Hours and time off open on voinic.fit.
+// completed, no-show). Hours and time off are /coach/availability.
 
 type Tab = CoachBookingsV1["tab"];
 type Row = CoachBookingsV1["items"][number];
@@ -38,7 +37,7 @@ export default function CoachBookings() {
         <View>
           <T kind="title">{b.title}</T>
           <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 13.5, lineHeight: 19, color: color.inkSoft }}>{b.hint}</Text>
-          <Text accessibilityRole="link" onPress={() => void Linking.openURL(`${config.webUrl}/bookings/availability`)} style={{ marginTop: 6, fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{`${b.availabilityLink} ↗`}</Text>
+          <Text accessibilityRole="link" onPress={() => router.push("/coach/availability")} style={{ marginTop: 6, fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{`${b.availabilityLink} →`}</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
           {TABS.map((k) => (

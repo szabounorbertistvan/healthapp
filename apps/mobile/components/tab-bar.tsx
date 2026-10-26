@@ -1,20 +1,18 @@
 import { BlurView } from "expo-blur";
 import { router, type Tabs } from "expo-router";
 import { useEffect, useState, type ComponentProps } from "react";
-import { BackHandler, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Divider, Glass, ICON, NavIcon, T } from "@/components/ui";
 import { signOut } from "@/lib/auth";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { alpha, font, useTheme } from "@/lib/theme";
 
 // The web's phone navigation (components/client-nav.tsx ClientTabBar and
 // nav-links.tsx CoachTabBar): a floating glass pane a thumb's width off the
 // bottom edge, four sections plus "More", the active one in gold with a short
-// bar under its label; "More" opens a sheet with every other section. A
-// section the app has natively opens its screen; the rest open the same page
-// on voinic.fit.
+// bar under its label; "More" opens a sheet with every other section, each
+// one the app's own screen.
 
 /** What expo-router hands a custom tab bar (React Navigation's BottomTabBarProps). */
 type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>>[0];
@@ -43,8 +41,8 @@ type SheetKey =
   | "notifications" | "coach" | "bookings" | "account" | "library" | "nutrition" | "marketplace" | "settings"
   | "training" | "habits" | "findCoach";
 
-/** A section in the sheet: a native route, or a path on the web. */
-type SheetItem = { key: SheetKey; icon: string; route?: string; web?: string };
+/** A section in the sheet and the screen it opens. */
+type SheetItem = { key: SheetKey; icon: string; route: string };
 
 const CLIENT_SHEET: SheetItem[] = [
   { key: "programs", icon: ICON.programs, route: "/routines" },
@@ -133,8 +131,7 @@ function MoreSheet({ open, onClose, items, current }: { open: boolean; onClose: 
 
   const go = (item: SheetItem) => {
     onClose();
-    if (item.route) router.push(item.route as never);
-    else if (item.web) void Linking.openURL(`${config.webUrl}${item.web}`);
+    router.push(item.route as never);
   };
 
   if (!open) return null;
@@ -147,7 +144,7 @@ function MoreSheet({ open, onClose, items, current }: { open: boolean; onClose: 
           <T kind="label" style={{ paddingHorizontal: 4, marginBottom: 8 }}>{t.common.moreSheet.title}</T>
           <ScrollView style={{ maxHeight: 520 }}>
             {items.map((item) => {
-              const active = Boolean(item.route) && `/${current}` === item.route;
+              const active = `/${current}` === item.route;
               return (
               <Pressable
                 key={item.key}
@@ -158,7 +155,6 @@ function MoreSheet({ open, onClose, items, current }: { open: boolean; onClose: 
               >
                 <NavIcon d={item.icon} size={20} color={active ? color.accentInk : color.inkSoft} />
                 <Text style={[styles.sheetLabel, { color: active ? color.accentInk : color.inkSoft, fontFamily: active ? font.semibold : font.medium }]}>{item.key === "findCoach" ? t.coachProfile.discovery.explore : t.common.nav[item.key]}</Text>
-                {item.web ? <NavIcon d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6" size={14} color={color.inkFaint} /> : null}
               </Pressable>
               );
             })}

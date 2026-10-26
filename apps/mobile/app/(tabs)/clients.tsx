@@ -1,10 +1,9 @@
 import type { CoachClientV1 } from "@healthapp/api/v1";
 import { router } from "expo-router";
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
-import { config } from "@/lib/config";
 import { percent, timeAgo } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
@@ -14,7 +13,7 @@ import { alpha, font, useTheme } from "@/lib/theme";
 // dashboard/page.tsx): four figures, each opening the section it counts, then
 // the queue of clients, at risk first, with why each one is flagged. The
 // signal, the reason, the % and the at-risk count are Coach Pro, as on the web.
-// A client opens on the web (the full client page); a check-in opens its review.
+// A client opens their page; a check-in opens its review; the roster is /coach/clients.
 
 const ICON = {
   clients: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2 20a7 7 0 0 1 14 0M17 11a3 3 0 0 0 0-6M18 20h4a6 6 0 0 0-3-5.2",
@@ -58,10 +57,10 @@ export default function Dashboard() {
             ) : null}
 
             <View style={styles.grid}>
-              <Stat icon={ICON.clients} label={d.activeClients} value={String(rows.length)} onPress={() => void Linking.openURL(`${config.webUrl}/clients`)} />
+              <Stat icon={ICON.clients} label={d.activeClients} value={String(rows.length)} onPress={() => router.push("/coach/clients")} />
               <Stat icon={ICON.checkIns} label={d.checkInsToReview} value={String(data.checkins_pending)} accent={data.checkins_pending > 0} onPress={() => router.navigate("/inbox")} />
               <Stat icon={ICON.messages} label={d.unreadMessages} value={String(unread)} accent={unread > 0} onPress={() => router.navigate("/chats")} />
-              <Stat icon={ICON.risk} label={d.atRisk} value={pro ? String(atRisk) : "—"} accent={pro && atRisk > 0} onPress={() => void Linking.openURL(`${config.webUrl}/clients`)} />
+              <Stat icon={ICON.risk} label={d.atRisk} value={pro ? String(atRisk) : "—"} accent={pro && atRisk > 0} onPress={() => router.push("/coach/clients")} />
             </View>
 
             {rows.length === 0 ? (

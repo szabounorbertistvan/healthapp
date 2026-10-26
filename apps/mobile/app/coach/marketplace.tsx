@@ -2,22 +2,22 @@ import type { CoachMarketplaceV1 } from "@healthapp/api/v1";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
 
 // The coach's marketplace — the web's /marketplace on a phone: the profile's
 // state, completeness and what is still missing, your public link to share,
 // then requests, bookings, clients, messages, reviews and services, each
-// leading to where it is managed (in the app where it exists, else voinic.fit).
-// Editing the profile itself (the six-step wizard) stays on the web.
+// leading to where it is managed.
+// Editing the profile itself is /coach/profile.
 
-const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
+/** The coach-profile editor (/settings/coach-profile on the web), at a step or at Verification. */
+const profile = (params: { step?: string; focus?: string } = {}) => () => router.push({ pathname: "/coach/profile", params });
 
 export default function CoachMarketplace() {
   const { t, fill } = useI18n();
@@ -45,7 +45,7 @@ export default function CoachMarketplace() {
             <Text style={{ fontFamily: font.displayBold, fontSize: 18, color: color.ink }}>{t.coachBecome.title}</Text>
             <T kind="soft" style={{ lineHeight: 19 }}>{t.coachBecome.body}</T>
             <View style={{ marginTop: 6, alignSelf: "flex-start" }}>
-              <Button height={42} label={t.coachBecome.button} onPress={web("/marketplace")} />
+              <Button height={42} label={t.coachBecome.button} onPress={profile()} />
             </View>
           </Card>
         ) : (
@@ -93,7 +93,7 @@ export default function CoachMarketplace() {
                 </>
               )}
             </Tile>
-            <Tile title={c.services} onOpen={web("/settings/coach-profile?step=5")}>
+            <Tile title={c.services} onOpen={profile({ step: "5" })}>
               <Line>{o.services.active === 0 ? c.servicesNone : fill(c.servicesActive, { n: o.services.active, b: o.services.bookable })}</Line>
             </Tile>
           </>
@@ -149,9 +149,9 @@ function Profile({ o }: { o: CoachMarketplaceV1 }) {
         })}
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        <Button height={42} label={primary} onPress={web(state === "ready" ? "/settings/coach-profile?step=6" : "/settings/coach-profile")} />
+        <Button height={42} label={primary} onPress={profile(state === "ready" ? { step: "6" } : {})} />
         {!o.verified ? (
-          <Pressable accessibilityRole="link" onPress={web("/settings/coach-profile#verification")} style={[styles.quiet, { backgroundColor: color.bg }]}>
+          <Pressable accessibilityRole="link" onPress={profile({ focus: "verification" })} style={[styles.quiet, { backgroundColor: color.bg }]}>
             <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.ink }}>{m.actions.verify}</Text>
           </Pressable>
         ) : null}

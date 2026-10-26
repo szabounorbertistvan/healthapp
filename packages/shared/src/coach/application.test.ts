@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   COACH_DOCUMENT_KINDS, COACH_DOCUMENT_MAX_BYTES, applicationState, checkDocumentFile, checkStoredDocument, disciplinesToEvidence,
   formatBytes, isLegacyIdentityDocument,
-} from "./coach-application";
+} from "./application";
 
 const USER = "11111111-2222-3333-4444-555555555555";
 const ID = `voinic/coach-docs/${USER}/0123456789abcdef`;
