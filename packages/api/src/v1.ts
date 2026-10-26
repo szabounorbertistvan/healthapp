@@ -1448,3 +1448,38 @@ export type CoachChallengesV1 = {
   challenge: { id: string; title: string; type: string; target: number; status: ChallengeStatus };
   clients: { client_id: string; name: string; progress: number; pct: number; completed: boolean }[];
 }[];
+
+// ---------- the client's coach (lifecycle) ----------
+
+/** One of the reader's coaching relationships (my_coaching_relationships, 20261109110000). */
+export type MyCoachingRelationshipV1 = {
+  id: string;
+  status: "invited" | "active" | "paused" | "ended";
+  started_at: string;
+  paused_at: string | null;
+  paused_by_me: boolean | null;
+  pause_reason: string | null;
+  ended_at: string | null;
+  ended_by_me: boolean | null;
+  end_reason: string | null;
+  conversation_id: string | null;
+  completed_bookings: number;
+  coach_id: string;
+  coach_name: string;
+  coach_avatar: string | null;
+  coach_slug: string | null;
+  my_review: { rating: number; status: string } | null;
+};
+
+/** GET /api/v1/coaching — the web's /coach: the current coach (active or paused) with its history, the past ones, and the ways to find one. */
+export type MyCoachingV1 = {
+  current: MyCoachingRelationshipV1 | null;
+  /** The current relationship's history, oldest first; empty without one. */
+  history: { from_status: string | null; to_status: string; actor: "me" | "other" | "system"; reason: string | null; created_at: string }[];
+  past: MyCoachingRelationshipV1[];
+  /** No relationship rows but an active coach: a database before the lifecycle — the app shows the thread as before. */
+  legacy: boolean;
+  /** Without a current coach: the home gym and the coaches who work there. */
+  gym: { id: string; name: string } | null;
+  gym_coaches: { slug: string; display_name: string; avatar_url: string | null; headline: string | null; accepting_clients: boolean }[];
+};

@@ -137,7 +137,7 @@ const en = {
   },
   messages: {
     title: "Coach",
-    noCoach: "No coach yet. Find one on voinic.fit.",
+    noCoach: "No coach yet.",
     empty: "No messages yet. Say hello.",
     placeholder: "Write a message…",
     send: "Send",
@@ -380,7 +380,7 @@ const ro: typeof en = {
   },
   messages: {
     title: "Antrenor",
-    noCoach: "Încă nu ai antrenor. Găsește unul pe voinic.fit.",
+    noCoach: "Încă nu ai antrenor.",
     empty: "Încă nu sunt mesaje. Spune salut.",
     placeholder: "Scrie un mesaj…",
     send: "Trimite",

@@ -1,6 +1,6 @@
 import type { MessageV1 } from "@healthapp/api/v1";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Screen, T } from "@/components/ui";
@@ -19,7 +19,11 @@ import { font, useTheme } from "@/lib/theme";
 // 20261207130000) and the thread is then re-read, so nothing is shown that a
 // read would not show. Sending needs a connection: a message is a
 // conversation, not a log, and an hour-late "on my way" is worse than none.
-export function ThreadView({ conversationId, back }: { conversationId: string; back: string }) {
+export function ThreadView({ conversationId, back, header }: {
+  conversationId: string; back: string;
+  /** Above the messages, scrolling with them (the client's Coach page: the coaching card). */
+  header?: ReactNode;
+}) {
   const { t } = useI18n();
   const { color } = useTheme();
   const queryClient = useQueryClient();
@@ -89,6 +93,7 @@ export function ThreadView({ conversationId, back }: { conversationId: string; b
                 keyExtractor={(m) => m.id}
                 contentContainerStyle={styles.list}
                 onContentSizeChange={() => list.current?.scrollToEnd({ animated: false })}
+                ListHeaderComponent={header ? <View style={{ marginBottom: 6 }}>{header}</View> : undefined}
                 ListEmptyComponent={<T kind="faint">{t.mobile.messages.empty}</T>}
                 renderItem={({ item }) => <Bubble m={item} />}
               />

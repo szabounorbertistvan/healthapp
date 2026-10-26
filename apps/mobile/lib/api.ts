@@ -3,7 +3,7 @@ import {
   type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1, type ProgressOverviewV1, type SettingsV1, type SaveAccountV1, type GoalsV1, type CreateGoalV1, type LeaderboardV1, type AchievementsV1, type ChallengesV1, type PostDetailV1, type FeedV1, type GymV1, type ChallengeDetailV1, type CreateChallengeV1,
   type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
   type AppConfigV1, type CoachCheckInV1, type CoachConversationV1, type CoachDashboardV1, type CoachRequestV1, type ThreadV1,
-  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1, type FeedbackSessionV1, type StreakV1, type FitnessScoreV1, type NutritionTrendsV1, type MyMealPlanV1, type RecipeV1, type ReportPreviewV1, type ImportPreviewV1, type ImportChunkResultV1, type CoachClientPageV1, type WeeklySummaryV1, type ProgressBodyV1, type PhotoTicketV1, type CoachBookingsV1, type CoachReviewsV1, type CoachSearchV1, type CoachPageV1, type CoachSlotsV1, type CoachAvailabilityV1, type CoachProfileEditorV1, type CoachProfileWriteV1, type MyCoachingRequestV1, type CoachClientsV1, type CoachClientsWriteV1, type CoachRelationshipPageV1, type CoachChallengesV1,
+  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1, type FeedbackSessionV1, type StreakV1, type FitnessScoreV1, type NutritionTrendsV1, type MyMealPlanV1, type RecipeV1, type ReportPreviewV1, type ImportPreviewV1, type ImportChunkResultV1, type CoachClientPageV1, type WeeklySummaryV1, type ProgressBodyV1, type PhotoTicketV1, type CoachBookingsV1, type CoachReviewsV1, type CoachSearchV1, type CoachPageV1, type CoachSlotsV1, type CoachAvailabilityV1, type CoachProfileEditorV1, type CoachProfileWriteV1, type MyCoachingRequestV1, type CoachClientsV1, type CoachClientsWriteV1, type CoachRelationshipPageV1, type CoachChallengesV1, type MyCoachingV1,
 } from "@healthapp/api/v1";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
@@ -189,6 +189,8 @@ export const api = {
   addMeasurement: (m: MeasurementV1) => call<WriteResultV1>("POST", "/measurements", m),
   checkIn: () => call<CheckInV1>("GET", "/check-in"),
   coachThread: () => call<CoachThreadV1>("GET", "/coach-thread"),
+  myCoaching: () => call<MyCoachingV1>("GET", "/coaching"),
+  joinCoach: (code: string) => call<CodedResultV1>("POST", "/coaching/join", { code }),
   sendMessage: (conversationId: string, body: string) => call<CodedResultV1>("POST", "/messages", { conversationId, body }),
   markThreadRead: (conversationId: string) => call<WriteResultV1>("POST", "/messages/read", { conversationId }),
   notifications: (before?: string) =>
