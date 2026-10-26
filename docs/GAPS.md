@@ -36,6 +36,10 @@ App Store once any social login ships in a native app, and would be one more
 sign-up a user lands straight on their home screen with default units, locale
 and check-in day — nothing asks.
 
+**pg_cron history purge — applied live 2026-10-26** (629k → 132k rows; /admin/system loads again). `20261209100000_cron_history_purge.sql`
+keeps a week of `cron.job_run_details` (629k rows / 103 MB had piled up, mostly from the 5-second
+`rest-push-tick`), which made `admin_system_health()` hit the statement timeout on /admin/system.
+
 ## Nutrition
 
 **1. ~~A plan is a single day, repeated forever~~ — closed 2026-09-16.**
@@ -75,9 +79,12 @@ logger opens the form on the scanned code, so the next scan of it finds the
 row. Owner-only: `search_foods()` / `food_by_barcode()` / `food_by_id()` hide
 other people's customs, and migration `20261206100000` (pgTAP
 `custom_foods.test.sql`) keeps an owner's row custom and unverified, so it
-cannot be turned into a shared-library row. Still missing: editing or deleting
-a custom food after it is saved (the policies allow it, no screen does it), and
-a per-account cap on how many can be created.
+cannot be turned into a shared-library row. **Edit and delete since 2026-10-26:**
+"My foods" at `/food/mine` (link on the Nutrition page; `components/my-foods.tsx`,
+`updateCustomFood` / `deleteCustomFood`, read `getMyCustomFoods`). Logged history keeps its
+snapshot; a food still in any meal plan is refused (FK 23503) with a sentence. Driven against the
+live project as the test client (create → edit → delete). Still missing: a
+per-account cap on how many can be created, and an edit entry point from inside the pickers.
 
 ## Engagement
 

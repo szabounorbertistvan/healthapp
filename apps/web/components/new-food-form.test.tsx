@@ -6,8 +6,13 @@ const createCustomFood = vi.fn(async (..._a: unknown[]) => ({
   ok: true,
   food: { id: "f-1", name_en: "Zacusca", name_ro: "Zacusca", group: "", per_100g: { kcal: 95, protein: 1.5, carbs: 8, fat: 6 }, portions: [] },
 }));
+const updateCustomFood = vi.fn(async (..._a: unknown[]) => ({
+  ok: true,
+  food: { id: "f-9", name_en: "Zacusca", name_ro: "Zacusca", group: "", per_100g: { kcal: 90, protein: 1.5, carbs: 8, fat: 6 }, portions: [] },
+}));
 vi.mock("@/app/nutrition-actions", () => ({
   createCustomFood: (...a: unknown[]) => createCustomFood(...a),
+  updateCustomFood: (...a: unknown[]) => updateCustomFood(...a),
 }));
 
 import { dict, renderWithApp } from "@/test/render";
@@ -16,7 +21,10 @@ import { NewFoodForm } from "./new-food-form";
 const m = dict().clientWidgets.newFoodForm;
 
 describe("NewFoodForm", () => {
-  beforeEach(() => createCustomFood.mockClear());
+  beforeEach(() => {
+    createCustomFood.mockClear();
+    updateCustomFood.mockClear();
+  });
 
   it("opens on a scanned code and saves it with the label values and a serving", async () => {
     const user = userEvent.setup();
@@ -74,5 +82,47 @@ describe("NewFoodForm", () => {
     await user.type(screen.getByLabelText(m.kcal), "45");
     await user.click(screen.getByRole("button", { name: m.save }));
     expect(await screen.findByText(m.labelTooMuch)).toBeInTheDocument();
+  });
+
+  it("edits a food of one's own: filled in, saved through updateCustomFood", async () => {
+    const user = userEvent.setup();
+    const onCreated = vi.fn();
+    renderWithApp(
+      <NewFoodForm
+        editing={{
+          id: "f-9", name: "Zacusca", brand: "Bunica", barcode: null,
+          per_100g: { kcal: 95, protein: 1.5, carbs: 8, fat: 6 },
+          saturatedFat: null, sugar: 5, salt: null,
+          portions: [{ label: "1 jar", grams: 400 }],
+        }}
+        onCreated={onCreated}
+        onCancel={() => {}}
+      />,
+    );
+    expect(screen.getByText(m.editTitle)).toBeInTheDocument();
+    expect(screen.getByLabelText(m.name)).toHaveValue("Zacusca");
+    expect(screen.getByLabelText(m.kcal)).toHaveValue("95");
+    // label details are filled, so the folded part is open
+    expect(screen.getByLabelText(m.sugar)).toBeVisible();
+
+    await user.clear(screen.getByLabelText(m.kcal));
+    await user.type(screen.getByLabelText(m.kcal), "90");
+    await user.click(screen.getByRole("button", { name: m.save }));
+
+    expect(createCustomFood).not.toHaveBeenCalled();
+    expect(updateCustomFood).toHaveBeenCalledWith("f-9", {
+      name: "Zacusca",
+      brand: "Bunica",
+      kcal: 90,
+      protein: 1.5,
+      carbs: 8,
+      fat: 6,
+      saturatedFat: null,
+      sugar: 5,
+      salt: null,
+      barcode: null,
+      portions: [{ label: "1 jar", grams: 400 }],
+    });
+    expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: "f-9" }));
   });
 });

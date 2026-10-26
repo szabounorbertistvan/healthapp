@@ -320,3 +320,52 @@ export async function getMySoloPlan(): Promise<{ id: string; hasMeals: boolean }
   if (!data) return null;
   return { id: data.id as string, hasMeals: ((data.planned_meals ?? []) as unknown[]).length > 0 };
 }
+
+/** One of the caller's own custom foods, as "My foods" lists and edits it. */
+export type MyCustomFood = {
+  id: string;
+  name: string;
+  brand: string | null;
+  barcode: string | null;
+  per_100g: Macros;
+  saturatedFat: number | null;
+  sugar: number | null;
+  salt: number | null;
+  portions: { label: string; grams: number }[];
+};
+
+/**
+ * The foods the caller created (source 'custom', owner = them), newest first.
+ * foods_select lets an owner read their own rows, so this is a plain read —
+ * nobody else's customs can come back.
+ */
+export async function getMyCustomFoods(): Promise<MyCustomFood[]> {
+  const live = await liveUser();
+  if (!live) return [];
+  const { data } = await live.supabase
+    .from("foods")
+    .select("id, name_ro, name_en, brand, barcode, kcal_100g, protein_100g, carbs_100g, fat_100g, saturated_fat_100g, sugar_100g, salt_100g, portions")
+    .eq("owner_id", live.userId)
+    .eq("source", "custom")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  type Row = {
+    id: string; name_ro: string | null; name_en: string; brand: string | null; barcode: string | null;
+    kcal_100g: number; protein_100g: number; carbs_100g: number; fat_100g: number;
+    saturated_fat_100g: number | null; sugar_100g: number | null; salt_100g: number | null; portions: unknown;
+  };
+  const num = (v: number | null) => (v === null ? null : Number(v));
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: r.id,
+    name: r.name_ro || r.name_en,
+    brand: r.brand,
+    barcode: r.barcode,
+    per_100g: { kcal: Number(r.kcal_100g), protein: Number(r.protein_100g), carbs: Number(r.carbs_100g), fat: Number(r.fat_100g) },
+    saturatedFat: num(r.saturated_fat_100g),
+    sugar: num(r.sugar_100g),
+    salt: num(r.salt_100g),
+    portions: Array.isArray(r.portions)
+      ? (r.portions as { label: string; grams: number }[]).map((p) => ({ label: String(p.label), grams: Number(p.grams) }))
+      : [],
+  }));
+}

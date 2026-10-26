@@ -163,6 +163,7 @@ const en = {
   },
   newFoodForm: {
     title: "New food",
+    editTitle: "Edit food",
     body: "Values per 100 g, from the label or your recipe. It stays in your list and shows up first in search.",
     name: "Name",
     namePlaceholder: "e.g. Homemade bean soup",
@@ -480,6 +481,7 @@ const ro: typeof en = {
   },
   newFoodForm: {
     title: "Aliment nou",
+    editTitle: "Modifică alimentul",
     body: "Valori la 100 g, de pe etichetă sau din rețeta ta. Rămâne în lista ta și apare primul la căutare.",
     name: "Nume",
     namePlaceholder: "ex. Ciorbă de fasole de acasă",

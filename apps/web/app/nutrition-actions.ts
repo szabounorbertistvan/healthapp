@@ -334,26 +334,122 @@ export async function createCustomFood(input: NewFoodInput): Promise<CreateFoodR
   if (!parsed.ok) return parsed.result as CreateFoodResult;
   const { t } = await getI18n();
   const m = t.clientWidgets.newFoodForm;
-  const invalid = (message: string): CreateFoodResult => ({ ok: false, errorCode: "INVALID_INPUT", message });
+  const checked = customFoodRow(input, m);
+  if ("invalid" in checked) return { ok: false, errorCode: "INVALID_INPUT", message: checked.invalid };
 
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const { data, error } = await supabase
+    .from("foods")
+    .insert({ source: "custom", owner_id: userId, ...checked.row })
+    .select("id")
+    .single();
+  if (error) {
+    console.error("createCustomFood failed:", error.message);
+    return { ok: false, message: m.couldNotCreate };
+  }
+  return { ok: true, food: { ...checked.food, id: data.id } };
+}
+
+/**
+ * Change one of the caller's own custom foods. Same checks as creating one.
+ * History does not move: food_logs snapshot the macros at log time. A plan
+ * that holds the food (the owner's own, or a coach's plan for a client) reads
+ * the new numbers from now on — that is the point of correcting a label.
+ * foods_custom_update pins owner, source and verified, and `mutated()` turns
+ * someone else's id into an error rather than a silent success.
+ */
+export async function updateCustomFood(foodId: string, input: NewFoodInput): Promise<CreateFoodResult> {
+  const parsedId = await parseInput(id, foodId);
+  if (!parsedId.ok) return parsedId.result as CreateFoodResult;
+  const parsed = await parseInput(NewFoodShape, input);
+  if (!parsed.ok) return parsed.result as CreateFoodResult;
+  const { t } = await getI18n();
+  const m = t.clientWidgets.newFoodForm;
+  const checked = customFoodRow(input, m);
+  if ("invalid" in checked) return { ok: false, errorCode: "INVALID_INPUT", message: checked.invalid };
+
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const failed = await mutated(
+    await live.supabase
+      .from("foods")
+      .update(checked.row, { count: "exact" })
+      .eq("id", foodId)
+      .eq("owner_id", live.userId)
+      .eq("source", "custom"),
+  );
+  if (failed) return failed as CreateFoodResult;
+  revalidatePath("/food/mine");
+  return { ok: true, food: { ...checked.food, id: foodId } };
+}
+
+/**
+ * Delete one of the caller's own custom foods. Diary entries keep their
+ * snapshot (food_logs.food_id is set null), favourites and recipe lines let go
+ * of it the same way; a meal plan line has no snapshot, so a food still in any
+ * plan is refused (23503) with a sentence instead of a constraint name.
+ */
+export async function deleteCustomFood(foodId: string): Promise<ActionResult> {
+  const parsed = await parseInput(id, foodId);
+  if (!parsed.ok) return parsed.result;
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const result = await live.supabase
+    .from("foods")
+    .delete({ count: "exact" })
+    .eq("id", foodId)
+    .eq("owner_id", live.userId)
+    .eq("source", "custom");
+  if (result.error?.code === "23503") {
+    const { t } = await getI18n();
+    return { ok: false, message: t.clientApp.myFoods.inPlan };
+  }
+  const failed = await mutated(result);
+  if (failed) return failed;
+  revalidatePath("/food/mine");
+  return { ok: true };
+}
+
+type CustomFoodRow = {
+  name_en: string;
+  name_ro: string;
+  brand: string | null;
+  barcode: string | null;
+  kcal_100g: number;
+  protein_100g: number;
+  carbs_100g: number;
+  fat_100g: number;
+  saturated_fat_100g: number | null;
+  sugar_100g: number | null;
+  salt_100g: number | null;
+  portions: { label: string; grams: number; note: string; origin: "curated" }[];
+};
+
+/** The checks a custom food passes before it is written, and the row it becomes. */
+function customFoodRow(
+  input: NewFoodInput,
+  m: { nameRequired: string; macrosNegative: string; tooMuch: string; labelTooMuch: string; barcodeInvalid: string; portionInvalid: string },
+): { invalid: string } | { row: CustomFoodRow; food: Omit<FoodItem, "id"> } {
   const name = input.name.trim();
-  if (name.length < 2) return invalid(m.nameRequired);
+  if (name.length < 2) return { invalid: m.nameRequired };
   const round = (v: number) => (Number.isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : NaN);
   const per_100g = { kcal: round(input.kcal), protein: round(input.protein), carbs: round(input.carbs), fat: round(input.fat) };
-  if (Object.values(per_100g).some((v) => Number.isNaN(v))) return invalid(m.macrosNegative);
+  if (Object.values(per_100g).some((v) => Number.isNaN(v))) return { invalid: m.macrosNegative };
   // 900 kcal is pure fat; three macros past 100 g (a little slack for label rounding) cannot fit in 100 g.
-  if (per_100g.kcal > 900 || per_100g.protein + per_100g.carbs + per_100g.fat > 101) return invalid(m.tooMuch);
+  if (per_100g.kcal > 900 || per_100g.protein + per_100g.carbs + per_100g.fat > 101) return { invalid: m.tooMuch };
 
   // Optional label nutrients: blank stays null ("not measured"), a value is a part of its macro.
   const optional = (v: number | null | undefined) => (v === null || v === undefined || Number.isNaN(v) ? null : round(v));
   const saturated = optional(input.saturatedFat);
   const sugar = optional(input.sugar);
   const salt = optional(input.salt);
-  if ([saturated, sugar, salt].some((v) => Number.isNaN(v))) return invalid(m.macrosNegative);
-  if ((saturated ?? 0) > per_100g.fat || (sugar ?? 0) > per_100g.carbs || (salt ?? 0) > 100) return invalid(m.labelTooMuch);
+  if ([saturated, sugar, salt].some((v) => Number.isNaN(v))) return { invalid: m.macrosNegative };
+  if ((saturated ?? 0) > per_100g.fat || (sugar ?? 0) > per_100g.carbs || (salt ?? 0) > 100) return { invalid: m.labelTooMuch };
 
   const barcode = input.barcode?.trim() || null;
-  if (barcode && !/^\d{6,14}$/.test(barcode)) return invalid(m.barcodeInvalid);
+  if (barcode && !/^\d{6,14}$/.test(barcode)) return { invalid: m.barcodeInvalid };
 
   // Same shape the foods_portions_shape constraint enforces, checked here so
   // the person gets a sentence instead of a constraint name.
@@ -364,19 +460,13 @@ export async function createCustomFood(input: NewFoodInput): Promise<CreateFoodR
     portions.length > MAX_FOOD_PORTIONS ||
     portions.some((p) => p.label.length < 1 || p.label.length > 16 || !Number.isFinite(p.grams) || p.grams <= 0 || p.grams > MAX_FOOD_PORTION_GRAMS)
   ) {
-    return invalid(m.portionInvalid);
+    return { invalid: m.portionInvalid };
   }
   const storedPortions = portions.map((p) => ({ label: p.label, grams: p.grams, note: "", origin: "curated" as const }));
   const brand = input.brand?.trim() || null;
 
-  const live = await liveUser();
-  if (!live) return notSignedIn;
-  const { supabase, userId } = live;
-  const { data, error } = await supabase
-    .from("foods")
-    .insert({
-      source: "custom",
-      owner_id: userId,
+  return {
+    row: {
       // One name in both columns: a custom food is never part of the folded
       // English tail, whatever language it was typed in.
       name_en: name,
@@ -391,17 +481,8 @@ export async function createCustomFood(input: NewFoodInput): Promise<CreateFoodR
       sugar_100g: sugar,
       salt_100g: salt,
       portions: storedPortions,
-    })
-    .select("id")
-    .single();
-  if (error) {
-    console.error("createCustomFood failed:", error.message);
-    return { ok: false, message: m.couldNotCreate };
-  }
-  return {
-    ok: true,
+    },
     food: {
-      id: data.id,
       name_en: name,
       name_ro: name,
       group: "",

@@ -319,7 +319,8 @@ third-party text writes it.
   `silent: true` filed it in a channel a locked Android phone never showed, so
   the flag is now `rest_prefs.alert` (on by default, a switch in the rest card)
   and the device's own notification settings decide the rest. The tick runs
-  every 5 s and claims a rest 5 s before it ends, so the push lands within a
+  every 5 s and claims a rest 5 s before it ends — but only while a rest is pending: a new rest wakes the
+  job, a tick with nothing pending puts it to sleep (20261210100000, so cron logs stay small) — so the push lands within a
   few seconds of the countdown instead of up to twelve after it.
 
 ## Deeper notes

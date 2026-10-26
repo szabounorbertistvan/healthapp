@@ -25,6 +25,7 @@ import { fill } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { getPlan } from "@/lib/plan";
 import { PremiumSoon, UpgradeHint } from "@/components/upgrade";
+import { id as uuid } from "@/lib/validate";
 
 /**
  * One client, from the coach's side: their weekly summary, 28-day fitness
@@ -42,6 +43,8 @@ export default async function CoachClientPage({
 }) {
   const { t, locale } = await getI18n();
   const [{ id }, { week }] = await Promise.all([params, searchParams]);
+  // Not an id at all: a 404 before any read, which would otherwise throw on the uuid cast.
+  if (!uuid.safeParse(id).success) notFound();
   const choice: WeekChoice = week === "previous" ? "previous" : "current";
   // The roster and the summary go out together: the summary is filtered by
   // client id and RLS answers it, so it never needed the roster first. A client

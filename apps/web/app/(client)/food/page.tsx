@@ -109,6 +109,9 @@ export default async function FoodPage({
         <Link href="/recipes" className="inline-flex h-9 items-center rounded-full bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink">
           {t.clientApp.recipes.link}
         </Link>
+        <Link href="/food/mine" className="inline-flex h-9 items-center rounded-full bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink">
+          {t.clientApp.myFoods.link}
+        </Link>
         <PageTour id="food" steps={["week", "summary", "meals"]} />
       </div>
       <div data-tour="food-week">

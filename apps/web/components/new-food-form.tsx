@@ -2,9 +2,10 @@
 import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { parseDecimal } from "@healthapp/shared";
-import { createCustomFood } from "@/app/nutrition-actions";
+import { createCustomFood, updateCustomFood } from "@/app/nutrition-actions";
 import { useI18n } from "@/lib/i18n/client";
 import type { FoodItem } from "@/lib/food-portions";
+import type { MyCustomFood } from "@/lib/client-nutrition";
 
 const inputClass = "h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm tabular-nums outline-none focus:border-accent";
 const labelClass = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint";
@@ -20,11 +21,14 @@ type PortionDraft = { label: string; grams: string };
  * servings. Lives inside the food pickers so it opens where the search or the
  * scan came up short; on success the row is handed back so the caller logs or
  * adds it in the same motion. Mirrors NewExerciseForm for exercises.
+ * With `editing` it is the same form over one of the person's own foods
+ * ("My foods"), saving through updateCustomFood.
  */
 export function NewFoodForm({
   initialName = "",
   initialBarcode = "",
   primaryLabel,
+  editing,
   onCreated,
   onCancel,
 }: {
@@ -33,22 +37,32 @@ export function NewFoodForm({
   initialBarcode?: string;
   /** What the primary button does after saving — "Save and add" or plain "Save food". */
   primaryLabel?: string;
+  /** A food of the person's own to change instead of creating a new one. */
+  editing?: MyCustomFood;
   onCreated: (food: FoodItem) => void;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
   const m = t.clientWidgets.newFoodForm;
-  const [name, setName] = useState(initialName);
-  const [brand, setBrand] = useState("");
-  const [kcal, setKcal] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
-  const [saturated, setSaturated] = useState("");
-  const [sugar, setSugar] = useState("");
-  const [salt, setSalt] = useState("");
-  const [barcode, setBarcode] = useState(initialBarcode);
-  const [portions, setPortions] = useState<PortionDraft[]>([]);
+  const shown = (v: number | null | undefined) => (v === null || v === undefined ? "" : String(v));
+  const [name, setName] = useState(editing?.name ?? initialName);
+  const [brand, setBrand] = useState(editing?.brand ?? "");
+  const [kcal, setKcal] = useState(shown(editing?.per_100g.kcal));
+  const [protein, setProtein] = useState(shown(editing?.per_100g.protein));
+  const [carbs, setCarbs] = useState(shown(editing?.per_100g.carbs));
+  const [fat, setFat] = useState(shown(editing?.per_100g.fat));
+  const [saturated, setSaturated] = useState(shown(editing?.saturatedFat));
+  const [sugar, setSugar] = useState(shown(editing?.sugar));
+  const [salt, setSalt] = useState(shown(editing?.salt));
+  const [barcode, setBarcode] = useState(editing?.barcode ?? initialBarcode);
+  const [portions, setPortions] = useState<PortionDraft[]>(
+    editing?.portions.map((p) => ({ label: p.label, grams: String(p.grams) })) ?? [],
+  );
+  // Open the folded part when it holds something: a scanned code, or an edited food's label details.
+  const moreOpen =
+    initialBarcode !== "" ||
+    (editing !== undefined &&
+      (editing.saturatedFat !== null || editing.sugar !== null || editing.salt !== null || editing.barcode !== null || editing.portions.length > 0));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -67,7 +81,7 @@ export function NewFoodForm({
     if (!valid) return;
     startTransition(async () => {
       setError(null);
-      const result = await settle(() => createCustomFood({
+      const input = {
         name,
         brand,
         kcal: macro(kcal),
@@ -81,7 +95,11 @@ export function NewFoodForm({
         portions: portions
           .filter((p) => given(p.label) || given(p.grams))
           .map((p) => ({ label: p.label, grams: parseDecimal(p.grams) ?? NaN })),
-      }), t.common.actions.unreachable);
+      };
+      const result = await settle(
+        () => (editing ? updateCustomFood(editing.id, input) : createCustomFood(input)),
+        t.common.actions.unreachable,
+      );
       if (!result.ok || !("food" in result)) {
         setError(result.message || m.couldNotCreate);
         return;
@@ -102,7 +120,7 @@ export function NewFoodForm({
   return (
     <div className="space-y-3 rounded-2xl bg-bg p-3.5">
       <div>
-        <p className="text-sm font-bold">{m.title}</p>
+        <p className="text-sm font-bold">{editing ? m.editTitle : m.title}</p>
         <p className="mt-0.5 text-xs text-ink-faint">{m.body}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -124,7 +142,7 @@ export function NewFoodForm({
 
       {/* Open by itself when a scan brought the person here: the barcode is
           the point of the form then, and it should be seen being saved. */}
-      <details open={initialBarcode !== "" ? true : undefined} className="rounded-xl border border-line/70 px-3 py-2">
+      <details open={moreOpen ? true : undefined} className="rounded-xl border border-line/70 px-3 py-2">
         <summary className="cursor-pointer select-none text-xs font-semibold text-ink-soft hover:text-ink">{m.more}</summary>
         <div className="mt-3 space-y-3 pb-1">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

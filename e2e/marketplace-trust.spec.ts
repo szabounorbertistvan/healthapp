@@ -57,11 +57,12 @@ test.describe("anonymous measurement", () => {
     await page.goto("/coaches?city=cluj-napoca");
     const body = trackCall(await sent)!;
     expect(body.p_city).toBe("cluj-napoca");
-    // only what prepare() set: the locale cookie and the cookie choice (essential only)
+    // only what prepare() set: the locale cookie, the cookie choice (essential only) and the tours switch
     const cookies = (await context.cookies()).map((c) => c.name).filter((n) => !n.startsWith("sb-"));
     expect(cookies).toEqual(["bg-locale"]);
     const storage = await ownStorage(page);
-    expect(storage.local).toEqual(["bg-analytics-consent-v1"]);
+    // prepare() also turns the page tours off (voinic-tips) — set by the test, not the page
+    expect(storage.local.sort()).toEqual(["bg-analytics-consent-v1", "voinic-tips"]);
     expect(storage.session).toBe(0);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
