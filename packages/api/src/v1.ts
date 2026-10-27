@@ -23,6 +23,8 @@ export type MeV1 = {
   display_name: string;
   /** Null for a Google sign-up that has not finished its profile yet. */
   username: string | null;
+  /** The current Terms + health-data consent is recorded (CONSENT_VERSION); false sends the app to complete-profile. */
+  consent_ok?: boolean;
   role: "client" | "coach" | "both" | "admin";
   avatar_url: string | null;
   weight_unit: "kg" | "lb";
@@ -360,6 +362,11 @@ export type SettingsV1 = {
   } | null;
   /** The home gym and whether its board is opted into (MyGymCard). */
   gym?: { home: GymV1 | null; board: boolean };
+  /** The profile photo (AvatarPicker) and whether uploads are configured. */
+  avatar_url?: string | null;
+  uploads?: boolean;
+  /** Where the coach profile stands (CoachProfileSettingsCard); null = none yet (BecomeCoachCard). */
+  coach_status?: "draft" | "pending_review" | "published" | "hidden" | "suspended" | null;
 };
 
 export type GymV1 = { id: string; name: string; city: string; address: string | null; map_url: string };
@@ -450,6 +457,11 @@ export type AchievementsV1 = {
     target: number;
     percent: number;
     progress_line: string;
+    /** The detail page (/achievements/[slug]): the category's name, what is left, how the metric is counted, already shared. */
+    category_label?: string | null;
+    remaining_line?: string | null;
+    how_counted?: string;
+    shared?: boolean;
   }[];
 };
 
@@ -1253,6 +1265,10 @@ export type CoachSearchV1 = {
   items: CoachCardV1[];
   /** Specializations that have published coaches, for the filter chips. */
   specializations: { slug: string; name: string; coaches: number }[];
+  /** Cities with published coaches, most coaches first (the city filter). */
+  cities?: { slug: string; name: string; coaches: number }[];
+  /** ?landing=<slug> named a city, specialization or country: its landing listing (/coaches/<slug> on the web). */
+  landing?: { kind: "city" | "specialization" | "country"; slug: string; name: string; title: string; intro: string } | null;
 };
 
 /** GET /api/v1/coaches/[slug] — a coach's public page as a signed-in reader sees it. */
@@ -1626,3 +1642,37 @@ export type StoryV1 = { id: string; body: string; background: "gold" | "night" |
 
 /** POST /api/v1/stories — publish / delete / seen / load (an author's stories) / viewers (of one of yours). */
 export type StoryWriteV1 = WriteResultV1 & { expired?: boolean; stories?: StoryV1[]; viewers?: { user_id: string; name: string; avatar_url: string | null; viewed_at: string }[] };
+
+// ---------- onboarding (the welcome cards, the setup steps, the cards on Today) ----------
+
+/** GET /api/v1/onboarding — what /onboarding and the cards on Today read; the model (@healthapp/shared/onboarding) runs in the app. */
+export type OnboardingV1 = {
+  /** The marks map; null = unknown (a failed read): no redirect, no card, nothing opens by itself. */
+  state: Record<string, "done" | "skipped" | "dismissed"> | null;
+  role: "client" | "coach" | "both" | "admin";
+  audience: "client" | "coach";
+  /** Which setup steps the account has already answered by itself (SetupFacts). */
+  facts: Record<string, boolean>;
+  /** The client's active goal, as written. */
+  goal: string | null;
+  coached: boolean;
+  coach_profile_status: string | null;
+  has_clients: boolean;
+  name: string;
+  avatar_url: string | null;
+  uploads: boolean;
+  weight_unit: "kg" | "lb";
+  length_unit: "cm" | "in";
+  timezone: string;
+  /** DishFinder's recipe finder when this deployment links to it (the recipes card); null = no card. */
+  recipes_url: string | null;
+};
+
+/** POST /api/v1/onboarding — op: mark | units | goal | solo. */
+export type OnboardingWriteV1 = { ok: boolean; message?: string; errorCode?: string; state?: Record<string, "done" | "skipped" | "dismissed"> };
+
+/** POST /api/v1/feedback — { kind: bug | idea | other, message, route }. */
+export type FeedbackWriteV1 = { ok: boolean; reason?: "rate" | "empty" };
+
+/** POST /api/v1/complete-profile — op complete { fullName, username, sex, age, role } | consent. */
+export type CompleteProfileV1 = { ok: boolean; message?: string; errorCode?: string };

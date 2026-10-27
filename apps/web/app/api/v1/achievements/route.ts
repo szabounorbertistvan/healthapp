@@ -1,7 +1,7 @@
 import type { AchievementsV1 } from "@healthapp/api/v1";
-import { categoriesPresent, isAchievementRarity, summarizeAchievements } from "@healthapp/shared";
+import { categoriesPresent, isAchievementCategory, isAchievementRarity, summarizeAchievements } from "@healthapp/shared";
 import { apiJson, v1Route } from "@/lib/api/v1";
-import { progressText, requirementText } from "@/lib/achievement-format";
+import { metricExplanation, progressText, requirementText } from "@/lib/achievement-format";
 import { getMyAchievements } from "@/lib/achievements-data";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -33,6 +33,10 @@ export const GET = v1Route(async () => {
         target: r.target,
         percent: p.percent,
         progress_line: p.line,
+        category_label: isAchievementCategory(r.category) ? a.categories[r.category] : null,
+        remaining_line: p.remainingLine,
+        how_counted: metricExplanation(a, r.metric),
+        shared: r.shared,
       };
     }),
   });

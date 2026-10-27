@@ -1,15 +1,20 @@
 import type { AccountFieldsV1, SettingsV1 } from "@healthapp/api/v1";
 import { EMAIL_PREF_CATEGORIES, REST_MAX_SECONDS, REST_MIN_SECONDS, REST_PRESETS } from "@healthapp/shared";
+import { statusView } from "@healthapp/shared/coach/onboarding";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { File, Paths } from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch as NativeSwitch, Text, TextInput, View, type ViewStyle } from "react-native";
+import { ActivityIndicator, Image, Linking, Platform, Pressable, StyleSheet, Switch as NativeSwitch, Text, TextInput, View, type ViewStyle } from "react-native";
+import { ErrorText, Pill, Primary, Small } from "@/components/coach-profile-bits";
 import { Card } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
+import { uploadSigned } from "@/lib/upload";
 
 // The web's /account cards, on the phone (components/account.tsx ProfileForm,
 // rest-settings.tsx RestTimerCard, email-settings.tsx EmailPrefsCard): the same
@@ -179,6 +184,7 @@ export function ProfileCard({ settings }: { settings: SettingsV1 }) {
       setSaved(a.saved);
       void queryClient.invalidateQueries({ queryKey: ["settings"] });
       void queryClient.invalidateQueries({ queryKey: ["me"] });
+      void queryClient.invalidateQueries({ queryKey: ["onboarding"] });
     } catch (e) {
       setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : a.errGeneric);
     } finally {
@@ -189,6 +195,7 @@ export function ProfileCard({ settings }: { settings: SettingsV1 }) {
   return (
     <Card style={{ gap: 14 }}>
       <CardTitle>{a.profile}</CardTitle>
+      <PhotoPicker kind="avatar" url={settings.avatar_url ?? null} name={form.username || form.fullName} enabled={settings.uploads ?? false} />
       <Field label={a.fullName} value={form.fullName} onChange={(v) => set("fullName", v)} />
       <Field plain label={a.username} value={form.username} onChange={(v) => set("username", v)} error={usernameOk ? null : a.errUsernameFormat} />
       <Field label={a.city} value={form.city} onChange={(v) => set("city", v)} placeholder={a.cityPlaceholder} />
@@ -241,6 +248,65 @@ export function ProfileCard({ settings }: { settings: SettingsV1 }) {
         </>
       ) : null}
       <SaveRow label={busy ? a.saving : a.save} busy={busy || !usernameOk} onPress={() => void save()} saved={saved} error={error} />
+    </Card>
+  );
+}
+
+/**
+ * The coach profile on the account screen (BecomeCoachCard /
+ * CoachProfileSettingsCard): none yet → become_coach() makes the draft and the
+ * editor opens; otherwise where it stands and one tap into it.
+ */
+export function CoachProfileCard({ status }: { status: SettingsV1["coach_status"] }) {
+  const { t } = useI18n();
+  const { color } = useTheme();
+  const queryClient = useQueryClient();
+  const b = t.coachProfile.become;
+  const c = t.coachProfile.card;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function become() {
+    setError(null);
+    setBusy(true);
+    try {
+      const r = await api.coachProfileWrite("become");
+      if (!r.ok) {
+        setError(r.errorCode === "PROFILE_INCOMPLETE" ? b.errIncomplete : r.errorCode === "ACCOUNT_UNAVAILABLE" ? b.errUnavailable : t.coachProfile.errors.generic);
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient.invalidateQueries({ queryKey: ["coach-profile"] });
+      router.push("/coach/profile");
+    } catch {
+      setError(t.coachProfile.errors.generic);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!status) {
+    return (
+      <Card style={{ gap: 8 }}>
+        <CardTitle>{b.title}</CardTitle>
+        <Text style={{ fontFamily: font.regular, fontSize: 13.5, lineHeight: 20, color: color.inkSoft }}>{b.body}</Text>
+        <View style={{ alignSelf: "flex-start", marginTop: 6 }}>
+          <Primary label={busy ? b.busy : b.button} busy={busy} onPress={() => void become()} />
+        </View>
+        {error ? <ErrorText>{error}</ErrorText> : null}
+      </Card>
+    );
+  }
+  return (
+    <Card style={{ gap: 12 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <CardTitle>{c.title}</CardTitle>
+        <Pill label={t.coachProfile.status[status]} tone={statusView(status).tone} />
+      </View>
+      <View style={{ alignSelf: "flex-start" }}>
+        <Primary label={status === "draft" ? t.coachProfile.status.continueSetup : c.open} onPress={() => router.push("/coach/profile")} />
+      </View>
     </Card>
   );
 }
@@ -619,3 +685,114 @@ const styles = StyleSheet.create({
   pill: { height: 36, borderRadius: 18, borderWidth: 1, paddingHorizontal: 14, justifyContent: "center" },
   save: { height: 44, minWidth: 96, borderRadius: 16, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },
 });
+
+/** 5 MB, the avatar's and the cover's cap (lib/cloudinary-upload.ts IMAGE_MAX_BYTES). */
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * The profile photo or the cover (AvatarPicker, CoverPicker): a signed ticket
+ * from the server, the file straight to Cloudinary, then the server records it.
+ */
+export function PhotoPicker({ kind, url, name, enabled }: { kind: "avatar" | "cover"; url: string | null; name: string; enabled: boolean }) {
+  const { t } = useI18n();
+  const { color } = useTheme();
+  const queryClient = useQueryClient();
+  const a = t.clientApp.account;
+  const c = t.coachProfile.publish;
+  const cover = kind === "cover";
+  const [local, setLocal] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const shown = local ?? url;
+  const failed = cover ? c.uploadFailed : a.errPhoto;
+
+  async function pick() {
+    setError(null);
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.85, allowsEditing: !cover, aspect: cover ? undefined : [1, 1] });
+    if (res.canceled || !res.assets[0]) return;
+    const asset = res.assets[0];
+    if (asset.mimeType && !asset.mimeType.startsWith("image/")) return setError(cover ? c.notImage : a.photoNotImage);
+    if (asset.fileSize && asset.fileSize > IMAGE_MAX_BYTES) return setError(cover ? c.tooLarge : a.photoTooLarge);
+    setLocal(asset.uri);
+    setBusy(true);
+    try {
+      const permission = await api.coachProfileWrite(cover ? "coverTicket" : "avatarTicket");
+      if (!permission.ok || !permission.ticket) {
+        setLocal(null);
+        return setError(failed);
+      }
+      const uploaded = await uploadSigned(permission.ticket, {
+        uri: asset.uri, name: asset.fileName ?? "photo.jpg", type: asset.mimeType ?? "image/jpeg", size: asset.fileSize ?? null, file: asset.file ?? null,
+      });
+      const saved = uploaded ? await api.coachProfileWrite(cover ? "saveCover" : "saveAvatar", uploaded) : null;
+      if (!saved?.ok) {
+        setLocal(null);
+        return setError(failed);
+      }
+      await queryClient.invalidateQueries({ queryKey: ["coach-profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+    } catch {
+      setLocal(null);
+      setError(failed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await api.coachProfileWrite(cover ? "removeCover" : "removeAvatar");
+      if (!result.ok) return setError(cover ? c.uploadFailed : result.message ?? a.errGeneric);
+      setLocal(null);
+      await queryClient.invalidateQueries({ queryKey: ["coach-profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+    } catch {
+      setError(failed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const buttons = (
+    <View style={{ marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      {enabled ? (
+        <Small label={busy ? (cover ? c.uploading : a.photoUploading) : shown ? (cover ? c.changeCover : a.changePhoto) : cover ? c.addCover : a.addPhoto} disabled={busy} onPress={() => void pick()} />
+      ) : null}
+      {url && !busy ? <Small label={cover ? c.removeCover : a.removePhoto} onPress={() => void remove()} /> : null}
+    </View>
+  );
+
+  if (cover) {
+    return (
+      <View>
+        <Label>{c.cover}</Label>
+        <View style={{ marginTop: 8, width: "100%", aspectRatio: 8 / 3, borderRadius: 16, overflow: "hidden", backgroundColor: color.accentSoft, alignItems: "center", justifyContent: "center" }}>
+          {shown ? <Image source={{ uri: shown }} style={{ position: "absolute", width: "100%", height: "100%", opacity: busy ? 0.6 : 1 }} /> : null}
+          {busy ? <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.ink }}>{c.uploading}</Text> : null}
+        </View>
+        {buttons}
+        <Hint>{enabled ? c.coverHint : c.unavailable}</Hint>
+        {error ? <ErrorText>{error}</ErrorText> : null}
+      </View>
+    );
+  }
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+      {shown ? <Image source={{ uri: shown }} style={{ width: 64, height: 64, borderRadius: 32, opacity: busy ? 0.6 : 1 }} /> : (
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: color.accentSoft, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontFamily: font.displayBold, fontSize: 24, color: color.accentInk }}>{[...name.trim()][0]?.toUpperCase() ?? "?"}</Text>
+        </View>
+      )}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Label>{a.photo}</Label>
+        {buttons}
+        <Hint>{enabled ? a.photoHint : a.photoUnavailable}</Hint>
+        {error ? <ErrorText>{error}</ErrorText> : null}
+      </View>
+    </View>
+  );
+}

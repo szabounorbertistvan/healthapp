@@ -2,14 +2,15 @@ import type { CoachClientsV1, CoachRelationshipV1 } from "@healthapp/api/v1";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Chip, ErrorText, Primary, Small } from "@/components/coach-profile-bits";
+import { Chip, Primary, Small } from "@/components/coach-profile-bits";
 import { RelationshipPill } from "@/components/coaching-lifecycle";
+import { InviteCode } from "@/components/invite-code";
 import { CoachRequestCard } from "@/components/request-card";
 import { Card, NavIcon, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
-import { api, ApiFailure } from "@/lib/api";
+import { api } from "@/lib/api";
 import { percent, timeAgo } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { alpha, font, useTheme } from "@/lib/theme";
@@ -57,7 +58,7 @@ export default function CoachClients() {
               </Pressable>
             </View>
             <Bulk data={data} />
-            <Invite disabled={limitReached} />
+            <InviteCode disabled={limitReached} />
             {limitReached ? (
               <View style={{ borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: color.warnSoft }}>
                 <Text style={{ fontFamily: font.regular, fontSize: 13, lineHeight: 19, color: color.warn }}>{c.limitReached}</Text>
@@ -177,46 +178,6 @@ function Relationships({ kind, rows }: { kind: "paused" | "past"; rows: CoachRel
           <RelationshipPill status={r.status} />
         </Pressable>
       ))}
-    </View>
-  );
-}
-
-/** An invite code (InviteButton): a fresh one per tap, shared from the phone. */
-function Invite({ disabled }: { disabled: boolean }) {
-  const { t } = useI18n();
-  const { color } = useTheme();
-  const queryClient = useQueryClient();
-  const m = t.coachWidgets.inviteButton;
-  const [code, setCode] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function create() {
-    setError(null);
-    setBusy(true);
-    try {
-      const r = await api.coachClientsWrite("invite");
-      if (r.ok && r.code) setCode(r.code);
-      else setError(r.errorCode === "CLIENT_LIMIT_REACHED" ? m.limitReachedUpgrade : m.createError);
-      void queryClient.invalidateQueries({ queryKey: ["coach-clients"] });
-    } catch (e) {
-      setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : m.createError);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-      <Primary label={busy ? m.generating : m.inviteClient} disabled={disabled} busy={busy} onPress={() => void create()} />
-      {code ? (
-        <View style={[styles.chip, { backgroundColor: color.accentSoft, flexDirection: "row", alignItems: "center", gap: 10 }]}>
-          <Text selectable style={{ fontFamily: font.bold, fontSize: 13, letterSpacing: 2, color: color.accentInk }}>{code}</Text>
-          <Text accessibilityRole="button" onPress={() => void Share.share({ message: code })} style={{ fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", textDecorationLine: "underline", color: color.accentInk }}>{t.mobile.forms.share}</Text>
-        </View>
-      ) : null}
-      {disabled ? <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>{m.limitReachedTitle}</Text> : null}
-      {error ? <ErrorText>{error}</ErrorText> : null}
     </View>
   );
 }

@@ -31,6 +31,7 @@ function dictionary(locale: Locale) {
     coachBecome: coachProfileMessages[locale].become,
     coachProfile: coachProfileMessages[locale],
     coachView: onboardingMessages[locale].coachView,
+    onboarding: onboardingMessages[locale],
     login: landingMessages[locale].login,
     mobile: mobileMessages[locale],
   };

@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -69,7 +70,7 @@ export default function Achievements() {
               const earned = r.awarded_at !== null;
               const tone = rarityTone[r.rarity];
               return (
-                <View key={r.slug} style={[styles.card, { backgroundColor: color.surface }]}>
+                <Pressable key={r.slug} accessibilityRole="link" onPress={() => router.push({ pathname: "/achievement/[slug]", params: { slug: r.slug } })} style={({ pressed }) => [styles.card, { backgroundColor: color.surface, opacity: pressed ? 0.85 : 1 }]}>
                   <View style={[styles.badge, { backgroundColor: earned ? color.accent : color.bg }]}>
                     <NavIcon d={BADGE_GLYPH[r.icon ?? ""] ?? BADGE_GLYPH.trophy!} size={20} color={earned ? color.accentFg : color.inkFaint} strokeWidth={2.1} />
                   </View>
@@ -99,7 +100,7 @@ export default function Achievements() {
                       <Text style={{ marginTop: 8, fontFamily: font.regular, fontSize: 11.5, color: color.inkFaint }}>{a.notEarned}</Text>
                     )}
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>

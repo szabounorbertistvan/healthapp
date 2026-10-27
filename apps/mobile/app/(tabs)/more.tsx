@@ -1,12 +1,13 @@
 import Constants from "expo-constants";
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { DataCard, DeleteCard, EmailCard, GymCard, PrivacyCard, ProfileCard, RestCard } from "@/components/settings-forms";
+import { CoachProfileCard, DataCard, DeleteCard, EmailCard, GymCard, PrivacyCard, ProfileCard, RestCard } from "@/components/settings-forms";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
+import { openLegal } from "@/lib/legal";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { useMe } from "@/lib/role";
 import { font, useTheme } from "@/lib/theme";
@@ -68,6 +69,7 @@ export default function Account() {
         </Card>
 
         {settings ? <ProfileCard key={`profile-${settings.account.username}`} settings={settings} /> : null}
+        {settings ? <CoachProfileCard status={settings.coach_status ?? null} /> : null}
         {settings ? <GymCard settings={settings} /> : null}
         {settings ? <RestCard settings={settings} /> : null}
         {settings ? <EmailCard settings={settings} /> : null}
@@ -77,7 +79,8 @@ export default function Account() {
 
         <Card style={{ padding: 0, gap: 0, overflow: "hidden" }}>
           <LinkRow label={t.mobile.more.openWeb} onPress={web("/today")} />
-          <LinkRow label={t.mobile.more.privacy} onPress={web("/privacy")} top />
+          <LinkRow label={t.mobile.more.privacy} onPress={() => openLegal("privacy", locale)} top />
+          <LinkRow label={t.login.consentTermsLink} onPress={() => openLegal("terms", locale)} top />
         </Card>
 
         <Pressable

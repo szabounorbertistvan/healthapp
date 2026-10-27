@@ -1,6 +1,7 @@
 import { router, Tabs, useIsFocused, usePathname } from "expo-router";
 import { useEffect, useRef, type ReactNode } from "react";
 import { View } from "react-native";
+import { CompleteProfile, needsProfile } from "@/components/complete-profile";
 import { GlassTabBar } from "@/components/tab-bar";
 import { isCoachRole, useMe } from "@/lib/role";
 
@@ -21,6 +22,8 @@ export default function TabsLayout() {
     landed.current = true;
     if (coach && pathname === "/") router.replace("/clients");
   }, [coach, me.data, pathname]);
+  // no username yet, or the current consent missing: that step first (/complete-profile)
+  if (me.data && needsProfile(me.data.data)) return <CompleteProfile me={me.data.data} />;
   return (
     <Tabs
       tabBar={(props) => <GlassTabBar {...props} coach={coach} />}

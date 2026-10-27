@@ -14,6 +14,7 @@ describe("nativeRoute", () => {
     expect(nativeRoute("/people?q=ana")).toBe("/people");
     expect(nativeRoute(`/coach/messages/${ID}`)).toBe(`/thread/${ID}`);
     expect(nativeRoute("/coaches/ana-pop")).toBe("/coaches/ana-pop");
+    expect(nativeRoute("/achievements/first_workout")).toBe("/achievement/first_workout");
   });
   it("maps plain pages, ignoring the query and the hash", () => {
     expect(nativeRoute("/today?week=current#weekly-report")).toBe("/");

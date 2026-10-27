@@ -17,7 +17,9 @@ const RULES: [RegExp, (m: RegExpExecArray) => string][] = [
   [new RegExp(`^/people/${ID}$`, "i"), (m) => `/people/${m[1]}`],
   [new RegExp(`^/people/${ID}/(followers|following)$`, "i"), (m) => `/people/${m[1]}/${m[2]}`],
   [new RegExp(`^/gyms/${ID}$`, "i"), (m) => `/gym/${m[1]}`],
-  // a coach's page; the static /coaches/* pages and the landing listings are not coaches
+  [/^\/achievements\/([a-z0-9_]+)$/, (m) => `/achievement/${m[1]}`],
+  // a coach's page — or a city / specialization / country slug, which that
+  // screen hands on to its landing listing; the static /coaches/* pages are not coaches
   [/^\/coaches\/(?!bookings$|requests$|saved$)([a-z0-9]+(?:-[a-z0-9]+)*)$/, (m) => `/coaches/${m[1]}`],
   [new RegExp(`^/exercises/${ID}$`, "i"), (m) => `/exercise/${m[1]}`],
   [new RegExp(`^/messages/${ID}$`, "i"), (m) => `/thread/${m[1]}`],
@@ -37,6 +39,7 @@ const PLAIN: Record<string, string> = {
   "/progress": "/progress",
   "/check-in": "/check-in",
   "/streak": "/streak",
+  "/onboarding": "/onboarding",
   "/fitness-score": "/fitness-score",
   "/reports": "/reports",
   "/feed": "/feed",

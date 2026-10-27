@@ -10,17 +10,15 @@ import {
 } from "@healthapp/shared/coach/profile";
 import { filterTaxonomy, groupSpecializations, specializationName } from "@healthapp/shared/coach/taxonomy";
 import { useQueryClient } from "@tanstack/react-query";
-import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Image, Pressable, Text, TextInput, View } from "react-native";
 import { Chip, Counter, ErrorText, Primary, Section, Small, Tick, useCoachError } from "@/components/coach-profile-bits";
 import { CertificationsStep, ServicesStep, useServicePrice } from "@/components/coach-profile-lists";
-import { Field, Hint, Label, Switch } from "@/components/settings-forms";
+import { Field, Hint, Label, PhotoPicker, Switch } from "@/components/settings-forms";
 import { Card } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
-import { uploadSigned } from "@/lib/upload";
 
 // The six-step coach profile editor — the web's CoachProfileWizard
 // (components/coach-profile/wizard.tsx) on a phone. Only mounted for a draft
@@ -29,8 +27,6 @@ import { uploadSigned } from "@/lib/upload";
 // AUTOSAVE_MS of quiet. The model is the web's own (@healthapp/shared/coach).
 
 const AUTOSAVE_MS = 1500;
-/** 5 MB, the avatar's and the cover's cap (lib/cloudinary-upload.ts IMAGE_MAX_BYTES). */
-const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -707,111 +703,6 @@ function PublishStep({ page, draft, services, certifications, missing, onGo, onS
           <Small label={c.editProfile} onPress={() => onGo(0)} style={{ height: 44, borderRadius: 14, paddingHorizontal: 18 }} />
           <Primary label={submitting ? c.submitting : data.revision ? t.coachProfile.status.revision.submit : c.submit} disabled={!ready} busy={submitting} onPress={() => void submit()} />
         </View>
-        {error ? <ErrorText>{error}</ErrorText> : null}
-      </View>
-    </View>
-  );
-}
-
-/**
- * The profile photo or the cover (AvatarPicker, CoverPicker): a signed ticket
- * from the server, the file straight to Cloudinary, then the server records it.
- */
-function PhotoPicker({ kind, url, name, enabled }: { kind: "avatar" | "cover"; url: string | null; name: string; enabled: boolean }) {
-  const { t } = useI18n();
-  const { color } = useTheme();
-  const queryClient = useQueryClient();
-  const a = t.clientApp.account;
-  const c = t.coachProfile.publish;
-  const cover = kind === "cover";
-  const [local, setLocal] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const shown = local ?? url;
-  const failed = cover ? c.uploadFailed : a.errPhoto;
-
-  async function pick() {
-    setError(null);
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.85, allowsEditing: !cover, aspect: cover ? undefined : [1, 1] });
-    if (res.canceled || !res.assets[0]) return;
-    const asset = res.assets[0];
-    if (asset.mimeType && !asset.mimeType.startsWith("image/")) return setError(cover ? c.notImage : a.photoNotImage);
-    if (asset.fileSize && asset.fileSize > IMAGE_MAX_BYTES) return setError(cover ? c.tooLarge : a.photoTooLarge);
-    setLocal(asset.uri);
-    setBusy(true);
-    try {
-      const permission = await api.coachProfileWrite(cover ? "coverTicket" : "avatarTicket");
-      if (!permission.ok || !permission.ticket) {
-        setLocal(null);
-        return setError(failed);
-      }
-      const uploaded = await uploadSigned(permission.ticket, {
-        uri: asset.uri, name: asset.fileName ?? "photo.jpg", type: asset.mimeType ?? "image/jpeg", size: asset.fileSize ?? null, file: asset.file ?? null,
-      });
-      const saved = uploaded ? await api.coachProfileWrite(cover ? "saveCover" : "saveAvatar", uploaded) : null;
-      if (!saved?.ok) {
-        setLocal(null);
-        return setError(failed);
-      }
-      await queryClient.invalidateQueries({ queryKey: ["coach-profile"] });
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch {
-      setLocal(null);
-      setError(failed);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function remove() {
-    setError(null);
-    setBusy(true);
-    try {
-      const result = await api.coachProfileWrite(cover ? "removeCover" : "removeAvatar");
-      if (!result.ok) return setError(cover ? c.uploadFailed : result.message ?? a.errGeneric);
-      setLocal(null);
-      await queryClient.invalidateQueries({ queryKey: ["coach-profile"] });
-    } catch {
-      setError(failed);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const buttons = (
-    <View style={{ marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-      {enabled ? (
-        <Small label={busy ? (cover ? c.uploading : a.photoUploading) : shown ? (cover ? c.changeCover : a.changePhoto) : cover ? c.addCover : a.addPhoto} disabled={busy} onPress={() => void pick()} />
-      ) : null}
-      {url && !busy ? <Small label={cover ? c.removeCover : a.removePhoto} onPress={() => void remove()} /> : null}
-    </View>
-  );
-
-  if (cover) {
-    return (
-      <View>
-        <Label>{c.cover}</Label>
-        <View style={{ marginTop: 8, width: "100%", aspectRatio: 8 / 3, borderRadius: 16, overflow: "hidden", backgroundColor: color.accentSoft, alignItems: "center", justifyContent: "center" }}>
-          {shown ? <Image source={{ uri: shown }} style={{ position: "absolute", width: "100%", height: "100%", opacity: busy ? 0.6 : 1 }} /> : null}
-          {busy ? <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.ink }}>{c.uploading}</Text> : null}
-        </View>
-        {buttons}
-        <Hint>{enabled ? c.coverHint : c.unavailable}</Hint>
-        {error ? <ErrorText>{error}</ErrorText> : null}
-      </View>
-    );
-  }
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-      {shown ? <Image source={{ uri: shown }} style={{ width: 64, height: 64, borderRadius: 32, opacity: busy ? 0.6 : 1 }} /> : (
-        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: color.accentSoft, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontFamily: font.displayBold, fontSize: 24, color: color.accentInk }}>{[...name.trim()][0]?.toUpperCase() ?? "?"}</Text>
-        </View>
-      )}
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Label>{a.photo}</Label>
-        {buttons}
-        <Hint>{enabled ? a.photoHint : a.photoUnavailable}</Hint>
         {error ? <ErrorText>{error}</ErrorText> : null}
       </View>
     </View>

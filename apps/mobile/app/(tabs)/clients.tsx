@@ -2,11 +2,13 @@ import type { CoachClientV1 } from "@healthapp/api/v1";
 import { router } from "expo-router";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { RecipesCard, SetupCard, useOnboardingStart } from "@/components/onboarding-cards";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
 import { percent, timeAgo } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
+import { useMe } from "@/lib/role";
 import { alpha, font, useTheme } from "@/lib/theme";
 
 // The coach's morning screen — the web's /dashboard on a phone (app/(coach)/
@@ -32,6 +34,8 @@ export default function Dashboard() {
   const pro = data?.pro ?? true;
   const rows = data?.clients ?? [];
   const atRisk = rows.filter((r) => r.signal === "at_risk").length;
+  const me = useMe().data?.data;
+  useOnboardingStart();
   const unread = rows.reduce((sum, r) => sum + r.unread, 0);
 
   return (
@@ -42,6 +46,8 @@ export default function Dashboard() {
       >
         <T kind="title">{d.title}</T>
         {query.data?.fromPhone ? <T kind="faint">{t.mobile.workout.fromPhone}</T> : null}
+        <SetupCard />
+        <RecipesCard userId={me?.id} />
 
         {!data ? (
           query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} style={{ marginTop: 48 }} />

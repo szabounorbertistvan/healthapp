@@ -1,15 +1,16 @@
 import type { MyCoachingRelationshipV1, MyCoachingV1 } from "@healthapp/api/v1";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ErrorText, Primary, Section, Small } from "@/components/coach-profile-bits";
+import { Section, Small } from "@/components/coach-profile-bits";
+import { JoinCode } from "@/components/invite-code";
 import { CoachingActions, RelationshipPill, RelationshipTimeline } from "@/components/coaching-lifecycle";
 import { ThreadView } from "@/components/thread-view";
 import { Card, Screen, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
-import { api, ApiFailure } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { alpha, font, space, useTheme } from "@/lib/theme";
@@ -175,31 +176,8 @@ function Past({ rows }: { rows: MyCoachingRelationshipV1[] }) {
 function NoCoach() {
   const { t } = useI18n();
   const { color } = useTheme();
-  const queryClient = useQueryClient();
   const w = t.clientApp.welcome;
   const [open, setOpen] = useState(false);
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // every code accept_invite can raise, paired with its line (join-coach.tsx)
-  const copy: Record<string, string> = {
-    INVALID_CODE: w.errInvalidCode, EXPIRED: w.errExpired, ALREADY_HAS_COACH: w.errAlreadyHasCoach, CLIENT_LIMIT_REACHED: w.errClientLimit, UNKNOWN: w.errUnknown,
-  };
-
-  async function join() {
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await api.joinCoach(code);
-      if (!r.ok) return setError(copy[r.errorCode ?? "UNKNOWN"] ?? w.errUnknown);
-      for (const key of [KEY, ["coach-thread"], ["today"], ["me"]]) void queryClient.invalidateQueries({ queryKey: key });
-    } catch (e) {
-      setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : w.errUnknown);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <Card style={{ gap: 12 }}>
       <Text style={{ fontFamily: font.displayBold, fontSize: 18, color: color.ink }}>{t.clientApp.coach.noCoachTitle}</Text>
@@ -209,13 +187,7 @@ function NoCoach() {
           <Text style={{ fontFamily: font.semibold, fontSize: 14, color: color.inkSoft }}>{w.haveCode}</Text>
         </Pressable>
       ) : (
-        <>
-          <TextInput value={code} onChangeText={setCode} placeholder={w.codePlaceholder} placeholderTextColor={color.inkFaint} accessibilityLabel={w.codePlaceholder}
-            autoCapitalize="characters" autoCorrect={false} autoFocus
-            style={{ height: 44, borderRadius: 12, borderWidth: 1, borderColor: color.line, backgroundColor: color.bg, paddingHorizontal: 14, fontFamily: font.semibold, fontSize: 14, letterSpacing: 1.5, color: color.ink }} />
-          <Primary label={w.useCode} busy={busy} disabled={!code.trim()} onPress={() => void join()} />
-          {error ? <ErrorText>{error}</ErrorText> : null}
-        </>
+        <JoinCode autoFocus />
       )}
       <Pressable accessibilityRole="link" onPress={() => router.push("/coaches")} style={[styles.wide, { backgroundColor: color.bg, alignSelf: "flex-start", paddingHorizontal: 20 }]}>
         <Text style={{ fontFamily: font.semibold, fontSize: 14, color: color.ink }}>{`${t.coachProfile.saved.emptyCta} →`}</Text>

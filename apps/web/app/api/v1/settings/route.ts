@@ -1,5 +1,7 @@
 import type { SettingsV1 } from "@healthapp/api/v1";
 import { apiError, apiJson, v1Route } from "@/lib/api/v1";
+import { cloudinaryConfigured } from "@/lib/cloudinary";
+import { getMyCoachProfileStatus } from "@/lib/coach-profile-data";
 import { getProfile } from "@/lib/data";
 import { getMyGyms } from "@/lib/gym-data";
 import { gymMapHref } from "@/lib/gym-map";
@@ -10,10 +12,13 @@ import { getMySocialPrivacy } from "@/lib/social-data";
 export const dynamic = "force-dynamic";
 
 export const GET = v1Route(async () => {
-  const [p, privacy, gyms] = await Promise.all([getProfile(), getMySocialPrivacy(), getMyGyms()]);
+  const [p, privacy, gyms, coachStatus] = await Promise.all([getProfile(), getMySocialPrivacy(), getMyGyms(), getMyCoachProfileStatus()]);
   if (!p) return apiError("not_found", 404);
   return apiJson<SettingsV1>({
     role: p.role,
+    avatar_url: p.avatar_url,
+    uploads: cloudinaryConfigured(),
+    coach_status: coachStatus,
     account: {
       fullName: p.full_name,
       username: p.username ?? "",

@@ -1,7 +1,7 @@
 import type { CoachPageV1 } from "@healthapp/api/v1";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, T } from "@/components/ui";
@@ -25,6 +25,16 @@ export default function CoachPage() {
   const p = t.coachProfile.publicPage;
   const query = useQuery({ queryKey: ["coach-page", slug], queryFn: () => api.coachPage(slug) });
   const c = query.data;
+  // not a coach: maybe a city, a specialization or a country — its landing listing (/coaches/<slug>)
+  const landing = useQuery({
+    queryKey: ["coach-landing", slug],
+    queryFn: () => api.coaches(new URLSearchParams({ landing: slug, page: "1" }).toString()),
+    enabled: query.isError,
+  });
+  const landingFound = Boolean(landing.data?.landing);
+  useEffect(() => {
+    if (landingFound) router.replace({ pathname: "/coaches", params: { landing: slug } });
+  }, [landingFound, slug]);
   const [contacting, setContacting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -55,7 +65,7 @@ export default function CoachPage() {
       >
         <BackHeader label={t.coachProfile.discovery.backToDiscover} />
         {!c ? (
-          query.isError ? (
+          query.isError && (landing.isError || (landing.isSuccess && !landingFound)) ? (
             <Card style={{ gap: 4 }}>
               <Text style={{ fontFamily: font.displayBold, fontSize: 17, color: color.ink }}>{p.notFoundTitle}</Text>
               <T kind="soft">{p.notFoundBody}</T>

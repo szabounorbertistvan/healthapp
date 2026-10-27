@@ -4,7 +4,7 @@ import {
   parseOnboardingState, parseStepParam, pendingSync, placePopover, setupProgress, shouldAutoOpenTour,
   shouldStartOnboarding, showSetupCard, stepStatus, tourEndMark, tourKey, type OnboardingState,
   RECIPES_LATER_DAYS, RECIPES_TIP_KEY, shouldShowRecipesTip,
-} from "./onboarding-model";
+} from "./onboarding";
 
 const NEW: OnboardingState = {};
 // what 20261123100000 gives every account that existed before it

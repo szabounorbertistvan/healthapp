@@ -8,7 +8,9 @@
     ".": "./src/index.ts",
     "./coach/*": "./src/coach/*.ts",
     "./media/*": "./src/media/*.ts",
-    "./social/*": "./src/social/*.ts"
+    "./social/*": "./src/social/*.ts",
+    "./onboarding": "./src/onboarding.ts",
+    "./account/*": "./src/account/*.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

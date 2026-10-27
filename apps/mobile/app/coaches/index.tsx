@@ -1,6 +1,6 @@
 import type { CoachCardV1 } from "@healthapp/api/v1";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,7 +13,8 @@ import { font, useTheme } from "@/lib/theme";
 // Find a coach — the web's /coaches on a phone: search, online / in person, a
 // specialization, "include coaches not taking clients", the cards in
 // coach_ranked() order a page at a time, and Saved, the private shortlist.
-// Each card opens the coach's page (app/coaches/[slug].tsx).
+// Each card opens the coach's page (app/coaches/[slug].tsx). ?landing=<slug> is
+// the web's /coaches/<city | specialization | country> listing, ?city= one city.
 
 type View_ = "all" | "saved";
 
@@ -21,12 +22,15 @@ export default function Coaches() {
   const { t, fill } = useI18n();
   const { color } = useTheme();
   const d = t.coachProfile.discovery;
+  const params0 = useLocalSearchParams<{ landing?: string; city?: string; spec?: string }>();
   const [view, setView] = useState<View_>("all");
+  const [landing, setLanding] = useState(params0.landing ?? "");
+  const [city, setCity] = useState(params0.city ?? "");
   const [typed, setTyped] = useState("");
   const [q, setQ] = useState("");
   const [online, setOnline] = useState(false);
   const [inPerson, setInPerson] = useState(false);
-  const [spec, setSpec] = useState("");
+  const [spec, setSpec] = useState(params0.spec ?? "");
   const [includeFull, setIncludeFull] = useState(false);
   useEffect(() => {
     const id = setTimeout(() => setQ(typed.trim()), 350);
@@ -39,11 +43,13 @@ export default function Coaches() {
     if (online) p.set("online", "1");
     if (inPerson) p.set("in_person", "1");
     if (spec) p.set("spec", spec);
+    if (landing) p.set("landing", landing);
+    if (city) p.set("city", city);
     if (includeFull) p.set("all", "1");
     return p.toString();
   };
   const query = useInfiniteQuery({
-    queryKey: ["coaches", view, q, online, inPerson, spec, includeFull],
+    queryKey: ["coaches", view, q, online, inPerson, spec, includeFull, landing, city],
     queryFn: ({ pageParam }) => api.coaches(params(pageParam)),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.has_more ? pages.length + 1 : undefined),
@@ -51,6 +57,8 @@ export default function Coaches() {
   const first = query.data?.pages[0];
   const items = query.data?.pages.flatMap((p) => p.items) ?? [];
   const specs = first?.specializations ?? [];
+  const cities = (first?.cities ?? []).slice(0, 12);
+  const land = view === "all" ? first?.landing ?? null : null;
   const chip = (on: boolean) => [styles.chip, { backgroundColor: on ? color.accent : color.surface }];
   const ink = (on: boolean) => ({ fontFamily: font.semibold, fontSize: 12.5, color: on ? color.accentFg : color.inkSoft });
 
@@ -63,8 +71,11 @@ export default function Coaches() {
       >
         <BackHeader label={t.common.nav.more} />
         <View>
-          <T kind="title">{d.title}</T>
-          <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 13.5, lineHeight: 19, color: color.inkSoft }}>{d.subtitle}</Text>
+          {land ? (
+            <Text accessibilityRole="link" onPress={() => setLanding("")} style={{ marginBottom: 6, fontFamily: font.semibold, fontSize: 13, color: color.inkFaint }}>{`← ${d.backToDiscover}`}</Text>
+          ) : null}
+          <T kind="title">{land ? land.title : d.title}</T>
+          <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 13.5, lineHeight: 19, color: color.inkSoft }}>{land ? land.intro : d.subtitle}</Text>
           {/* the web's header links (coaches/layout.tsx): the reader's requests and bookings */}
           <View style={{ marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
             <Text accessibilityRole="link" onPress={() => router.push("/coaches/requests")} style={{ fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{t.coachProfile.requests.mine.title}</Text>
@@ -86,7 +97,17 @@ export default function Coaches() {
               <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: inPerson }} onPress={() => setInPerson((v) => !v)} style={chip(inPerson)}><Text style={ink(inPerson)}>{d.inPerson}</Text></Pressable>
               <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: includeFull }} onPress={() => setIncludeFull((v) => !v)} style={chip(includeFull)}><Text style={ink(includeFull)}>{d.includeFull}</Text></Pressable>
             </ScrollView>
-            {specs.length > 0 ? (
+            {cities.length > 0 && land?.kind !== "city" ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 6 }}>
+                <Pressable accessibilityRole="radio" accessibilityState={{ checked: !city }} onPress={() => setCity("")} style={chip(!city)}><Text style={ink(!city)}>{d.anyCity}</Text></Pressable>
+                {cities.map((c) => (
+                  <Pressable key={c.slug} accessibilityRole="radio" accessibilityState={{ checked: c.slug === city }} onPress={() => setCity(c.slug === city ? "" : c.slug)} style={chip(c.slug === city)}>
+                    <Text style={ink(c.slug === city)}>{`${c.name} · ${c.coaches}`}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            ) : null}
+            {specs.length > 0 && land?.kind !== "specialization" ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 6 }}>
                 {specs.map((s) => (
                   <Pressable key={s.slug} accessibilityRole="radio" accessibilityState={{ checked: s.slug === spec }} onPress={() => setSpec(s.slug === spec ? "" : s.slug)} style={chip(s.slug === spec)}>

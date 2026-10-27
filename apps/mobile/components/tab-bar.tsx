@@ -39,7 +39,10 @@ export const COACH_TABS: TabItem[] = [
 type SheetKey =
   | "programs" | "progress" | "checkIn" | "challenges" | "gyms" | "achievements" | "feed" | "saved"
   | "notifications" | "coach" | "bookings" | "account" | "library" | "nutrition" | "marketplace" | "settings"
-  | "training" | "habits" | "findCoach";
+  | "training" | "habits" | "findCoach" | "help" | "feedback";
+
+/** The web FeedbackButton's icon. */
+const FEEDBACK_ICON = "M4 5h16v11H9l-5 4zM12 8v3M12 13.5h.01";
 
 /** A section in the sheet and the screen it opens. */
 type SheetItem = { key: SheetKey; icon: string; route: string };
@@ -58,6 +61,8 @@ const CLIENT_SHEET: SheetItem[] = [
   { key: "findCoach", icon: ICON.coach, route: "/coaches" },
   { key: "bookings", icon: ICON.bookings, route: "/bookings" },
   { key: "account", icon: ICON.account, route: "/more" },
+  { key: "help", icon: ICON.help, route: "/onboarding?intro=1" },
+  { key: "feedback", icon: FEEDBACK_ICON, route: "/feedback" },
 ];
 
 const COACH_SHEET: SheetItem[] = [
@@ -70,6 +75,8 @@ const COACH_SHEET: SheetItem[] = [
   { key: "progress", icon: ICON.progress, route: "/progress" },
   { key: "notifications", icon: ICON.notifications, route: "/notifications" },
   { key: "settings", icon: ICON.account, route: "/more" },
+  { key: "help", icon: ICON.help, route: "/onboarding?intro=1" },
+  { key: "feedback", icon: FEEDBACK_ICON, route: "/feedback" },
 ];
 
 export function GlassTabBar({ state, coach }: BottomTabBarProps & { coach: boolean }) {
@@ -131,7 +138,8 @@ function MoreSheet({ open, onClose, items, current }: { open: boolean; onClose: 
 
   const go = (item: SheetItem) => {
     onClose();
-    router.push(item.route as never);
+    // the screen the person was on travels with the message (FeedbackButton)
+    router.push((item.key === "feedback" ? `/feedback?from=${encodeURIComponent(`/${current === "index" ? "" : current ?? ""}`)}` : item.route) as never);
   };
 
   if (!open) return null;
@@ -154,7 +162,7 @@ function MoreSheet({ open, onClose, items, current }: { open: boolean; onClose: 
                 style={({ pressed }) => [styles.sheetRow, (active || pressed) && { backgroundColor: color.accentSoft }]}
               >
                 <NavIcon d={item.icon} size={20} color={active ? color.accentInk : color.inkSoft} />
-                <Text style={[styles.sheetLabel, { color: active ? color.accentInk : color.inkSoft, fontFamily: active ? font.semibold : font.medium }]}>{item.key === "findCoach" ? t.coachProfile.discovery.explore : t.common.nav[item.key]}</Text>
+                <Text style={[styles.sheetLabel, { color: active ? color.accentInk : color.inkSoft, fontFamily: active ? font.semibold : font.medium }]}>{item.key === "findCoach" ? t.coachProfile.discovery.explore : item.key === "help" ? t.onboarding.help.link : item.key === "feedback" ? t.common.feedback.button : t.common.nav[item.key]}</Text>
               </Pressable>
               );
             })}

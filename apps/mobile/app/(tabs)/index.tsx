@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { RecipesCard, SetupCard, useOnboardingStart } from "@/components/onboarding-cards";
 import { CoachCard, CommunityCard, FitnessCard, HabitsCard, NutritionCard, TrainingCard, WeekCard, WeeklyReportRow } from "@/components/today-cards";
 import { Button, Card, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
+import { useMe } from "@/lib/role";
 import { useTheme } from "@/lib/theme";
 import { capitalize, parseDay } from "@/lib/week";
 
@@ -19,6 +21,8 @@ export default function Today() {
   const query = useOfflineQuery("dashboard", ["today"], api.dashboard);
   const d = query.data?.data;
   const refused = query.error instanceof ApiFailure && query.error.kind === "unauthorized";
+  const me = useMe().data?.data;
+  useOnboardingStart();
 
   useEffect(() => {
     // The token was refused (revoked, account removed): back to sign-in.
@@ -41,12 +45,14 @@ export default function Today() {
         </View>
         {query.data?.fromPhone ? <T kind="faint">{t.mobile.workout.fromPhone}</T> : null}
 
+        <SetupCard />
         {d ? (
           <>
             <WeekCard d={d} />
             <FitnessCard d={d} />
             <TrainingCard d={d} />
             <NutritionCard d={d} />
+            <RecipesCard userId={me?.id} />
             <HabitsCard d={d} />
             <CoachCard d={d} />
             <CommunityCard d={d} />
