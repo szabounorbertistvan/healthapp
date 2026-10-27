@@ -9,6 +9,9 @@ import { useTheme } from "@/lib/theme";
 // (maplibre-gl), drawn into a div; the phone build uses gym-map.tsx
 // (MapLibre native) with the same styles, layers and colours.
 
+/** The browser preview always has maplibre-gl. */
+export const GYM_MAP_AVAILABLE = true;
+
 export function GymMap({ pins, homeId, height = 360 }: { pins: Pin[]; homeId: string | null; height?: number }) {
   const { color, dark } = useTheme();
   const box = useRef<HTMLDivElement>(null);

@@ -1,7 +1,6 @@
-import { Camera, GeoJSONSource, Layer, Map } from "@maplibre/maplibre-react-native";
 import { router } from "expo-router";
 import { useMemo } from "react";
-import { View } from "react-native";
+import { TurboModuleRegistry, View } from "react-native";
 import { MAP_HOME, MAP_STYLE, pinsBounds, pinsGeoJson, type Pin } from "@/components/gym-map-data";
 import { useTheme } from "@/lib/theme";
 
@@ -10,10 +9,23 @@ import { useTheme } from "@/lib/theme";
 // the reader's own gym larger, close gyms grouped into a counted circle; a dot
 // opens the gym. The browser preview draws the same map with maplibre-gl
 // (gym-map.web.tsx).
+//
+// MapLibre is a native module that Expo Go does not carry, and the package
+// throws the moment it is imported without it — so it is required only when
+// the build has it. In Expo Go GYM_MAP_AVAILABLE is false and the gyms screen
+// hides its Map button; a development or store build has the map.
+
+export const GYM_MAP_AVAILABLE = TurboModuleRegistry.get("MLRNCameraModule") != null;
+
+type MapLibre = typeof import("@maplibre/maplibre-react-native");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ML: MapLibre | null = GYM_MAP_AVAILABLE ? require("@maplibre/maplibre-react-native") : null;
 
 export function GymMap({ pins, homeId, height = 360 }: { pins: Pin[]; homeId: string | null; height?: number }) {
   const { color, dark } = useTheme();
   const data = useMemo(() => pinsGeoJson(pins, homeId), [pins, homeId]);
+  if (!ML) return null;
+  const { Camera, GeoJSONSource, Layer, Map } = ML;
   const bounds = pinsBounds(pins);
   const one = pins.length === 1 ? pins[0]! : null;
   return (

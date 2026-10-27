@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GymMap } from "@/components/gym-map";
+import { GYM_MAP_AVAILABLE, GymMap } from "@/components/gym-map";
 import { T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
@@ -63,9 +63,9 @@ export default function Gyms() {
             accessibilityLabel={t.gyms.my.searchPlaceholder}
             style={[styles.search, { color: color.ink, backgroundColor: color.surface, borderColor: color.line }]}
           />
-          <Pressable accessibilityRole="button" accessibilityState={{ expanded: mapOpen }} onPress={() => setMapOpen((v) => !v)} style={[styles.map, { backgroundColor: mapOpen ? color.accent : color.surface }]}>
+          {GYM_MAP_AVAILABLE ? <Pressable accessibilityRole="button" accessibilityState={{ expanded: mapOpen }} onPress={() => setMapOpen((v) => !v)} style={[styles.map, { backgroundColor: mapOpen ? color.accent : color.surface }]}>
             <Text style={{ fontFamily: font.semibold, fontSize: 13, color: mapOpen ? color.accentFg : color.inkSoft }}>{h.tabMap}</Text>
-          </Pressable>
+          </Pressable> : null}
         </View>
         {mapOpen && data?.pins ? <GymMap pins={data.pins} homeId={data.home?.id ?? null} /> : null}
 
