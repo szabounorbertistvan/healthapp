@@ -20,7 +20,7 @@ const WORDMARK_RATIO = 781 / 141; // voinic-wordmark.png
 type Images = { mark: string | null; wordmark: string | null; avatar: string | null; photo: string | null };
 
 /** A remote image as a data: URI (so the PNG export embeds it), or null when it cannot be read. */
-async function inline(url: string | null): Promise<string | null> {
+export async function inline(url: string | null): Promise<string | null> {
   if (!url) return null;
   try {
     const res = await fetch(url);
@@ -235,7 +235,7 @@ function Item({ item, i, colors, images, width, height }: { item: ShareCardItemV
   }
 }
 
-type SvgHandle = { toDataURL: (cb: (base64: string) => void, options?: object) => void };
+export type SvgHandle = { toDataURL: (cb: (base64: string) => void, options?: object) => void };
 
 /** The card drawn at `width` on screen; `exportPng` returns it at full size. */
 export function ShareCardArt({ card, images, width, svgRef }: { card: ShareCardV1; images: Images; width: number; svgRef?: React.Ref<SvgHandle> }) {
@@ -253,11 +253,15 @@ export function ShareCardArt({ card, images, width, svgRef }: { card: ShareCardV
 
 /** The card as PNG bytes at its own size (1080 wide). */
 async function exportPng(handle: SvgHandle | null, card: ShareCardV1): Promise<Uint8Array | null> {
-  const { width, height } = card.layout;
+  return svgToPng(handle, card.layout.width, card.layout.height, "share-card-art");
+}
+
+/** An Svg drawing as PNG bytes at its full size; on the web preview the DOM svg (inside the View with `domId`) goes through a canvas. */
+export async function svgToPng(handle: SvgHandle | null, width: number, height: number, domId: string): Promise<Uint8Array | null> {
   let base64: string | null = null;
   if (Platform.OS === "web") {
     // react-native-svg has no toDataURL on the web: the browser preview paints the DOM svg onto a canvas
-    const svg = document.getElementById("share-card-art")?.querySelector("svg");
+    const svg = document.getElementById(domId)?.querySelector("svg");
     if (!svg) return null;
     const xml = new XMLSerializer().serializeToString(svg);
     const img = new window.Image();
@@ -281,7 +285,7 @@ async function exportPng(handle: SvgHandle | null, card: ShareCardV1): Promise<U
  * The preview and its controls (ShareWorkoutDialog): the card, the options the
  * caller offers, Share — the phone's sheet, where "Save image" is too.
  */
-export function ShareCardSheet({ card, controls, onClose }: { card: ShareCardV1 | null; controls?: ReactNode; onClose: () => void }) {
+export function ShareCardSheet({ card, controls, onClose, title }: { card: ShareCardV1 | null; controls?: ReactNode; onClose: () => void; title?: string }) {
   const { t } = useI18n();
   const { color } = useTheme();
   const s = t.common.shareCard;
@@ -310,7 +314,7 @@ export function ShareCardSheet({ card, controls, onClose }: { card: ShareCardV1 
   return (
     <View style={[styles.sheet, { backgroundColor: color.surface, borderColor: color.line }]}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text style={{ fontFamily: font.bold, fontSize: 16, color: color.ink }}>{s.dialogTitle}</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: 16, color: color.ink }}>{title ?? s.dialogTitle}</Text>
         <Pressable accessibilityRole="button" accessibilityLabel={s.close} onPress={onClose} style={[styles.close, { borderColor: color.line }]}>
           <Text style={{ fontFamily: font.semibold, fontSize: 15, color: color.inkSoft }}>✕</Text>
         </Pressable>

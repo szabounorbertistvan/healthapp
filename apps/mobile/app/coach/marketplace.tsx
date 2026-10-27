@@ -163,6 +163,11 @@ function Profile({ o }: { o: CoachMarketplaceV1 }) {
           <Text style={{ marginTop: 4, fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>{m.shareHint}</Text>
         </Pressable>
       ) : null}
+      {o.public_url ? (
+        <Text accessibilityRole="link" onPress={() => router.push("/coach/share-card")} style={{ fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>
+          {`${t.coachProfile.shareCard.title} →`}
+        </Text>
+      ) : null}
     </Card>
   );
 }

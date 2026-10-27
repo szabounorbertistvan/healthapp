@@ -20,7 +20,7 @@ export function feedPost(p: FeedPost): FeedPostV1 {
     my_reaction: p.my_reaction,
     mine: p.mine,
     saved: p.saved,
-    media: p.media.map((m) => ({ id: m.id, kind: m.kind, url: m.url, width: m.width, height: m.height })),
+    media: p.media.map((m) => ({ id: m.id, kind: m.kind, url: m.url, width: m.width, height: m.height, overlay: m.overlay ?? null })),
   };
 }
 

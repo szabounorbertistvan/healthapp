@@ -164,6 +164,20 @@ function DeadlineField({ value, onChange, today, label }: { value: string; onCha
   );
 }
 
+/** A client's active goals as their coach sees them (ClientGoalsCard): read-only, in the coach's units. */
+export function ClientGoals({ data, name }: { data: GoalsV1; name: string }) {
+  const f = useGoalFormat(data);
+  const { color } = useTheme();
+  return (
+    <View style={{ gap: 12 }}>
+      <Text style={styles.section(color.inkSoft)}>{f.fill(f.g.coachTitle, { name })}</Text>
+      {data.active.length === 0 ? (
+        <Card><T kind="faint">{f.g.coachNone}</T></Card>
+      ) : data.active.map((goal) => <GoalCard key={goal.id} goal={goal} data={data} f={f} readOnly />)}
+    </View>
+  );
+}
+
 export function GoalsTab({ data }: { data: GoalsV1 }) {
   const f = useGoalFormat(data);
   const { g } = f;
@@ -243,7 +257,7 @@ function useGoalWrite() {
 
 type Confirming = "achieved" | "abandoned" | "delete" | null;
 
-function GoalCard({ goal, data, f }: { goal: GoalV1; data: GoalsV1; f: Fmt }) {
+function GoalCard({ goal, data, f, readOnly = false }: { goal: GoalV1; data: GoalsV1; f: Fmt; readOnly?: boolean }) {
   const { g } = f;
   const { color } = useTheme();
   const { pending, error, run } = useGoalWrite();
@@ -336,7 +350,7 @@ function GoalCard({ goal, data, f }: { goal: GoalV1; data: GoalsV1; f: Fmt }) {
         </View>
       ) : null}
 
-      {editing ? (
+      {readOnly ? null : editing ? (
         <EditGoalForm goal={goal} data={data} f={f} onDone={() => setEditing(false)} />
       ) : confirming ? (
         <View style={{ gap: 10, borderRadius: 16, backgroundColor: color.bg, paddingHorizontal: 16, paddingVertical: 12 }}>

@@ -7,7 +7,7 @@ import type {
   ProgressRange, RepRecord, RoutineCard, StrengthHighlight, TrainingProgress, ExerciseSessionEntry, ExerciseStats,
   CalendarDay, FitnessScore, FitnessScoreTrend, MilestoneReached, StreakStatus, StreakSummary,
   MealDistribution, NutritionBucket, NutritionDay, NutritionInsight, NutritionPeriod, NutritionProgress,
-  ProgressionAnalysis, WeeklyComparison, MeasurementComparison,
+  ProgressionAnalysis, WeeklyComparison, MeasurementComparison, PhotoOverlay,
 } from "@healthapp/shared";
 
 export const API_V1 = "/api/v1";
@@ -534,7 +534,8 @@ export type FeedPostV1 = {
   /** In the reader's own saved posts (/saved); only they can see it. */
   saved: boolean;
   /** Pictures, in order: short-lived links to /api/media (relative to the API's origin). */
-  media: { id: string; kind: "image" | "video"; url: string; width: number; height: number }[];
+  /** overlay: what the author put on the picture (PhotoFrame); only a one-picture post draws it. */
+  media: { id: string; kind: "image" | "video"; url: string; width: number; height: number; overlay?: PhotoOverlay | null }[];
 };
 
 export type CommentV1 = {
@@ -880,6 +881,18 @@ export type RoutineDetailV1 = {
   may_copy: boolean;
   /** The reader's own solo program: it opens in the builder. */
   may_edit: boolean;
+  /** The details form (RoutineDetailsForm): may edit the name, level, goal…; may change who sees it; may post it to the feed. */
+  may_edit_details?: boolean;
+  may_publish?: boolean;
+  may_share?: boolean;
+  /** A coach's active clients, for Assign; empty for everyone else. */
+  clients?: { id: string; name: string }[];
+  /** The authoring coach's clients on a copy of it (program_assignees). */
+  assignees?: { program_id: string; client_name: string; draft: boolean }[];
+  /** Aggregate counts only, already worded (program_usage). */
+  usage_line?: string | null;
+  /** validateProgram() for whoever may edit: what keeps it off the public shelf, worded. */
+  completeness?: { severity: "error" | "warning"; text: string; day: string | null }[] | null;
   days: {
     id: string;
     name: string;
@@ -920,6 +933,8 @@ export type GymsV1 = {
   items: GymPinV1[];
   /** Every gym in the directory, for the phone's own search. */
   total: number;
+  /** Every active gym with coordinates, for the map (gyms_map). */
+  pins?: { id: string; name: string; city: string; lat: number; lng: number }[];
 };
 
 /** GET /api/v1/gyms/[id] — one gym's page: where, rating, open now, its records, numbers and coaches. */
@@ -1171,6 +1186,10 @@ export type CoachClientPageV1 = {
   workouts: FeedbackSessionV1[];
   /** What the client put on their feed, as a follower sees it. */
   posts: FeedPostV1[];
+  /** Coach Pro: the client's goals, read-only, in the coach's units (ClientGoalsCard). */
+  goals?: GoalsV1 | null;
+  /** Coach Pro: the progress PDF periods, on the client's calendar (ClientReportDownload); fetched from /coach/clients/<id>/report?range=. */
+  reports?: { days: number; file_name: string }[];
 };
 
 // ---------- progress photos and two weigh-in dates ----------
@@ -1676,3 +1695,20 @@ export type FeedbackWriteV1 = { ok: boolean; reason?: "rate" | "empty" };
 
 /** POST /api/v1/complete-profile — op complete { fullName, username, sex, age, role } | consent. */
 export type CompleteProfileV1 = { ok: boolean; message?: string; errorCode?: string };
+
+/** GET /api/v1/share-card/coach — the coach's promotional card (/marketplace/share): the card when the profile is public, else why not. */
+export type CoachShareCardV1 =
+  | { status: "none" | "not_public" }
+  | {
+      status: "ok";
+      card: ShareCardV1;
+      /** The options as the server normalized them, and what may be chosen. */
+      options: { template: string; format: string; photo: string; specs: string[]; showHeadline: boolean; showQr: boolean };
+      templates: string[];
+      formats: string[];
+      photos: string[];
+      /** The coach's own non-primary specializations (the primary one always shows). */
+      specs: { slug: string; name: string }[];
+      max_specs: number;
+      url: string;
+    };

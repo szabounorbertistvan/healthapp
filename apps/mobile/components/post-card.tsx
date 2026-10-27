@@ -1,10 +1,12 @@
 import type { FeedPostV1 } from "@healthapp/api/v1";
-import { isAchievementRarity, postPhotoOf, type ReactionType } from "@healthapp/shared";
+import { isAchievementRarity, postPhotoOf, type PhotoOverlay, type ReactionType } from "@healthapp/shared";
+import type { OverlayStatValues } from "@healthapp/shared/media/overlay";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { MediaGallery } from "@/components/media-gallery";
+import { PhotoView, useOverlayStats } from "@/components/photo-overlay";
 import { ModerationMenu } from "@/components/moderation";
 import { NavIcon } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -15,6 +17,9 @@ import { alpha, font, useTheme } from "@/lib/theme";
 // One post, as the web's components/social.tsx PostCard draws it on a phone:
 // the author and when, the caption, the post itself by kind, then kudos / love
 // and the comments. The feed and a post's page both use it.
+
+/** The picture a post leads with, and what its author put on it. */
+type Picture = { url: string; width: number | null; height: number | null; overlay: PhotoOverlay | null };
 
 const DUMBBELL = "M6.5 6.5v11M9.5 8.5v7M14.5 8.5v7M17.5 6.5v11M9.5 12h5";
 const TROPHY = "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4";
@@ -62,7 +67,10 @@ export function PostCard({ post: initial, link = true, removeOnUnsave = false }:
   const [hidden, setHidden] = useState(false);
   const photo = post.media.find((m) => m.kind === "image") ?? null;
   const legacy = photo ? null : postPhotoOf(post.payload);
-  const picture = photo ? { url: absolute(photo.url), ratio: photo.width / photo.height } : legacy ? { url: absolute(legacy.url), ratio: legacy.width && legacy.height ? legacy.width / legacy.height : 1 } : null;
+  const picture: Picture | null = photo
+    ? { url: absolute(photo.url), width: photo.width, height: photo.height, overlay: photo.overlay ?? null }
+    : legacy ? { url: absolute(legacy.url), width: legacy.width ?? null, height: legacy.height ?? null, overlay: legacy.overlay ?? null } : null;
+  const overlayStats = useOverlayStats(post.payload);
 
   async function toggleSave() {
     setError(null);
@@ -122,10 +130,10 @@ export function PostCard({ post: initial, link = true, removeOnUnsave = false }:
       {post.media.length > 1 && post.payload?.kind !== "workout" ? (
         <View style={{ marginTop: 12 }}><MediaGallery items={post.media.filter((m) => m.kind === "image").map((m) => ({ ...m, url: absolute(m.url) }))} authorName={post.author_name} /></View>
       ) : picture && post.payload?.kind !== "workout" ? (
-        <Image source={{ uri: picture.url }} style={{ marginTop: 12, width: "100%", aspectRatio: Math.max(0.6, Math.min(picture.ratio, 1.9)) }} resizeMode="cover" />
+        <View style={{ marginTop: 12 }}><PhotoView url={picture.url} width={picture.width} height={picture.height} overlay={picture.overlay} stats={overlayStats} /></View>
       ) : null}
       <View style={{ marginTop: 12 }}>
-        <PostBody post={post} picture={post.payload?.kind === "workout" ? picture : null} />
+        <PostBody post={post} picture={post.payload?.kind === "workout" ? picture : null} stats={overlayStats} />
       </View>
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12 }}>
@@ -169,7 +177,7 @@ export function PostCard({ post: initial, link = true, removeOnUnsave = false }:
 }
 
 /** The post itself, by kind (social.tsx PostMedia): the workout tile, the gold tiles, a shared routine. */
-function PostBody({ post, picture }: { post: FeedPostV1; picture: { url: string; ratio: number } | null }) {
+function PostBody({ post, picture, stats }: { post: FeedPostV1; picture: Picture | null; stats: OverlayStatValues }) {
   const { t, fill, locale } = useI18n();
   const { color } = useTheme();
   const s = t.common.social;
@@ -200,7 +208,7 @@ function PostBody({ post, picture }: { post: FeedPostV1; picture: { url: string;
     );
     return (
       <View style={[styles.tile, { backgroundColor: color.bg, padding: 0, overflow: "hidden" }]}>
-        {picture ? <Image source={{ uri: picture.url }} style={{ width: "100%", aspectRatio: Math.max(0.6, Math.min(picture.ratio, 1.9)) }} resizeMode="cover" /> : null}
+        {picture ? <PhotoView url={picture.url} width={picture.width} height={picture.height} overlay={picture.overlay} stats={stats} /> : null}
         <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 }}>
           {label(DUMBBELL, s.workoutPost, color.accentInk)}
           <Text numberOfLines={1} style={{ marginTop: 4, marginBottom: 14, fontFamily: font.displayExtrabold, fontSize: 24, color: color.ink }}>{p.name}</Text>

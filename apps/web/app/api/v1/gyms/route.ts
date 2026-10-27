@@ -5,7 +5,8 @@ import { getGymsMap, getMyGyms } from "@/lib/gym-data";
 import { gymMapHref } from "@/lib/gym-map";
 
 // The gyms list — what the web's /gyms shows under its map: the reader's own
-// town (their gym's, else their profile's), best rated first, 60 at most.
+// town (their gym's, else their profile's), best rated first, 60 at most —
+// and the map itself: every pin, as the web's GymMap draws them.
 export const dynamic = "force-dynamic";
 
 const norm = (v: string | null | undefined) => (v ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
@@ -23,5 +24,6 @@ export const GET = v1Route(async () => {
     city: local[0]?.city ?? null,
     total: pins.length,
     items: listed.map((p) => ({ id: p.id, name: p.name, city: p.city, google_rating: p.google_rating, members: p.members, coaches: p.coaches })),
+    pins: pins.map((p) => ({ id: p.id, name: p.name, city: p.city, lat: p.lat, lng: p.lng })),
   });
 });

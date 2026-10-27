@@ -40,6 +40,7 @@ const PLAIN: Record<string, string> = {
   "/check-in": "/check-in",
   "/streak": "/streak",
   "/onboarding": "/onboarding",
+  "/marketplace/share": "/coach/share-card",
   "/fitness-score": "/fitness-score",
   "/reports": "/reports",
   "/feed": "/feed",

@@ -1,5 +1,5 @@
-import type { WorkoutDoneV1 } from "@healthapp/api/v1";
-import { AI_ASSISTANTS, POST_TEXT_MAX, STREAK_SHARE_MIN, aiAssistantUrl } from "@healthapp/shared";
+import type { FeedPostV1, WorkoutDoneV1 } from "@healthapp/api/v1";
+import { AI_ASSISTANTS, POST_TEXT_MAX, STREAK_SHARE_MIN, aiAssistantUrl, type PhotoOverlay } from "@healthapp/shared";
 import { publishPlan } from "@healthapp/shared/media/draft";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
@@ -8,6 +8,9 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, Share, StyleSheet, T
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Chip } from "@/components/coach-profile-bits";
 import { MediaPicker } from "@/components/media-tray";
+import { useOverlayStats } from "@/components/photo-overlay";
+import { PhotoOverlayEditor } from "@/components/photo-overlay-editor";
+import { StoryDownload } from "@/components/photo-story";
 import { ShareToFeed, VisibilityPicker, type Visibility } from "@/components/share-feed";
 import { ShareWorkoutButton } from "@/components/share-workout";
 import { Card, NavIcon, T } from "@/components/ui";
@@ -189,6 +192,13 @@ function SharePanel({ d }: { d: WorkoutDoneV1 }) {
   const [sharedPrs, setSharedPrs] = useState<Set<string>>(new Set(x.prs.filter((p) => p.shared).map((p) => p.set_id)));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [overlay, setOverlay] = useState<PhotoOverlay | null>(null);
+  // the photo the story is made from, kept once the post has gone out (the draft empties then)
+  const [kept, setKept] = useState<{ uri: string; width: number; height: number; overlay: PhotoOverlay | null } | null>(null);
+  // the figures the photo can carry, worded as the feed card words them (useOverlayStats)
+  const overlayStats = useOverlayStats({ kind: "workout", duration_min: x.duration_min, volume_kg: x.volume_kg, sets: x.sets, exercises: x.exercises, load: x.load, prs: x.prs.length } as unknown as FeedPostV1["payload"]);
+  const ready = media.draft.items.filter((i) => i.previewUrl && i.width && i.height);
+  const single = media.draft.items.length === 1 && ready.length === 1 ? ready[0]! : null;
   const n = (v: number) => v.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB", { maximumFractionDigits: 1 });
 
   async function share() {
@@ -198,8 +208,12 @@ function SharePanel({ d }: { d: WorkoutDoneV1 }) {
     if (!plan.ok) return setError(plan.reason === "busy" ? s.mediaWaitUploads : s.mediaFixFailed);
     setPending(true);
     try {
-      const r = await api.sessionShare(x.session_id, { op: "workout", visibility, text, media: plan.media.length > 0 ? plan.media : null });
+      // the overlay rides on the picture, and only a one-picture post keeps it
+      const list = plan.media.length === 1 && overlay ? [{ ...plan.media[0]!, overlay }] : plan.media;
+      const r = await api.sessionShare(x.session_id, { op: "workout", visibility, text, media: list.length > 0 ? list : null });
       if (!r.ok) return setError(r.message ?? s.mediaPublishFailed);
+      const lead = ready[0];
+      if (lead) setKept({ uri: lead.previewUrl!, width: lead.width!, height: lead.height!, overlay: single ? overlay : null });
       media.markPublished();
       setShared(true);
       void queryClient.invalidateQueries({ queryKey: ["feed"] });
@@ -243,6 +257,12 @@ function SharePanel({ d }: { d: WorkoutDoneV1 }) {
               accessibilityLabel={s.composerPlaceholder} multiline
               style={{ minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: color.line, backgroundColor: color.bg, paddingHorizontal: 14, paddingVertical: 10, fontFamily: font.regular, fontSize: 14, color: color.ink }} />
             {d.uploads ? <MediaPicker api={media} disabled={pending} /> : null}
+            {single ? (
+              <PhotoOverlayEditor src={single.previewUrl!} width={single.width!} height={single.height!} stats={overlayStats} value={overlay} onChange={setOverlay} disabled={pending} />
+            ) : null}
+            {ready[0] ? (
+              <StoryDownload photo={{ uri: ready[0].previewUrl!, width: ready[0].width!, height: ready[0].height! }} overlay={single ? overlay : null} stats={overlayStats} title={x.name} date={x.date} />
+            ) : null}
             <VisibilityPicker value={visibility} onChange={setVisibility} />
             <Pressable accessibilityRole="button" disabled={pending} onPress={() => void share()} style={[styles.primary, { backgroundColor: color.accent, opacity: pending ? 0.5 : 1 }]}>
               {pending ? <ActivityIndicator color={color.accentFg} /> : <Text style={{ fontFamily: font.displayBold, fontSize: 14, color: color.accentFg }}>{s.shareToFeed}</Text>}
@@ -254,6 +274,7 @@ function SharePanel({ d }: { d: WorkoutDoneV1 }) {
             <Text style={{ fontFamily: font.semibold, fontSize: 14, color: color.accentInk }}>{s.shared}</Text>
           </View>
         )}
+        {shared && kept ? <StoryDownload photo={kept} overlay={kept.overlay} stats={overlayStats} title={x.name} date={x.date} /> : null}
         {error ? <Text accessibilityRole="alert" style={{ fontFamily: font.regular, fontSize: 12.5, color: color.risk }}>{error}</Text> : null}
       </Card>
       {x.prs.length > 0 ? (

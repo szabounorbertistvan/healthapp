@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ClientGoals } from "@/components/goals";
 import { PostCard } from "@/components/post-card";
 import { SessionView, type CoachActions } from "@/components/session-view";
 import { Bar, Button, Card, T } from "@/components/ui";
@@ -13,6 +14,7 @@ import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/role";
+import { shareFile } from "@/lib/share-file";
 import { font, useTheme } from "@/lib/theme";
 
 // One client, from the coach's side — the web's /clients/[id] on a phone:
@@ -103,6 +105,8 @@ export default function CoachClient() {
             {c.fitness ? <Fitness c={c} /> : null}
             {c.weekly ? <WeeklyCard summary={c.weekly} onSwitch={setWeek} /> : <T kind="faint">{t.common.weekly.noData}</T>}
             {c.lifts ? <Lifts lifts={c.lifts} /> : null}
+            {c.goals ? <ClientGoals data={c.goals} name={c.name} /> : null}
+            {c.reports && c.reports.length > 0 ? <ReportDownload clientId={c.id} name={c.name} options={c.reports} /> : null}
 
             <View style={{ gap: 10 }}>
               <Text style={{ fontFamily: font.displayBold, fontSize: 18, color: color.ink }}>{m.title}</Text>
@@ -226,3 +230,49 @@ function Lifts({ lifts }: { lifts: NonNullable<CoachClientPageV1["lifts"]> }) {
 const styles = StyleSheet.create({
   body: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 48, gap: 16 },
 });
+
+/** The coach's copy of the client's progress PDF (ClientReportDownload): pick a period, then the phone's share sheet. */
+function ReportDownload({ clientId, name, options }: { clientId: string; name: string; options: NonNullable<CoachClientPageV1["reports"]> }) {
+  const { t, fill } = useI18n();
+  const { color } = useTheme();
+  const r = t.clientApp.reports;
+  const [days, setDays] = useState(options[0]!.days);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const chosen = options.find((o) => o.days === days) ?? options[0]!;
+
+  async function download() {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const bytes = await api.coachClientReport(clientId, chosen.days);
+      await shareFile(chosen.file_name, bytes, "application/pdf", "com.adobe.pdf");
+      setStatus({ ok: true, text: r.done });
+    } catch (e) {
+      setStatus({ ok: false, text: e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : e instanceof Error && e.message ? e.message : r.errors.REPORT_FAILED });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card style={{ gap: 10 }}>
+      <Text style={{ fontFamily: font.displayBold, fontSize: 17, color: color.ink }}>{fill(r.coachTitle, { name })}</Text>
+      <T kind="soft">{r.coachHint}</T>
+      <T kind="label">{r.periodLabel}</T>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+        {options.map((o) => {
+          const on = o.days === days;
+          return (
+            <Text key={o.days} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => setDays(o.days)}
+              style={{ overflow: "hidden", borderRadius: 17, paddingHorizontal: 14, paddingVertical: 8, fontFamily: font.semibold, fontSize: 12.5, color: on ? color.accentFg : color.inkSoft, backgroundColor: on ? color.accent : color.bg }}>
+              {o.days === 365 ? r.periodYear : fill(r.periodDays, { days: o.days })}
+            </Text>
+          );
+        })}
+      </View>
+      <Button height={44} label={busy ? r.downloading : `${r.download} · ${r.share}`} busy={busy} onPress={() => void download()} />
+      {status ? <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: status.ok ? color.accentInk : color.risk }}>{status.text}</Text> : null}
+    </Card>
+  );
+}

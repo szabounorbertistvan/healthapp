@@ -69,7 +69,7 @@ RLS tests.
 
 ```
 apps/web/            Next.js 15 App Router, React 19, Tailwind v4 — the product
-apps/mobile/         Expo SDK 58 app (Android + iPhone) — client: Today, Workout (offline + rest timer), Food (+ barcode), Habits, Progress, Check-in, Coach chat, Notifications; coach: Clients, Inbox, Chats. Push wired, not live. Never run on a device yet; release steps docs/ANDROID_RELEASE.md
+apps/mobile/         Expo SDK 58 app (Android + iPhone) — every web surface except the admin panel and billing (kept hidden on purpose, 2026-10-27): sign-up/onboarding, client and coach screens, social, Coach Discovery, share cards, gym map (MapLibre). Terms/Privacy open the web pages in an in-app browser. Push wired, not live. Never run on a device yet; release steps docs/ANDROID_RELEASE.md
 apps/android-twa/    the Play Store TWA bridge (Bubblewrap manifest only; not a workspace)
 packages/shared/     domain math: macros, adherence, PRs, entitlements, billing, sync; the coach-profile model at `@healthapp/shared/coach/*` (web `lib/coach-*.ts` re-export it)
 packages/api/        error shapes shared with edge functions; the /api/v1 contract (src/v1.ts)

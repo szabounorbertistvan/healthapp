@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { GymMap } from "@/components/gym-map";
 import { T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
 
@@ -21,6 +21,7 @@ export default function Gyms() {
   const { color } = useTheme();
   const h = t.gyms.hub;
   const query = useQuery({ queryKey: ["gyms"], queryFn: api.gyms });
+  const [mapOpen, setMapOpen] = useState(false);
   const [typed, setTyped] = useState("");
   const [q, setQ] = useState("");
   useEffect(() => {
@@ -62,10 +63,11 @@ export default function Gyms() {
             accessibilityLabel={t.gyms.my.searchPlaceholder}
             style={[styles.search, { color: color.ink, backgroundColor: color.surface, borderColor: color.line }]}
           />
-          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`${config.webUrl}/gyms`)} style={[styles.map, { backgroundColor: color.surface }]}>
-            <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkSoft }}>{`${h.tabMap} ↗`}</Text>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: mapOpen }} onPress={() => setMapOpen((v) => !v)} style={[styles.map, { backgroundColor: mapOpen ? color.accent : color.surface }]}>
+            <Text style={{ fontFamily: font.semibold, fontSize: 13, color: mapOpen ? color.accentFg : color.inkSoft }}>{h.tabMap}</Text>
           </Pressable>
         </View>
+        {mapOpen && data?.pins ? <GymMap pins={data.pins} homeId={data.home?.id ?? null} /> : null}
 
         {!data ? (
           query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} style={{ marginTop: 32 }} />

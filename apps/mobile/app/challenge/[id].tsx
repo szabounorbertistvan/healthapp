@@ -4,6 +4,8 @@ import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChallengeBar, deadlineText, statusTone } from "@/components/challenge-bits";
+import { Small } from "@/components/coach-profile-bits";
+import { VisibilityPicker, type Visibility } from "@/components/share-feed";
 import { Card, NavIcon, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
@@ -116,7 +118,10 @@ export default function ChallengeScreen() {
                 </View>
               ) : null}
               {c.status === "completed" ? (
-                <Text style={{ marginTop: 14, fontFamily: font.displayBold, fontSize: 18, color: color.accentInk }}>{ch.completed}</Text>
+                <>
+                  <Text style={{ marginTop: 14, fontFamily: font.displayBold, fontSize: 18, color: color.accentInk }}>{ch.completed}</Text>
+                  {c.joined ? <ShareChallenge id={c.id} /> : null}
+                </>
               ) : !c.joined ? (
                 <Text style={{ marginTop: 10, fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>{ch.notJoined}</Text>
               ) : null}
@@ -189,3 +194,42 @@ const styles = {
   }),
   label: (ink: string) => ({ fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase" as const, color: ink }),
 };
+
+/** A completed challenge to the feed (ShareChallenge): who sees it, then once. */
+function ShareChallenge({ id }: { id: string }) {
+  const { t } = useI18n();
+  const { color } = useTheme();
+  const queryClient = useQueryClient();
+  const s = t.common.social;
+  const [visibility, setVisibility] = useState<Visibility>("followers");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (done) return <Text style={{ marginTop: 10, fontFamily: font.semibold, fontSize: 13.5, color: color.accentInk }}>{`✓ ${s.shared}`}</Text>;
+  return (
+    <View style={{ marginTop: 12, gap: 10 }}>
+      <VisibilityPicker value={visibility} onChange={setVisibility} />
+      <View style={{ alignSelf: "flex-start" }}>
+        <Small
+          label={s.shareToFeed}
+          disabled={busy}
+          onPress={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              const r = await api.shareChallenge(id, visibility);
+              if (!r.ok) return setError(r.message ?? t.mobile.errors.generic);
+              setDone(true);
+              void queryClient.invalidateQueries({ queryKey: ["feed"] });
+            } catch (e) {
+              setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : t.mobile.errors.generic);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+      </View>
+      {error ? <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.risk }}>{error}</Text> : null}
+    </View>
+  );
+}

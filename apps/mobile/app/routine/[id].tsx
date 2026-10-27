@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { routineTags, SaveButton } from "@/components/routine-card";
+import { AssignRoutine, RoutineDetailsForm, RoutineStatus, ShareRoutine } from "@/components/routine-extras";
 import { Button, Card, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
@@ -25,6 +26,7 @@ export default function RoutineScreen() {
   const query = useQuery({ queryKey: ["routines", "detail", id], queryFn: () => api.routine(id) });
   const data = query.data;
   const [copying, setCopying] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -105,6 +107,12 @@ export default function RoutineScreen() {
                         <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkSoft }}>{t.clientApp.workout.editProgram}</Text>
                       </Pressable>
                     ) : null}
+                    {data.clients && data.clients.length > 0 ? (
+                      <Pressable accessibilityRole="button" onPress={() => { setCopying(false); setNote(null); setAssigning(true); }} style={[styles.quiet, { backgroundColor: color.surface }]}>
+                        <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkSoft }}>{r.assign}</Text>
+                      </Pressable>
+                    ) : null}
+                    {data.may_share ? <ShareRoutine id={card.id} /> : null}
                     {data.may_copy ? (
                       <Pressable accessibilityRole="button" onPress={() => { setName(copyName(card.name)); setError(null); setCopying(true); }} style={[styles.quiet, { backgroundColor: color.surface }]}>
                         <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkSoft }}>{card.is_mine ? r.duplicate : r.copy}</Text>
@@ -114,6 +122,11 @@ export default function RoutineScreen() {
                   {!data.may_copy && !card.is_mine ? <T kind="faint">{r.cannotCopyCoached}</T> : null}
                   {note ? <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{note}</Text> : null}
                   {error ? <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.risk }}>{error}</Text> : null}
+                  {assigning && data.clients ? (
+                    <AssignRoutine card={card} clients={data.clients} onDone={(msg) => { setAssigning(false); setNote(msg); }} />
+                  ) : null}
+                  {data.may_edit_details ? <RoutineDetailsForm key={`${card.name}:${card.visibility}:${card.weeks}`} card={card} canPublish={data.may_publish ?? false} /> : null}
+                  <RoutineStatus data={data} />
                   {copying ? (
                     <Card style={{ gap: 10 }}>
                       <T kind="label">{r.nameLabel}</T>

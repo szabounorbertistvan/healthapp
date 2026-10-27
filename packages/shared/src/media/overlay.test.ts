@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { OVERLAY_STAT_STYLES } from "@healthapp/shared";
-import { clampCentre, defaultStatsPlacement, layoutStats, overlayStatRows, statCellHeight, wrapLines } from "./photo-overlay";
+import { OVERLAY_STAT_STYLES } from "../index";
+import { clampCentre, defaultStatsPlacement, layoutStats, overlayStatRows, statCellHeight, wrapLines } from "./overlay";
 
 describe("photo overlay geometry", () => {
   it("the grid is one column for one figure and two for more", () => {

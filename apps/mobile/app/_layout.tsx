@@ -126,6 +126,7 @@ function Gate({ onSignOut }: { onSignOut: () => void }) {
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="feedback" />
           <Stack.Screen name="achievement/[slug]" />
+          <Stack.Screen name="coach/share-card" />
           <Stack.Screen name="fitness-score" />
           <Stack.Screen name="food-trends" />
           <Stack.Screen name="meal-plan" />

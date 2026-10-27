@@ -72,7 +72,8 @@
           "microphonePermission": "Voinic uses the microphone only while you record a voice note for your coach. / Voinic folosește microfonul doar cât înregistrezi un mesaj vocal pentru antrenor."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "@maplibre/maplibre-react-native"
     ],
     "experiments": {
       "typedRoutes": false
