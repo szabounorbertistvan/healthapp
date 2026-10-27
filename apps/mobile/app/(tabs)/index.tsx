@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { RecipesCard, SetupCard, useOnboardingStart } from "@/components/onboarding-cards";
+import { usePageTour } from "@/components/page-tour";
 import { CoachCard, CommunityCard, FitnessCard, HabitsCard, NutritionCard, TrainingCard, WeekCard, WeeklyReportRow } from "@/components/today-cards";
 import { Button, Card, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
@@ -23,6 +24,7 @@ export default function Today() {
   const refused = query.error instanceof ApiFailure && query.error.kind === "unauthorized";
   const me = useMe().data?.data;
   useOnboardingStart();
+  const tour = usePageTour("today", ["week", "training", "nutrition", "coach"], { ready: Boolean(d) });
 
   useEffect(() => {
     // The token was refused (revoked, account removed): back to sign-in.
@@ -36,25 +38,31 @@ export default function Today() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
       <ScrollView
+        ref={tour.scrollRef}
+        onScroll={tour.onScroll}
+        scrollEventThrottle={32}
         contentContainerStyle={styles.body}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={color.accent} />}
       >
-        <View>
-          <T kind="title">{weekday}</T>
-          <T kind="faint" style={{ marginTop: 4, fontSize: 13 }}>{longDate}</T>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <View style={{ flex: 1 }}>
+            <T kind="title">{weekday}</T>
+            <T kind="faint" style={{ marginTop: 4, fontSize: 13 }}>{longDate}</T>
+          </View>
+          {tour.button}
         </View>
         {query.data?.fromPhone ? <T kind="faint">{t.mobile.workout.fromPhone}</T> : null}
 
         <SetupCard />
         {d ? (
           <>
-            <WeekCard d={d} />
+            <View ref={tour.target("week")} collapsable={false}><WeekCard d={d} /></View>
             <FitnessCard d={d} />
-            <TrainingCard d={d} />
-            <NutritionCard d={d} />
+            <View ref={tour.target("training")} collapsable={false}><TrainingCard d={d} /></View>
+            <View ref={tour.target("nutrition")} collapsable={false}><NutritionCard d={d} /></View>
             <RecipesCard userId={me?.id} />
             <HabitsCard d={d} />
-            <CoachCard d={d} />
+            <View ref={tour.target("coach")} collapsable={false}><CoachCard d={d} /></View>
             <CommunityCard d={d} />
             <WeeklyReportRow />
           </>
@@ -68,6 +76,7 @@ export default function Today() {
           <ActivityIndicator color={color.accent} style={{ marginTop: 48 }} />
         )}
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }

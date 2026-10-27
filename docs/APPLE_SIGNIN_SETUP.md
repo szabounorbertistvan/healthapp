@@ -25,4 +25,6 @@ this is needed before the native app is submitted. On the web it is optional.
    Secret key: Supabase generates it from Team ID, Key ID and the `.p8` content
    (paste them in the form). The secret expires after 6 months — set a reminder
    to regenerate it.
-6. Open `/login`: "Continue with Apple" is shown above Google.
+6. Open `/login`: "Continue with Apple" is shown above Google. The phone app's sign-in
+   shows it too (`apps/mobile/lib/oauth.ts`), once `voinic://auth/callback` is an allowed
+   redirect URL (docs/ANDROID_RELEASE.md §1).

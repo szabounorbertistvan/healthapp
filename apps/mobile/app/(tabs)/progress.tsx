@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BodyExtras } from "@/components/body-extras";
 import { PointsChart } from "@/components/charts";
 import { GoalsTab } from "@/components/goals";
+import { usePageTour } from "@/components/page-tour";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -72,6 +73,7 @@ export default function Progress() {
   const data = query.data?.data;
   const f = useFormat(data);
   const a = f.a;
+  const tour = usePageTour("progress", ["range", "stats", "tabs"], { ready: Boolean(data) });
 
   const rangeLabel = (r: ProgressRange) => (r === null ? a.rangeAll : r === 7 ? a.range7 : r === 30 ? a.range30 : r === 90 ? a.range90 : a.range365);
   const tabLabel: Record<Tab, string> = { body: a.tabBody, strength: a.tabStrength, consistency: a.tabConsistency, goals: a.tabGoals };
@@ -80,6 +82,9 @@ export default function Progress() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
       <ScrollView
+        ref={tour.scrollRef}
+        onScroll={tour.onScroll}
+        scrollEventThrottle={32}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={color.accent} />}
@@ -87,11 +92,15 @@ export default function Progress() {
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <T kind="title">{t.common.nav.progress}</T>
-            <Pressable accessibilityRole="link" onPress={() => router.push("/reports")} style={[styles.pill, { backgroundColor: color.surface }]}>
-              <NavIcon d={ICON.report} size={16} color={color.inkSoft} />
-              <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{t.clientApp.reports.link}</Text>
-            </Pressable>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {tour.button}
+              <Pressable accessibilityRole="link" onPress={() => router.push("/reports")} style={[styles.pill, { backgroundColor: color.surface }]}>
+                <NavIcon d={ICON.report} size={16} color={color.inkSoft} />
+                <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{t.clientApp.reports.link}</Text>
+              </Pressable>
+            </View>
           </View>
+          <View ref={tour.target("range")} collapsable={false}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4 }}>
             {EXERCISE_RANGES.map((r) => {
               const on = r === range;
@@ -108,6 +117,7 @@ export default function Progress() {
               );
             })}
           </ScrollView>
+          </View>
           <View>
             <Text style={styles.small(color.inkFaint)}>{note}</Text>
             {data?.truncated ? <Text style={[styles.small(color.inkFaint), { marginTop: 4 }]}>{a.truncated}</Text> : null}
@@ -119,7 +129,7 @@ export default function Progress() {
           query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} style={{ marginTop: 48 }} />
         ) : (
           <>
-            <View style={styles.grid2}>
+            <View ref={tour.target("stats")} collapsable={false} style={styles.grid2}>
               <Stat icon={ICON.scale} label={t.clientApp.progress.currentWeight}
                 value={data.stats.current_weight_kg !== null ? String(kgToDisplay(data.stats.current_weight_kg, f.wu)) : "—"}
                 unit={data.stats.current_weight_kg !== null ? f.wu : undefined} />
@@ -130,7 +140,7 @@ export default function Progress() {
 
             <Insights insights={data.insights} names={data.names} f={f} />
 
-            <View style={[styles.tabs, { backgroundColor: color.surface }]}>
+            <View ref={tour.target("tabs")} collapsable={false} style={[styles.tabs, { backgroundColor: color.surface }]}>
               {(["body", "strength", "consistency", "goals"] as const).map((x) => {
                 const on = x === tab;
                 return (
@@ -154,6 +164,7 @@ export default function Progress() {
           </>
         )}
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }

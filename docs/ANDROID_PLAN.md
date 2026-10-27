@@ -174,7 +174,7 @@ export async function POST(req) { const ctx = await bearerContext(req); … retu
 |---|---|---|
 | Email + password | `supabase.auth.signInWithPassword` / `signUp` with the same metadata (`full_name`, `username`, `sex`, `age`, role) that `handle_new_user` reads | none |
 | Email confirm / password reset links | deep link `voinic://auth/callback` (and the App Link `https://www.voinic.fit/auth/...` once assetlinks is live) → `exchangeCodeForSession` | add the redirect URLs in Supabase → Auth → URL configuration **in the dashboard**. **Never `supabase config push`** (it overwrites production auth config). |
-| Google | native Google Sign-In → ID token → `signInWithIdToken({ provider: 'google', token })` | a Google Cloud **Android OAuth client** per signing key (SHA-1 of the EAS/upload key *and* the Play App Signing key), and that client id added to Supabase's Google provider "authorized client IDs" |
+| Google | **built 2026-10-27 as the browser flow** (same as Apple below, `apps/mobile/lib/oauth.ts`): needs only the redirect URL. Later, optionally: native Google Sign-In → ID token → `signInWithIdToken({ provider: 'google', token })` | a Google Cloud **Android OAuth client** per signing key (SHA-1 of the EAS/upload key *and* the Play App Signing key), and that client id added to Supabase's Google provider "authorized client IDs" |
 | Apple | optional on Android: `signInWithOAuth('apple')` in `expo-web-browser` with PKCE back to `voinic://auth/callback` | the provider switched on per `APPLE_SIGNIN_SETUP.md`; mandatory only for a future iOS build |
 
 - Session storage: the Supabase session in encrypted storage (`expo-secure-store` holds an AES

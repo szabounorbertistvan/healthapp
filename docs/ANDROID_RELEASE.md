@@ -18,6 +18,12 @@ App Store). **Owner** = something only the owner can do (accounts, money, approv
 
 - [ ] **Owner** — iPhone: Expo Go, five minutes ([IPHONE_TEST.md](IPHONE_TEST.md)).
 - [ ] **Owner** — Android phone (anyone's): an EAS preview build ([ANDROID_PHONE_TEST.md](ANDROID_PHONE_TEST.md)).
+- [ ] **Owner** — Google / Apple in the app: Supabase → Authentication → URL Configuration →
+      **Redirect URLs** → add `voinic://auth/callback` (and, to try it in Expo Go,
+      `exp://**`). Dashboard only, never `supabase config push`. Nothing else for Google (the
+      web's provider is reused); Apple appears once it is on ([APPLE_SIGNIN_SETUP.md](APPLE_SIGNIN_SETUP.md)).
+      Then on the phone: "Continue with Google" → pick an account → back in the app; a new
+      account lands on complete-profile.
 - [ ] **Owner** — try the checklist in those guides as a client **and** with a coach account; send
       screenshots of anything wrong.
 - [ ] **Claude** — fix what that turns up.

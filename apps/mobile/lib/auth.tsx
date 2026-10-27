@@ -29,7 +29,7 @@ export function useAuth(): Auth {
 
 export type SignInError = "missing" | "invalid" | "unconfirmed" | "network";
 
-/** Email + password, the same accounts as the web. Google arrives with the native sign-in (plan §5). */
+/** Email + password, the same accounts as the web. Google and Apple are lib/oauth.ts. */
 export async function signInWithPassword(email: string, password: string): Promise<SignInError | null> {
   if (!email.trim() || !password) return "missing";
   try {

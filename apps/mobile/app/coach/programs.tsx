@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRun } from "@/components/program-editor";
 import { Button, Card, NavIcon, T } from "@/components/ui";
+import { usePageTour } from "@/components/page-tour";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
@@ -25,18 +26,23 @@ export default function CoachPrograms() {
   const query = useQuery({ queryKey: ["builder", "coach"], queryFn: api.coachPrograms });
   const data = query.data;
   const [creating, setCreating] = useState(false);
+  const tour = usePageTour("programs", ["create", "list"], { ready: Boolean(query.data), tabBar: false });
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
+        ref={tour.scrollRef}
+        onScroll={tour.onScroll}
+        scrollEventThrottle={32}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={color.accent} />}
       >
         <BackHeader label={t.common.nav.more} />
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <T kind="title">{t.common.nav.programs}</T>
-          {creating ? null : <Button height={40} label={p.newProgram} onPress={() => setCreating(true)} />}
+          <T kind="title" style={{ flex: 1 }}>{t.common.nav.programs}</T>
+          {tour.button}
+          {creating ? null : <View ref={tour.target("create")} collapsable={false}><Button height={40} label={p.newProgram} onPress={() => setCreating(true)} /></View>}
         </View>
 
         {!data ? (
@@ -50,7 +56,8 @@ export default function CoachPrograms() {
                 <T kind="soft">{p.emptyHint}</T>
               </Card>
             ) : (
-              data.programs.map((x) => (
+              <View ref={tour.target("list")} collapsable={false} style={{ gap: 14 }}>
+              {data.programs.map((x) => (
                 <Pressable key={x.id} accessibilityRole="link" onPress={() => router.push({ pathname: "/coach/program/[id]", params: { id: x.id } })}>
                   <Card style={{ gap: 12 }}>
                     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
@@ -66,11 +73,13 @@ export default function CoachPrograms() {
                     <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>{fill(p.daysUpdated, { days: x.days, ago: timeAgo(x.updated_at, locale) })}</Text>
                   </Card>
                 </Pressable>
-              ))
+              ))}
+              </View>
             )}
           </>
         )}
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }

@@ -10,7 +10,7 @@ Expo SDK 58 (React Native 0.88, React 19.3.0), Expo Router, TanStack Query, supa
 
 | | |
 |---|---|
-| Sign-in | email + password against the same Supabase project (`lib/auth.tsx`); the session in SecureStore, chunked (`lib/chunked-store.ts`, tested) |
+| Sign-in | email + password against the same Supabase project (`lib/auth.tsx`); the session in SecureStore, chunked (`lib/chunked-store.ts`, tested). **Google / Apple** (2026-10-27, `lib/oauth.ts`): Supabase OAuth in the phone's browser tab, PKCE in a throwaway client, back to `voinic://auth/callback` (`app/auth/callback.tsx`), the session handed to the main client; each button shows only when the project has the provider on. A new account finishes in complete-profile. Needs the redirect URL allowed in Supabase (docs/ANDROID_RELEASE.md §1); never run on a device yet |
 | Today | `GET /api/v1/today` — the web's own `getToday()`, so the same adherence %, streak, next workout, nutrition, habits, check-in |
 | Workout | native (2026-10-23): the program list (`GET /api/v1/workouts`), a day (`GET /api/v1/workouts/[dayId]` — prescription, today's sets, last time per lift), the set logger and Finish (`POST /api/v1/sets`, `POST …/finish` — the web's own `logSet()` / `finishWorkout()`) |
 | Offline | **every** set, food log, habit tick and check-in is saved on the phone first (`lib/outbox-core.ts`, tested; SQLite via `lib/storage.ts`) and sent by `lib/outbox.tsx` — on reconnect, on foreground, every 20 s. Replays are safe: `logSet` derives its keys from the set. The day and the list are kept on the phone (`lib/offline-query.ts`), so the logger opens with no signal once the day was opened online. Finish needs the outbox empty. |
@@ -28,10 +28,11 @@ Expo SDK 58 (React Native 0.88, React 19.3.0), Expo Router, TanStack Query, supa
 | Crash screen | `ErrorBoundary` in `app/_layout.tsx` — retry instead of a blank app |
 | Device tests | Maestro flows in `.maestro/` (not in CI) |
 | More | who is signed in (`GET /api/v1/me`), language RO/EN, links (privacy, account deletion), sign out |
+| Page tours | the web's "Guided tour" on Today, Workout, Food, Progress, More (Account, or Settings for a coach), the coach dashboard, Clients, Programs, Nutrition and Coach Discovery — `usePageTour()` in `components/page-tour.tsx`: the same steps, words, auto-open rule (once, past the welcome cards, unless tips are off) and `onboarding_mark()` marks as the web (`@healthapp/shared/onboarding`); a modal that dims the screen and rings the element, scrolling it into view (`lib/tour.ts`, tested) |
 | Strings | `@healthapp/i18n` — `common` plus the app's own `mobile` namespace, `en` + `ro` |
 | Colours | `@healthapp/ui-tokens`, the web's palette; follows the device's light/dark |
 
-Not yet: Google sign-in (needs the Android OAuth client, plan §5), deleting a logged
+Not yet: Google's native account sheet (`signInWithIdToken`, plan §5 — the browser tab does the job until then), deleting a logged
 set (the web has no delete either), supersets shown as rounds (they log fine, listed per exercise), the live countdown *inside*
 the notification (Android's chronometer needs a native module), a PR mark before the server's
 answer, a custom food or a recipe of one's own, editing a food portion, progress photos, a coach's client detail screen (opens the web) —

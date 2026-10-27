@@ -1,6 +1,8 @@
+import { audienceOf } from "@healthapp/shared/onboarding";
 import Constants from "expo-constants";
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { usePageTour } from "@/components/page-tour";
 import { CoachProfileCard, DataCard, DeleteCard, EmailCard, GymCard, PrivacyCard, ProfileCard, RestCard } from "@/components/settings-forms";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -26,11 +28,17 @@ export default function Account() {
   const me = useMe().data?.data;
   const settings = useOfflineQuery("settings", ["settings"], api.settings).data?.data;
   const a = t.clientApp.account;
+  // the client's /account tour, or the coach's /settings one: this screen is both
+  const coach = me ? audienceOf(me.role) === "coach" : false;
+  const tour = usePageTour(coach ? "settings" : "account", coach ? ["coachProfile", "profile"] : ["profile", "gym", "email"], { ready: Boolean(me && settings) });
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.body}>
-        <T kind="title">{a.title}</T>
+      <ScrollView ref={tour.scrollRef} onScroll={tour.onScroll} scrollEventThrottle={32} contentContainerStyle={styles.body}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <T kind="title" style={{ flex: 1 }}>{a.title}</T>
+          {tour.button}
+        </View>
 
         {me ? (
           <Card style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -68,11 +76,11 @@ export default function Account() {
           </View>
         </Card>
 
-        {settings ? <ProfileCard key={`profile-${settings.account.username}`} settings={settings} /> : null}
-        {settings ? <CoachProfileCard status={settings.coach_status ?? null} /> : null}
-        {settings ? <GymCard settings={settings} /> : null}
+        {settings ? <View ref={tour.target("profile")} collapsable={false}><ProfileCard key={`profile-${settings.account.username}`} settings={settings} /></View> : null}
+        {settings ? <View ref={tour.target("coachProfile")} collapsable={false}><CoachProfileCard status={settings.coach_status ?? null} /></View> : null}
+        {settings ? <View ref={tour.target("gym")} collapsable={false}><GymCard settings={settings} /></View> : null}
         {settings ? <RestCard settings={settings} /> : null}
-        {settings ? <EmailCard settings={settings} /> : null}
+        {settings ? <View ref={tour.target("email")} collapsable={false}><EmailCard settings={settings} /></View> : null}
         {settings ? <PrivacyCard settings={settings} /> : null}
         <DataCard />
         <DeleteCard />
@@ -93,6 +101,7 @@ export default function Account() {
         {me ? <Text style={styles.foot(color.inkFaint)}>{fill(t.mobile.more.signedInAs, { name: me.display_name })}</Text> : null}
         <Text style={styles.foot(color.inkFaint)}>{fill(t.mobile.more.version, { version: Constants.expoConfig?.version ?? "?" })}</Text>
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }

@@ -1,6 +1,7 @@
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DayCard, LoadBadge, Pill } from "@/components/training";
+import { usePageTour } from "@/components/page-tour";
 import { Button, Card, Divider, T } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -23,15 +24,22 @@ export default function Workout() {
   const programs = data?.programs ?? [];
   const hasOwn = programs.some((g) => g.is_own);
   const sessions = data?.sessions ?? [];
+  const tour = usePageTour("workout", ["days", "actions", "history"], { ready: Boolean(data) });
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
       <ScrollView
+        ref={tour.scrollRef}
+        onScroll={tour.onScroll}
+        scrollEventThrottle={32}
         contentContainerStyle={styles.body}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={color.accent} />}
       >
-        <T kind="title">{t.common.nav.training}</T>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: -4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <T kind="title" style={{ flex: 1 }}>{t.common.nav.training}</T>
+          {tour.button}
+        </View>
+        <View ref={tour.target("actions")} collapsable={false} style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: -4 }}>
           <Pill icon="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM4 4v18M8 8h6" label={t.clientApp.library.title} onPress={() => router.push("/exercises")} />
           <Pill icon="M12 4v11M7 10l5 5 5-5M5 20h14" label={t.clientApp.workoutImport.link} onPress={() => router.push("/workout-import")} />
           {data && programs.length > 0 && !data.has_coach ? (
@@ -63,7 +71,8 @@ export default function Workout() {
                 </View>
               </View>
             ) : (
-              programs.map((group) => (
+              <View ref={tour.target("days")} collapsable={false} style={{ gap: 16 }}>
+              {programs.map((group) => (
                 <View key={group.program_id} style={{ gap: 12, marginBottom: 8 }}>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                     <Text style={{ fontFamily: font.bold, fontSize: 12, letterSpacing: 0.72, textTransform: "uppercase", color: color.inkSoft }}>
@@ -86,9 +95,11 @@ export default function Workout() {
                     </Pressable>
                   ) : null}
                 </View>
-              ))
+              ))}
+              </View>
             )}
 
+            <View ref={tour.target("history")} collapsable={false}>
             <Card flush>
               <Text style={{ paddingHorizontal: 20, paddingTop: 0, paddingBottom: 8, fontFamily: font.bold, fontSize: 14, color: color.ink }}>{w.history}</Text>
               {sessions.length === 0 ? (
@@ -123,9 +134,11 @@ export default function Workout() {
                 ))
               )}
             </Card>
+            </View>
           </>
         )}
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }

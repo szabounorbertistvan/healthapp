@@ -41,6 +41,14 @@
       ],
       "env": { "NEXT_DIST_DIR": ".next-soak" },
       "port": 3102
+    },
+    {
+      "name": "mobile-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["expo", "start", "--web", "--port", "8082"],
+      "cwd": "apps/mobile",
+      "env": { "CI": "1" },
+      "port": 8082
     }
   ]
 }

@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Chip, Primary, Small } from "@/components/coach-profile-bits";
 import { RelationshipPill } from "@/components/coaching-lifecycle";
 import { InviteCode } from "@/components/invite-code";
+import { usePageTour } from "@/components/page-tour";
 import { CoachRequestCard } from "@/components/request-card";
 import { Card, NavIcon, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
@@ -34,16 +35,23 @@ export default function CoachClients() {
   const requests = useQuery({ queryKey: ["coach-request-list", "pending"], queryFn: () => api.coachRequestList("pending") });
   const data = query.data;
   const limitReached = data ? data.slots.used >= data.slots.max : false;
+  const tour = usePageTour("clients", ["invite", "list"], { ready: Boolean(data), tabBar: false });
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
+        ref={tour.scrollRef}
+        onScroll={tour.onScroll}
+        scrollEventThrottle={32}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => { void query.refetch(); void requests.refetch(); }} tintColor={color.accent} />}
       >
         <BackHeader label={t.common.nav.dashboard} />
-        <T kind="title">{t.common.nav.clients}</T>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <T kind="title" style={{ flex: 1 }}>{t.common.nav.clients}</T>
+          {tour.button}
+        </View>
         {!data ? (
           query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} style={{ marginTop: 32 }} />
         ) : (
@@ -58,7 +66,7 @@ export default function CoachClients() {
               </Pressable>
             </View>
             <Bulk data={data} />
-            <InviteCode disabled={limitReached} />
+            <View ref={tour.target("invite")} collapsable={false}><InviteCode disabled={limitReached} /></View>
             {limitReached ? (
               <View style={{ borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: color.warnSoft }}>
                 <Text style={{ fontFamily: font.regular, fontSize: 13, lineHeight: 19, color: color.warn }}>{c.limitReached}</Text>
@@ -82,15 +90,18 @@ export default function CoachClients() {
                 <Text style={{ fontFamily: font.regular, fontSize: 13.5, lineHeight: 19, color: color.inkSoft, textAlign: "center" }}>{c.emptyHint}</Text>
               </Card>
             ) : (
-              <Card style={{ padding: 0, gap: 0, overflow: "hidden" }}>
-                {data.clients.map((r, i) => <Row key={r.client_id || r.started_at || i} r={r} pro={data.pro} first={i === 0} locale={locale} />)}
-              </Card>
+              <View ref={tour.target("list")} collapsable={false}>
+                <Card style={{ padding: 0, gap: 0, overflow: "hidden" }}>
+                  {data.clients.map((r, i) => <Row key={r.client_id || r.started_at || i} r={r} pro={data.pro} first={i === 0} locale={locale} />)}
+                </Card>
+              </View>
             )}
             <Relationships kind="paused" rows={data.relationships.filter((r) => r.status === "paused")} />
             <Relationships kind="past" rows={data.relationships.filter((r) => r.status === "ended")} />
           </>
         )}
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }

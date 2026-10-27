@@ -1,14 +1,16 @@
 import { CONSENT_VERSION } from "@healthapp/shared/account/legal";
 import { authErrorMessage, resendOutcome } from "@healthapp/shared/account/auth-errors";
 import { birthYearFromAge, isValidAge, isValidUsername, SEXES } from "@healthapp/shared/account/profile";
-import { useState, type ComponentProps } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
 import { Button, Card, Logo, NavIcon, T } from "@/components/ui";
 import { signInWithPassword, type SignInError } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { openLegal } from "@/lib/legal";
+import { availableProviders, signInWithProvider, type OAuthProvider } from "@/lib/oauth";
 import { supabase } from "@/lib/supabase";
 import { font, useTheme } from "@/lib/theme";
 
@@ -24,7 +26,8 @@ type Done = { kind: "confirm" | "reset"; email: string } | null;
 
 // The web's /login on the phone (components/login-form.tsx): sign in, create
 // an account, or ask for a reset link — the same fields, checks and user
-// metadata as the web, so handle_new_user makes the same account. Every link
+// metadata as the web, so handle_new_user makes the same account; or Google /
+// Apple, when the project has them on (lib/oauth.ts). Every link
 // an email carries opens on the web (/auth/callback), which confirms the
 // address or sets the new password; then the person signs in here.
 export default function SignIn() {
@@ -47,6 +50,27 @@ export default function SignIn() {
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [resent, setResent] = useState<string | null>(null);
   const [done, setDone] = useState<Done>(null);
+  // each shown only once the Supabase project has the provider switched on (LoginForm)
+  const [providers, setProviders] = useState<Set<OAuthProvider>>(new Set());
+
+  useEffect(() => {
+    let live = true;
+    void availableProviders().then((p) => { if (live) setProviders(p); });
+    return () => { live = false; };
+  }, []);
+
+  /** Google / Apple cover sign-in and sign-up alike; a new account then finishes in complete-profile. */
+  async function oauth(provider: OAuthProvider) {
+    setBusy(true);
+    setError(null);
+    setUnconfirmed(false);
+    try {
+      const outcome = await signInWithProvider(provider);
+      if (outcome === "failed") setError(l.errOAuth);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const signInMessages: Record<SignInError, string> = {
     missing: t.mobile.signIn.errMissing,
@@ -279,6 +303,17 @@ export default function SignIn() {
                 busy={busy}
                 onPress={() => void submit()}
               />
+              {mode !== "forgot" && providers.size > 0 ? (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 2 }}>
+                    <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: color.line }} />
+                    <Text style={{ fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: color.inkFaint }}>{l.or}</Text>
+                    <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: color.line }} />
+                  </View>
+                  {providers.has("apple") ? <ProviderButton provider="apple" label={l.continueWithApple} disabled={busy} onPress={() => void oauth("apple")} /> : null}
+                  {providers.has("google") ? <ProviderButton provider="google" label={l.continueWithGoogle} disabled={busy} onPress={() => void oauth("google")} /> : null}
+                </>
+              ) : null}
               <View style={{ alignItems: "center", gap: 10, marginTop: 6 }}>
                 {mode === "signin" ? (
                   <>
@@ -332,7 +367,44 @@ function Consent({ checked, onToggle, text, links }: {
   );
 }
 
+/**
+ * "Continue with Apple / Google" (the web's AppleButton / GoogleButton). Apple's
+ * guidelines want a solid button with its mark, listed first; Google's "G" keeps
+ * its four brand colours, which Google's guidelines fix.
+ */
+function ProviderButton({ provider, label, disabled, onPress }: { provider: OAuthProvider; label: string; disabled: boolean; onPress: () => void }) {
+  const { color } = useTheme();
+  const apple = provider === "apple";
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.provider,
+        { borderColor: apple ? color.ink : color.line, backgroundColor: apple ? color.ink : color.bg, opacity: disabled ? 0.5 : pressed ? 0.85 : 1 },
+      ]}
+    >
+      {apple ? (
+        <Svg width={16} height={18} viewBox="0 0 814 1000">
+          <Path fill={color.bg} d="M788 341c-6 4-108 62-108 190 0 148 130 200 134 202-1 3-21 72-69 142-43 62-88 124-157 124s-87-40-166-40c-77 0-104 41-167 41s-107-58-157-129C40 788 0 664 0 547 0 359 122 259 242 259c64 0 117 42 157 42 38 0 98-45 171-45 28 0 128 3 194 85zM549 154c30-36 51-85 51-135 0-7-1-14-2-19-48 2-106 32-140 73-27 31-53 80-53 131 0 8 1 15 2 18 3 1 9 2 14 2 43 0 97-29 128-70z" />
+        </Svg>
+      ) : (
+        <Svg width={18} height={18} viewBox="0 0 48 48">
+          <Path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+          <Path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+          <Path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+          <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+        </Svg>
+      )}
+      <Text style={{ fontFamily: font.semibold, fontSize: 14.5, color: apple ? color.bg : color.ink }}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  provider: { height: 44, borderRadius: 16, borderWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   lang: { position: "absolute", top: 16, right: 16, zIndex: 2 },
   segment: { flexDirection: "row", borderWidth: 1, borderRadius: 14, overflow: "hidden" },
   segmentItem: { width: 46, height: 42, alignItems: "center", justifyContent: "center" },

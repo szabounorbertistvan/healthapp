@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, T } from "@/components/ui";
+import { usePageTour } from "@/components/page-tour";
 import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -20,18 +21,23 @@ export default function CoachNutrition() {
   const query = useQuery({ queryKey: ["coach-nutrition"], queryFn: api.coachNutrition });
   const data = query.data;
   const [creating, setCreating] = useState(false);
+  const tour = usePageTour("nutrition", ["create", "list"], { ready: Boolean(query.data), tabBar: false });
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
+        ref={tour.scrollRef}
+        onScroll={tour.onScroll}
+        scrollEventThrottle={32}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={color.accent} />}
       >
         <BackHeader label={t.common.nav.more} />
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <T kind="title">{n.title}</T>
-          {creating ? null : <Button height={40} label={n.newPlan} onPress={() => setCreating(true)} />}
+          <T kind="title" style={{ flex: 1 }}>{n.title}</T>
+          {tour.button}
+          {creating ? null : <View ref={tour.target("create")} collapsable={false}><Button height={40} label={n.newPlan} onPress={() => setCreating(true)} /></View>}
         </View>
         {!data ? (
           query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} style={{ marginTop: 32 }} />
@@ -44,7 +50,8 @@ export default function CoachNutrition() {
                 <T kind="soft">{n.emptyHint}</T>
               </Card>
             ) : (
-              data.plans.map((p) => (
+              <View ref={tour.target("list")} collapsable={false} style={{ gap: 14 }}>
+              {data.plans.map((p) => (
                 <Pressable key={p.id} accessibilityRole="link" onPress={() => router.push({ pathname: "/coach/plan/[id]", params: { id: p.id } })}>
                   <Card style={{ gap: 10 }}>
                     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
@@ -61,11 +68,13 @@ export default function CoachNutrition() {
                     </Text>
                   </Card>
                 </Pressable>
-              ))
+              ))}
+              </View>
             )}
           </>
         )}
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }

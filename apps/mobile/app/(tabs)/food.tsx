@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import { TargetsForm } from "@/components/targets-form";
+import { usePageTour } from "@/components/page-tour";
 import { Pill } from "@/components/training";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
@@ -52,6 +53,7 @@ export default function Food() {
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const f = t.clientApp.food;
+  const tour = usePageTour("food", ["week", "summary", "meals"], { ready: Boolean(data) });
 
   const queued = data && session ? queuedFoodFor(outbox.items, session.user.id, data.day) : [];
 
@@ -78,6 +80,9 @@ export default function Food() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
       <ScrollView
+        ref={tour.scrollRef}
+        onScroll={tour.onScroll}
+        scrollEventThrottle={32}
         contentContainerStyle={styles.body}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={color.accent} />}
       >
@@ -93,18 +98,19 @@ export default function Food() {
           {data && data.plan_owner !== "coach" ? <Pill label={t.clientApp.mealPlan.link} onPress={() => router.push("/meal-plan")} /> : null}
           <Pill label={t.clientApp.recipes.link} onPress={() => router.push("/recipes")} />
           <Pill label={t.clientApp.myFoods.link} onPress={() => router.push("/food/mine")} />
+          {tour.button}
         </View>
 
-        {data ? <WeekStrip data={data} onPick={setDay} /> : null}
+        {data ? <View ref={tour.target("week")} collapsable={false}><WeekStrip data={data} onPick={setDay} /></View> : null}
         {query.data?.fromPhone ? <T kind="faint">{t.mobile.workout.fromPhone}</T> : null}
 
         {!data ? (
           query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} style={{ marginTop: 48 }} />
         ) : (
           <>
-            <Summary data={data} totals={totalsWithPending(data, queued)} />
+            <View ref={tour.target("summary")} collapsable={false}><Summary data={data} totals={totalsWithPending(data, queued)} /></View>
             {message ? <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.risk }}>{message}</Text> : null}
-            <View style={{ gap: 14 }}>
+            <View ref={tour.target("meals")} collapsable={false} style={{ gap: 14 }}>
               {MEAL_SLOTS_V1.map((slot) => (
                 <MealCard
                   key={slot}
@@ -120,6 +126,7 @@ export default function Food() {
           </>
         )}
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }

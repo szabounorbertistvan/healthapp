@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { RecipesCard, SetupCard, useOnboardingStart } from "@/components/onboarding-cards";
+import { usePageTour } from "@/components/page-tour";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
 import { percent, timeAgo } from "@/lib/format";
@@ -36,15 +37,22 @@ export default function Dashboard() {
   const atRisk = rows.filter((r) => r.signal === "at_risk").length;
   const me = useMe().data?.data;
   useOnboardingStart();
+  const tour = usePageTour("dashboard", ["stats", "queue"], { ready: Boolean(data) });
   const unread = rows.reduce((sum, r) => sum + r.unread, 0);
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
       <ScrollView
+        ref={tour.scrollRef}
+        onScroll={tour.onScroll}
+        scrollEventThrottle={32}
         contentContainerStyle={styles.body}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={color.accent} />}
       >
-        <T kind="title">{d.title}</T>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <T kind="title" style={{ flex: 1 }}>{d.title}</T>
+          {tour.button}
+        </View>
         {query.data?.fromPhone ? <T kind="faint">{t.mobile.workout.fromPhone}</T> : null}
         <SetupCard />
         <RecipesCard userId={me?.id} />
@@ -62,7 +70,7 @@ export default function Dashboard() {
               </Pressable>
             ) : null}
 
-            <View style={styles.grid}>
+            <View ref={tour.target("stats")} collapsable={false} style={styles.grid}>
               <Stat icon={ICON.clients} label={d.activeClients} value={String(rows.length)} onPress={() => router.push("/coach/clients")} />
               <Stat icon={ICON.checkIns} label={d.checkInsToReview} value={String(data.checkins_pending)} accent={data.checkins_pending > 0} onPress={() => router.navigate("/inbox")} />
               <Stat icon={ICON.messages} label={d.unreadMessages} value={String(unread)} accent={unread > 0} onPress={() => router.navigate("/chats")} />
@@ -75,15 +83,18 @@ export default function Dashboard() {
                 <T kind="faint" style={{ marginTop: 4, lineHeight: 18 }}>{d.emptyHint}</T>
               </View>
             ) : (
+              <View ref={tour.target("queue")} collapsable={false}>
               <Card style={{ padding: 0, gap: 0, overflow: "hidden" }}>
                 {rows.map((r, i) => (
                   <ClientRow key={r.client_id} r={r} pro={pro} first={i === 0} locale={locale} />
                 ))}
               </Card>
+              </View>
             )}
           </>
         )}
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }

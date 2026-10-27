@@ -84,7 +84,10 @@ real "client app" screen is still a web route under `apps/web/app/(client)/`. Th
 through **`/api/v1/*`** on the web app with a bearer token: `v1Route` (`lib/api/v1.ts`) runs the
 handler inside `withBearer` (`lib/supabase/bearer.ts`), and then `supabaseServer()`,
 `currentUserId()` and `getLocale()` answer from the token — so a handler reuses the web's own
-`lib/` reads under the same RLS. Never re-implement a read or a write for the app. The app needs
+`lib/` reads under the same RLS. Never re-implement a read or a write for the app.
+**`/api/v1` only grows** (old app builds stay installed for months): add optional fields, never
+rename or remove one or change its meaning, and read request bodies the same way — a key an
+older build does not send must leave the stored value alone, not clear it. A breaking change is `/api/v2`. The app needs
 React 19.3.0 exactly while the web is on 19.2; `apps/mobile/metro.config.js` pins its copy.
 
 Route groups: `(coach)` = dashboard, clients, programs, nutrition, library,

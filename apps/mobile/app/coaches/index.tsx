@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { T } from "@/components/ui";
+import { usePageTour } from "@/components/page-tour";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -56,6 +57,7 @@ export default function Coaches() {
   });
   const first = query.data?.pages[0];
   const items = query.data?.pages.flatMap((p) => p.items) ?? [];
+  const tour = usePageTour("discovery", ["search", "results"], { ready: !query.isLoading, tabBar: false });
   const specs = first?.specializations ?? [];
   const cities = (first?.cities ?? []).slice(0, 12);
   const land = view === "all" ? first?.landing ?? null : null;
@@ -65,6 +67,9 @@ export default function Coaches() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
+        ref={tour.scrollRef}
+        onScroll={tour.onScroll}
+        scrollEventThrottle={32}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={color.accent} />}
@@ -74,7 +79,10 @@ export default function Coaches() {
           {land ? (
             <Text accessibilityRole="link" onPress={() => setLanding("")} style={{ marginBottom: 6, fontFamily: font.semibold, fontSize: 13, color: color.inkFaint }}>{`← ${d.backToDiscover}`}</Text>
           ) : null}
-          <T kind="title">{land ? land.title : d.title}</T>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <T kind="title" style={{ flex: 1 }}>{land ? land.title : d.title}</T>
+            {tour.button}
+          </View>
           <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 13.5, lineHeight: 19, color: color.inkSoft }}>{land ? land.intro : d.subtitle}</Text>
           {/* the web's header links (coaches/layout.tsx): the reader's requests and bookings */}
           <View style={{ marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
@@ -90,7 +98,7 @@ export default function Coaches() {
           ))}
         </View>
         {view === "all" ? (
-          <>
+          <View ref={tour.target("search")} collapsable={false} style={{ gap: 12 }}>
             <TextInput value={typed} onChangeText={setTyped} autoCorrect={false} placeholder={d.searchPlaceholder} placeholderTextColor={color.inkFaint} accessibilityLabel={d.searchLabel} style={[styles.search, { color: color.ink, backgroundColor: color.surface, borderColor: color.line }]} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 6 }}>
               <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: online }} onPress={() => setOnline((v) => !v)} style={chip(online)}><Text style={ink(online)}>{d.online}</Text></Pressable>
@@ -116,7 +124,7 @@ export default function Coaches() {
                 ))}
               </ScrollView>
             ) : null}
-          </>
+          </View>
         ) : null}
         {first ? <T kind="faint">{first.total === 1 ? d.countOne : fill(d.count, { n: first.total })}</T> : null}
         {query.isLoading ? <ActivityIndicator color={color.accent} /> : query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : items.length === 0 ? (
@@ -124,13 +132,14 @@ export default function Coaches() {
             <Text style={{ fontFamily: font.displayBold, fontSize: 17, color: color.ink, textAlign: "center" }}>{view === "saved" ? t.coachProfile.saved.emptyTitle : d.noMatch}</Text>
             <Text style={{ marginTop: 6, fontFamily: font.regular, fontSize: 13.5, lineHeight: 19, color: color.inkSoft, textAlign: "center" }}>{view === "saved" ? t.coachProfile.saved.emptyHint : q ? fill(d.noSearchHint, { q }) : d.noMatchHint}</Text>
           </View>
-        ) : items.map((c) => <CoachCard key={c.slug} c={c} />)}
+        ) : <View ref={tour.target("results")} collapsable={false} style={{ gap: 12 }}>{items.map((c) => <CoachCard key={c.slug} c={c} />)}</View>}
         {query.hasNextPage ? (
           <Pressable accessibilityRole="button" disabled={query.isFetchingNextPage} onPress={() => void query.fetchNextPage()} style={[styles.more, { borderColor: color.line, opacity: query.isFetchingNextPage ? 0.5 : 1 }]}>
             <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkSoft }}>{d.loadMore}</Text>
           </Pressable>
         ) : null}
       </ScrollView>
+      {tour.overlay}
     </SafeAreaView>
   );
 }
