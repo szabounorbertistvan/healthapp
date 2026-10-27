@@ -4,8 +4,7 @@ import { feedPost } from "@/lib/api/feed";
 import { getClientGoal, getClients, getProfile } from "@/lib/data";
 import { getClientGoalDashboard } from "@/lib/goals-data";
 import { userCalendar } from "@/lib/my-today";
-import { reportFileName } from "@/lib/reports/file-name";
-import { parseReportPeriod } from "@/lib/reports/report-model";
+import { coachReportOptions } from "@/lib/reports/file-name";
 import { getClientLiftVerdicts } from "@/lib/exercise-analytics-data";
 import { getClientFitnessScore } from "@/lib/fitness-score-data";
 import { getLocale } from "@/lib/i18n/server";
@@ -39,7 +38,7 @@ export const GET = v1Route(async (request) => {
     getClientRecentWorkouts(id, lang),
     pro ? getClientGoalDashboard(id).catch(() => null) : Promise.resolve(null),
     pro ? userCalendar(id).catch(() => null) : Promise.resolve(null),
-    getProfile(),
+    pro ? getProfile() : Promise.resolve(null),
   ]);
   const client = clients.find((c) => c.client_id === id && c.status === "active");
   if (!client) return apiError("not_found", 404);
@@ -61,10 +60,7 @@ export const GET = v1Route(async (request) => {
       length_unit: me.length_unit,
       max_active: null,
     } : null,
-    reports: calendar ? REPORT_RANGES.flatMap((days) => {
-      const parsed = parseReportPeriod({ range: String(days) }, calendar.today);
-      return parsed.ok ? [{ days, file_name: reportFileName("progress", "pdf", parsed.period) }] : [];
-    }) : [],
+    reports: calendar ? coachReportOptions(calendar.today).map((o) => ({ days: o.days, file_name: o.fileName })) : [],
     fitness: fitness ? { current: fitness.current, previous: fitness.previous, trend: fitness.trend } : null,
     weekly,
     lifts,
@@ -72,6 +68,3 @@ export const GET = v1Route(async (request) => {
     posts: posts.items.slice(0, 5).map(feedPost),
   });
 });
-
-/** Report periods the coach can download, in days (the web's client page). */
-const REPORT_RANGES = [30, 90, 365] as const;

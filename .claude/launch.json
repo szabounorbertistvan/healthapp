@@ -27,6 +27,20 @@
         "3100"
       ],
       "port": 3100
+    },
+    {
+      "name": "web-prod-side",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "--workspace=@healthapp/web",
+        "--",
+        "-p",
+        "3102"
+      ],
+      "env": { "NEXT_DIST_DIR": ".next-soak" },
+      "port": 3102
     }
   ]
 }

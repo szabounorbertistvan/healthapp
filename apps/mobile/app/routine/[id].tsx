@@ -114,7 +114,7 @@ export default function RoutineScreen() {
                     ) : null}
                     {data.may_share ? <ShareRoutine id={card.id} /> : null}
                     {data.may_copy ? (
-                      <Pressable accessibilityRole="button" onPress={() => { setName(copyName(card.name)); setError(null); setCopying(true); }} style={[styles.quiet, { backgroundColor: color.surface }]}>
+                      <Pressable accessibilityRole="button" onPress={() => { setName(copyName(card.name)); setError(null); setAssigning(false); setCopying(true); }} style={[styles.quiet, { backgroundColor: color.surface }]}>
                         <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.inkSoft }}>{card.is_mine ? r.duplicate : r.copy}</Text>
                       </Pressable>
                     ) : null}

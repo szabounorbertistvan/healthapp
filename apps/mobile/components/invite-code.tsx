@@ -66,7 +66,7 @@ export function InviteCode({ disabled = false }: { disabled?: boolean }) {
     try {
       const r = await api.coachClientsWrite("invite");
       if (r.ok && r.code) setCode(r.code);
-      else setError(r.errorCode === "CLIENT_LIMIT_REACHED" ? m.limitReachedTitle : m.createError);
+      else setError(r.errorCode === "CLIENT_LIMIT_REACHED" ? m.limitReachedFree : m.createError);
       void queryClient.invalidateQueries({ queryKey: ["coach-clients"] });
       void queryClient.invalidateQueries({ queryKey: ["onboarding"] });
     } catch (e) {

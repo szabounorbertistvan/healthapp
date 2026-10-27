@@ -7,8 +7,7 @@ import { getClientFitnessScore } from "@/lib/fitness-score-data";
 import { getClientGoalDashboard } from "@/lib/goals-data";
 import { getClientLiftVerdicts } from "@/lib/exercise-analytics-data";
 import { userCalendar } from "@/lib/my-today";
-import { reportFileName } from "@/lib/reports/file-name";
-import { parseReportPeriod } from "@/lib/reports/report-model";
+import { coachReportOptions } from "@/lib/reports/file-name";
 import { ClientGoalsCard } from "@/components/goals";
 import { ProgressionOverview } from "@/components/exercise-progression";
 import { ClientReportDownload, type ClientReportOption } from "@/components/client-report-download";
@@ -166,9 +165,6 @@ export default async function CoachClientPage({
   );
 }
 
-/** Report periods the coach can download, in days. */
-const REPORT_RANGES = [30, 90, 365] as const;
-
 /**
  * The client's goals, main-lift verdicts and report periods, in one wave. A
  * failed goals read hides that section (and is logged) rather than taking the
@@ -183,12 +179,7 @@ async function clientInsights(clientId: string, locale: "ro" | "en") {
     getClientLiftVerdicts(clientId, locale),
     userCalendar(clientId),
   ]);
-  const reports: ClientReportOption[] = REPORT_RANGES.flatMap((days) => {
-    const parsed = parseReportPeriod({ range: String(days) }, calendar.today);
-    return parsed.ok
-      ? [{ days, url: `/api/clients/${clientId}/report?range=${days}`, fileName: reportFileName("progress", "pdf", parsed.period) }]
-      : [];
-  });
+  const reports: ClientReportOption[] = coachReportOptions(calendar.today).map((o) => ({ ...o, url: `/api/clients/${clientId}/report?range=${o.days}` }));
   return { goals, lifts, reports };
 }
 

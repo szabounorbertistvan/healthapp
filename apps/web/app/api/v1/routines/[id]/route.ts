@@ -81,7 +81,8 @@ export const GET = v1Route(async (request, { userId: viewerId }) => {
 export const POST = v1Route(async (request) => {
   const id = decodeURIComponent(new URL(request.url).pathname.split("/").at(-1) ?? "");
   const b = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  const str = (v: unknown) => (typeof v === "string" ? v : null);
+  // A key left out stays as it is (undefined); one sent as null clears that field.
+  const str = (v: unknown) => (v === undefined ? undefined : typeof v === "string" ? v : null);
   if (b?.op === "share") {
     const r = await shareRoutine(id);
     return apiJson<WriteResultV1>({ ok: r.ok, message: r.message });
