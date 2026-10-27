@@ -5,9 +5,10 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from "ex
 import { randomUUID } from "expo-crypto";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Screen, T } from "@/components/ui";
+import { NewFoodForm } from "@/components/new-food-form";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
 import { foodName } from "@/lib/food-model";
@@ -15,7 +16,7 @@ import { useI18n } from "@/lib/i18n";
 import { parseDecimal } from "@/lib/logger-model";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { useOutbox } from "@/lib/outbox";
-import { fontSize, minTouchTarget, radius, space, useTheme } from "@/lib/theme";
+import { font, fontSize, minTouchTarget, radius, space, useTheme } from "@/lib/theme";
 
 // Add a food to one meal of one day: search, the person's recent and favourite
 // foods, or a barcode — then the portion. The scanner is the web's rule: a miss
@@ -32,6 +33,7 @@ export default function AddFood() {
   const [picked, setPicked] = useState<Picked | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanNote, setScanNote] = useState<string | null>(null);
+  const [creating, setCreating] = useState<{ barcode: string } | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(term.trim()), 300);
@@ -59,11 +61,12 @@ export default function AddFood() {
     return (
       <Scanner
         onCancel={() => setScanning(false)}
-        onResult={(result, code) => {
+        onResult={(result, code, missed) => {
           setScanning(false);
           if (result) setPicked(fromItem(result));
           else {
             setScanNote(code);
+            if (missed) setCreating({ barcode: missed });
             setTerm("");
           }
         }}
@@ -101,6 +104,20 @@ export default function AddFood() {
             </Pressable>
           </View>
           {scanNote ? <T kind="soft">{scanNote}</T> : null}
+          {creating ? (
+            // straight to the grams step on success: creating a food is one motion, not two (food-logger.tsx)
+            <NewFoodForm initialName={term} initialBarcode={creating.barcode} primaryLabel={t.clientWidgets.newFoodForm.saveAndLog}
+              onCreated={(food) => { setCreating(null); setScanNote(null); setPicked(fromItem(food)); }}
+              onCancel={() => setCreating(null)} />
+          ) : (
+            <T kind="faint">
+              {`${t.clientWidgets.foodLogger.notFound} `}
+              <T kind="accent" style={{ fontSize: 12.5 }}>
+                <Text accessibilityRole="button" onPress={() => setCreating({ barcode: "" })}>{t.clientWidgets.foodLogger.createFood}</Text>
+              </T>
+            </T>
+          )}
+          <Text accessibilityRole="link" onPress={() => router.push("/food/mine")} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{t.clientApp.myFoods.link}</Text>
 
           {debounced.length >= 2 ? (
             search.isFetching ? (
@@ -245,7 +262,7 @@ function Portion({ picked, slot, day, onBack }: { picked: Picked; slot: MealSlot
   );
 }
 
-function Scanner({ onCancel, onResult }: { onCancel: () => void; onResult: (food: FoodItemV1 | null, note: string) => void }) {
+function Scanner({ onCancel, onResult }: { onCancel: () => void; onResult: (food: FoodItemV1 | null, note: string, missed?: string) => void }) {
   const { t, fill } = useI18n();
   const { color } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
@@ -263,7 +280,8 @@ function Scanner({ onCancel, onResult }: { onCancel: () => void; onResult: (food
       if (result.ok) return onResult(result.food, "");
       if (result.reason === "limit") return onResult(null, t.mobile.food.scanLimit);
       if (result.reason === "upstream") return onResult(null, t.clientWidgets.foodLogger.scanUnreachable);
-      return onResult(null, fill(t.mobile.food.notFound, { code }));
+      // a code nobody knows: the new-food form opens with it, so the next scan finds the food
+      return onResult(null, fill(t.mobile.food.notFound, { code }), code);
     } catch {
       return onResult(null, t.clientWidgets.foodLogger.scanUnreachable);
     }

@@ -7,7 +7,7 @@ import { font, useTheme } from "@/lib/theme";
 // nothing is posted until the second tap. The caller's `share` is the web's
 // own action through /api/v1, which re-reads what it posts.
 
-type Visibility = "public" | "followers" | "private";
+export type Visibility = "public" | "followers" | "private";
 
 export function ShareToFeed({ share, shared = false, label }: { share: (visibility: Visibility) => Promise<{ ok: boolean; message?: string }>; shared?: boolean; label?: string }) {
   const { t } = useI18n();
@@ -29,14 +29,7 @@ export function ShareToFeed({ share, shared = false, label }: { share: (visibili
   }
   return (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontFamily: font.semibold, fontSize: 12, color: color.inkSoft }}>{s.visibilityLabel}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-        {(["public", "followers", "private"] as const).map((v) => (
-          <Pressable key={v} accessibilityRole="radio" accessibilityState={{ checked: v === visibility }} onPress={() => setVisibility(v)} style={[styles.pill, { backgroundColor: v === visibility ? color.accent : color.bg }]}>
-            <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: v === visibility ? color.accentFg : color.inkSoft }}>{s.visibility[v]}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <VisibilityPicker value={visibility} onChange={setVisibility} />
       <Pressable
         accessibilityRole="button"
         disabled={busy}
@@ -66,3 +59,22 @@ const styles = StyleSheet.create({
   pill: { height: 36, borderRadius: 18, paddingHorizontal: 14, justifyContent: "center" },
   go: { alignSelf: "flex-start", height: 42, borderRadius: 16, paddingHorizontal: 18, justifyContent: "center" },
 });
+
+/** Who may see a post (social-chrome.tsx VisibilityPicker). */
+export function VisibilityPicker({ value, onChange }: { value: Visibility; onChange: (v: Visibility) => void }) {
+  const { t } = useI18n();
+  const { color } = useTheme();
+  const s = t.common.social;
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={{ fontFamily: font.semibold, fontSize: 12, color: color.inkSoft }}>{s.visibilityLabel}</Text>
+      <View accessibilityRole="radiogroup" style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+        {(["public", "followers", "private"] as const).map((v) => (
+          <Pressable key={v} accessibilityRole="radio" accessibilityState={{ checked: v === value }} onPress={() => onChange(v)} style={[styles.pill, { backgroundColor: v === value ? color.accent : color.bg }]}>
+            <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: v === value ? color.accentFg : color.inkSoft }}>{s.visibility[v]}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}

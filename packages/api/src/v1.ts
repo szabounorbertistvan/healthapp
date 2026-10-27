@@ -544,7 +544,12 @@ export type PostDetailV1 = {
 };
 
 /** GET /api/v1/feed?scope=following|all|mine&before=<cursor> — the home feed (social_feed()). */
-export type FeedV1 = { items: FeedPostV1[]; next_cursor: string | null };
+export type FeedV1 = {
+  items: FeedPostV1[];
+  next_cursor: string | null;
+  /** Photo uploads are configured (the composer offers Add photo). Only on the feed itself. */
+  uploads?: boolean;
+};
 
 export type MeasurementV1 = { weightKg: number | null; waistCm: number | null; takenOn?: string };
 
@@ -582,6 +587,8 @@ export type MessageV1 = {
   mine: boolean;
   /** A picture or a voice note: the app fetches it from /api/v1/messages/[id]/attachment when tapped. */
   attachment: "image" | "audio" | null;
+  /** A voice note's length in seconds, when known. */
+  attachment_seconds?: number | null;
 };
 
 export type CoachThreadV1 = { conversation_id: string; coach_name: string; messages: MessageV1[] } | { conversation_id: null };
@@ -1483,3 +1490,139 @@ export type MyCoachingV1 = {
   gym: { id: string; name: string } | null;
   gym_coaches: { slug: string; display_name: string; avatar_url: string | null; headline: string | null; accepting_clients: boolean }[];
 };
+
+// ---------- pictures for a post (the composer's uploads) ----------
+
+/** POST /api/v1/feed/media — tickets (count) or discard (publicIds). A ticket is one signed private upload. */
+export type MediaTicketsV1 = WriteResultV1 & {
+  tickets?: { cloudName: string; apiKey: string; fields: Record<string, string>; publicId: string }[];
+};
+
+// ---------- share cards (images the app paints from the server's layout) ----------
+
+/** The card's palette keys (lib/share-card.ts SHARE_CARD_COLORS): always the brand look, whatever the theme. */
+export type ShareColorV1 = "bg" | "surface" | "ink" | "inkSoft" | "inkFaint" | "line" | "accent" | "accentInk" | "accentFg" | "tile" | "tileInk" | "tileSoft" | "tileAccent" | "tileLine";
+
+/** One drawn element, in px at the card's own size (1080 wide). The painter is the app's; the layout is the web's. */
+export type ShareCardItemV1 =
+  | { kind: "text"; id: string; text: string; x: number; y: number; size: number; weight: 400 | 500 | 600 | 700 | 800; font: "display" | "body"; color: ShareColorV1; align: "left" | "center" | "right"; maxWidth: number; tracking?: number }
+  | { kind: "rect"; id: string; x: number; y: number; w: number; h: number; color: ShareColorV1; radius: number; stroke?: ShareColorV1 }
+  | { kind: "bar"; id: string; x: number; y: number; w: number; h: number; value: number }
+  | { kind: "avatar"; id: string; x: number; y: number; size: number; url: string | null; initial: string }
+  | { kind: "brand"; id: string; x: number; y: number; h: number; align: "left" | "center" | "right"; text: string; tone?: "light" | "dark" }
+  | { kind: "glow"; id: string; x: number; y: number; r: number }
+  | { kind: "photo"; id: string; x: number; y: number; w: number; h: number; radius: number; circle?: boolean; initial: string; fallback: ShareColorV1; initialColor: ShareColorV1; stroke?: ShareColorV1; strokeWidth?: number }
+  | { kind: "fade"; id: string; x: number; y: number; w: number; h: number; color: ShareColorV1; reverse?: boolean }
+  | { kind: "qr"; id: string; x: number; y: number; size: number; modules: readonly (readonly boolean[])[]; dark: ShareColorV1; light: ShareColorV1; radius: number }
+  | { kind: "poly"; id: string; points: readonly (readonly [number, number])[]; color: ShareColorV1; alpha?: number };
+
+export type ShareCardLayoutV1 = { format: "story" | "square"; width: number; height: number; background: ShareColorV1; items: ShareCardItemV1[] };
+
+/** GET /api/v1/share-card/* — one card's layout and what it may still change. */
+export type ShareCardV1 = {
+  layout: ShareCardLayoutV1;
+  /** The palette the keys name (hex). */
+  colors: Record<ShareColorV1, string>;
+  /** The options the layout was made with (the server's, after the plan check). */
+  options: Record<string, unknown>;
+  /** The plan lets the reader change the format and what shows. */
+  customize: boolean;
+  has_profile: boolean;
+  /** The images the painter draws: the author's avatar, a photo (coach card). */
+  avatar_url: string | null;
+  photo_url: string | null;
+  file_name: string;
+  title: string;
+};
+
+// ---------- the end of a workout ----------
+
+/** GET /api/v1/sessions/[id]/done?day= — the web's /workout/[dayId]/done: the session to share, the streak it moved, where it happened, the AI review prompt. */
+export type WorkoutDoneV1 = {
+  session: {
+    session_id: string; name: string; date: string; duration_min: number | null; exercises: number; sets: number; volume_kg: number; load: number;
+    prs: { set_id: string; exercise: string; weight_kg: number; reps: number; estimated_1rm: number; shared: boolean }[];
+    already_shared: boolean;
+  };
+  /** "1h 12m" / "45 min" — the feed's duration format (lib/share-card.ts durationLabel); null without timestamps. */
+  duration_label: string | null;
+  /** What the session did to the streak; null without one. */
+  streak: { event: "none" | "started" | "extended" | "record"; current: number; milestone: { milestone: number; streak_start: string; shared: boolean } | null } | null;
+  gym: { current: { id: string; name: string; city: string } | null; home: { id: string; name: string; city: string } | null; recent: { id: string; name: string; city: string }[] };
+  /** The prompt to carry to an AI assistant (ai-review.tsx); null when there is none. */
+  ai_prompt: string | null;
+  /** Photo uploads are configured. */
+  uploads: boolean;
+};
+
+// ---------- people (social profiles) ----------
+
+/** A person in a list (search, suggestions, followers / following). */
+export type PersonV1 = {
+  id: string; name: string; username: string | null; avatar_url: string | null; is_following: boolean;
+  follows_me?: boolean; city?: string | null; mutuals?: number; followers?: number;
+};
+
+/** GET /api/v1/people?q=&city=&page= — the web's /people: search when q or city has 2+ letters, else suggestions. */
+export type PeopleV1 = {
+  results: { items: PersonV1[]; hasMore: boolean; page: number } | null;
+  suggested: PersonV1[];
+};
+
+/** GET /api/v1/people/[id]?tab=posts|achievements|programs&type=&before= — the web's /people/[id], as far as privacy lets the reader see. */
+export type PersonPageV1 = {
+  profile: {
+    id: string; name: string; username: string | null; avatar_url: string | null; city: string | null; bio: string | null;
+    followers: number; following: number; posts: number; stats_visible: boolean;
+    workouts: number | null; prs: number | null; challenges: number | null; streak_days: number | null; longest_streak: number | null; badges: number | null;
+    fitness_score: number | null; fitness_score_at: string | null;
+    is_following: boolean; follows_me: boolean; me: boolean; blocked: boolean; muted: boolean;
+  };
+  mutuals: { people: PersonV1[]; total: number };
+  /** The routines the person published (RoutineCard, as /routines lists them). */
+  routines: RoutineCard[];
+  tab: "posts" | "achievements" | "programs";
+  posts: FeedV1 | null;
+  badges: { slug: string; name_en: string; name_ro: string; icon: string | null; awarded_at: string; shared: boolean; category: string; rarity: string; kind: string; metric: string; target: number }[];
+};
+
+/** GET /api/v1/people/[id]/followers|following?before=&q= */
+export type FollowListV1 = { items: PersonV1[]; next_cursor: string | null; followers: number; following: number; name: string; me: boolean };
+
+// ---------- my foods (the person's own custom foods) ----------
+
+/** One food the person created (getMyCustomFoods). Per 100 g. */
+export type MyFoodV1 = {
+  id: string; name: string; brand: string | null; barcode: string | null; per_100g: MacrosV1;
+  saturatedFat: number | null; sugar: number | null; salt: number | null; portions: { label: string; grams: number }[];
+};
+
+/** The new-food form (NewFoodInput): blank macros are 0, blank label nutrients null. */
+export type NewFoodV1 = {
+  name: string; brand: string; kcal: number; protein: number; carbs: number; fat: number;
+  saturatedFat: number | null; sugar: number | null; salt: number | null; barcode: string | null; portions: { label: string; grams: number }[];
+};
+
+/** POST /api/v1/foods/mine — create / update answer with the food as the pickers list it. */
+export type MyFoodWriteV1 = WriteResultV1 & { food?: FoodItemV1 };
+
+// ---------- message attachments (sending a photo or a voice note) ----------
+
+/** POST /api/v1/messages/attachment op=ticket — one signed private upload for this conversation. */
+export type MessageUploadV1 = CodedResultV1 & {
+  ticket?: { cloudName: string; apiKey: string; fields: Record<string, string>; resourceType: string; publicId: string };
+};
+
+// ---------- stories ----------
+
+/** One author in the stories row (social_story_tray), already ordered: you, then unseen, then seen. */
+export type StoryTrayItemV1 = { user_id: string; name: string; avatar_url: string | null; is_me: boolean; stories: number; unseen: number; latest_at: string };
+
+/** GET /api/v1/stories — the row across the top of the feed, and who you are in it. */
+export type StoriesV1 = { me: { name: string; avatar_url: string | null } | null; tray: StoryTrayItemV1[] };
+
+/** One live story (social_user_stories); view_count only on your own. */
+export type StoryV1 = { id: string; body: string; background: "gold" | "night" | "paper"; created_at: string; expires_at: string; seen: boolean; view_count: number | null };
+
+/** POST /api/v1/stories — publish / delete / seen / load (an author's stories) / viewers (of one of yours). */
+export type StoryWriteV1 = WriteResultV1 & { expired?: boolean; stories?: StoryV1[]; viewers?: { user_id: string; name: string; avatar_url: string | null; viewed_at: string }[] };

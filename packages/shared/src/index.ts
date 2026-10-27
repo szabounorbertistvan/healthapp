@@ -43,3 +43,4 @@ export * from "./marketplace-email";
 export * from "./gym-hours";
 export * from "./goals";
 export * from "./exercise-progression";
+export * from "./ai-assistants";

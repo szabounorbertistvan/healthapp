@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Button, Card, NavIcon, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
+import { NewFoodForm } from "@/components/new-food-form";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
 
@@ -363,6 +364,11 @@ function FoodSearch({ mealName, onPick, onClose }: { mealName: string; onPick: (
     return () => clearTimeout(h);
   }, [typed]);
   const query = useQuery({ queryKey: ["foods", q], queryFn: () => api.searchFoods(q), enabled: q.length >= 2 });
+  const [creating, setCreating] = useState(false);
+  if (creating) {
+    // a food the search does not have, created where it came up short and added at once (nutrition-builder.tsx)
+    return <NewFoodForm initialName={q} primaryLabel={t.clientWidgets.newFoodForm.saveAndLog} onCreated={(food) => { setCreating(false); onPick(food); }} onCancel={() => setCreating(false)} />;
+  }
   return (
     <View style={[styles.picker, { borderColor: color.line, backgroundColor: color.bg }]}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -381,6 +387,10 @@ function FoodSearch({ mealName, onPick, onClose }: { mealName: string; onPick: (
       />
       {q.length >= 2 && query.isFetching && !query.data ? <ActivityIndicator color={color.accent} /> : null}
       {query.data && query.data.length === 0 ? <T kind="faint">{nb.noMatch}</T> : null}
+      <Text style={{ fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>
+        {`${t.clientWidgets.foodLogger.notFound} `}
+        <Text accessibilityRole="button" onPress={() => setCreating(true)} style={{ fontFamily: font.semibold, color: color.accentInk }}>{t.clientWidgets.foodLogger.createFood}</Text>
+      </Text>
       {(query.data ?? []).slice(0, 20).map((f) => (
         <Pressable key={f.id} accessibilityRole="button" onPress={() => onPick(f)} style={[styles.hit, { backgroundColor: color.surface }]}>
           <View style={{ flex: 1, minWidth: 0 }}>

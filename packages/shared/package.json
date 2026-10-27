@@ -6,7 +6,9 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./coach/*": "./src/coach/*.ts"
+    "./coach/*": "./src/coach/*.ts",
+    "./media/*": "./src/media/*.ts",
+    "./social/*": "./src/social/*.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -17,6 +17,6 @@ export const GET = v1Route(async (request) => {
     other_name: context.other_name,
     side: context.side,
     open: context.open,
-    messages: messages.map((m) => ({ id: m.id, body: m.body, at: m.at, mine: m.mine, attachment: m.attachment?.kind ?? null })),
+    messages: messages.map((m) => ({ id: m.id, body: m.body, at: m.at, mine: m.mine, attachment: m.attachment?.kind ?? null, attachment_seconds: m.attachment?.seconds ?? null })),
   });
 });

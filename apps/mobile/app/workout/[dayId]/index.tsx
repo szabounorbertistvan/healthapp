@@ -8,6 +8,7 @@ import { AthleteFigure, LoadBadge, loadTone } from "@/components/training";
 import { Card, Divider, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { ShareWorkoutButton } from "@/components/share-workout";
 import { useI18n } from "@/lib/i18n";
 import { setsByExercise } from "@/lib/logger-model";
 import { useOfflineQuery } from "@/lib/offline-query";
@@ -262,6 +263,8 @@ function History({ sessions, locale }: { sessions: WorkoutHistoryV1[]; locale: s
               <>
                 <Divider />
                 <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 18, gap: 14 }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {s.sets > 0 ? <ShareWorkoutButton sessionId={s.id} style="quiet" /> : null}
                   <Pressable
                     accessibilityRole="link"
                     onPress={() => router.push({ pathname: "/session/[id]", params: { id: s.id } })}
@@ -269,6 +272,7 @@ function History({ sessions, locale }: { sessions: WorkoutHistoryV1[]; locale: s
                   >
                     <Text style={{ fontFamily: font.semibold, fontSize: 12, color: color.inkSoft }}>{t.coachWidgets.workoutFeedback.openWorkout}</Text>
                   </Pressable>
+                  </View>
                   {s.exercises.map((exercise) => (
                     <View key={exercise.name}>
                       <Text style={{ fontFamily: font.semibold, fontSize: 14, color: color.ink }}>{exercise.name}</Text>

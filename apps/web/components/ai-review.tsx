@@ -1,23 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
+import { AI_ASSISTANTS as ASSISTANTS } from "@healthapp/shared";
 import { Card } from "./ui";
-
-/**
- * The assistants the prompt can be carried to. Those with a `url` take the
- * prompt in the query string and open with it typed in; on a phone the link
- * is a universal link, so it opens the installed app when there is one.
- * Gemini has no such parameter — the prompt is copied and the chat opened,
- * and the hint says to paste. Every tap copies anyway, as the fallback when a
- * site ignores or truncates the parameter.
- */
-const ASSISTANTS: { id: string; label: string; url: ((q: string) => string) | string }[] = [
-  { id: "chatgpt", label: "ChatGPT", url: (q) => `https://chatgpt.com/?q=${q}` },
-  { id: "claude", label: "Claude", url: (q) => `https://claude.ai/new?q=${q}` },
-  { id: "gemini", label: "Gemini", url: "https://gemini.google.com/app" },
-  { id: "grok", label: "Grok", url: (q) => `https://grok.com/?q=${q}` },
-  { id: "perplexity", label: "Perplexity", url: (q) => `https://www.perplexity.ai/search?q=${q}` },
-];
 
 export function AiReview({ prompt }: { prompt: string }) {
   const { t } = useI18n();

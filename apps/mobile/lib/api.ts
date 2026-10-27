@@ -3,8 +3,9 @@ import {
   type CoachThreadV1, type HabitsV1, type MealSlotV1, type MeasurementV1, type MeV1, type NotificationsV1, type ProgressV1, type ProgressOverviewV1, type SettingsV1, type SaveAccountV1, type GoalsV1, type CreateGoalV1, type LeaderboardV1, type AchievementsV1, type ChallengesV1, type PostDetailV1, type FeedV1, type GymV1, type ChallengeDetailV1, type CreateChallengeV1,
   type PushDeviceV1, type TodayV1, type WorkoutDayV1, type WorkoutsV1, type WriteResultV1,
   type AppConfigV1, type CoachCheckInV1, type CoachConversationV1, type CoachDashboardV1, type CoachRequestV1, type ThreadV1,
-  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1, type FeedbackSessionV1, type StreakV1, type FitnessScoreV1, type NutritionTrendsV1, type MyMealPlanV1, type RecipeV1, type ReportPreviewV1, type ImportPreviewV1, type ImportChunkResultV1, type CoachClientPageV1, type WeeklySummaryV1, type ProgressBodyV1, type PhotoTicketV1, type CoachBookingsV1, type CoachReviewsV1, type CoachSearchV1, type CoachPageV1, type CoachSlotsV1, type CoachAvailabilityV1, type CoachProfileEditorV1, type CoachProfileWriteV1, type MyCoachingRequestV1, type CoachClientsV1, type CoachClientsWriteV1, type CoachRelationshipPageV1, type CoachChallengesV1, type MyCoachingV1,
+  type UpdateSetV1, type DashboardV1, type BuilderV1, type ExerciseSearchV1, type BookingsV1, type RoutinesV1, type RoutineDetailV1, type GymsV1, type GymDetailV1, type ExerciseDetailV1, type CoachProgramsV1, type CoachProgramV1, type CoachNutritionV1, type CoachPlanV1, type CoachMarketplaceV1, type FeedbackSessionV1, type StreakV1, type FitnessScoreV1, type NutritionTrendsV1, type MyMealPlanV1, type RecipeV1, type ReportPreviewV1, type ImportPreviewV1, type ImportChunkResultV1, type CoachClientPageV1, type WeeklySummaryV1, type ProgressBodyV1, type PhotoTicketV1, type CoachBookingsV1, type CoachReviewsV1, type CoachSearchV1, type CoachPageV1, type CoachSlotsV1, type CoachAvailabilityV1, type CoachProfileEditorV1, type CoachProfileWriteV1, type MyCoachingRequestV1, type CoachClientsV1, type CoachClientsWriteV1, type CoachRelationshipPageV1, type CoachChallengesV1, type MyCoachingV1, type MediaTicketsV1, type WorkoutDoneV1, type ShareCardV1, type PeopleV1, type PersonPageV1, type FollowListV1, type MyFoodV1, type MyFoodWriteV1, type NewFoodV1, type MessageUploadV1, type StoriesV1, type StoryWriteV1,
 } from "@healthapp/api/v1";
+import type { PostMediaInput } from "@healthapp/shared";
 import type { Locale } from "@healthapp/i18n/config";
 import { config } from "./config";
 import type { OutboxPayload, SendOutcome } from "./outbox-core";
@@ -127,9 +128,14 @@ export const api = {
   searchExercises: (q: string, muscle: string, offset = 0) =>
     call<ExerciseSearchV1>("GET", `/exercises/search?${new URLSearchParams({ q, muscle, offset: String(offset) })}`),
   workoutDay: (dayId: string) => call<WorkoutDayV1>("GET", `/workouts/${encodeURIComponent(dayId)}`),
-  finishWorkout: (dayId: string) => call<WriteResultV1>("POST", `/workouts/${encodeURIComponent(dayId)}/finish`, {}),
+  finishWorkout: (dayId: string) => call<WriteResultV1 & { sessionId?: string }>("POST", `/workouts/${encodeURIComponent(dayId)}/finish`, {}),
+  workoutDone: (sessionId: string, dayId: string) => call<WorkoutDoneV1>("GET", `/sessions/${encodeURIComponent(sessionId)}/done?day=${encodeURIComponent(dayId)}`),
+  sessionShare: (sessionId: string, body: Record<string, unknown>) => call<CodedResultV1>("POST", `/sessions/${encodeURIComponent(sessionId)}/share`, body),
+  workoutShareCard: (query: string) => call<ShareCardV1>("GET", `/share-card/workout?${query}`),
   foodDay: (day?: string) => call<FoodDayV1>("GET", day ? `/food?day=${encodeURIComponent(day)}` : "/food"),
   searchFoods: (q: string) => call<FoodItemV1[]>("GET", `/foods/search?q=${encodeURIComponent(q)}`),
+  myFoods: () => call<MyFoodV1[]>("GET", "/foods/mine"),
+  myFoodWrite: (op: "create" | "update" | "delete", body: { id?: string; input?: NewFoodV1 }) => call<MyFoodWriteV1>("POST", "/foods/mine", { op, ...body }),
   barcode: (code: string) => call<BarcodeV1>("GET", `/foods/barcode/${encodeURIComponent(code)}`),
   ateAsPlanned: (slot: MealSlotV1, day: string, mealId?: string) => call<WriteResultV1>("POST", "/food/planned", { slot, day, mealId }),
   deleteFoodLog: (id: string) => call<WriteResultV1>("POST", "/food/logs/delete", { id }),
@@ -143,7 +149,10 @@ export const api = {
   leaderboard: (metric: string, period: string, scope: string) =>
     call<LeaderboardV1>("GET", `/leaderboard?metric=${encodeURIComponent(metric)}&period=${encodeURIComponent(period)}&scope=${encodeURIComponent(scope)}`),
   achievements: () => call<AchievementsV1>("GET", "/achievements"),
+  shareAchievement: (slug: string, visibility: string) => call<WriteResultV1>("POST", "/achievements/share", { slug, visibility }),
   challenges: () => call<ChallengesV1>("GET", "/challenges"),
+  stories: () => call<StoriesV1>("GET", "/stories"),
+  story: (body: { op: "load" | "seen" | "publish" | "delete" | "viewers"; userId?: string; storyId?: string; text?: string; background?: string }) => call<StoryWriteV1>("POST", "/stories", body),
   feed: (scope: string, before?: string) =>
     call<FeedV1>("GET", `/feed?scope=${encodeURIComponent(scope)}${before ? `&before=${encodeURIComponent(before)}` : ""}`),
   react: (postId: string, type: "kudos" | "love") => call<WriteResultV1>("POST", "/feed/react", { postId, type }),
@@ -155,12 +164,15 @@ export const api = {
   cancelBooking: (id: string, reason: string | null) => call<CodedResultV1>("POST", "/bookings/cancel", { id, reason }),
   savedPosts: (before?: string) => call<FeedV1>("GET", `/feed/saved${before ? `?before=${encodeURIComponent(before)}` : ""}`),
   savePost: (postId: string, save: boolean) => call<WriteResultV1>("POST", "/feed/save", { postId, save }),
-  createPost: (text: string, visibility: string) => call<WriteResultV1 & { postId?: string }>("POST", "/feed", { text, visibility }),
+  createPost: (text: string, visibility: string, media?: PostMediaInput[] | null) => call<WriteResultV1 & { postId?: string }>("POST", "/feed", { text, visibility, media: media ?? undefined }),
+  mediaTickets: (count: number) => call<MediaTicketsV1>("POST", "/feed/media", { op: "tickets", count }),
+  discardMedia: (publicIds: string[]) => call<MediaTicketsV1>("POST", "/feed/media", { op: "discard", publicIds }),
   post: (id: string, before?: string) =>
     call<PostDetailV1>("GET", `/feed/${encodeURIComponent(id)}${before ? `?before=${encodeURIComponent(before)}` : ""}`),
   addComment: (postId: string, body: string, parentId: string | null) => call<WriteResultV1 & { id?: string }>("POST", "/feed/comment", { postId, body, parentId }),
   deleteComment: (commentId: string, postId: string) => call<WriteResultV1>("POST", "/feed/comment/delete", { commentId, postId }),
   deletePost: (postId: string) => call<WriteResultV1>("POST", "/feed/delete", { postId }),
+  editPost: (postId: string, text: string) => call<WriteResultV1>("POST", "/feed/edit", { postId, text }),
   challenge: (id: string) => call<ChallengeDetailV1>("GET", `/challenges/${encodeURIComponent(id)}`),
   createChallenge: (body: CreateChallengeV1) => call<WriteResultV1 & { id?: string }>("POST", "/challenges", body),
   deleteChallenge: (id: string) => call<WriteResultV1>("POST", "/challenges/delete", { id }),
@@ -190,9 +202,15 @@ export const api = {
   checkIn: () => call<CheckInV1>("GET", "/check-in"),
   coachThread: () => call<CoachThreadV1>("GET", "/coach-thread"),
   myCoaching: () => call<MyCoachingV1>("GET", "/coaching"),
+  people: (query: string) => call<PeopleV1>("GET", `/people?${query}`),
+  person: (id: string, query = "") => call<PersonPageV1>("GET", `/people/${encodeURIComponent(id)}${query ? `?${query}` : ""}`),
+  followList: (id: string, list: "followers" | "following", query = "") => call<FollowListV1>("GET", `/people/${encodeURIComponent(id)}/${list}${query ? `?${query}` : ""}`),
+  follow: (userId: string, on: boolean) => call<WriteResultV1>("POST", "/people/follow", { userId, follow: on }),
+  moderate: (body: { op: "mute" | "block"; userId: string; on: boolean } | { op: "report"; kind: string; targetId: string; reason: string; details: string }) => call<WriteResultV1>("POST", "/moderation", body),
   joinCoach: (code: string) => call<CodedResultV1>("POST", "/coaching/join", { code }),
   sendMessage: (conversationId: string, body: string) => call<CodedResultV1>("POST", "/messages", { conversationId, body }),
   markThreadRead: (conversationId: string) => call<WriteResultV1>("POST", "/messages/read", { conversationId }),
+  messageUpload: (body: { op: "ticket" | "send" | "discard"; conversationId: string; kind: "image" | "audio"; publicId?: string; body?: string | null }) => call<MessageUploadV1>("POST", "/messages/attachment", body),
   notifications: (before?: string) =>
     call<NotificationsV1>("GET", before ? `/notifications?before=${encodeURIComponent(before)}` : "/notifications"),
   markNotificationRead: (id?: string) => call<WriteResultV1>("POST", "/notifications/read", id ? { id } : {}),

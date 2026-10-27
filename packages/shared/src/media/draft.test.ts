@@ -7,7 +7,7 @@ import {
   mediaDraftReducer as r,
   publishPlan,
   type MediaDraft,
-} from "./media-draft";
+} from "./draft";
 
 const pid = (n: number) => `voinic/posts/u/m-${n}`;
 

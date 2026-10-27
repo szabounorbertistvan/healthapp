@@ -92,6 +92,7 @@ export default function Food() {
           </View>
           {data && data.plan_owner !== "coach" ? <Pill label={t.clientApp.mealPlan.link} onPress={() => router.push("/meal-plan")} /> : null}
           <Pill label={t.clientApp.recipes.link} onPress={() => router.push("/recipes")} />
+          <Pill label={t.clientApp.myFoods.link} onPress={() => router.push("/food/mine")} />
         </View>
 
         {data ? <WeekStrip data={data} onPick={setDay} /> : null}

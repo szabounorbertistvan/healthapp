@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PHOTO_MAX_EDGE, photoFrame } from "./image-prepare";
+import { PHOTO_MAX_EDGE, photoFrame } from "./frame";
 
 describe("photoFrame", () => {
   it("shrinks a camera original to the long edge, keeping its shape", () => {

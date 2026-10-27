@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { dark, light, type ColorTokens } from "./index";
+import { dark, light, storyColor, type ColorTokens } from "./index";
 
 // The web's palette is CSS (Tailwind v4 reads --color-* from globals.css); the
 // mobile app's is this package. They drifted once — the package kept an old
@@ -37,6 +37,11 @@ function expectMatches(tokens: ColorTokens, fromCss: Record<string, string>) {
 describe("ui-tokens mirror apps/web/app/globals.css", () => {
   it("dark = the @theme block", () => {
     expectMatches(dark, block("@theme {"));
+  });
+
+  it("story colours = their --color-story-* tokens", () => {
+    const theme = block("@theme {");
+    for (const [key, value] of Object.entries(storyColor)) expect({ token: key, value }).toEqual({ token: key, value: theme[kebab(key)] });
   });
 
   it("light = the explicit light theme block", () => {

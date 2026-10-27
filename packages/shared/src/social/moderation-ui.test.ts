@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { commonMessages } from "@healthapp/i18n/messages/common";
-import { REPORT_REASONS } from "@healthapp/shared";
+import { REPORT_REASONS } from "../moderation";
 import { commentMenuActions, postMenuActions, profileMenuActions, sheetReducer, type SheetStep } from "./moderation-ui";
 
 describe("postMenuActions", () => {

@@ -3,6 +3,7 @@ import { MEAL_SLOTS_V1 } from "@healthapp/api/v1";
 import { router } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ShareWorkoutButton } from "@/components/share-workout";
 import Svg, { Circle } from "react-native-svg";
 import { Bar, Button, Card, CardLabel, Chevron, Divider, Dot, ICON, NavIcon, T } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
@@ -243,8 +244,9 @@ export function TrainingCard({ d }: { d: DashboardV1 }) {
               <T kind="display" numberOfLines={1} style={{ flex: 1 }}>{doneToday.day_name}</T>
             </View>
             <SessionMeta session={doneToday} lead={doneToday.duration_min !== null ? `${x.doneToday} · ${doneToday.duration_min} min` : x.doneToday} />
-            <View style={{ marginTop: 12, alignSelf: "flex-start" }}>
+            <View style={{ marginTop: 12, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               <Button kind="quiet" height={34} label={t.common.shareCard.view} onPress={() => doneToday.day_id && router.push({ pathname: "/workout/[dayId]", params: { dayId: doneToday.day_id } })} />
+              <ShareWorkoutButton sessionId={doneToday.id} />
             </View>
           </>
         ) : next ? (

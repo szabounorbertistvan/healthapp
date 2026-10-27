@@ -9,6 +9,9 @@ describe("nativeRoute", () => {
     expect(nativeRoute(`/feed/${ID}`)).toBe(`/post/${ID}`);
     expect(nativeRoute(`/clients/${ID}`)).toBe(`/coach/client/${ID}`);
     expect(nativeRoute(`/clients/relationship/${ID}`)).toBe(`/coach/relationship/${ID}`);
+    expect(nativeRoute(`/people/${ID}`)).toBe(`/people/${ID}`);
+    expect(nativeRoute(`/people/${ID}/following`)).toBe(`/people/${ID}/following`);
+    expect(nativeRoute("/people?q=ana")).toBe("/people");
     expect(nativeRoute(`/coach/messages/${ID}`)).toBe(`/thread/${ID}`);
     expect(nativeRoute("/coaches/ana-pop")).toBe("/coaches/ana-pop");
   });

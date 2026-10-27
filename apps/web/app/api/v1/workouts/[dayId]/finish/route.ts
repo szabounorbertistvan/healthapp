@@ -9,5 +9,6 @@ export const POST = v1Route(async (request) => {
   const parts = new URL(request.url).pathname.split("/");
   const dayId = decodeURIComponent(parts.at(-2) ?? "");
   const result = await finishWorkout(dayId);
-  return apiJson<WriteResultV1>({ ok: result.ok, message: result.message });
+  // the session id opens "Workout completed!" (/sessions/[id]/done)
+  return apiJson<WriteResultV1 & { sessionId?: string }>({ ok: result.ok, message: result.message, sessionId: result.sessionId });
 });

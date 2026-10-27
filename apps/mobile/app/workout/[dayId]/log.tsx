@@ -111,7 +111,9 @@ export default function SetLoggerScreen() {
         return;
       }
       rest.clear();
-      setFinished(true);
+      // the summary and the ways to share it, as on the web; without a session id, the plain done state
+      if (result.sessionId) router.replace({ pathname: "/workout/[dayId]/done", params: { dayId: day.day_id, session: result.sessionId } });
+      else setFinished(true);
       void queryClient.invalidateQueries({ queryKey: ["workout", day.day_id] });
       void queryClient.invalidateQueries({ queryKey: ["workouts"] });
       void queryClient.invalidateQueries({ queryKey: ["today"] });

@@ -8,6 +8,7 @@ import { PostCard, useWhen } from "@/components/post-card";
 import { T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
+import { ModerationMenu } from "@/components/moderation";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { alpha, font, useTheme } from "@/lib/theme";
@@ -29,6 +30,7 @@ export default function PostScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
 
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ["post", id] });
@@ -56,6 +58,19 @@ export default function PostScreen() {
       const r = await api.deleteComment(c.id, id);
       if (!r.ok) return setError(r.message ?? t.mobile.errors.generic);
       await refresh();
+    } catch {
+      setError(t.mobile.errors.generic);
+    }
+  }
+
+  async function saveEdit() {
+    if (editing === null) return;
+    try {
+      const r = await api.editPost(id, editing);
+      if (!r.ok) return setError(r.message ?? t.mobile.errors.generic);
+      setEditing(null);
+      await refresh();
+      void queryClient.invalidateQueries({ queryKey: ["feed"] });
     } catch {
       setError(t.mobile.errors.generic);
     }
@@ -90,8 +105,23 @@ export default function PostScreen() {
                     </Pressable>
                     <Text accessibilityRole="button" onPress={() => setConfirmDelete(false)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{t.common.actions.cancel}</Text>
                   </View>
+                ) : editing !== null ? (
+                  // the words only: what the post shows (a workout, a PR) is the server's (editPost)
+                  <View style={{ gap: 8 }}>
+                    <TextInput autoFocus multiline maxLength={500} value={editing} onChangeText={setEditing} accessibilityLabel={s.editPost}
+                      style={{ minHeight: 88, borderRadius: 16, borderWidth: 1, borderColor: color.line, backgroundColor: color.surface, padding: 12, textAlignVertical: "top", fontFamily: font.regular, fontSize: 14, color: color.ink }} />
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                      <Pressable accessibilityRole="button" onPress={() => void saveEdit()} style={[styles.pill, { backgroundColor: color.accent }]}>
+                        <Text style={{ fontFamily: font.bold, fontSize: 12.5, color: color.accentFg }}>{t.common.actions.save}</Text>
+                      </Pressable>
+                      <Text accessibilityRole="button" onPress={() => setEditing(null)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{t.common.actions.cancel}</Text>
+                    </View>
+                  </View>
                 ) : (
-                  <Text accessibilityRole="button" onPress={() => setConfirmDelete(true)} style={{ alignSelf: "flex-start", fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{t.common.actions.delete}</Text>
+                  <View style={{ flexDirection: "row", gap: 16 }}>
+                    <Text accessibilityRole="button" onPress={() => setEditing(data.post.text ?? "")} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{s.editPost}</Text>
+                    <Text accessibilityRole="button" onPress={() => setConfirmDelete(true)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{t.common.actions.delete}</Text>
+                  </View>
                 )
               ) : null}
 
@@ -169,13 +199,14 @@ function CommentRow({ c, onReply, onDelete }: { c: CommentV1; onReply?: () => vo
       )}
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={[styles.bubble, { backgroundColor: color.surface }]}>
-          <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.ink }}>{c.author_name}</Text>
+          <Text accessibilityRole="link" onPress={() => router.push({ pathname: "/people/[id]", params: { id: c.user_id } })} style={{ fontFamily: font.semibold, fontSize: 13, color: color.ink }}>{c.author_name}</Text>
           <Text style={{ marginTop: 2, fontFamily: font.regular, fontSize: 13.5, lineHeight: 20, color: color.ink }}>{c.body}</Text>
         </View>
-        <View style={{ marginTop: 4, flexDirection: "row", gap: 14, paddingHorizontal: 4 }}>
+        <View style={{ marginTop: 4, flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 4 }}>
           <Text style={{ fontFamily: font.regular, fontSize: 11.5, color: color.inkFaint }}>{when(c.created_at)}</Text>
           {onReply ? <Text accessibilityRole="button" onPress={onReply} style={{ fontFamily: font.semibold, fontSize: 11.5, color: color.inkSoft }}>{s.reply}</Text> : null}
           {c.mine && onDelete ? <Text accessibilityRole="button" onPress={onDelete} style={{ fontFamily: font.semibold, fontSize: 11.5, color: color.inkFaint }}>{s.deleteComment}</Text> : null}
+          {!c.mine ? <ModerationMenu target={{ userId: c.user_id, name: c.author_name }} commentId={c.id} place="comment" /> : null}
         </View>
       </View>
     </View>

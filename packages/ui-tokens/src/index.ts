@@ -83,6 +83,14 @@ export const signalColor = {
   at_risk: { light: light.risk, dark: dark.risk },
 } as const;
 
+/** Story backgrounds (globals.css --color-story-*): a story is a picture someone made, the same on every screen. */
+export const storyColor = {
+  storyNight: "#0b0b0d",
+  storyNightInk: "#f2efe8",
+  storyPaper: "#f2efe8",
+  storyPaperInk: "#0b0b0d",
+} as const;
+
 export const radius = { sm: 6, md: 8, lg: 12, xl: 16, pill: 999 } as const;
 
 /** 4pt base. Touch targets never go below 44 (PRODUCT_SPEC §9 accessibility). */

@@ -13,29 +13,11 @@
 //
 // EXIF orientation is honoured by drawing from an <img>, which every current
 // browser orients from the file's own tag before it is painted.
+import { PHOTO_JPEG_QUALITY, photoFrame } from "@healthapp/shared/media/frame";
 
-export const PHOTO_MAX_EDGE = 1600;
-/** Tallest allowed: 4:5 (height / width). */
-export const PHOTO_MAX_TALL = 5 / 4;
-/** Widest allowed: 16:9 (width / height). */
-export const PHOTO_MAX_WIDE = 16 / 9;
-export const PHOTO_JPEG_QUALITY = 0.86;
+export { PHOTO_JPEG_QUALITY, PHOTO_MAX_EDGE, PHOTO_MAX_TALL, PHOTO_MAX_WIDE, photoFrame } from "@healthapp/shared/media/frame";
 
 export type PreparedPhoto = { blob: Blob; width: number; height: number; previewUrl: string };
-
-/** The crop and the output size for a picture of w×h. Pure, so it is testable. */
-export function photoFrame(w: number, h: number): { sx: number; sy: number; sw: number; sh: number; dw: number; dh: number } {
-  let sw = w;
-  let sh = h;
-  if (sh / sw > PHOTO_MAX_TALL) sh = Math.round(sw * PHOTO_MAX_TALL);
-  if (sw / sh > PHOTO_MAX_WIDE) sw = Math.round(sh * PHOTO_MAX_WIDE);
-  const sx = Math.round((w - sw) / 2);
-  const sy = Math.round((h - sh) / 2);
-  const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(sw, sh));
-  const dw = Math.max(1, Math.round(sw * scale));
-  const dh = Math.max(1, Math.round(sh * scale));
-  return { sx, sy, sw, sh, dw, dh };
-}
 
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {

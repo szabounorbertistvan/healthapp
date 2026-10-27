@@ -4,6 +4,8 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { MediaGallery } from "@/components/media-gallery";
+import { ModerationMenu } from "@/components/moderation";
 import { NavIcon } from "@/components/ui";
 import { api } from "@/lib/api";
 import { config } from "@/lib/config";
@@ -57,6 +59,7 @@ export function PostCard({ post: initial, link = true, removeOnUnsave = false }:
   useEffect(() => setPost(initial), [initial]);
   const s = t.common.social;
   const [error, setError] = useState<string | null>(null);
+  const [hidden, setHidden] = useState(false);
   const photo = post.media.find((m) => m.kind === "image") ?? null;
   const legacy = photo ? null : postPhotoOf(post.payload);
   const picture = photo ? { url: absolute(photo.url), ratio: photo.width / photo.height } : legacy ? { url: absolute(legacy.url), ratio: legacy.width && legacy.height ? legacy.width / legacy.height : 1 } : null;
@@ -74,7 +77,7 @@ export function PostCard({ post: initial, link = true, removeOnUnsave = false }:
     }
   }
 
-  if (removeOnUnsave && !post.saved) return null;
+  if ((removeOnUnsave && !post.saved) || hidden) return null;
 
   async function press(type: ReactionType) {
     setError(null);
@@ -93,22 +96,32 @@ export function PostCard({ post: initial, link = true, removeOnUnsave = false }:
   return (
     <View style={[styles.card, { backgroundColor: color.surface }]}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 14 }}>
-        {post.author_avatar ? (
-          <Image source={{ uri: post.author_avatar }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, { backgroundColor: color.accentSoft, alignItems: "center", justifyContent: "center" }]}>
-            <Text style={{ fontFamily: font.displayBold, fontSize: 15, color: color.accentInk }}>{[...post.author_name.trim()][0]?.toUpperCase() ?? "?"}</Text>
+        {/* the author opens their profile (social.tsx PostCard links /people/[id]) */}
+        <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: "/people/[id]", params: { id: post.user_id } })} style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12 }}>
+          {post.author_avatar ? (
+            <Image source={{ uri: post.author_avatar }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: color.accentSoft, alignItems: "center", justifyContent: "center" }]}>
+              <Text style={{ fontFamily: font.displayBold, fontSize: 15, color: color.accentInk }}>{[...post.author_name.trim()][0]?.toUpperCase() ?? "?"}</Text>
+            </View>
+          )}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: 14.5, color: color.ink }}>{post.author_name}</Text>
+            <Text style={{ fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>{when(post.created_at)}</Text>
           </View>
-        )}
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: 14.5, color: color.ink }}>{post.author_name}</Text>
-          <Text style={{ fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>{when(post.created_at)}</Text>
-        </View>
+        </Pressable>
+        {/* someone else's post: mute, block, report; a blocked or muted author's post leaves the screen at once */}
+        {!post.mine ? (
+          <ModerationMenu target={{ userId: post.user_id, name: post.author_name }} postId={post.id} place="post"
+            onChanged={(what) => { if (what === "blocked" || what === "muted") setHidden(true); }} />
+        ) : null}
       </View>
 
       {post.text ? <Text style={{ paddingHorizontal: 16, paddingTop: 10, fontFamily: font.regular, fontSize: 14, lineHeight: 21, color: color.ink }}>{post.text}</Text> : null}
 
-      {picture && post.payload?.kind !== "workout" ? (
+      {post.media.length > 1 && post.payload?.kind !== "workout" ? (
+        <View style={{ marginTop: 12 }}><MediaGallery items={post.media.filter((m) => m.kind === "image").map((m) => ({ ...m, url: absolute(m.url) }))} authorName={post.author_name} /></View>
+      ) : picture && post.payload?.kind !== "workout" ? (
         <Image source={{ uri: picture.url }} style={{ marginTop: 12, width: "100%", aspectRatio: Math.max(0.6, Math.min(picture.ratio, 1.9)) }} resizeMode="cover" />
       ) : null}
       <View style={{ marginTop: 12 }}>

@@ -6,7 +6,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Screen, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
-import { shareFile } from "@/lib/share-file";
+import { File, Paths } from "expo-file-system";
+import { PhotoButton, sendAttachment, VoiceButton, VoiceNote } from "@/components/message-attachments";
 import { useI18n } from "@/lib/i18n";
 import { useOfflineQuery } from "@/lib/offline-query";
 import { supabase } from "@/lib/supabase";
@@ -74,6 +75,25 @@ export function ThreadView({ conversationId, back, header }: {
     }
   }
 
+  /** A photo or a voice note, the draft as its caption (message-thread.tsx sendAttachment). */
+  async function attach(kind: "image" | "audio", file: { uri: string; name: string; type: string }) {
+    setSending(true);
+    setError(null);
+    const msgs = t.coachWidgets.messageThread;
+    try {
+      const refused = await sendAttachment(conversationId, kind, file, draft.trim() || null,
+        { tooLarge: msgs.tooLarge, attachmentsOff: msgs.attachmentsOff, couldNotSend: t.mobile.messages.couldNotSend, closed: t.mobile.messages.closed });
+      if (refused) return setError(refused);
+      setDraft("");
+      await queryClient.invalidateQueries({ queryKey: ["thread", conversationId] });
+      void queryClient.invalidateQueries({ queryKey: ["coach-conversations"] });
+    } catch {
+      setError(t.mobile.messages.couldNotSend);
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <Screen>
       <SafeAreaView style={{ flex: 1 }}>
@@ -100,6 +120,8 @@ export function ThreadView({ conversationId, back, header }: {
               {error ? <T style={{ ...styles.pad, color: color.risk }}>{error}</T> : null}
               {thread.open ? (
                 <View style={[styles.composer, { borderTopColor: color.line }]}>
+                  <PhotoButton disabled={sending} onPicked={(file) => void attach("image", file)} />
+                  <VoiceButton disabled={sending} onRecorded={(file) => void attach("audio", file)} />
                   <TextInput
                     accessibilityLabel={t.mobile.messages.placeholder}
                     placeholder={t.mobile.messages.placeholder}
@@ -142,41 +164,44 @@ function Bubble({ m }: { m: MessageV1 }) {
   const { t } = useI18n();
   const { color } = useTheme();
   const [picture, setPicture] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const label = m.attachment === "image" ? t.mobile.messages.photo : m.attachment === "audio" ? t.mobile.messages.voice : null;
+  const [failed, setFailed] = useState(false);
 
-  // The file is fetched only when tapped (message-thread.tsx Attachment): a
-  // picture shows in the bubble, a voice note goes to the phone's player.
-  async function open() {
-    if (loading || picture) return;
-    setLoading(true);
-    try {
-      const { bytes, type } = await api.messageAttachment(m.id);
-      if (m.attachment === "image") setPicture(`data:${type};base64,${toBase64(bytes)}`);
-      else await shareFile(`voice-note.${type.split("/")[1]?.split(";")[0] ?? "m4a"}`, bytes, type);
-    } catch {
-      // a failed fetch leaves the placeholder; another tap tries again
-    } finally {
-      setLoading(false);
-    }
+  // a picture loads with its message, from /api/v1/messages/[id]/attachment (who may see it is the database's answer)
+  useEffect(() => {
+    if (m.attachment !== "image") return;
+    let live = true;
+    api.messageAttachment(m.id)
+      .then(({ bytes, type }) => { if (live) setPicture(`data:${type};base64,${toBase64(bytes)}`); })
+      .catch(() => { if (live) setFailed(true); });
+    return () => { live = false; };
+  }, [m.attachment, m.id]);
+
+  /** A voice note, fetched on its first play: a file in the cache on a phone, a blob in the browser preview. */
+  async function loadVoice(): Promise<string> {
+    const { bytes, type } = await api.messageAttachment(m.id);
+    if (Platform.OS === "web") return URL.createObjectURL(new Blob([bytes as BlobPart], { type }));
+    const ext = type.includes("mp4") || type.includes("aac") ? "m4a" : type.split("/")[1]?.split(";")[0] ?? "m4a";
+    const file = new File(Paths.cache, `voice-${m.id}.${ext}`);
+    file.create({ overwrite: true });
+    file.write(bytes);
+    return file.uri;
   }
 
   return (
-    <Pressable
-      disabled={!m.attachment}
-      onPress={() => void open()}
-      style={[styles.bubble, { alignSelf: m.mine ? "flex-end" : "flex-start", backgroundColor: m.mine ? color.accentSoft : color.surface }]}
-    >
-      {picture ? (
-        <Image source={{ uri: picture }} accessibilityLabel={t.coachWidgets.messageThread.photo} resizeMode="cover" style={{ width: 220, height: 220, borderRadius: 12 }} />
-      ) : label ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          {loading ? <ActivityIndicator size="small" color={color.inkSoft} /> : null}
-          <Text style={[styles.text, { color: color.inkSoft, fontStyle: "italic" }]}>{label}</Text>
-        </View>
+    <View style={[styles.bubble, { alignSelf: m.mine ? "flex-end" : "flex-start", backgroundColor: m.mine ? color.accentSoft : color.surface }]}>
+      {m.attachment === "image" ? (
+        picture ? (
+          <Image source={{ uri: picture }} accessibilityLabel={t.coachWidgets.messageThread.photo} resizeMode="cover" style={{ width: 220, height: 220, borderRadius: 12 }} />
+        ) : (
+          <View style={{ width: 220, height: 220, borderRadius: 12, backgroundColor: color.bg, alignItems: "center", justifyContent: "center" }}>
+            {failed ? <Text style={[styles.text, { color: color.inkFaint }]}>{t.coachWidgets.messageThread.photo}</Text> : <ActivityIndicator color={color.inkSoft} />}
+          </View>
+        )
+      ) : m.attachment === "audio" ? (
+        <VoiceNote load={loadVoice} seconds={m.attachment_seconds ?? null} />
       ) : null}
-      {m.body ? <Text style={[styles.text, { color: color.ink }, label ? { marginTop: 6 } : null]}>{m.body}</Text> : null}
-    </Pressable>
+      {m.body ? <Text style={[styles.text, { color: color.ink }, m.attachment ? { marginTop: 6 } : null]}>{m.body}</Text> : null}
+    </View>
   );
 }
 

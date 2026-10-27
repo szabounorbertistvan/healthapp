@@ -12,7 +12,7 @@ export const GET = v1Route(async () => {
     conversation_id: thread.id,
     coach_name: thread.coach_name,
     messages: thread.messages.map((m) => ({
-      id: m.id, body: m.body, at: m.at, mine: m.mine, attachment: m.attachment?.kind ?? null,
+      id: m.id, body: m.body, at: m.at, mine: m.mine, attachment: m.attachment?.kind ?? null, attachment_seconds: m.attachment?.seconds ?? null,
     })),
   });
 });
