@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "build:preview": "npx -y eas-cli@24.12.1 build --profile preview --platform android",
     "build:dev": "npx -y eas-cli@24.12.1 build --profile development --platform android",
+    "build:ios": "npx -y eas-cli@24.12.1 build --profile production --platform ios --auto-submit",
+    "submit:ios": "npx -y eas-cli@24.12.1 submit --profile production --platform ios --latest",
     "start:go": "expo start --go",
     "start:go:tunnel": "expo start --go --tunnel"
   },

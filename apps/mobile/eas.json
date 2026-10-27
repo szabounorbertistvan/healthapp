@@ -17,7 +17,8 @@
     },
     "production": {
       "environment": "production",
-      "android": { "buildType": "app-bundle" }
+      "android": { "buildType": "app-bundle" },
+      "ios": { "credentialsSource": "remote" }
     }
   },
   "submit": {

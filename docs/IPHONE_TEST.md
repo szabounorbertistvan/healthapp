@@ -57,12 +57,71 @@ Orice nu arată bine: o captură de ecran e cel mai util lucru de trimis.
 Limitele lui Expo Go: notificările trimise de server nu ajung (oricum nu sunt pornite încă),
 iar numele și iconița de pe ecran sunt ale lui Expo Go, nu ale Voinic.
 
-## B. Aplicația adevărată pe iPhone (când vrei)
+## B. Aplicația adevărată pe iPhone, prin TestFlight
 
-1. Cont **Apple Developer Program** (developer.apple.com, 99 USD/an, verificarea poate dura câteva zile).
-2. Contul Expo din [ANDROID_PHONE_TEST.md](ANDROID_PHONE_TEST.md) (pașii 1–4 sunt aceiași).
-3. Claude adaugă profilul de build pentru iOS; build-ul se face în cloud-ul Expo (nu e nevoie de Mac),
-   iar aplicația ajunge pe telefon prin **TestFlight**.
-4. Pentru App Store mai sunt necesare: „Sign in with Apple” (obligatoriu dacă aplicația oferă și
-   Google — vezi docs/APPLE_SIGNIN_SETUP.md), politica de confidențialitate (există) și formularele
-   Apple despre date.
+Pregătit 2026-10-27: profilul de build pentru iOS există (`apps/mobile/eas.json`, profilul
+`production`), iconița pentru iPhone (`assets/icon-ios.png`, 1024 × 1024, fără transparență) și
+textele de permisiuni pe care Apple le cere (cameră, poze, microfon, locație). Build-ul se face în
+cloud-ul Expo, pe un Mac al lor — nu ai nevoie de Mac.
+
+### O singură dată
+
+1. **Apple Developer Program** — developer.apple.com → Account → Enroll, 99 USD/an. Ca persoană
+   fizică e cel mai simplu (numele tău apare ca „vânzător” în App Store); ca firmă îți trebuie un
+   număr D-U-N-S. Aprobarea poate dura de la câteva ore la câteva zile.
+2. **Contul Expo** — pașii 1–3 din [ANDROID_PHONE_TEST.md](ANDROID_PHONE_TEST.md) (cont pe
+   expo.dev, `login`, `init`). Dacă i-ai făcut deja pentru Android, sari peste.
+3. **Setările publice pentru build-ul de producție** — cele trei variabile din pasul 4 al aceluiași
+   document (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_API_URL`)
+   trebuie să existe și pentru mediul **production**. Cel mai simplu: expo.dev → proiectul Voinic →
+   **Environment variables** → la fiecare dintre cele trei, Edit → bifează **Production** → Save.
+   (Dacă nu le-ai creat încă deloc, creează-le cu comenzile de acolo, adăugând
+   `--environment production`.)
+
+### Primul build
+
+Din dosarul proiectului:
+
+```bash
+npm run build:ios --workspace=@healthapp/mobile
+```
+
+Pe parcurs, terminalul te întreabă câteva lucruri — răspunde așa:
+
+- **Log in to your Apple account?** → Yes, apoi Apple ID-ul și codul de pe telefon (2FA).
+- **Generate a new Apple Distribution Certificate / Provisioning Profile?** → Yes (Expo le ține în
+  contul tău).
+- **Set up Push Notifications?** → Yes (cheia pentru notificări; o folosim când pornim push-ul).
+- **Numele aplicației în App Store Connect** — dacă „Voinic” e deja luat de altcineva în App
+  Store, alege o variantă, de ex. „Voinic Coach”. Numele de sub iconiță rămâne „Voinic”.
+
+Build-ul durează ~15–30 de minute (planul gratuit poate sta la coadă). La final este trimis singur
+în App Store Connect (`--auto-submit`), unde Apple îl procesează încă ~10–30 de minute și îți
+trimite un email.
+
+### Pe iPhone
+
+1. appstoreconnect.apple.com → **Apps** → Voinic → **TestFlight** → **Internal Testing** → creează
+   un grup (de ex. „Eu”) și adaugă-te pe tine (Apple ID-ul tău).
+2. Instalează aplicația **TestFlight** din App Store, pe iPhone.
+3. Deschide invitația primită pe email (sau direct TestFlight) → **Install**. Apare „Voinic” cu
+   iconița lui, ca o aplicație normală. Fiecare build e valabil 90 de zile.
+
+Testarea internă (până la 100 de oameni din contul tău) **nu trece prin verificarea Apple**. Pentru
+testeri din afară (link public TestFlight) Apple face o verificare scurtă a build-ului.
+
+### Build-uri următoare
+
+1. Mărește `ios.buildNumber` în `apps/mobile/app.json` ("1" → "2" → …) — Apple refuză un build cu
+   un număr deja trimis.
+2. Din nou `npm run build:ios --workspace=@healthapp/mobile`; certificatele sunt deja salvate, deci
+   nu mai întreabă nimic. Dacă un build s-a făcut dar trimiterea a eșuat:
+   `npm run submit:ios --workspace=@healthapp/mobile`.
+
+### Pentru App Store (mai târziu)
+
+- „Sign in with Apple” trebuie să fie pornit (docs/APPLE_SIGNIN_SETUP.md): aplicația oferă deja
+  Google, iar Apple cere atunci și varianta lor. Pentru TestFlight intern nu e nevoie.
+- În App Store Connect: formularele despre date („App Privacy”), capturi de ecran, descriere;
+  politica de confidențialitate există (www.voinic.fit/privacy).
+- Plățile rămân ascunse în aplicație, deci nu e nevoie de In-App Purchase.

@@ -10,10 +10,12 @@
     "backgroundColor": "#0b0b0d",
     "ios": {
       "bundleIdentifier": "fit.voinic.app",
+      "icon": "./assets/icon-ios.png",
       "buildNumber": "1",
       "supportsTablet": false,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Voinic does not track your location. It is asked only if you choose to show where you are on the gym map. / Voinic nu îți urmărește locația. Ți-o cere doar dacă alegi să vezi unde ești pe harta sălilor."
       }
     },
     "android": {
@@ -31,7 +33,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
+      ["expo-secure-store", { "faceIDPermission": false }],
       "expo-localization",
       [
         "expo-splash-screen",
@@ -48,6 +50,7 @@
         "expo-camera",
         {
           "cameraPermission": "Voinic uses the camera to scan food barcodes. / Voinic folosește camera ca să scaneze codurile de bare ale alimentelor.",
+          "microphonePermission": "Voinic uses the microphone only while you record a voice note for your coach. / Voinic folosește microfonul doar cât înregistrezi un mesaj vocal pentru antrenor.",
           "recordAudioAndroid": false
         }
       ],
@@ -69,7 +72,8 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Voinic uses the microphone only while you record a voice note for your coach. / Voinic folosește microfonul doar cât înregistrezi un mesaj vocal pentru antrenor."
+          "microphonePermission": "Voinic uses the microphone only while you record a voice note for your coach. / Voinic folosește microfonul doar cât înregistrezi un mesaj vocal pentru antrenor.",
+          "enableBackgroundPlayback": false
         }
       ],
       "expo-web-browser",

@@ -63,7 +63,8 @@ App Store). **Owner** = something only the owner can do (accounts, money, approv
 ## 5. iPhone (App Store) — later
 
 - [ ] **Owner** — Apple Developer Program (99 USD/year).
-- [ ] **Claude** — an iOS profile in `eas.json`, build, TestFlight.
+- [x] **Claude** — iOS ready to build (2026-10-27): `production` profile in `eas.json`, `ios.icon` (`assets/icon-ios.png`, 1024², opaque), every permission text set, Face ID and background audio off; `npm run build:ios` builds and auto-submits to TestFlight. Steps: [IPHONE_TEST.md](IPHONE_TEST.md) §B.
+- [ ] **Owner** — first iOS build: Apple + Expo accounts, the three `EXPO_PUBLIC_*` variables ticked for **production**, `npm run build:ios`, then yourself as an internal TestFlight tester.
 - [ ] **Owner** — Sign in with Apple switched on (docs/APPLE_SIGNIN_SETUP.md) before App Store review,
       if the app offers Google sign-in by then; App Store privacy forms.
 
