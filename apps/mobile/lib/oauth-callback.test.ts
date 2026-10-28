@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enabledProviders, parseOAuthCallback } from "./oauth-callback";
+import { appleName, appleRejection, enabledProviders, parseOAuthCallback } from "./oauth-callback";
 
 describe("parseOAuthCallback", () => {
   it("reads the PKCE code from the query", () => {
@@ -31,5 +31,20 @@ describe("enabledProviders", () => {
   it("an unreadable answer means none", () => {
     expect(enabledProviders(null).size).toBe(0);
     expect(enabledProviders({}).size).toBe(0);
+  });
+});
+
+describe("native Apple sign-in", () => {
+  it("treats closing the sheet as cancelled, anything else as failed", () => {
+    expect(appleRejection({ code: "ERR_REQUEST_CANCELED" })).toBe("cancelled");
+    expect(appleRejection({ code: "ERR_REQUEST_FAILED" })).toBe("failed");
+    expect(appleRejection(new Error("boom"))).toBe("failed");
+    expect(appleRejection(null)).toBe("failed");
+  });
+
+  it("joins the name parts Apple sends, or gives null", () => {
+    expect(appleName({ givenName: "Ana", middleName: null, familyName: "Pop" })).toBe("Ana Pop");
+    expect(appleName({ givenName: " ", familyName: null })).toBeNull();
+    expect(appleName(null)).toBeNull();
   });
 });

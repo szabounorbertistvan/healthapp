@@ -21,10 +21,20 @@ this is needed before the native app is submitted. On the web it is optional.
 4. **Keys**: a key with "Sign In with Apple", download the `.p8` (once only).
    Note the Key ID and your Team ID.
 5. Supabase → Authentication → Sign In / Providers → **Apple** → enable.
-   Client IDs: the Services ID (and later the iOS bundle id, comma-separated).
+   Client IDs: the Services ID **and the iOS bundle id `fit.voinic.app`**, comma-separated
+   (`fit.voinic.web,fit.voinic.app`). The bundle id is what the iPhone app's native
+   sheet signs its tokens for; without it every Apple sign-in on an iPhone fails.
+   To try it inside Expo Go, add `host.exp.Exponent` too for the test, then remove it.
    Secret key: Supabase generates it from Team ID, Key ID and the `.p8` content
    (paste them in the form). The secret expires after 6 months — set a reminder
    to regenerate it.
-6. Open `/login`: "Continue with Apple" is shown above Google. The phone app's sign-in
-   shows it too (`apps/mobile/lib/oauth.ts`), once `voinic://auth/callback` is an allowed
-   redirect URL (docs/ANDROID_RELEASE.md §1).
+6. Open `/login`: "Continue with Apple" is shown above Google.
+7. The phone app shows the button too, once the provider is on (`apps/mobile/lib/oauth.ts`):
+   - **iPhone**: Apple's own system sheet (Face ID / passcode), no browser —
+     `expo-apple-authentication` → `signInWithIdToken`. Needs the bundle id in step 5 and
+     the App ID's "Sign In with Apple" capability (step 2; EAS turns it on in the
+     provisioning profile from `ios.usesAppleSignIn` in `app.json`). Apple gives the
+     person's name only at their first sign-in; the app keeps it in the account metadata
+     and complete-profile pre-fills it.
+   - **Android**: the browser tab, once `voinic://auth/callback` is an allowed redirect URL
+     (docs/ANDROID_RELEASE.md §1).

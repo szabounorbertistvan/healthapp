@@ -1,13 +1,13 @@
 import type { MeV1 } from "@healthapp/api/v1";
 import { isValidAge, isValidUsername, SEXES } from "@healthapp/shared/account/profile";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorText, Primary } from "@/components/coach-profile-bits";
 import { Card, Logo, NavIcon } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
-import { signOut } from "@/lib/auth";
+import { signOut, useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { openLegal } from "@/lib/legal";
 import { font, useTheme } from "@/lib/theme";
@@ -35,6 +35,12 @@ export function CompleteProfile({ me }: { me: MeV1 }) {
   const consentOnly = me.username !== null;
   const askRole = me.role !== "admin";
   const [fullName, setFullName] = useState("");
+  // the name Google or Apple gave the account, as a start (never the email the sign-up trigger falls back to);
+  // Apple's arrives a moment after the sign-in (lib/oauth.ts), hence an effect
+  const givenName = useAuth().session?.user.user_metadata?.full_name;
+  useEffect(() => {
+    if (typeof givenName === "string" && givenName.trim() && !givenName.includes("@")) setFullName((f) => f || givenName.trim());
+  }, [givenName]);
   const [username, setUsername] = useState("");
   const [sex, setSex] = useState<Sex | "">("");
   const [age, setAge] = useState("");

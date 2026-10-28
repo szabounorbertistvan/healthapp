@@ -13,6 +13,7 @@
       "icon": "./assets/icon-ios.png",
       "buildNumber": "1",
       "supportsTablet": false,
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Voinic does not track your location. It is asked only if you choose to show where you are on the gym map. / Voinic nu îți urmărește locația. Ți-o cere doar dacă alegi să vezi unde ești pe harta sălilor."
@@ -77,6 +78,7 @@
         }
       ],
       "expo-web-browser",
+      "expo-apple-authentication",
       "@maplibre/maplibre-react-native"
     ],
     "experiments": {

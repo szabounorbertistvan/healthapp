@@ -20,6 +20,17 @@ export function parseOAuthCallback(url: string): OAuthCallback {
   return { kind: "error", error: "no code in the callback" };
 }
 
+/** A rejected native Apple sheet (expo-apple-authentication): the person closing it is not a failure. */
+export function appleRejection(error: unknown): "cancelled" | "failed" {
+  return (error as { code?: unknown } | null)?.code === "ERR_REQUEST_CANCELED" ? "cancelled" : "failed";
+}
+
+/** Apple's name parts → one name, or null; Apple sends them only the first time someone signs in. */
+export function appleName(parts: { givenName?: string | null; middleName?: string | null; familyName?: string | null } | null | undefined): string | null {
+  const name = [parts?.givenName, parts?.middleName, parts?.familyName].map((p) => p?.trim()).filter(Boolean).join(" ");
+  return name || null;
+}
+
 /** The providers switched on in the Supabase project, from its public /auth/v1/settings (the web's enabledOAuthProviders). */
 export function enabledProviders(settings: unknown): Set<string> {
   const external = (settings as { external?: Record<string, unknown> } | null)?.external ?? {};
