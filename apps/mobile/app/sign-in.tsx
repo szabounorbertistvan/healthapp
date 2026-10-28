@@ -286,7 +286,7 @@ export default function SignIn() {
                     checked={consent.terms}
                     onToggle={() => setConsent((c) => ({ ...c, terms: !c.terms }))}
                     text={l.consentTerms}
-                    links={{ terms: [l.consentTermsLink, () => openLegal("terms", locale)], privacy: [l.consentPrivacyLink, () => openLegal("privacy", locale)] }}
+                    links={{ terms: [l.consentTermsLink, () => openLegal("terms")], privacy: [l.consentPrivacyLink, () => openLegal("privacy")] }}
                   />
                   <Consent checked={consent.health} onToggle={() => setConsent((c) => ({ ...c, health: !c.health }))} text={l.consentHealth} />
                 </>
@@ -329,8 +329,8 @@ export default function SignIn() {
             </Card>
           )}
           <View style={{ marginTop: 18, flexDirection: "row", justifyContent: "center", gap: 18 }}>
-            {link(t.mobile.more.privacy, () => openLegal("privacy", locale))}
-            {link(l.consentTermsLink, () => openLegal("terms", locale))}
+            {link(t.mobile.more.privacy, () => openLegal("privacy"))}
+            {link(l.consentTermsLink, () => openLegal("terms"))}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

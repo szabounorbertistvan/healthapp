@@ -154,6 +154,8 @@ function Gate({ onSignOut }: { onSignOut: () => void }) {
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" />
         </Stack.Protected>
+        {/* signed in or out: sign-up links to the Terms before an account exists */}
+        <Stack.Screen name="legal/[page]" />
       </Stack>
     </ThemeProvider>
   );

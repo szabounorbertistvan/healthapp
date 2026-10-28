@@ -20,4 +20,7 @@ export const config = {
     return (process.env.EXPO_PUBLIC_API_URL?.trim() || "https://www.voinic.fit").replace(/\/+$/, "");
   },
   webUrl: "https://www.voinic.fit",
+  /** apps/web/lib/brand.ts's APP_NAME and CONTACT_EMAIL, for the legal texts. */
+  appName: "Voinic",
+  contactEmail: "contact@voinic.fit",
 };

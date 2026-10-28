@@ -1,5 +1,5 @@
 // A web path (a notification's href, a leaderboard's action) → the app's own
-// screen for it, or null when the app has none and the link opens voinic.fit.
+// screen for it, or null when the app has none (the admin pages, kept off the app).
 // Pure, so it is tested in node (web-route.test.ts).
 
 const ID = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";

@@ -1,11 +1,9 @@
-import type { Locale } from "@healthapp/i18n/config";
-import * as WebBrowser from "expo-web-browser";
-import { config } from "./config";
+import type { LegalPage } from "@healthapp/i18n/legal";
+import { router } from "expo-router";
 
-// The Terms and the Privacy Policy are one document each, kept on the web
-// (app/terms, app/privacy) so the text people agree to can never differ
-// between the site and the app; the app shows that page in an in-app browser,
-// in the app's language (?lang=, read by the web's middleware).
-export function openLegal(page: "terms" | "privacy", locale: Locale) {
-  void WebBrowser.openBrowserAsync(`${config.webUrl}/${page}?lang=${locale}`);
+// The Terms and the Privacy Policy open in the app's own screen (app/legal/[page].tsx),
+// which renders the one text the web's /terms and /privacy render too, so what people
+// agree to can never differ between the site and the app.
+export function openLegal(page: LegalPage) {
+  router.push(`/legal/${page}` as never);
 }

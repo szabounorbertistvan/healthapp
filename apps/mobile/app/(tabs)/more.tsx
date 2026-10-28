@@ -1,13 +1,12 @@
 import { audienceOf } from "@healthapp/shared/onboarding";
 import Constants from "expo-constants";
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePageTour } from "@/components/page-tour";
 import { CoachProfileCard, DataCard, DeleteCard, EmailCard, GymCard, PrivacyCard, ProfileCard, RestCard } from "@/components/settings-forms";
 import { Card, NavIcon, T } from "@/components/ui";
 import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth";
-import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { openLegal } from "@/lib/legal";
 import { useOfflineQuery } from "@/lib/offline-query";
@@ -19,8 +18,6 @@ import { font, useTheme } from "@/lib/theme";
 // per setting, in the web's order. Profile, gym, rest timer, email and privacy are edited
 // right here (components/settings-forms.tsx, through the web's own actions);
 // the data export and deletion too — all through the web's own actions.
-
-const web = (path: string) => () => void Linking.openURL(`${config.webUrl}${path}`);
 
 export default function Account() {
   const { t, fill, locale, setLocale } = useI18n();
@@ -86,9 +83,8 @@ export default function Account() {
         <DeleteCard />
 
         <Card style={{ padding: 0, gap: 0, overflow: "hidden" }}>
-          <LinkRow label={t.mobile.more.openWeb} onPress={web("/today")} />
-          <LinkRow label={t.mobile.more.privacy} onPress={() => openLegal("privacy", locale)} top />
-          <LinkRow label={t.login.consentTermsLink} onPress={() => openLegal("terms", locale)} top />
+          <LinkRow label={t.mobile.more.privacy} onPress={() => openLegal("privacy")} />
+          <LinkRow label={t.login.consentTermsLink} onPress={() => openLegal("terms")} top />
         </Card>
 
         <Pressable
@@ -115,7 +111,7 @@ function LinkRow({ label, onPress, top = false }: { label: string; onPress: () =
       style={({ pressed }) => [styles.linkRow, top ? { borderTopWidth: 1, borderTopColor: color.line } : null, pressed ? { backgroundColor: color.bg } : null]}
     >
       <Text style={{ flex: 1, fontFamily: font.semibold, fontSize: 14, color: color.accentInk }}>{label}</Text>
-      <NavIcon d="M7 17 17 7M8 7h9v9" size={15} color={color.inkFaint} />
+      <NavIcon d="m9 6 6 6-6 6" size={15} color={color.inkFaint} />
     </Pressable>
   );
 }

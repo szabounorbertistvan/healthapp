@@ -128,7 +128,6 @@ const en = {
   more: {
     signedInAs: "Signed in as {name}",
     language: "Language",
-    openWeb: "Open voinic.fit",
     privacy: "Privacy policy",
     signOut: "Sign out",
     version: "Version {version}",
@@ -274,7 +273,6 @@ const ro: typeof en = {
   more: {
     signedInAs: "Conectat ca {name}",
     language: "Limba",
-    openWeb: "Deschide voinic.fit",
     privacy: "Politica de confidențialitate",
     signOut: "Ieși din cont",
     version: "Versiunea {version}",

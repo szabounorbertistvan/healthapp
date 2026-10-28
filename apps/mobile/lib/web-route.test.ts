@@ -29,12 +29,24 @@ describe("nativeRoute", () => {
     expect(nativeRoute("/clients")).toBe("/coach/clients");
     expect(nativeRoute("/clients/challenges")).toBe("/coach/client-challenges");
   });
-  it("leaves what the app does not have to the web", () => {
+  it("returns null for what the app does not have", () => {
     expect(nativeRoute("/coaches/city/cluj-napoca")).toBeNull();
     expect(nativeRoute("/coaches/ana-pop/book")).toBeNull();
     expect(nativeRoute("/admin")).toBeNull();
     expect(nativeRoute(`/workout/session/not-an-id`)).toBeNull();
     expect(nativeRoute("https://voinic.fit/today")).toBeNull();
     expect(nativeRoute(null)).toBeNull();
+  });
+  it("has a screen for every link a notification can carry, so none opens the website", () => {
+    // every path apps/web/lib/notification-href.ts returns, bar the admin queue
+    const hrefs = [
+      "/bookings", "/challenges", "/check-in", "/clients", "/coach", "/coaches/bookings", "/coaches/requests",
+      "/feed", "/food", "/habits", "/notifications", "/progress", "/requests", "/reviews",
+      "/settings/coach-profile", "/streak", "/today", "/workout",
+      "/achievements/first_workout", `/challenges/${ID}`, `/clients/relationship/${ID}`, `/coach/messages/${ID}`,
+      "/coaches/ana-pop#reviews", `/feed/${ID}#comment-${ID}`, `/feed/${ID}`, `/messages/${ID}`,
+      `/people/${ID}`, `/people/${ID}?tab=achievements`, `/workout/session/${ID}`,
+    ];
+    for (const href of hrefs) expect(nativeRoute(href), href).not.toBeNull();
   });
 });

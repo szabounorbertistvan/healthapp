@@ -8,7 +8,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, NavIcon, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api } from "@/lib/api";
-import { config } from "@/lib/config";
 import { nativeRoute } from "@/lib/web-route";
 import { useI18n } from "@/lib/i18n";
 import { enablePush, routeFor, type PushState } from "@/lib/push";
@@ -18,7 +17,7 @@ import { alpha, font, useTheme } from "@/lib/theme";
 // (components/notification-list.tsx): All | Unread, the unread count and
 // "mark all as read", then the rows grouped into today, this week and earlier.
 // Tapping one reads it and opens what it is about (a native screen when there
-// is one, else the web). The card on top is where push is switched on, in
+// is one; the admin queue, kept off the app on purpose, only marks it read). The card on top is where push is switched on, in
 // context, never at launch.
 
 const BELL = "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0";
@@ -60,13 +59,12 @@ export default function NotificationsScreen() {
   async function open(row: NotificationV1) {
     if (!row.read) void api.markNotificationRead(row.id).then(() => queryClient.invalidateQueries({ queryKey: ["notifications"] })).catch(() => {});
     // The exact screen the web's link names (a workout, a post, a thread), when the app has it;
-    // else the screen for the category; else the page on voinic.fit.
+    // else the screen for the category.
     const exact = nativeRoute(row.href);
     if (exact) return void router.push(exact as never);
     const conversation = /\/messages\/([0-9a-f-]{36})/i.exec(row.href ?? "")?.[1];
     const native = routeFor({ category: row.category, conversation_id: conversation });
     if (native !== "/notifications") router.push(native);
-    else if (row.href) void Linking.openURL(`${config.webUrl}${row.href}`);
   }
 
   const groups = (["today", "week", "earlier"] as const)

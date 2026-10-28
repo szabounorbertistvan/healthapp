@@ -27,7 +27,7 @@ export function needsProfile(me: MeV1 | undefined): boolean {
  * of the tabs until it is done, with sign-out as the way out.
  */
 export function CompleteProfile({ me }: { me: MeV1 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const { color } = useTheme();
   const queryClient = useQueryClient();
   const l = t.login;
@@ -135,9 +135,9 @@ export function CompleteProfile({ me }: { me: MeV1 }) {
             ) : null}
             <Check checked={consent.terms} onToggle={() => setConsent((c) => ({ ...c, terms: !c.terms }))}>
               {before}
-              <Text accessibilityRole="link" onPress={() => openLegal("terms", locale)} style={{ fontFamily: font.semibold, color: color.ink, textDecorationLine: "underline" }}>{l.consentTermsLink}</Text>
+              <Text accessibilityRole="link" onPress={() => openLegal("terms")} style={{ fontFamily: font.semibold, color: color.ink, textDecorationLine: "underline" }}>{l.consentTermsLink}</Text>
               {between}
-              <Text accessibilityRole="link" onPress={() => openLegal("privacy", locale)} style={{ fontFamily: font.semibold, color: color.ink, textDecorationLine: "underline" }}>{l.consentPrivacyLink}</Text>
+              <Text accessibilityRole="link" onPress={() => openLegal("privacy")} style={{ fontFamily: font.semibold, color: color.ink, textDecorationLine: "underline" }}>{l.consentPrivacyLink}</Text>
               {after}
             </Check>
             <Check checked={consent.health} onToggle={() => setConsent((c) => ({ ...c, health: !c.health }))}>{l.consentHealth}</Check>
