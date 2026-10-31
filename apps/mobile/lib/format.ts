@@ -1,3 +1,5 @@
+import { pluralCategory } from "@healthapp/i18n/plural";
+
 /**
  * An adherence share (0..1, as packages/shared computes it and /api/v1 sends it)
  * as a whole percentage — the web's pct() in apps/web/lib/format.ts.
@@ -11,7 +13,7 @@ export function percent(share: number): string {
 
 const TIME_WORDS = {
   en: { never: "never", today: "today", oneDay: "1d ago", days: (n: number) => `${n}d ago` },
-  ro: { never: "niciodată", today: "azi", oneDay: "acum 1 zi", days: (n: number) => `acum ${n} zile` },
+  ro: { never: "niciodată", today: "azi", oneDay: "acum 1 zi", days: (n: number) => `acum ${n}${pluralCategory("ro", n) === "other" ? " de" : ""} zile` },
 } as const;
 
 export function timeAgo(iso: string | null, locale: "en" | "ro" = "en", now = Date.now()): string {

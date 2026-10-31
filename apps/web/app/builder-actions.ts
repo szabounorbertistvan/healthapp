@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { DEFAULT_TARGETS, isExerciseMeasure, isPlanLimitError, isRoutineGoal, isRoutineLevel, isSetType, swapNeighbour, validateTargets, type ExerciseTargets } from "@healthapp/shared";
 import { getI18n } from "@/lib/i18n/server";
 import { liveUser, supabaseServer } from "@/lib/supabase/server";
-import { inserted, mutated } from "@/lib/supabase/mutate";
+import { dbFailure, inserted, mutated } from "@/lib/supabase/mutate";
 import type { ActionResult } from "./actions";
 import { notSignedIn, planLimitReached, upgradeRequired } from "@/lib/action-result";
 import { getPlan } from "@/lib/plan";
@@ -130,7 +130,7 @@ export async function createProgram(input: {
     })
     .select("id")
     .single();
-  if (error) return { ok: false, message: error.message };
+  if (error) return dbFailure(error, "createProgram");
   revalidatePath("/programs");
   return { ok: true, id: data.id };
 }
@@ -240,7 +240,7 @@ export async function moveProgramDay(programId: string, dayId: string, direction
   if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const { error } = await supabase.rpc("move_program_day", { p_day: dayId, p_direction: direction });
-  if (error) return { ok: false, message: error.code === "42501" ? "You cannot edit this program" : error.message };
+  if (error) return dbFailure(error, "moveProgramDay");
   programTouched(programId);
   return { ok: true };
 }
@@ -251,7 +251,7 @@ export async function moveProgramExercise(programId: string, dayId: string, rowI
   if (!parsed.ok) return parsed.result;
   const supabase = await supabaseServer();
   const { data: rows, error } = await supabase.from("program_exercises").select("id, position").eq("program_day_id", dayId);
-  if (error) return { ok: false, message: error.message };
+  if (error) return dbFailure(error, "moveProgramExercise");
   const updates = swapNeighbour((rows ?? []) as { id: string; position: number }[], rowId, direction);
   for (const u of updates) {
     const failed = await mutated(
@@ -436,7 +436,7 @@ export async function duplicateProgramDay(programId: string, dayId: string): Pro
     )
     .eq("id", dayId)
     .single();
-  if (readError) return { ok: false, message: readError.message };
+  if (readError) return dbFailure(readError, "duplicateProgramDay");
 
   const dayIndex = await nextDayIndex(supabase, programId, source.week_index);
   const { data: created, error: writeError } = await supabase
@@ -492,7 +492,7 @@ export async function copyProgramToClient(
     p_name: null,
     p_for_client: clientId,
   });
-  if (error) return { ok: false, message: error.message };
+  if (error) return dbFailure(error, "copyProgramToClient");
   revalidatePath("/programs");
   return { ok: true, id: (data as string | null) ?? undefined };
 }
@@ -557,7 +557,7 @@ export async function activateProgram(programId: string): Promise<ActionResult> 
 
   const { data: row, error: readError } = await supabase
     .from("programs").select("status").eq("id", programId).maybeSingle<{ status: string }>();
-  if (readError) return { ok: false, message: readError.message };
+  if (readError) return dbFailure(readError, "activateProgram");
   if (!row) return { ok: false, errorCode: "NO_ROWS", message: t.common.actions.nothingChanged };
   if (row.status !== "published") return { ok: false, errorCode: "NOT_PUBLISHED", message: t.clientApp.builder.activateDraft };
 
@@ -616,7 +616,7 @@ export async function createSoloProgram(input: {
     .single();
   // enforce_plan_limit('own_programs') refuses a program past the plan's cap.
   if (isPlanLimitError(error?.message)) return planLimitReached;
-  if (error) return { ok: false, message: error.message };
+  if (error) return dbFailure(error, "createSoloProgram");
   revalidatePath("/workout");
   return { ok: true, id: data.id };
 }
@@ -641,7 +641,7 @@ export async function addSoloProgramDay(
     name: dayName,
     muscle_groups: muscleGroups,
   });
-  if (error) return { ok: false, message: error.message };
+  if (error) return dbFailure(error, "addSoloProgramDay");
   revalidatePath("/workout/build");
   return { ok: true };
 }

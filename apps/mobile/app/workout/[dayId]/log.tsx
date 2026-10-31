@@ -1,4 +1,5 @@
 import type { LogSetV1, WorkoutDayV1, WorkoutExerciseV1 } from "@healthapp/api/v1";
+import { formatDecimal } from "@healthapp/i18n";
 import {
   circuitSegments, displayToKg, kgToDisplay, MAX_SET_REPS, MAX_SET_SECONDS, MAX_SET_WEIGHT_KG, resolveRestSeconds,
   restAfterLoggedSet, validateSetEdit,
@@ -350,14 +351,14 @@ function ExerciseBlock({
       notes: note.trim() || null,
     });
     if (!invalid) return null;
-    if (invalid === "weight") return fill(m.errWeight, { max: kgToDisplay(MAX_SET_WEIGHT_KG, unit), unit });
+    if (invalid === "weight") return fill(m.errWeight, { max: formatDecimal(kgToDisplay(MAX_SET_WEIGHT_KG, unit), locale), unit });
     if (invalid === "reps") return fill(m.errReps, { max: MAX_SET_REPS });
     if (invalid === "duration") return fill(m.errDuration, { max: MAX_SET_SECONDS });
     return invalid === "rpe" ? m.errRpe : m.errRir;
   }
 
   const last = e.exercise_id ? day.previous[e.exercise_id] : undefined;
-  const target = `${e.sets}×${e.reps}${timed ? " s" : ""}${e.target_rpe != null && day.intensity_mode !== "simple" ? ` · ${asRir ? m.rir : m.rpe} ${e.target_rpe}` : ""}${e.weight_kg ? ` · ${kgToDisplay(e.weight_kg, unit)} ${unit}` : ""} · ${m.rest} ${e.rest_seconds ? `${e.rest_seconds}s` : "—"}`;
+  const target = `${e.sets}×${e.reps}${timed ? " s" : ""}${e.target_rpe != null && day.intensity_mode !== "simple" ? ` · ${asRir ? m.rir : m.rpe} ${e.target_rpe}` : ""}${e.weight_kg ? ` · ${formatDecimal(kgToDisplay(e.weight_kg, unit), locale)} ${unit}` : ""} · ${m.rest} ${e.rest_seconds ? `${e.rest_seconds}s` : "—"}`;
 
   return (
     <Card style={{ gap: 0 }}>
@@ -385,7 +386,7 @@ function ExerciseBlock({
             {last.sets.map((s) => (
               <View key={s.set_index} style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
                 <Text style={{ width: 12, textAlign: "right", fontFamily: font.regular, fontSize: 10, color: color.inkFaint }}>{s.set_index}</Text>
-                <Text style={{ fontFamily: font.semibold, fontSize: 11.5, color: color.ink }}>{setText(s, unit, t)}</Text>
+                <Text style={{ fontFamily: font.semibold, fontSize: 11.5, color: color.ink }}>{setText(s, unit, t, locale)}</Text>
                 {s.rir !== null ? (
                   <Text style={{ fontFamily: font.regular, fontSize: 11.5, color: color.inkFaint }}>{`· ${m.rir} ${s.rir}`}</Text>
                 ) : s.rpe !== null ? (
@@ -408,7 +409,7 @@ function ExerciseBlock({
               <Pressable
                 key={`${s.set_index}:${s.at}`}
                 accessibilityRole={editable ? "button" : undefined}
-                accessibilityLabel={`${m.editSet}: ${setText(s, unit, t)}`}
+                accessibilityLabel={`${m.editSet}: ${setText(s, unit, t, locale)}`}
                 disabled={!editable}
                 onPress={() => setEditing(editing === s.id ? null : s.id ?? null)}
                 style={[
@@ -418,7 +419,7 @@ function ExerciseBlock({
                 ]}
               >
                 <Text style={{ fontFamily: s.is_pr ? font.semibold : font.regular, fontSize: 12, color: refused ? color.risk : s.is_pr ? color.accentFg : color.inkSoft }}>
-                  {`${setText(s, unit, t)}${s.rir != null ? ` · ${m.rir} ${s.rir}` : ""}${s.rpe != null ? ` · ${s.rpe}/10` : ""}${s.is_pr ? ` · ${m.pr}` : ""}${s.notes ? " · ✎" : ""}`}
+                  {`${setText(s, unit, t, locale)}${s.rir != null ? ` · ${m.rir} ${s.rir}` : ""}${s.rpe != null ? ` · ${s.rpe}/10` : ""}${s.is_pr ? ` · ${m.pr}` : ""}${s.notes ? " · ✎" : ""}`}
                 </Text>
                 {s.state === "pending" ? <NavIcon d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0" size={12} color={color.inkFaint} /> : null}
               </Pressable>

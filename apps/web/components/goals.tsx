@@ -11,7 +11,7 @@ import {
   type GoalMetric,
 } from "@healthapp/shared";
 import { closeGoal, createGoal, deleteGoal, updateGoal } from "@/app/goal-actions";
-import { fill } from "@/lib/i18n";
+import { fill, localizeDefaultName } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { usePlan } from "@/lib/plan-client";
@@ -34,7 +34,7 @@ import { NavIcon } from "./client-nav";
  * first, inline, the way the program builder's delete does.
  */
 export function GoalsPanel({ dashboard }: { dashboard: GoalDashboard }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const g = t.clientApp.goals;
   const { e: plan, upgrade } = usePlan();
   // The free plans hold a few active goals at once (plan_limit 'active_goals');
@@ -49,7 +49,7 @@ export function GoalsPanel({ dashboard }: { dashboard: GoalDashboard }) {
         <p className="text-[13.5px] leading-relaxed text-ink-soft">{g.intro}</p>
         {dashboard.mainGoal ? (
           <p className="mt-2 text-[12.5px] text-ink-faint">
-            {g.mainGoal}: <span className="font-semibold text-ink">{dashboard.mainGoal}</span>
+            {g.mainGoal}: <span className="font-semibold text-ink">{localizeDefaultName("goal", dashboard.mainGoal, locale)}</span>
           </p>
         ) : null}
       </Card>

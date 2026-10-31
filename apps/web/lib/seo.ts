@@ -1,3 +1,4 @@
+import { fill } from "@healthapp/i18n";
 import { landingIndexable } from "./coach-discovery";
 
 /**
@@ -65,7 +66,7 @@ export type LandingCopy = {
   cityTitle: string; cityIntro: string; specializationTitle: string; specializationIntro: string; countryTitle: string; countryIntro: string;
   metaCity: string; metaSpecialization: string; metaCountry: string;
 };
-const fillN = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m));
+const fillN = (s: string, v: Record<string, string | number>) => fill(s, v);
 
 /** The H1 and the intro of a landing listing, in the reader's language. */
 export function landingCopy(l: { kind: "city" | "specialization" | "country"; name: string }, copy: LandingCopy) {

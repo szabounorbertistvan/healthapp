@@ -19,5 +19,6 @@ describe("timeAgo", () => {
     expect(timeAgo("2026-10-23T08:00:00Z", "en", now)).toBe("1d ago");
     expect(timeAgo("2026-10-20T12:00:00Z", "ro", now)).toBe("acum 4 zile");
     expect(timeAgo("2026-10-23T08:00:00Z", "ro", now)).toBe("acum 1 zi");
+    expect(timeAgo("2026-09-24T12:00:00Z", "ro", now)).toBe("acum 30 de zile");
   });
 });

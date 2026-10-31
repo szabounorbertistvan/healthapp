@@ -53,6 +53,14 @@ describe("flushOutbox", () => {
     expect(store.items).toEqual([]);
   });
 
+  it("dismisses only one kind's refusals when asked (a check-in sent again leaves a refused set alone)", async () => {
+    const checkin = { kind: "checkin", id: "c", userId: "me", queuedAt: "2026-10-23T10:00:00Z", error: "Enter a weight between 20 and 400 kg.",
+      input: { weightKg: 9999, sleep: 5, energy: 5, stress: 5, hunger: 5, recovery: 5, note: "", answers: [] } } as QueuedItem;
+    const store = memoryStore([{ ...item("a", 1, "2026-10-23T10:01:00Z"), error: "Reps must be 1–100" }, checkin]);
+    await dismissRefused(store, "me", "checkin");
+    expect(store.items.map((i) => i.id)).toEqual(["a"]);
+  });
+
   it("only ever sends the signed-in person's sets", async () => {
     const store = memoryStore([item("theirs", 1, "2026-10-23T10:01:00Z", "someone-else"), item("mine", 1, "2026-10-23T10:02:00Z")]);
     const sentIds: string[] = [];

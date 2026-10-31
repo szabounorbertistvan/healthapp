@@ -20,7 +20,7 @@ import { WeeklySummaryCard } from "@/components/weekly-summary";
 import { FitnessScoreCoachCard } from "@/components/fitness-score";
 import { PostCard } from "@/components/social";
 import { Card } from "@/components/ui";
-import { fill } from "@/lib/i18n";
+import { fill, localizeDefaultName } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n/server";
 import { getPlan } from "@/lib/plan";
 import { PremiumSoon, UpgradeHint } from "@/components/upgrade";
@@ -117,7 +117,7 @@ export default async function CoachClientPage({
       </div>
       {goal ? (
         <p className="mt-3 text-[13.5px] text-ink-soft" data-testid="client-goal">
-          <span className="font-semibold text-ink">{t.onboarding.coachView.goal}</span> {goal}
+          <span className="font-semibold text-ink">{t.onboarding.coachView.goal}</span> {localizeDefaultName("goal", goal, locale)}
         </p>
       ) : null}
 

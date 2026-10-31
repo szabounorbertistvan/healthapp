@@ -149,7 +149,7 @@ function HabitList({ rows, onTick, onRemoved }: { rows: HabitV1[]; onTick: (h: H
                         textDecorationLine: habit.done_today ? "line-through" : "none",
                       }}
                     >
-                      {habit.name}
+                      {info ? info.name : habit.name}
                     </Text>
                     <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{`${habit.done_this_week}/${habit.target_per_week}`}</Text>
                   </Pressable>
@@ -323,7 +323,12 @@ function AddHabit({ existingNames, onAdded }: { existingNames: string[]; onAdded
               style={[styles.input, { width: 80, color: color.ink, backgroundColor: color.bg, borderColor: color.line }]}
             />
           </View>
-          {gold(t.common.actions.add, () => void add(name, parseInt(perWeek, 10), () => setName("")), pending || !name.trim())}
+          {gold(t.common.actions.add, () => {
+            // the server clamps to 1–7; say so rather than quietly saving another number
+            const days = Number(perWeek.trim());
+            if (!(Number.isInteger(days) && days >= 1 && days <= 7)) return setError(m.daysRange);
+            void add(name, days, () => setName(""));
+          }, pending || !name.trim())}
         </View>
       </View>
       {error ? <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.risk }}>{error}</Text> : null}

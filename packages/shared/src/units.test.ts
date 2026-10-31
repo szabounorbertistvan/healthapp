@@ -38,6 +38,12 @@ describe("formatWeight", () => {
     expect(formatWeight(100, "lb")).toBe("220.5 lb");
   });
 
+  it("writes the decimal with a comma in Romanian", () => {
+    expect(formatWeight(82.5, "kg", { locale: "ro" })).toBe("82,5 kg");
+    expect(formatWeight(82.5, "kg", { locale: "ro-RO" })).toBe("82,5 kg");
+    expect(formatWeight(80, "kg", { locale: "ro" })).toBe("80 kg");
+  });
+
   it("drops the decimal on totals nobody reads to a tenth", () => {
     expect(formatWeight(12480.3, "kg", { locale: "en" })).toBe("12,480 kg");
     expect(formatWeight(500, "kg", { big: true, locale: "en" })).toBe("500 kg");

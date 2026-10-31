@@ -30,12 +30,12 @@ function byExercise(sets: Set[]): { exercise: string; sets: Set[] }[] {
 }
 
 export function SessionView({ session, unit, coach }: { session: FeedbackSessionV1; unit: WeightUnit; coach?: CoachActions }) {
-  const { t, fill } = useI18n();
+  const { t, fill, num } = useI18n();
   const { color } = useTheme();
   const m = t.coachWidgets.workoutFeedback;
   const line = (s: Set) => {
     const work = s.duration_seconds ? fill(m.seconds, { n: s.duration_seconds }) : fill(m.reps, { n: s.reps });
-    const load = s.weight_kg ? `${kgToDisplay(s.weight_kg, unit)} ${unit} × ` : "";
+    const load = s.weight_kg ? `${num(kgToDisplay(s.weight_kg, unit))} ${unit} × ` : "";
     const effort = s.rir !== null ? ` · RIR ${s.rir}` : s.rpe !== null ? ` · RPE ${s.rpe}` : "";
     return `${load}${work}${effort}`;
   };

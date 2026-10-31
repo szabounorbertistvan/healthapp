@@ -1,6 +1,6 @@
 import type { BuilderExerciseV1, BuilderV1, ExerciseHitV1 } from "@healthapp/api/v1";
 import { displayToKg, kgToDisplay, parseDecimal, type WeightUnit } from "@healthapp/shared";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { absolute } from "@/components/post-card";
@@ -28,30 +28,114 @@ const DOWN = "m6 9 6 6 6-6";
 const COPY = "M9 9h11v11H9zM5 15H4V4h11v1";
 const CLOSE = "M6 6 18 18M18 6 6 18";
 const PENCIL = "M4 20h4l10-10-4-4L4 16zM13 7l4 4";
+/** How long a left prescription field waits before it saves (ExerciseRow). */
+const SAVE_DELAY_MS = 800;
 
-export type Run = (op: string, body?: Record<string, unknown>) => Promise<{ ok: boolean; id?: string }>;
+export type Run = (op: string, body?: Record<string, unknown>, opts?: { silent?: boolean }) => Promise<{ ok: boolean; id?: string }>;
 
-/** One builder action, then the builder and Training read again; a refusal shows its sentence. */
-export function useRun(setError: (m: string | null) => void): [Run, boolean] {
+type Days = NonNullable<BuilderV1["open"]>["days"];
+
+/**
+ * What a save reads back. Every save used to read the builder, Training and the
+ * whole Today screen again (2026-10-31: five edits on a phone were ~550 reads
+ * and 40+ statement timeouts on the live database), so now:
+ * - a prescription, a cue, reps-or-time and a day's name are written into the
+ *   cached program as they were saved: no read at all;
+ * - create / delete / publish / set active read every builder query (the
+ *   program list and its statuses change);
+ * - anything else (add, move, copy, remove) reads only this screen's program.
+ * Screens beneath (Today, Training, the routine page, the coach's list) read
+ * again once, when the editor is left, and only if something was saved.
+ */
+const PATCHED = new Set(["updateExercise", "notes", "measure", "renameDay"]);
+const WIDE = new Set(["create", "delete", "publish", "activate"]);
+
+function patchDays(days: Days, op: string, b: Record<string, unknown>): Days {
+  if (op === "renameDay") {
+    const name = typeof b.name === "string" ? b.name.trim() : "";
+    return days.map((d) => (d.id === b.dayId && name ? { ...d, name } : d));
+  }
+  const patch: Partial<BuilderExerciseV1> =
+    op === "updateExercise"
+      ? { sets: b.sets as number, reps: b.reps as string, rpe: b.rpe as number | null, weight_kg: b.weightKg as number | null, rest_seconds: b.restSeconds as number | null }
+      : op === "notes"
+        ? { notes: (typeof b.notes === "string" ? b.notes.trim().slice(0, 1000) : "") || null }
+        : { measure: b.measure === "time" ? "time" : "reps" };
+  return days.map((d) =>
+    d.exercises.some((e) => e.id === b.rowId) ? { ...d, exercises: d.exercises.map((e) => (e.id === b.rowId ? { ...e, ...patch } : e)) } : d,
+  );
+}
+
+/** The program inside either read the editor draws from: /builder's `open`, or /coach/programs/[id] itself. */
+function patchProgram(data: unknown, op: string, b: Record<string, unknown>): unknown {
+  if (!data || typeof data !== "object") return data;
+  if ("days" in data && Array.isArray(data.days)) return { ...data, days: patchDays(data.days as Days, op, b) };
+  const open = (data as BuilderV1).open;
+  if ("open" in data && open) return { ...data, open: { ...open, days: patchDays(open.days, op, b) } };
+  return data;
+}
+
+/**
+ * One builder action; a refusal shows its sentence (the server never sends a
+ * database's own text — lib/supabase/mutate.ts). `queryKey` is the screen's own
+ * read; `onLeave` are the screens beneath it, read once on the way out.
+ */
+export function useRun(
+  setError: (m: string | null) => void,
+  { queryKey = ["builder"], onLeave = [] }: { queryKey?: QueryKey; onLeave?: QueryKey[] } = {},
+): [Run, boolean] {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
-  const run: Run = async (op, body = {}) => {
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await api.build(op, body);
-      if (!r.ok) setError(r.message ?? t.coachWidgets.programBuilder.somethingWentWrong);
-      await queryClient.invalidateQueries({ queryKey: ["builder"] });
-      void queryClient.invalidateQueries({ queryKey: ["workouts"] });
-      void queryClient.invalidateQueries({ queryKey: ["today"] });
-      return r;
-    } catch (e) {
-      setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : t.coachWidgets.programBuilder.somethingWentWrong);
-      return { ok: false };
-    } finally {
-      setBusy(false);
-    }
+  const saved = useRef(false);
+  const left = useRef(false);
+  const inflight = useRef(new Set<Promise<unknown>>());
+  const leaveKeys = useRef(onLeave);
+  leaveKeys.current = onLeave;
+
+  useEffect(() => {
+    left.current = false;
+    const pending = inflight.current;
+    return () => {
+      left.current = true;
+      // After this commit: a row that unmounts with an edit still waiting saves it now (ExerciseRow), and that save is waited for too.
+      setTimeout(() => {
+        void Promise.allSettled([...pending]).then(() => {
+          if (!saved.current) return;
+          saved.current = false;
+          for (const key of leaveKeys.current) void queryClient.invalidateQueries({ queryKey: key });
+        });
+      }, 0);
+    };
+  }, [queryClient]);
+
+  const run: Run = async (op, body = {}, opts = {}) => {
+    // A field save does not lock the screen: locking would blur the field being typed in, and that blur would save again.
+    const quiet = PATCHED.has(op);
+    if (!quiet) setBusy(true);
+    if (!opts.silent) setError(null);
+    const work = (async () => {
+      try {
+        const r = await api.build(op, body);
+        if (!r.ok) {
+          if (!opts.silent) setError(r.message ?? t.coachWidgets.programBuilder.somethingWentWrong);
+          return r;
+        }
+        saved.current = true;
+        if (quiet) queryClient.setQueryData(queryKey, (data: unknown) => patchProgram(data, op, body));
+        else if (WIDE.has(op)) await queryClient.invalidateQueries({ queryKey: ["builder"] });
+        else await queryClient.invalidateQueries({ queryKey, exact: true });
+        return r;
+      } catch (e) {
+        if (!opts.silent) setError(e instanceof ApiFailure && e.kind === "offline" ? t.mobile.errors.offline : t.coachWidgets.programBuilder.somethingWentWrong);
+        return { ok: false };
+      } finally {
+        if (!quiet && !left.current) setBusy(false);
+      }
+    })();
+    inflight.current.add(work);
+    void work.finally(() => inflight.current.delete(work));
+    return work;
   };
   return [run, busy];
 }
@@ -331,19 +415,51 @@ function ExerciseRow({ programId, dayId, row, first, last, intensity, unit, run,
   // A read after a save brings the stored values back; show those.
   useEffect(() => setValues(shown), [row.sets, row.reps, row.rpe, row.weight_kg, row.rest_seconds, unit]);
 
-  function save() {
-    if (JSON.stringify(values) === JSON.stringify(shown)) return;
-    const kg = parseDecimal(values.kg);
-    void run("updateExercise", {
+  // One save per row edit, not one per field: leaving a field waits SAVE_DELAY_MS,
+  // and stepping into another field of this row in that time waits for that one
+  // too. A row that unmounts with an edit waiting (the screen is left) saves it then.
+  const latest = useRef({ values, shown });
+  latest.current = { values, shown };
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function commit(silent = false): Promise<unknown> {
+    timer.current = null;
+    const { values: v, shown: s } = latest.current;
+    if (JSON.stringify(v) === JSON.stringify(s)) return Promise.resolve();
+    const kg = parseDecimal(v.kg);
+    return run("updateExercise", {
       programId,
       rowId: row.id,
-      sets: parseDecimal(values.sets) ?? NaN,
-      reps: values.reps.trim(),
-      rpe: parseDecimal(values.rpe),
+      sets: parseDecimal(v.sets) ?? NaN,
+      reps: v.reps.trim(),
+      rpe: parseDecimal(v.rpe),
       weightKg: kg === null ? null : displayToKg(kg, unit),
-      restSeconds: parseDecimal(values.rest),
-    });
+      restSeconds: parseDecimal(v.rest),
+    }, { silent });
   }
+  function hold() {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  }
+  function save() {
+    hold();
+    timer.current = setTimeout(() => void commit(), SAVE_DELAY_MS);
+  }
+  /** This row's own buttons save a waiting edit first, so a copy or a move never works from the old numbers. */
+  async function then(op: string, body: Record<string, unknown>) {
+    if (timer.current) {
+      hold();
+      await commit();
+    }
+    void run(op, body);
+  }
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  useEffect(() => () => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      void commitRef.current(true);
+    }
+  }, []);
 
   const cell = (key: keyof typeof values, label: string, keyboard: "number-pad" | "decimal-pad" | "default") => (
     <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
@@ -351,6 +467,7 @@ function ExerciseRow({ programId, dayId, row, first, last, intensity, unit, run,
       <TextInput
         value={values[key]}
         onChangeText={(v) => setValues((x) => ({ ...x, [key]: v }))}
+        onFocus={hold}
         onBlur={save}
         keyboardType={keyboard}
         editable={!busy}
@@ -364,10 +481,10 @@ function ExerciseRow({ programId, dayId, row, first, last, intensity, unit, run,
     <View style={[styles.row, { backgroundColor: color.bg }]}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
         <Text numberOfLines={2} style={{ flex: 1, fontFamily: font.semibold, fontSize: 14.5, color: color.ink }}>{row.exercise}</Text>
-        <IconButton d={UP} label={m.moveUp} disabled={busy || first} onPress={() => void run("moveExercise", { programId, dayId, rowId: row.id, direction: -1 })} />
-        <IconButton d={DOWN} label={m.moveDown} disabled={busy || last} onPress={() => void run("moveExercise", { programId, dayId, rowId: row.id, direction: 1 })} />
-        <IconButton d={COPY} label={t.clientApp.routines.duplicateExercise} disabled={busy} onPress={() => void run("duplicateExercise", { programId, rowId: row.id })} />
-        <IconButton d={CLOSE} label={m.removeExercise} danger disabled={busy} onPress={() => void run("removeExercise", { programId, rowId: row.id })} />
+        <IconButton d={UP} label={m.moveUp} disabled={busy || first} onPress={() => void then("moveExercise", { programId, dayId, rowId: row.id, direction: -1 })} />
+        <IconButton d={DOWN} label={m.moveDown} disabled={busy || last} onPress={() => void then("moveExercise", { programId, dayId, rowId: row.id, direction: 1 })} />
+        <IconButton d={COPY} label={t.clientApp.routines.duplicateExercise} disabled={busy} onPress={() => void then("duplicateExercise", { programId, rowId: row.id })} />
+        <IconButton d={CLOSE} label={m.removeExercise} danger disabled={busy} onPress={() => { hold(); void run("removeExercise", { programId, rowId: row.id }); }} />
       </View>
       <View style={{ flexDirection: "row", gap: 6 }}>
         {cell("sets", m.colSets, "number-pad")}
@@ -381,7 +498,7 @@ function ExerciseRow({ programId, dayId, row, first, last, intensity, unit, run,
         {(["reps", "time"] as const).map((ms) => {
           const on = row.measure === ms;
           return (
-            <Pressable key={ms} accessibilityRole="radio" accessibilityState={{ checked: on }} disabled={busy || on} onPress={() => void run("measure", { programId, rowId: row.id, measure: ms })} style={[styles.chip, { backgroundColor: on ? color.accent : color.surface }]}>
+            <Pressable key={ms} accessibilityRole="radio" accessibilityState={{ checked: on }} disabled={busy || on} onPress={() => void then("measure", { programId, rowId: row.id, measure: ms })} style={[styles.chip, { backgroundColor: on ? color.accent : color.surface }]}>
               <Text style={{ fontFamily: font.semibold, fontSize: 12, color: on ? color.accentFg : color.inkSoft }}>{ms === "time" ? m.measureTime : m.measureReps}</Text>
             </Pressable>
           );

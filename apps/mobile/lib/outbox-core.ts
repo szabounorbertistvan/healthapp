@@ -136,8 +136,8 @@ export function pendingHabitState(items: readonly QueuedItem[], userId: string, 
   return latest?.input.done;
 }
 
-/** Drop the refused writes the person has seen. */
-export async function dismissRefused(store: OutboxStore, userId: string): Promise<void> {
+/** Drop the refused writes the person has seen — all of them, or only one kind's (a check-in sent again). */
+export async function dismissRefused(store: OutboxStore, userId: string, kind?: OutboxPayload["kind"]): Promise<void> {
   const items = await loadItems(store);
-  await store.save(items.filter((i) => !(i.userId === userId && i.error)));
+  await store.save(items.filter((i) => !(i.userId === userId && i.error && (kind === undefined || i.kind === kind))));
 }

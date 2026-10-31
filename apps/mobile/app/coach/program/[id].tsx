@@ -21,8 +21,10 @@ export default function CoachProgram() {
   const { t } = useI18n();
   const { color } = useTheme();
   const [error, setError] = useState<string | null>(null);
-  const [run, busy] = useRun(setError);
-  const query = useQuery({ queryKey: ["builder", "coach", id], queryFn: () => api.coachProgram(id) });
+  const queryKey = ["builder", "coach", id];
+  // Saves read this program back only; the program list, the client's page and the routine page read once, on the way out.
+  const [run, busy] = useRun(setError, { queryKey, onLeave: [["builder", "coach"], ["coach-client"], ["routines"]] });
+  const query = useQuery({ queryKey, queryFn: () => api.coachProgram(id) });
   const program = query.data;
   const unit = useMe().data?.data.weight_unit ?? "kg";
 

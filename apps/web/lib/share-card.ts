@@ -8,6 +8,7 @@
 // the history row and the feed post show, never a second formula. The
 // client can choose the format, which stats are visible and whether the
 // profile shows; it cannot supply a number.
+import { fill } from "@healthapp/i18n";
 import { payloadIsSafe, workoutPostPayload, type WorkoutPostPayload } from "@healthapp/shared";
 import type { ShareableSession, WorkoutHistorySession } from "./types";
 
@@ -278,9 +279,6 @@ export type ShareLayoutInput = {
   labels: ShareCardLabels;
 };
 
-function fill(message: string, values: Record<string, string | number>): string {
-  return message.replace(/\{(\w+)\}/g, (m, key) => (key in values ? String(values[key]) : m));
-}
 
 function categoryOf(score: number): keyof ShareCardLabels["loadCategory"] {
   if (score >= 85) return "very_hard";

@@ -1,4 +1,5 @@
 "use client";
+import { localizeDefaultName } from "@/lib/i18n";
 import { useState } from "react";
 import type { Macros } from "@healthapp/shared";
 import { useI18n } from "@/lib/i18n/client";
@@ -24,7 +25,7 @@ export function NutritionSummary({
   planOwner: "coach" | "self" | null;
   planName: string | null;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const f = t.clientApp.food;
   const [editing, setEditing] = useState(false);
 
@@ -41,7 +42,7 @@ export function NutritionSummary({
       <Card plain>
         <div className="flex items-center justify-between gap-3">
           <p className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-            {planName ?? t.common.macros.todayTitle}
+            {planName ? localizeDefaultName("plan", planName, locale) : t.common.macros.todayTitle}
           </p>
           <button
             type="button"

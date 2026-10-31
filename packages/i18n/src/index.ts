@@ -3,6 +3,7 @@
 // runtime imports, so any bundler can take them. Every string goes into both
 // `en` and `ro` of its namespace file; the types enforce the parity.
 import type { Locale } from "./config";
+import { resolvePlurals } from "./plural";
 import { commonMessages } from "./messages/common";
 import { landingMessages } from "./messages/landing";
 import { clientAppMessages } from "./messages/client-app";
@@ -33,12 +34,20 @@ export function getDictionary(locale: Locale) {
 
 export type Dictionary = ReturnType<typeof getDictionary>;
 
-/** Fill {placeholders} in a message: fill(t.time.daysAgo, { days: 3 }) */
+/**
+ * Fill {placeholders} in a message: fill(t.time.daysAgo, { days: 3 }).
+ * A `{count, plural, one {# zi} few {# zile} other {# de zile}}` block picks
+ * its branch from the value first (plural.ts) — Romanian's "1 zi / 2 zile /
+ * 20 de zile" in one string.
+ */
 export function fill(message: string, values: Record<string, string | number>): string {
-  return message.replace(/\{(\w+)\}/g, (m, key) =>
+  return resolvePlurals(message, values).replace(/\{(\w+)\}/g, (m, key) =>
     key in values ? String(values[key]) : m,
   );
 }
 
 export { locales, defaultLocale, isLocale, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE } from "./config";
 export type { Locale } from "./config";
+export { pluralCategory, resolvePlurals, type PluralCategory } from "./plural";
+export { formatDecimal } from "./numbers";
+export { localizeDefaultName, type DefaultNameKind } from "./default-names";

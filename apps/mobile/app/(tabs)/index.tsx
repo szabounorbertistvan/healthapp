@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { RecipesCard, SetupCard, useOnboardingStart } from "@/components/onboarding-cards";
 import { usePageTour } from "@/components/page-tour";
 import { CoachCard, CommunityCard, FitnessCard, HabitsCard, NutritionCard, TrainingCard, WeekCard, WeeklyReportRow } from "@/components/today-cards";
+import { OpenSessionsCard } from "@/components/open-sessions-card";
 import { Button, Card, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { signOut } from "@/lib/auth";
@@ -56,6 +57,8 @@ export default function Today() {
         <SetupCard />
         {d ? (
           <>
+            {/* sets from an earlier day nobody finished count nowhere until finished */}
+            <OpenSessionsCard sessions={d.open_sessions} />
             <View ref={tour.target("week")} collapsable={false}><WeekCard d={d} /></View>
             <FitnessCard d={d} />
             <View ref={tour.target("training")} collapsable={false}><TrainingCard d={d} /></View>

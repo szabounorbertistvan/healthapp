@@ -251,6 +251,7 @@ const en = {
     optional: "optional",
     coachNote: "anything your coach should know",
     couldNotSubmit: "Could not submit",
+    weightRange: "Enter a weight between {min} and {max} {unit}.",
     submit: "Submit check-in",
   },
   measurementForm: {
@@ -270,6 +271,7 @@ const en = {
     daysPerWeek: "days/week",
     addThis: "Add this habit",
     couldNotAdd: "Could not add that",
+    daysRange: "A habit can be scheduled 1 to 7 days a week.",
   },
   habitSuggestions: {
     water: {
@@ -316,6 +318,15 @@ const en = {
     grams: "g",
     kcalPerGram: "{n} kcal/g",
   },
+  // Today: a session with sets from an earlier day nobody finished (getMyOpenSessions).
+  openSession: {
+    title: "Workout left open",
+    titleMany: "{count} workouts left open",
+    body: "{name} · {day}: {sets} sets logged, never finished. It does not count in your week, streak or records until it is finished.",
+    untitled: "Workout",
+    finish: "Finish it",
+    finished: "Finished — it now counts on {day}.",
+  },
 };
 
 const ro: typeof en = {
@@ -327,7 +338,7 @@ const ro: typeof en = {
     couldNotFinish: "Nu s-a putut finaliza",
     savedOnPhone: "Fără conexiune — salvat pe telefon. Se sincronizează singur când revii online.",
     pendingSyncOne: "1 set e salvat doar pe acest telefon. Se sincronizează singur când revii online.",
-    pendingSync: "{count} seturi sunt salvate doar pe acest telefon. Se sincronizează singure când revii online.",
+    pendingSync: "{count, plural, one {# set e salvat doar pe acest telefon. Se sincronizează singur} few {# seturi sunt salvate doar pe acest telefon. Se sincronizează singure} other {# de seturi sunt salvate doar pe acest telefon. Se sincronizează singure}} când revii online.",
     syncFailed: "Un set înregistrat offline nu a putut fi salvat ({set}): {message}",
     dismiss: "Închide",
     finishNeedsSync: "Unele seturi sunt încă doar pe acest telefon. Reconectează-te și finalizează după ce s-au sincronizat.",
@@ -458,7 +469,7 @@ const ro: typeof en = {
     scanInvalid: "Nu pare a fi un cod de bare.",
     englishOnly: "EN",
     englishOnlyHint: "Ingredientele generice vin din baza USDA și sunt deocamdată în engleză.",
-    moreEnglish: "Încă {count} rezultate în engleză",
+    moreEnglish: "Încă {count, plural, one {# rezultat} few {# rezultate} other {# de rezultate}} în engleză",
     scanUnreachable: "Baza de date de alimente nu a putut fi contactată. Caută după nume în schimb.",
     favorites: "Favorite",
     recent: "Recente",
@@ -566,6 +577,7 @@ const ro: typeof en = {
     optional: "opțional",
     coachNote: "ceva ce antrenorul tău ar trebui să știe",
     couldNotSubmit: "Nu s-a putut trimite",
+    weightRange: "Scrie o greutate între {min} și {max} {unit}.",
     submit: "Trimite check-in-ul",
   },
   measurementForm: {
@@ -585,6 +597,7 @@ const ro: typeof en = {
     daysPerWeek: "zile/săptămână",
     addThis: "Adaugă acest obicei",
     couldNotAdd: "Nu s-a putut adăuga",
+    daysRange: "Un obicei poate fi programat de 1 până la 7 zile pe săptămână.",
   },
   habitSuggestions: {
     water: {
@@ -630,6 +643,14 @@ const ro: typeof en = {
     fat: "Grăsimi",
     grams: "g",
     kcalPerGram: "{n} kcal/g",
+  },
+  openSession: {
+    title: "Antrenament rămas deschis",
+    titleMany: "{count} antrenamente rămase deschise",
+    body: "{name} · {day}: {sets} seturi înregistrate, dar nefinalizat. Nu contează în săptămână, serie sau recorduri până nu îl finalizezi.",
+    untitled: "Antrenament",
+    finish: "Finalizează-l",
+    finished: "Finalizat — acum contează pe {day}.",
   },
 };
 

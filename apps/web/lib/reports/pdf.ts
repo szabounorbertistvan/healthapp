@@ -15,6 +15,7 @@ import { PDFDocument, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib"
 import fontkit from "@pdf-lib/fontkit";
 import type { GoalMetric, LabelNutrient, LengthUnit, WeightUnit } from "@healthapp/shared";
 import { GOAL_METRIC_SPEC } from "@healthapp/shared";
+import { fill } from "@healthapp/i18n";
 import type { clientAppMessages } from "@healthapp/i18n/messages/client-app";
 import type { ProgressReport } from "./report-model";
 
@@ -93,7 +94,7 @@ function formatters(ctx: PdfContext) {
 
 /** Fill {placeholders}; a missing one stays visible rather than vanishing. */
 function fillIn(template: string, values: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? String(values[k]) : m));
+  return fill(template, values);
 }
 
 /** Control characters and runs of whitespace collapse to one space: a note typed with line breaks stays one cell. */

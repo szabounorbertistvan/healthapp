@@ -9,6 +9,7 @@ import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
+import { useConfirmLeave } from "@/lib/unsaved";
 
 // My recipes — the web's /recipes on a phone (components/recipes.tsx and the
 // new-recipe dialog): each recipe's serving and lines, its preparation (read
@@ -88,7 +89,7 @@ function RecipeCard({ recipe }: { recipe: RecipeV1 }) {
 
   async function log() {
     const n = Number(servings.replace(",", "."));
-    if (!(n > 0 && n <= 20)) return;
+    if (!(n > 0 && n <= 20)) return setStatus({ ok: false, text: fill(m.servingsRange, { max: 20 }) });
     const r = await write("log", { input: { recipeId: recipe.id, servings: n, slot, day: null } });
     setStatus(r.ok ? { ok: true, text: m.logged } : { ok: false, text: r.message ?? m.failed });
   }
@@ -276,6 +277,8 @@ function NewRecipe({ onDone }: { onDone: () => void }) {
   }, [typed]);
   const search = useQuery({ queryKey: ["foods", q], queryFn: () => api.searchFoods(q), enabled: q.length >= 2 });
   const name = (food: FoodItemV1) => (locale === "ro" ? food.name_ro : food.name_en);
+  // Back with a half-written recipe asks first instead of dropping it
+  useConfirmLeave(Boolean(title.trim() || lines.length > 0 || steps.trim() || servingGrams.trim()) && !busy);
 
   async function save() {
     const n = Number(servings.replace(",", "."));

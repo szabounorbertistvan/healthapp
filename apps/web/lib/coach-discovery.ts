@@ -8,6 +8,7 @@
  * forward walk it. Defaults are left out of the URL so one search has one
  * address.
  */
+import { fill } from "@healthapp/i18n";
 import { SERVICE_KINDS, type PriceUnit, type ServiceKind } from "./coach-profile";
 
 export const DISCOVERY_PAGE_SIZE = 24;
@@ -310,7 +311,7 @@ export type ChipLabels = {
   serviceKinds?: Partial<Record<ServiceKind, string>>;
 };
 
-const fillN = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m));
+const fillN = (s: string, v: Record<string, string | number>) => fill(s, v);
 
 /**
  * One removable chip per active filter, in the order the filters panel lists

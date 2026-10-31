@@ -8,7 +8,7 @@ import { currentActorId } from "./actor";
 import { liveUser } from "./supabase/server";
 import { displayName, getProfile } from "./data";
 import { getWorkoutStreak } from "./streak-data";
-import { activeCoachId, getMyProgramDays, getMyTrainingLoad } from "./client-training";
+import { activeCoachId, getMyOpenSessions, getMyProgramDays, getMyTrainingLoad } from "./client-training";
 import { getMyDayNutrition } from "./client-nutrition";
 import { getMyCheckInState, getMyHabits } from "./client-progress";
 import type { ClientToday, MessageRow } from "./types";
@@ -45,7 +45,7 @@ export async function getToday(): Promise<ClientToday | null> {
 
 
   // One wave: activity, streak and profile do not depend on the other reads.
-  const [days, nutrition, habits, checkIn, training_load, activity, streak, profile, unreadFromCoach, coachId] =
+  const [days, nutrition, habits, checkIn, training_load, activity, streak, profile, unreadFromCoach, coachId, openSessions] =
     await Promise.all([
       getMyProgramDays(),
       getMyDayNutrition(),
@@ -60,6 +60,8 @@ export async function getToday(): Promise<ClientToday | null> {
       // already asked for it. Today needs it because the copy on an empty plan
       // differs — "your coach assigns one" is wrong for anyone training solo.
       activeCoachId(clientId),
+      // Sessions left open on an earlier day — the notice on Today.
+      getMyOpenSessions(),
     ]);
 
   const plannedSessions = days.length;
@@ -92,6 +94,7 @@ export async function getToday(): Promise<ClientToday | null> {
     has_coach: coachId !== null,
     unread_from_coach: unreadFromCoach,
     training_load,
+    open_sessions: openSessions,
   };
 }
 

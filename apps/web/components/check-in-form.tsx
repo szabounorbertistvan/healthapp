@@ -2,7 +2,7 @@
 import { settle } from "@/lib/settle-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { displayToKg, parseDecimal } from "@healthapp/shared";
+import { displayToKg, GOAL_METRIC_SPEC, kgToDisplay, parseDecimal } from "@healthapp/shared";
 import { submitCheckIn } from "@/app/client-actions-body";
 import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
@@ -117,6 +117,12 @@ export function CheckInForm({ questions = [] }: { questions?: CheckInQuestion[] 
               // Typed in the reader's unit; check_ins.weight_kg is metric.
               const typed = parseDecimal(weight);
               const parsed = typed === null ? null : displayToKg(typed, u.weightUnit);
+              // the same range submitCheckIn holds (measurements.weight_kg's check), said in the reader's unit
+              const range = GOAL_METRIC_SPEC.body_weight;
+              if ((weight.trim() !== "" && typed === null) || (parsed !== null && !(parsed >= range.min && parsed <= range.max))) {
+                setError(fill(t.clientWidgets.checkInForm.weightRange, { min: kgToDisplay(range.min, u.weightUnit), max: kgToDisplay(range.max, u.weightUnit), unit: u.weightUnit }));
+                return;
+              }
               const input = {
                 weightKg: parsed, ...scores, note,
                 answers: Object.entries(answers).map(([questionId, value]) => ({ questionId, value })),

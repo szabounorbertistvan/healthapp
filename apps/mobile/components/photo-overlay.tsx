@@ -1,16 +1,21 @@
 import type { FeedPostV1 } from "@healthapp/api/v1";
 import type { PhotoOverlay } from "@healthapp/shared";
 import { OVERLAY_METRICS as M, PILL_BG, TEXT_GOLD, clampCentre, layoutStats, overlayStatRows, type OverlayStatValues } from "@healthapp/shared/media/overlay";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Image, PanResponder, Text, View, type LayoutChangeEvent } from "react-native";
+import { NavIcon } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
-import { font } from "@/lib/theme";
+import { font, useTheme } from "@/lib/theme";
+import { useMediaSource } from "@/lib/use-media-source";
 
 // A post photo with whatever its author put on it — the web's PhotoFrame
 // (components/photo-overlay.tsx). Every length on the overlay is a fraction of
 // the photo's width (@healthapp/shared/media/overlay), so a block at 6 % from
 // the left on the web card is at 6 % here; the box keeps the photo's own shape
 // so the fractions land where the author put them.
+
+/** A picture that did not load (an expired or refused /api/media link). */
+const PICTURE = "M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5M15.5 9.5h.01";
 
 const SHADOW = { textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 } as const;
 
@@ -41,16 +46,29 @@ export function PhotoView({ url, width, height, overlay, stats, alt, children }:
   alt?: string;
   children?: ReactNode;
 }) {
+  const { color } = useTheme();
+  const source = useMediaSource();
   const [w, setW] = useState(0);
+  // The overlay is white type made for a photo under it: until the photo is
+  // there (or if it never comes) it would be white on the theme's placeholder.
+  const [state, setState] = useState<"loading" | "loaded" | "failed">("loading");
+  useEffect(() => setState("loading"), [url]);
   const ratio = width && height ? width / height : 1;
   // with nothing on it the feed may crop a little; with an overlay the box keeps the photo's own shape
   const shown = overlay ? ratio : Math.max(0.6, Math.min(ratio, 1.9));
   const h = w / shown;
+  const onPhoto = w > 0 && state === "loaded";
   return (
-    <View onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)} style={{ width: "100%", aspectRatio: shown, overflow: "hidden" }}>
-      <Image source={{ uri: url }} accessibilityLabel={alt} accessibilityElementsHidden={!alt} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-      {w > 0 && overlay?.stats ? <StatsBlock item={overlay.stats} stats={stats} W={w} H={h} /> : null}
-      {w > 0 && overlay?.text ? <TextLine item={overlay.text} W={w} H={h} /> : null}
+    <View onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)} style={{ width: "100%", aspectRatio: shown, overflow: "hidden", backgroundColor: color.bg }}>
+      <Image source={source(url)} accessibilityLabel={alt} accessibilityElementsHidden={!alt} style={{ width: "100%", height: "100%" }} resizeMode="cover"
+        onLoad={() => setState("loaded")} onError={() => setState("failed")} />
+      {state === "failed" ? (
+        <View pointerEvents="none" style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center" }}>
+          <NavIcon d={PICTURE} size={28} color={color.inkFaint} />
+        </View>
+      ) : null}
+      {onPhoto && overlay?.stats ? <StatsBlock item={overlay.stats} stats={stats} W={w} H={h} /> : null}
+      {onPhoto && overlay?.text ? <TextLine item={overlay.text} W={w} H={h} /> : null}
       {children}
     </View>
   );

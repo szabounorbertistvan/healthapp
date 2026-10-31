@@ -350,7 +350,7 @@ function MacroBar({ label, value, target }: { label: string; value: number; targ
 }
 
 export function NutritionCard({ d }: { d: DashboardV1 }) {
-  const { t } = useI18n();
+  const { t, named } = useI18n();
   const { color } = useTheme();
   const n = useNumbers();
   const x = t.clientApp.today;
@@ -368,7 +368,7 @@ export function NutritionCard({ d }: { d: DashboardV1 }) {
 
   return (
     <Card flush>
-      <CardLabel right={planNote ? `${nut.plan_name ? `${nut.plan_name} · ` : ""}${planNote}` : undefined}>{t.common.nav.nutrition}</CardLabel>
+      <CardLabel right={planNote ? `${nut.plan_name ? `${named("plan", nut.plan_name)} · ` : ""}${planNote}` : undefined}>{t.common.nav.nutrition}</CardLabel>
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 18 }}>
         <View style={[styles.between, { alignItems: "baseline" }]}>
           <Text style={{ fontFamily: font.displayExtrabold, fontSize: 19, color: color.ink }}>
@@ -418,7 +418,7 @@ export function NutritionCard({ d }: { d: DashboardV1 }) {
 // ---------- habits, coach, community ----------
 
 export function HabitsCard({ d }: { d: DashboardV1 }) {
-  const { t } = useI18n();
+  const { t, named } = useI18n();
   const x = t.clientApp.today;
   const done = d.habits.filter((h) => h.done_today).length;
   return (
@@ -426,7 +426,7 @@ export function HabitsCard({ d }: { d: DashboardV1 }) {
       <CardLabel right={d.habits.length > 0 ? `${done}/${d.habits.length}` : undefined}>{t.common.nav.habits}</CardLabel>
       <View style={{ paddingTop: 6, paddingBottom: 6 }}>
         {d.habits.length > 0 ? (
-          d.habits.map((h) => <Row key={h.id} onPress={() => router.navigate("/habits")} done={h.done_today} title={h.name} />)
+          d.habits.map((h) => <Row key={h.id} onPress={() => router.navigate("/habits")} done={h.done_today} title={named("habit", h.name)} />)
         ) : (
           <Row onPress={() => router.navigate("/habits")} done={false} title="" sub={x.noHabitsYet} />
         )}

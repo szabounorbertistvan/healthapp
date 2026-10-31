@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { insertOutcome, mutationOutcome } from "./mutation-outcome";
+import { insertOutcome, isTransientDbError, mutationOutcome } from "./mutation-outcome";
 
 const err = { message: "boom", details: "", hint: "", code: "42501", name: "PostgrestError" } as PostgrestError;
 
@@ -30,5 +30,20 @@ describe("insertOutcome", () => {
   it("keeps every other error an error", () => {
     expect(insertOutcome({ ...err, code: "23505" } as PostgrestError)).toBe("error");
     expect(insertOutcome({ ...err, code: "23514" } as PostgrestError)).toBe("error");
+  });
+});
+
+describe("isTransientDbError", () => {
+  const code = (c: string) => ({ code: c });
+  it("flags a busy or unreachable database, whose text must not reach a screen", () => {
+    for (const c of ["57014", "40001", "40P01", "08006", "53300", "57P01", "58000", "XX000", "PGRST000", "PGRST003", ""]) {
+      expect(isTransientDbError(code(c))).toBe(true);
+    }
+  });
+  it("leaves real refusals alone: RLS, constraints and the schema's own raised codes", () => {
+    for (const c of ["42501", "23505", "23514", "P0001", "22023", "PGRST116"]) {
+      expect(isTransientDbError(code(c))).toBe(false);
+    }
+    expect(isTransientDbError(null)).toBe(false);
   });
 });

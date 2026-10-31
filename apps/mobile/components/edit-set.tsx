@@ -27,7 +27,7 @@ export function EditSet({
   day: WorkoutDayV1;
   onClose: () => void;
 }) {
-  const { t, fill } = useI18n();
+  const { t, fill, num } = useI18n();
   const { color } = useTheme();
   const queryClient = useQueryClient();
   const unit = day.weight_unit;
@@ -58,7 +58,7 @@ export function EditSet({
     if (invalid) {
       const m = t.clientWidgets.setLogger;
       return setError(
-        invalid === "weight" ? fill(m.errWeight, { max: kgToDisplay(MAX_SET_WEIGHT_KG, unit), unit })
+        invalid === "weight" ? fill(m.errWeight, { max: num(kgToDisplay(MAX_SET_WEIGHT_KG, unit)), unit })
         : invalid === "reps" ? fill(m.errReps, { max: MAX_SET_REPS })
         : invalid === "duration" ? fill(m.errDuration, { max: MAX_SET_SECONDS })
         : invalid === "rpe" ? m.errRpe : m.errRir,

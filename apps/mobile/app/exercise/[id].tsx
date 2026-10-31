@@ -1,4 +1,5 @@
 import type { ExerciseDetailV1 } from "@healthapp/api/v1";
+import { formatDecimal } from "@healthapp/i18n";
 import { formatWeight, kgToDisplay } from "@healthapp/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
@@ -87,7 +88,7 @@ export default function ExerciseScreen() {
                         <Text style={{ fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>{date(s.at)}</Text>
                       </View>
                       <Text style={{ fontFamily: font.regular, fontSize: 13, lineHeight: 20, color: color.inkSoft }}>
-                        {s.sets.map((set) => `${set.duration_seconds ? `${set.duration_seconds}s` : `${set.weight_kg > 0 ? `${kgToDisplay(set.weight_kg, unit)} × ` : ""}${set.reps}`}${set.is_pr ? ` ${d.pr}` : ""}${set.warmup ? ` (${d.warmup})` : ""}`).join("  ·  ")}
+                        {s.sets.map((set) => `${set.duration_seconds ? `${set.duration_seconds}s` : `${set.weight_kg > 0 ? `${formatDecimal(kgToDisplay(set.weight_kg, unit), locale)} × ` : ""}${set.reps}`}${set.is_pr ? ` ${d.pr}` : ""}${set.warmup ? ` (${d.warmup})` : ""}`).join("  ·  ")}
                       </Text>
                       {s.volume_kg > 0 ? <Text style={{ fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>{`${d.volume} ${kg(s.volume_kg)}`}</Text> : null}
                     </Card>

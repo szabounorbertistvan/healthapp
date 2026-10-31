@@ -30,7 +30,7 @@ const sub = (s: FitnessScore, k: Key) =>
 
 export default function CoachClient() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { t, fill } = useI18n();
+  const { t, fill, named } = useI18n();
   const { color } = useTheme();
   const queryClient = useQueryClient();
   const unit = useMe().data?.data.weight_unit ?? "kg";
@@ -93,7 +93,7 @@ export default function CoachClient() {
               {c.goal ? (
                 <Text style={{ fontFamily: font.regular, fontSize: 13.5, color: color.inkSoft }}>
                   <Text style={{ fontFamily: font.semibold, color: color.ink }}>{`${t.coachView.goal} `}</Text>
-                  {c.goal}
+                  {named("goal", c.goal)}
                 </Text>
               ) : null}
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
@@ -187,10 +187,10 @@ function Fitness({ c }: { c: CoachClientPageV1 }) {
 
 /** Main lifts (exercise-progression.tsx ProgressionOverview, the coach's view): each lift, its verdict, the first reason. */
 function Lifts({ lifts }: { lifts: NonNullable<CoachClientPageV1["lifts"]> }) {
-  const { t, fill } = useI18n();
+  const { t, fill, num } = useI18n();
   const { color } = useTheme();
   const p = t.clientApp.progression;
-  const n1 = (v: number) => (Math.round(v * 10) / 10).toString();
+  const n1 = (v: number) => num(v);
   const reason = (r: ProgressionReason): string => {
     switch (r.code) {
       case "new_best": {

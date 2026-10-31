@@ -11,7 +11,7 @@ import { AppGate } from "@/components/app-gate";
 import { Backdrop, Button, Screen, T } from "@/components/ui";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ApiFailure } from "@/lib/api";
-import { I18nProvider, useI18n } from "@/lib/i18n";
+import { I18nProvider, LocaleQuerySync, useI18n } from "@/lib/i18n";
 import { OutboxProvider } from "@/lib/outbox";
 import { PushProvider } from "@/lib/push";
 import { RestProvider } from "@/lib/rest";
@@ -45,6 +45,7 @@ export default function RootLayout() {
       <Backdrop />
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
+          <LocaleQuerySync />
           <AuthProvider>
             <OutboxProvider>
               <RestProvider>

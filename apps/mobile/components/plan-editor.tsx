@@ -1,7 +1,7 @@
 import type { CoachPlanV1, FoodItemV1 } from "@healthapp/api/v1";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputInstance } from "react-native";
 import { Button, Card, NavIcon, T } from "@/components/ui";
 import { api, ApiFailure } from "@/lib/api";
 import { NewFoodForm } from "@/components/new-food-form";
@@ -20,7 +20,7 @@ type Meal = Plan["meals"][number];
 
 /** solo: the person's own meal plan — no client, no status, no publishing (it already is their plan). */
 export function PlanEditor({ plan, solo = false }: { plan: Plan; solo?: boolean }) {
-  const { t, fill } = useI18n();
+  const { t, fill, named } = useI18n();
   const { color } = useTheme();
   const queryClient = useQueryClient();
   const n = t.coachApp.nutrition;
@@ -67,7 +67,7 @@ export function PlanEditor({ plan, solo = false }: { plan: Plan; solo?: boolean 
     <>
       {solo ? null : (
         <View style={{ gap: 4 }}>
-          <T kind="title">{plan.name}</T>
+          <T kind="title">{named("plan", plan.name)}</T>
           <Text style={{ fontFamily: font.regular, fontSize: 13, color: color.inkSoft }}>{plan.client_name}</Text>
         </View>
       )}
@@ -100,7 +100,7 @@ export function PlanEditor({ plan, solo = false }: { plan: Plan; solo?: boolean 
           </Pressable>
         ))}
       </ScrollView>
-      <T kind="faint">{day === 0 ? nb.everyDayIntro : fill(nb.dayIntro, { day: nb.weekdaysLong[day - 1] })}</T>
+      <T kind="faint">{day === 0 ? nb.everyDayIntro : fill(solo ? nb.dayIntroSolo : nb.dayIntro, { day: nb.weekdaysLong[day - 1] })}</T>
 
       {totals ? (
         <Card style={{ gap: 4 }}>
@@ -141,13 +141,14 @@ function MealCard({ meal, inherited, editable, canChange, day, recipes, busy, wr
   busy: boolean;
   write: (op: string, body: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const { t, fill } = useI18n();
+  const { t, fill, named } = useI18n();
   const { color } = useTheme();
   const nb = t.coachWidgets.nutritionBuilder;
   const n = t.coachApp.nutrition;
   const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(meal.name);
+  const mealName = named("meal", meal.name);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const dayName = day > 0 ? nb.weekdaysLong[day - 1] : "";
@@ -168,7 +169,7 @@ function MealCard({ meal, inherited, editable, canChange, day, recipes, busy, wr
             style={[styles.search, { flex: 1, color: color.ink, backgroundColor: color.bg, borderColor: color.accent }]}
           />
         ) : (
-          <Text numberOfLines={1} style={{ flex: 1, fontFamily: font.displayBold, fontSize: 16, color: color.ink }}>{meal.name}</Text>
+          <Text numberOfLines={1} style={{ flex: 1, fontFamily: font.displayBold, fontSize: 16, color: color.ink }}>{mealName}</Text>
         )}
         <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{`${Math.round(meal.totals.kcal)} ${n.kcal}`}</Text>
       </View>
@@ -187,7 +188,7 @@ function MealCard({ meal, inherited, editable, canChange, day, recipes, busy, wr
       ))}
       {editable ? (
         adding ? (
-          <FoodSearch mealName={meal.name} onClose={() => setAdding(false)} onPick={(food) => void write("addFood", { mealId: meal.id, foodId: food.id, grams: 100 })} />
+          <FoodSearch mealName={mealName} onClose={() => setAdding(false)} onPick={(food) => void write("addFood", { mealId: meal.id, foodId: food.id, grams: 100 })} />
         ) : (
           <Pressable accessibilityRole="button" disabled={busy} onPress={() => setAdding(true)} style={[styles.add, { borderColor: color.line }]}>
             <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{`+ ${nb.addFood}`}</Text>
@@ -242,7 +243,7 @@ function MealCard({ meal, inherited, editable, canChange, day, recipes, busy, wr
       {canChange && meal.extra ? (
         confirmRemove ? (
           <View style={{ gap: 6 }}>
-            <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.ink }}>{fill(nb.removeExtraConfirm, { name: meal.name, day: dayName })}</Text>
+            <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.ink }}>{fill(nb.removeExtraConfirm, { name: mealName, day: dayName })}</Text>
             <View style={{ flexDirection: "row", gap: 14 }}>
               <Text accessibilityRole="button" onPress={busy ? undefined : () => void write("removeExtra", { mealId: meal.id })} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.risk }}>{nb.removeExtraYes}</Text>
               <Text accessibilityRole="button" onPress={() => setConfirmRemove(false)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkFaint }}>{t.common.actions.cancel}</Text>
@@ -309,7 +310,12 @@ function ExtraMeals({ day, count, busy, write }: { day: number; count: number; b
   );
 }
 
-/** One food in a meal: its grams save as the field is left; ✕ takes it out. */
+/**
+ * One food in a meal: its grams save as the field is left; ✕ takes it out.
+ * Android's Back closes the keyboard without blurring the field, and leaving
+ * the screen then never blurs it at all — so a closed keyboard blurs it, and
+ * grams still typed but unsaved when the row goes away are saved then.
+ */
 function FoodRow({ food, editable, busy, write }: {
   food: Meal["foods"][number]; editable: boolean; busy: boolean;
   write: (op: string, body: Record<string, unknown>) => Promise<boolean>;
@@ -319,6 +325,34 @@ function FoodRow({ food, editable, busy, write }: {
   const nb = t.coachWidgets.nutritionBuilder;
   const [grams, setGrams] = useState(String(food.grams));
   useEffect(() => setGrams(String(food.grams)), [food.grams]);
+  const input = useRef<TextInputInstance>(null);
+  // what the field holds and what was last sent, for the unmount below (no stale closure)
+  const typed = useRef(grams);
+  typed.current = grams;
+  const sent = useRef<number | null>(null);
+  useEffect(() => { sent.current = null; }, [food.grams]);
+  const pending = (): number | null => {
+    const g = Number(typed.current.replace(",", "."));
+    return g > 0 && g !== food.grams && g !== sent.current ? g : null;
+  };
+  const commit = () => {
+    const g = pending();
+    if (g !== null) {
+      sent.current = g;
+      void write("grams", { rowId: food.id, grams: g });
+    } else if (!(Number(typed.current.replace(",", ".")) > 0)) setGrams(String(food.grams));
+  };
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  useEffect(() => {
+    const hide = Keyboard.addListener("keyboardDidHide", () => {
+      if (input.current?.isFocused()) input.current.blur();
+    });
+    return () => {
+      hide.remove();
+      commitRef.current();
+    };
+  }, []);
   return (
     <View style={[styles.food, { backgroundColor: color.bg }]}>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -328,16 +362,13 @@ function FoodRow({ food, editable, busy, write }: {
       {editable ? (
         <>
           <TextInput
+            ref={input}
             value={grams}
             onChangeText={setGrams}
             keyboardType="decimal-pad"
             editable={!busy}
             accessibilityLabel={`${food.food_name} ${nb.gramsLabel}`}
-            onBlur={() => {
-              const g = Number(grams.replace(",", "."));
-              if (g > 0 && g !== food.grams) void write("grams", { rowId: food.id, grams: g });
-              else setGrams(String(food.grams));
-            }}
+            onBlur={commit}
             style={[styles.grams, { color: color.ink, backgroundColor: color.surface, borderColor: color.line }]}
           />
           <Text style={{ fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>g</Text>

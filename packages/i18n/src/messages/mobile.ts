@@ -144,6 +144,17 @@ const en = {
     offline: "No connection.",
     generic: "Something went wrong. Please try again.",
   },
+  unsaved: {
+    title: "Discard your changes?",
+    body: "What you typed here has not been saved yet. If you leave now, it is lost.",
+    keep: "Keep editing",
+    discard: "Discard",
+  },
+  notFound: {
+    title: "Page not found",
+    body: "This link does not lead anywhere in the app. It may be old or mistyped.",
+    home: "Go to Today",
+  },
 };
 
 const ro: typeof en = {
@@ -163,7 +174,7 @@ const ro: typeof en = {
     retry: "Încearcă din nou",
   },
   photos: {
-    olderHidden: "Pozele mai vechi de {days} zile sunt în afara istoricului inclus în planul tău.",
+    olderHidden: "Pozele mai vechi de {days, plural, one {# zi} few {# zile} other {# de zile}} sunt în afara istoricului inclus în planul tău.",
   },
   exercise: {
     historyCut: "Sesiunile mai vechi sunt în afara istoricului inclus în planul tău.",
@@ -288,6 +299,17 @@ const ro: typeof en = {
   errors: {
     offline: "Nu există conexiune.",
     generic: "Ceva n-a mers. Încearcă din nou.",
+  },
+  unsaved: {
+    title: "Renunți la modificări?",
+    body: "Ce ai scris aici nu e salvat încă. Dacă pleci acum, se pierde.",
+    keep: "Continuă editarea",
+    discard: "Renunță",
+  },
+  notFound: {
+    title: "Pagina nu a fost găsită",
+    body: "Linkul acesta nu duce nicăieri în aplicație. Poate e vechi sau scris greșit.",
+    home: "Mergi la Azi",
   },
 };
 

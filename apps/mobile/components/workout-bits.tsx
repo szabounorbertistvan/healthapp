@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { NavIcon, T } from "@/components/ui";
 import type { Dictionary } from "@/lib/i18n";
+import { formatDecimal, type Locale } from "@healthapp/i18n";
 import { font, minTouchTarget, useTheme } from "@/lib/theme";
 
 // Small pieces the day overview and the logger share.
@@ -24,13 +25,15 @@ export function setText(
   s: Pick<PreviousSetV1, "weight_kg" | "reps" | "duration_seconds">,
   unit: WeightUnit,
   t: Dictionary,
+  locale: Locale = "en",
 ): string {
+  const kg = formatDecimal(kgToDisplay(s.weight_kg, unit), locale);
   if (s.duration_seconds) {
     return s.weight_kg > 0
-      ? `${kgToDisplay(s.weight_kg, unit)} ${unit} · ${s.duration_seconds} ${t.clientWidgets.setLogger.seconds}`
+      ? `${kg} ${unit} · ${s.duration_seconds} ${t.clientWidgets.setLogger.seconds}`
       : `${s.duration_seconds} ${t.clientWidgets.setLogger.seconds}`;
   }
-  return `${kgToDisplay(s.weight_kg, unit)} ${unit} × ${s.reps}`;
+  return `${kg} ${unit} × ${s.reps}`;
 }
 
 /** The web's back link (a chevron and the place it goes back to, 12 px, faint) — every pushed screen's first line. */

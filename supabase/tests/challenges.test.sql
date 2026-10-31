@@ -5,7 +5,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(14);
 
 create or replace function pg_temp.authenticate_as(p_user uuid)
 returns void language plpgsql as $fn$
@@ -109,6 +109,23 @@ select pg_temp.authenticate_as('33333333-3333-3333-3333-333333333333');
 select is(
   (select count(*)::int from public.challenge_leaderboard('c0000000-0000-0000-0000-000000000001')),
   0, 'the board is empty for a challenge the caller cannot see');
+
+-- ---------- create ----------
+-- INSERT … RETURNING (what createChallenge does) checks the new row against
+-- challenges_select; can_see_challenge cannot see a row being inserted, so
+-- the creator must match on the row itself (20261211100000).
+select pg_temp.authenticate_as('33333333-3333-3333-3333-333333333333');
+select lives_ok($$
+  insert into public.challenges (title_en, title_ro, type, target_value, start_date, end_date, creator_id, visibility)
+  values ('Mine', 'Al meu', 'workouts', 3, current_date, current_date + 7,
+          '33333333-3333-3333-3333-333333333333', 'private')
+  returning id
+$$, 'a user creates a private challenge and reads it back in the same statement');
+select throws_ok($$
+  insert into public.challenges (title_en, title_ro, type, target_value, start_date, end_date, creator_id, visibility)
+  values ('Not mine', 'Nu al meu', 'workouts', 3, current_date, current_date + 7,
+          '22222222-2222-2222-2222-222222222222', 'public')
+$$, '42501', null, 'nobody creates a challenge in someone else''s name');
 
 select * from finish();
 rollback;

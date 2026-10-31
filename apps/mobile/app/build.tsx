@@ -28,8 +28,10 @@ export default function Build() {
   const [programId, setProgramId] = useState<string | undefined>(params.program);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [run, busy] = useRun(setError);
-  const query = useQuery({ queryKey: ["builder", programId ?? null], queryFn: () => api.builder(programId) });
+  const queryKey = ["builder", programId ?? null];
+  // Saves read this program back only; Training, Today and the routine page read once, on the way out.
+  const [run, busy] = useRun(setError, { queryKey, onLeave: [["workouts"], ["today"], ["routines"]] });
+  const query = useQuery({ queryKey, queryFn: () => api.builder(programId) });
   const data = query.data;
   const unit: WeightUnit = useMe().data?.data.weight_unit ?? "kg";
 

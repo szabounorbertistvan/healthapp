@@ -20,7 +20,7 @@ const SCALES = ["sleep", "energy", "stress", "hunger", "recovery"] as const;
 // reviewCheckIn, which proves through RLS that this coach coaches this client).
 export default function ReviewCheckIn() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { t, fill } = useI18n();
+  const { t, fill, num } = useI18n();
   const { color } = useTheme();
   const queryClient = useQueryClient();
   const list = useOfflineQuery("coach-check-ins", ["coach-check-ins"], api.coachCheckIns);
@@ -79,11 +79,11 @@ export default function ReviewCheckIn() {
               <Card>
                 <View style={styles.row}>
                   <T style={{ flex: 1 }}>{t.mobile.coach.weight}</T>
-                  <T kind="heading">{c.weight_kg != null ? `${kgToDisplay(c.weight_kg, unit)} ${unit}` : "—"}</T>
+                  <T kind="heading">{c.weight_kg != null ? `${num(kgToDisplay(c.weight_kg, unit))} ${unit}` : "—"}</T>
                 </View>
                 {c.previous?.weight_kg != null ? (
                   <T kind="faint" style={{ textAlign: "right" }}>
-                    {fill(t.mobile.coach.previousWeek, { value: `${kgToDisplay(c.previous.weight_kg, unit)} ${unit}` })}
+                    {fill(t.mobile.coach.previousWeek, { value: `${num(kgToDisplay(c.previous.weight_kg, unit))} ${unit}` })}
                   </T>
                 ) : null}
                 {SCALES.map((key) => scaleRow(key, c.scores, c.previous))}

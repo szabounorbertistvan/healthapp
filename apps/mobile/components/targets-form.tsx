@@ -31,7 +31,8 @@ export function TargetsForm({ target, planOwner, onClose }: { target: MacrosV1; 
   const tones: Record<MacroKey, string> = { protein: color.accent, carbs: color.accentInk, fat: color.warn };
 
   async function save() {
-    if (!kcalValid) return;
+    // never a silent refusal: the limit is said where the button was tapped
+    if (!kcalValid) return setError(m.kcalHint);
     setBusy(true);
     setError(null);
     try {
@@ -69,7 +70,7 @@ export function TargetsForm({ target, planOwner, onClose }: { target: MacrosV1; 
           />
           <Text style={{ fontFamily: font.regular, fontSize: 13, color: color.inkFaint }}>{`kcal ${m.perDay}`}</Text>
         </View>
-        <Text style={{ fontFamily: font.regular, fontSize: 11, color: color.inkFaint }}>{m.kcalHint}</Text>
+        <Text style={{ fontFamily: kcalValid ? font.regular : font.semibold, fontSize: 11, color: kcalValid ? color.inkFaint : color.risk }}>{m.kcalHint}</Text>
       </View>
       <View style={{ gap: 4 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -100,7 +101,7 @@ export function TargetsForm({ target, planOwner, onClose }: { target: MacrosV1; 
         {MACRO_KEYS.map((k) => <View key={k} style={{ width: `${split[k]}%`, backgroundColor: tones[k] }} />)}
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Button height={42} label={busy ? t.common.actions.saving : t.common.actions.save} busy={busy} disabled={!kcalValid || total !== 100} onPress={() => void save()} />
+        <Button height={42} label={busy ? t.common.actions.saving : t.common.actions.save} busy={busy} disabled={total !== 100} onPress={() => void save()} />
         {saved ? <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{m.saved}</Text> : null}
       </View>
       {error ? <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.risk }}>{error}</Text> : null}

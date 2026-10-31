@@ -29,7 +29,8 @@ type Outbox = {
   /** A set — the logger's shorthand for queue({ kind: "set" }). */
   log: (input: LogSetV1) => Promise<QueuedItem>;
   flush: () => Promise<FlushResult | null>;
-  dismissRefused: () => Promise<void>;
+  /** Drop the refused writes — every kind, or only `kind`'s. */
+  dismissRefused: (kind?: OutboxPayload["kind"]) => Promise<void>;
   /** Called with each set the server took, for the PR moment. */
   onSynced: (listener: (synced: FlushResult["synced"]) => void) => () => void;
 };
@@ -95,8 +96,8 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
   );
   const log = useCallback((input: LogSetV1) => queue({ kind: "set", input }), [queue]);
 
-  const dismiss = useCallback(async () => {
-    if (userId) await dismissRefused(store, userId);
+  const dismiss = useCallback(async (kind?: OutboxPayload["kind"]) => {
+    if (userId) await dismissRefused(store, userId, kind);
     await reload();
   }, [userId, reload]);
 

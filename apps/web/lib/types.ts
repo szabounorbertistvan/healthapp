@@ -762,6 +762,25 @@ export type ClientToday = {
   has_coach: boolean;
   unread_from_coach: number;
   training_load: TrainingLoadSummary;
+  /** Sessions with sets from an earlier day that were never finished (getMyOpenSessions). */
+  open_sessions: OpenSession[];
+};
+
+/**
+ * A session with logged sets, started on an earlier day of the person's own
+ * calendar, that nobody tapped "Finish" on. Statistics count a session only
+ * once it is finished; the engine closes these after the day has ended
+ * (close_stale_sessions, 20261211110000) and Today offers to finish them now.
+ */
+export type OpenSession = {
+  id: string;
+  /** The program day it was logged under; null for an ad-hoc session. */
+  day_id: string | null;
+  day_name: string | null;
+  started_at: string;
+  /** started_at's day on the person's calendar, YYYY-MM-DD. */
+  day: string;
+  set_count: number;
 };
 
 /** A food one tap from being logged again — recently logged, or starred. */

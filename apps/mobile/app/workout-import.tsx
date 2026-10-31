@@ -4,11 +4,12 @@ import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, T } from "@/components/ui";
 import { BackHeader } from "@/components/workout-bits";
 import { api, ApiFailure } from "@/lib/api";
+import { config } from "@/lib/config";
 import { useI18n } from "@/lib/i18n";
 import { font, useTheme } from "@/lib/theme";
 
@@ -172,6 +173,10 @@ export default function WorkoutImport() {
             {[m.howHevy, m.howStrong, m.howFitbod, m.howFitNotes].map((line) => <T key={line} kind="faint">{line}</T>)}
             <Text style={{ marginTop: 4, fontFamily: font.semibold, fontSize: 13.5, color: color.ink }}>{m.templateTitle}</Text>
             <T kind="faint" style={{ lineHeight: 18 }}>{m.templateBody}</T>
+            {/* the web's two template files (public/import/), opened in the phone's browser to download */}
+            {([["voinic-template.csv", m.templateEn], ["voinic-sablon.csv", m.templateRo]] as const).map(([file, label]) => (
+              <Text key={file} accessibilityRole="link" onPress={() => void Linking.openURL(`${config.apiUrl}/import/${file}`)} style={{ fontFamily: font.semibold, fontSize: 13, color: color.accentInk }}>{`${label} ↗`}</Text>
+            ))}
             <View style={{ alignSelf: "flex-start", marginTop: 6 }}>
               <Button height={44} label={reading ? m.reading : m.pickFile} busy={reading} onPress={() => void pick()} />
             </View>

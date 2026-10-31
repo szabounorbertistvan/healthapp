@@ -17,7 +17,7 @@ import { font, useTheme } from "@/lib/theme";
 type Row = { id: string; name: string; city: string; google_rating?: number | null; members: number; coaches: number };
 
 export default function Gyms() {
-  const { t, fill } = useI18n();
+  const { t, fill, num } = useI18n();
   const { color } = useTheme();
   const h = t.gyms.hub;
   const query = useQuery({ queryKey: ["gyms"], queryFn: api.gyms });
@@ -80,7 +80,7 @@ export default function Gyms() {
               <Pressable key={p.id} accessibilityRole="link" onPress={() => router.push({ pathname: "/gym/[id]", params: { id: p.id } })} style={[styles.row, { backgroundColor: color.surface }]}>
                 <Text numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: 14, color: color.ink }}>{p.name}</Text>
                 <Text numberOfLines={1} style={{ marginTop: 2, fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>
-                  {[p.google_rating != null ? `★ ${p.google_rating.toFixed(1)}` : null, p.city, p.members > 0 ? fill(h.members, { n: p.members }) : null, p.coaches > 0 ? fill(h.coaches, { n: p.coaches }) : null].filter(Boolean).join(" · ")}
+                  {[p.google_rating != null ? `★ ${num(p.google_rating, { minDecimals: 1, maxDecimals: 1 })}` : null, p.city, p.members > 0 ? fill(h.members, { n: p.members }) : null, p.coaches > 0 ? fill(h.coaches, { n: p.coaches }) : null].filter(Boolean).join(" · ")}
                 </Text>
               </Pressable>
             ))}

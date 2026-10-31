@@ -1,5 +1,6 @@
 import type { GymDetailV1 } from "@healthapp/api/v1";
 import { formatWeight, relevantOneRm } from "@healthapp/shared";
+import { formatDecimal } from "@healthapp/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -67,7 +68,7 @@ export default function GymScreen() {
               <Text style={{ fontFamily: font.regular, fontSize: 13.5, color: color.inkSoft }}>{g.where}</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 12, rowGap: 4 }}>
                 <Text accessibilityRole="link" onPress={() => void Linking.openURL(g.map_url)} style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{`${s.openMap} ↗`}</Text>
-                {g.rating != null ? <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.inkSoft }}>{`★ ${fill(s.rating, { r: g.rating.toFixed(1), n: nf.format(g.ratings_total ?? 0) })}`}</Text> : null}
+                {g.rating != null ? <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: color.inkSoft }}>{`★ ${fill(s.rating, { r: formatDecimal(g.rating, locale, { minDecimals: 1, maxDecimals: 1 }), n: nf.format(g.ratings_total ?? 0) })}`}</Text> : null}
                 {g.open_state !== "unknown" ? (
                   <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: g.open_state === "open" ? color.accentInk : color.inkFaint }}>{`● ${g.open_state === "open" ? s.openNow : s.closedNow}`}</Text>
                 ) : null}

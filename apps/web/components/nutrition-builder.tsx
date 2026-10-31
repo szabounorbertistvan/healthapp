@@ -32,7 +32,7 @@ import {
 import { Card } from "@/components/ui";
 import { NavIcon } from "@/components/client-nav";
 import { useI18n } from "@/lib/i18n/client";
-import { fill } from "@/lib/i18n";
+import { fill, localizeDefaultName } from "@/lib/i18n";
 import { NewFoodForm, NotFoundNote } from "@/components/new-food-form";
 import { gramsForPieces, portionsFor, practicalQuantity, type FoodItem, type FoodPortion } from "@/lib/food-portions";
 import { usePlan } from "@/lib/plan-client";
@@ -182,7 +182,7 @@ export function NutritionBuilder({
       </p>
 
       <p className="mt-4 px-1 text-[12.5px] text-ink-soft">
-        {day === 0 ? m.everyDayIntro : fill(m.dayIntro, { day: dayName })}
+        {day === 0 ? m.everyDayIntro : fill(solo ? m.dayIntroSolo : m.dayIntro, { day: dayName })}
       </p>
 
       {visible.every((meal) => meal.foods.length === 0) ? (
@@ -532,11 +532,12 @@ function MealCard({
   onRemoveMeal: () => void;
   solo: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const m = t.coachWidgets.nutritionBuilder;
   const { e: plan, upgrade } = usePlan();
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(meal.name);
+  const mealName = localizeDefaultName("meal", meal.name, locale);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const canFill = solo || plan.ingredientPlans;
   const share = kcalTarget > 0 ? Math.round((meal.totals.kcal / kcalTarget) * 100) : null;
@@ -559,7 +560,7 @@ function MealCard({
               <button type="button" onClick={() => { setName(meal.name); setRenaming(false); }} className="text-[12.5px] font-semibold text-ink-faint">{t.common.actions.cancel}</button>
             </form>
           ) : (
-            <h2 className="truncate font-display text-lg font-bold tracking-tight">{meal.name}</h2>
+            <h2 className="truncate font-display text-lg font-bold tracking-tight">{mealName}</h2>
           )}
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] tabular-nums text-ink-faint">
             <span>
@@ -624,7 +625,7 @@ function MealCard({
         <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] font-semibold">
           {confirmRemove ? (
             <span className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-ink-soft">{fill(m.removeExtraConfirm, { name: meal.name, day: dayName })}</span>
+              <span className="font-medium text-ink-soft">{fill(m.removeExtraConfirm, { name: mealName, day: dayName })}</span>
               <button type="button" disabled={pending} onClick={() => { setConfirmRemove(false); onRemoveMeal(); }} className="text-risk disabled:opacity-50">{m.removeExtraYes}</button>
               <button type="button" onClick={() => setConfirmRemove(false)} className="text-ink-faint">{t.common.actions.cancel}</button>
             </span>
@@ -681,7 +682,7 @@ function MealCard({
         ) : open ? (
           <div className="flex h-[clamp(32rem,82vh,64rem)] w-full shrink-0 flex-col rounded-2xl bg-bg p-3.5 lg:w-80">
             <p className="mb-2.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-              {fill(m.addTo, { name: meal.name })}
+              {fill(m.addTo, { name: mealName })}
               {solo ? null : <PremiumSoon feature="ingredientPlans" />}
             </p>
             <FoodPicker onPick={onPick} />

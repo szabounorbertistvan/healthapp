@@ -56,6 +56,8 @@ export type TodayV1 = {
   nutrition: { plan_name: string | null; target: MacrosV1; totals: MacrosV1 };
   habits: { id: string; name: string; done_today: boolean; done_this_week: number; target_per_week: number }[];
   check_in: { week_start: string; submitted: boolean };
+  /** As DashboardV1.open_sessions. Absent from servers before 2026-10-31. */
+  open_sessions?: OpenSessionV1[];
 };
 
 // ---------- training (Phase 2) ----------
@@ -789,6 +791,23 @@ export type DashboardV1 = {
   check_in: { submitted: boolean; coach_feedback: string | null };
   unread_from_coach: number;
   community: { leaderboard_rank: number | null; active_challenges: number };
+  /**
+   * Workouts with sets from an earlier day nobody tapped "Finish" on — they
+   * count nowhere until finished. POST /sessions/{id}/finish closes one at its
+   * last set's time. Absent from servers before 2026-10-31.
+   */
+  open_sessions?: OpenSessionV1[];
+};
+
+/** A session left open on an earlier day (DashboardV1.open_sessions, TodayV1.open_sessions). */
+export type OpenSessionV1 = {
+  id: string;
+  day_id: string | null;
+  day_name: string | null;
+  started_at: string;
+  /** started_at's day on the person's calendar, YYYY-MM-DD. */
+  day: string;
+  set_count: number;
 };
 
 // ---------- the program builder (own programs) ----------

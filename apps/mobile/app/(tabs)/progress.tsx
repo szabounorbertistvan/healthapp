@@ -1,4 +1,5 @@
 import type { ProgressOverviewV1 } from "@healthapp/api/v1";
+import { formatDecimal } from "@healthapp/i18n";
 import {
   cmToDisplay, displayToCm, displayToKg, EXERCISE_RANGES, FITNESS_SCORE_MIN_WORKOUTS, kgToDisplay,
   type BodyMetric, type PeriodBucket, type PeriodChange, type ProgressInsight, type ProgressRange,
@@ -44,7 +45,6 @@ function useFormat(data: ProgressOverviewV1 | undefined) {
   const { t, locale, fill } = useI18n();
   const tag = locale === "ro" ? "ro-RO" : "en-GB";
   const n0 = new Intl.NumberFormat(tag, { maximumFractionDigits: 0 });
-  const n1 = new Intl.NumberFormat(tag, { maximumFractionDigits: 1 });
   const df = new Intl.DateTimeFormat(tag, { day: "numeric", month: "short", year: "numeric" });
   const wu = data?.weight_unit ?? "kg";
   const lu = data?.length_unit ?? "cm";
@@ -53,11 +53,11 @@ function useFormat(data: ProgressOverviewV1 | undefined) {
     a: t.clientApp.advancedProgress,
     wu, lu,
     count: (v: number) => n0.format(v),
-    one: (v: number) => n1.format(v),
-    pct: (v: number) => n1.format(Math.abs(v)),
-    kg: (kg: number) => `${n1.format(kgToDisplay(kg, wu))} ${wu}`,
+    one: (v: number) => formatDecimal(v, locale),
+    pct: (v: number) => formatDecimal(Math.abs(v), locale),
+    kg: (kg: number) => `${formatDecimal(kgToDisplay(kg, wu), locale)} ${wu}`,
     bigKg: (kg: number) => `${n0.format(kgToDisplay(kg, wu))} ${wu}`,
-    cm: (cm: number) => `${n1.format(cmToDisplay(cm, lu))} ${lu}`,
+    cm: (cm: number) => `${formatDecimal(cmToDisplay(cm, lu), locale)} ${lu}`,
     date: (day: string) => df.format(parseDay(day)),
   };
 }
@@ -131,7 +131,7 @@ export default function Progress() {
           <>
             <View ref={tour.target("stats")} collapsable={false} style={styles.grid2}>
               <Stat icon={ICON.scale} label={t.clientApp.progress.currentWeight}
-                value={data.stats.current_weight_kg !== null ? String(kgToDisplay(data.stats.current_weight_kg, f.wu)) : "—"}
+                value={data.stats.current_weight_kg !== null ? f.one(kgToDisplay(data.stats.current_weight_kg, f.wu)) : "—"}
                 unit={data.stats.current_weight_kg !== null ? f.wu : undefined} />
               <Stat icon={ICON.sessions} label={t.clientApp.progress.sessionsLogged} value={String(data.stats.sessions)} />
               <Stat icon={ICON.volume} label={t.clientApp.progress.totalVolume} value={f.count(kgToDisplay(data.stats.total_volume_kg, f.wu))} unit={f.wu} />
@@ -397,8 +397,8 @@ function BodyTab({ data, f }: { data: ProgressOverviewV1; f: Fmt }) {
           {data.measurements.map((m, i) => (
             <View key={m.id} style={[styles.tableRow, i > 0 ? { borderTopWidth: 1, borderTopColor: alpha(color.line, 0.6) } : null]}>
               <Text style={{ flex: 1, fontFamily: font.regular, fontSize: 13.5, color: color.inkSoft }}>{m.taken_on}</Text>
-              <Text style={[styles.cell, { fontFamily: font.semibold, fontSize: 13.5, color: color.ink }]}>{m.weight_kg !== null ? String(kgToDisplay(m.weight_kg, f.wu)) : "—"}</Text>
-              <Text style={[styles.cell, { fontFamily: font.semibold, fontSize: 13.5, color: color.ink }]}>{m.waist_cm !== null ? String(cmToDisplay(m.waist_cm, f.lu)) : "—"}</Text>
+              <Text style={[styles.cell, { fontFamily: font.semibold, fontSize: 13.5, color: color.ink }]}>{m.weight_kg !== null ? f.one(kgToDisplay(m.weight_kg, f.wu)) : "—"}</Text>
+              <Text style={[styles.cell, { fontFamily: font.semibold, fontSize: 13.5, color: color.ink }]}>{m.waist_cm !== null ? f.one(cmToDisplay(m.waist_cm, f.lu)) : "—"}</Text>
             </View>
           ))}
         </Card>
@@ -580,7 +580,7 @@ function StrengthTab({ data, f }: { data: ProgressOverviewV1; f: Fmt }) {
               </Text>
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={{ fontFamily: font.displayExtrabold, fontSize: 17, color: color.ink }}>
-                  {kgToDisplay(pr.best_kg, f.wu)}
+                  {f.one(kgToDisplay(pr.best_kg, f.wu))}
                   <Text style={{ fontFamily: font.medium, fontSize: 12, color: color.inkFaint }}>{` ${f.wu}`}</Text>
                 </Text>
                 <Text style={[styles.small(color.inkFaint, 11.5), { marginTop: 2 }]}>{`${t.clientApp.progress.est1Rm} · ${pr.ago}`}</Text>

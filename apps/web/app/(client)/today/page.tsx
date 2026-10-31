@@ -11,6 +11,7 @@ import { dishfinderRecipesUrl } from "@/lib/dishfinder";
 import { RecipesCard } from "@/components/onboarding/recipes-card";
 import { PageTour } from "@/components/onboarding/tour";
 import { SetupCard } from "@/components/onboarding/setup-card";
+import { OpenSessionsNotice } from "@/components/open-sessions-notice";
 import { getProfile } from "@/lib/data";
 import { Card, EmptyState } from "@/components/ui";
 import { CoachCard, HabitsCard, LinkRow, NutritionCard, TrainingCard, WeekCard } from "@/components/today-dashboard";
@@ -116,6 +117,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       {progress && showSetupCard(onboarding, progress, me?.role) ? (
         <div className="mt-4 sm:mt-5">
           <SetupCard done={progress.done} total={progress.total} />
+        </div>
+      ) : null}
+
+      {/* Sets from an earlier day nobody finished count nowhere until finished — say so, offer the tap. */}
+      {today.open_sessions.length > 0 ? (
+        <div className="mt-4 sm:mt-5">
+          <OpenSessionsNotice sessions={today.open_sessions} />
         </div>
       ) : null}
 

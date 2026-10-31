@@ -21,7 +21,7 @@ import { alpha, font, useTheme } from "@/lib/theme";
 type Fmt = ReturnType<typeof useGoalFormat>;
 
 function useGoalFormat(data: GoalsV1) {
-  const { t, fill, locale } = useI18n();
+  const { t, fill, locale, named } = useI18n();
   const g = t.clientApp.goals;
   const tag = locale === "ro" ? "ro-RO" : "en-GB";
   const n0 = new Intl.NumberFormat(tag, { maximumFractionDigits: 0 });
@@ -54,7 +54,7 @@ function useGoalFormat(data: GoalsV1) {
     const [y = 1970, m = 1, d = 1] = day.slice(0, 10).split("-").map(Number);
     return df.format(new Date(y, m - 1, d));
   };
-  return { t, g, fill, toDisplay, fromDisplay, unitLabel, value, signed, date };
+  return { t, g, fill, named, toDisplay, fromDisplay, unitLabel, value, signed, date };
 }
 
 function subtitle(goal: GoalV1, g: Fmt["g"]): string {
@@ -192,7 +192,7 @@ export function GoalsTab({ data }: { data: GoalsV1 }) {
         {data.main_goal ? (
           <Text style={{ marginTop: 8, fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>
             {`${g.mainGoal}: `}
-            <Text style={{ fontFamily: font.semibold, color: color.ink }}>{data.main_goal}</Text>
+            <Text style={{ fontFamily: font.semibold, color: color.ink }}>{f.named("goal", data.main_goal)}</Text>
           </Text>
         ) : null}
       </Card>
@@ -279,16 +279,16 @@ function GoalCard({ goal, data, f, readOnly = false }: { goal: GoalV1; data: Goa
     : p.daysLeft === 0 ? g.dueToday
     : f.fill(g.overdueBy, { count: -p.daysLeft });
   const confirmText =
-    confirming === "achieved" ? f.fill(p.state === "reached" ? g.confirmAchieved : g.confirmAchievedEarly, { name: goal.title })
-    : confirming === "abandoned" ? f.fill(g.confirmAbandon, { name: goal.title })
-    : confirming === "delete" ? f.fill(g.confirmDelete, { name: goal.title })
+    confirming === "achieved" ? f.fill(p.state === "reached" ? g.confirmAchieved : g.confirmAchievedEarly, { name: f.named("goal", goal.title) })
+    : confirming === "abandoned" ? f.fill(g.confirmAbandon, { name: f.named("goal", goal.title) })
+    : confirming === "delete" ? f.fill(g.confirmDelete, { name: f.named("goal", goal.title) })
     : "";
 
   return (
     <Card style={{ gap: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontFamily: font.displayBold, fontSize: 18, color: color.ink }}>{goal.title}</Text>
+          <Text numberOfLines={1} style={{ fontFamily: font.displayBold, fontSize: 18, color: color.ink }}>{f.named("goal", goal.title)}</Text>
           <Text numberOfLines={1} style={{ marginTop: 2, fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>{subtitle(goal, g)}</Text>
         </View>
         <View style={{ borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: tone.bg }}>
@@ -434,7 +434,7 @@ function ClosedRow({ goal, f, first }: { goal: GoalV1; f: Fmt; first: boolean })
     <View style={[{ paddingHorizontal: 20, paddingVertical: 14 }, first ? null : { borderTopWidth: 1, borderTopColor: alpha(color.line, 0.6) }]}>
       <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: 14, color: color.ink }}>{goal.title}</Text>
+          <Text numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: 14, color: color.ink }}>{f.named("goal", goal.title)}</Text>
           <Text style={{ marginTop: 2, fontFamily: font.regular, fontSize: 12, color: color.inkFaint }}>
             {`${subtitle(goal, g)} · ${f.fill(g.targetWas, { value: f.value(goal.metric, goal.target_value) })}`}
           </Text>
@@ -447,7 +447,7 @@ function ClosedRow({ goal, f, first }: { goal: GoalV1; f: Fmt; first: boolean })
       </View>
       {confirming ? (
         <View style={{ marginTop: 8, gap: 6 }}>
-          <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.risk }}>{f.fill(g.confirmDelete, { name: goal.title })}</Text>
+          <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.risk }}>{f.fill(g.confirmDelete, { name: f.named("goal", goal.title) })}</Text>
           <View style={{ flexDirection: "row", gap: 6 }}>
             <PillButton tone="danger" disabled={pending} label={g.delete} onPress={() => void run(() => api.deleteGoal(goal.id), () => setConfirming(false))} />
             <PillButton tone="quiet" label={g.cancel} onPress={() => setConfirming(false)} />

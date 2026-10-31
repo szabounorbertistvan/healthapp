@@ -53,9 +53,12 @@ export function formatWeight(
   if (kg === null || kg === undefined || Number.isNaN(kg)) return "—";
   const value = kgToDisplay(kg, unit);
   const big = options.big ?? Math.abs(value) >= 1000;
+  // A decimal reads with the reader's separator: "72,5 kg" in Romanian.
   const text = big
     ? Math.round(value).toLocaleString(options.locale ?? "en")
-    : String(value);
+    : options.locale?.startsWith("ro")
+      ? String(value).replace(".", ",")
+      : String(value);
   return `${text} ${unit}`;
 }
 

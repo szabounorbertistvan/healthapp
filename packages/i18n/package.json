@@ -9,7 +9,10 @@
     "./config": "./src/config.ts",
     "./messages/*": "./src/messages/*.ts",
     "./habit-suggestions": "./src/habit-suggestions.ts",
-    "./legal": "./src/legal.ts"
+    "./legal": "./src/legal.ts",
+    "./default-names": "./src/default-names.ts",
+    "./numbers": "./src/numbers.ts",
+    "./plural": "./src/plural.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

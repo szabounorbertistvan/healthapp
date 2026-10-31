@@ -1,7 +1,7 @@
 import type { CheckInQuestionV1, CheckInSubmitV1 } from "@healthapp/api/v1";
-import { displayToKg, kgToDisplay } from "@healthapp/shared";
+import { displayToKg, GOAL_METRIC_SPEC, kgToDisplay } from "@healthapp/shared";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, NavIcon, Slider, T } from "@/components/ui";
@@ -24,7 +24,7 @@ type Answer = number | boolean | string;
 // filled in with no signal; a second delivery is answered "already checked
 // in", which counts as done.
 export default function CheckIn() {
-  const { t, fill } = useI18n();
+  const { t, fill, num } = useI18n();
   const { color } = useTheme();
   const { session } = useAuth();
   const outbox = useOutbox();
@@ -43,13 +43,23 @@ export default function CheckIn() {
   const userId = session?.user.id ?? "";
   const waiting = outbox.items.find((i) => i.kind === "checkin" && i.userId === userId && !i.error);
   const refused = outbox.items.find((i) => i.kind === "checkin" && i.userId === userId && i.error);
+  // this week is in (from here or the web): an older refusal has nothing left to say
+  const stale = Boolean(refused && data?.submitted);
+  useEffect(() => {
+    if (stale) void outbox.dismissRefused("checkin");
+  }, [stale, outbox]);
 
   async function submit() {
     if (!data) return;
     const w = weight.trim() ? parseDecimal(weight) : null;
-    if (w !== null && !(w > 0)) return setError(m.couldNotSubmit);
+    const kg = w === null ? null : displayToKg(w, data.weight_unit);
+    // the range submitCheckIn holds (measurements.weight_kg's check), said in the person's unit
+    const range = GOAL_METRIC_SPEC.body_weight;
+    if (kg !== null && !(kg >= range.min && kg <= range.max)) {
+      return setError(fill(m.weightRange, { min: num(kgToDisplay(range.min, data.weight_unit)), max: num(kgToDisplay(range.max, data.weight_unit)), unit: data.weight_unit }));
+    }
     const input: CheckInSubmitV1 = {
-      weightKg: w === null ? null : displayToKg(w, data.weight_unit),
+      weightKg: kg,
       ...scores,
       note,
       answers: Object.entries(answers).map(([questionId, value]) => ({ questionId, value })),
@@ -57,6 +67,8 @@ export default function CheckIn() {
     setBusy(true);
     setError(null);
     try {
+      // a check-in refused earlier is replaced by this one: its message must not outlive it
+      await outbox.dismissRefused("checkin");
       await outbox.queue({ kind: "checkin", input });
     } catch {
       setError(m.couldNotSubmit);
@@ -93,17 +105,18 @@ export default function CheckIn() {
           query.isError ? <T kind="soft">{t.mobile.errors.offline}</T> : <ActivityIndicator color={color.accent} style={{ marginTop: 48 }} />
         ) : (
           <>
-            {refused ? (
+            {/* a refusal is the server's own (translated) words; once this week is in, it is history */}
+            {refused && !data.submitted && !waiting ? (
               <View style={{ borderRadius: 20, backgroundColor: color.riskSoft, padding: 16, gap: 8 }}>
-                <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.risk }}>{`${m.couldNotSubmit}: ${refused.error}`}</Text>
-                <Pressable accessibilityRole="button" onPress={() => void outbox.dismissRefused()} style={{ alignSelf: "flex-start" }}>
+                <Text style={{ fontFamily: font.semibold, fontSize: 13, color: color.risk }}>{refused.error && refused.error !== "refused" ? refused.error : m.couldNotSubmit}</Text>
+                <Pressable accessibilityRole="button" onPress={() => void outbox.dismissRefused("checkin")} style={{ alignSelf: "flex-start" }}>
                   <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.inkSoft }}>{t.clientWidgets.setLogger.dismiss}</Text>
                 </Pressable>
               </View>
             ) : null}
 
             {data.submitted ? (
-              sent(c.submittedTitle, c.submittedBody)
+              sent(c.submittedTitle, data.has_coach ? c.submittedBody : c.submittedBodySolo)
             ) : waiting ? (
               sent(c.submittedTitle, t.mobile.checkIn.queued)
             ) : (
@@ -189,13 +202,13 @@ export default function CheckIn() {
                   {data.last.weight_kg != null ? (
                     <Text style={{ marginTop: 8, fontFamily: font.regular, fontSize: 14, color: color.inkSoft }}>
                       {`${c.weightLabel} `}
-                      <Text style={{ fontFamily: font.semibold, color: color.ink }}>{`${kgToDisplay(data.last.weight_kg, data.weight_unit)} ${data.weight_unit}`}</Text>
+                      <Text style={{ fontFamily: font.semibold, color: color.ink }}>{`${num(kgToDisplay(data.last.weight_kg, data.weight_unit))} ${data.weight_unit}`}</Text>
                     </Text>
                   ) : null}
                   {data.last.note ? <Text style={[styles.prose(color.inkSoft), { marginTop: 8, fontStyle: "italic" }]}>{data.last.note}</Text> : null}
                   {data.last.coach_feedback ? null : (
                     <Text style={{ marginTop: 12, fontFamily: font.regular, fontSize: 12.5, color: color.inkFaint }}>
-                      {data.last.reviewed ? c.reviewed : c.waitingReview}
+                      {data.last.reviewed ? c.reviewed : data.has_coach ? c.waitingReview : c.savedSolo}
                     </Text>
                   )}
                 </Card>

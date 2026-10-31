@@ -118,7 +118,10 @@ export async function createChallenge(input: {
     })
     .select("id")
     .single();
-  if (error) return { ok: false, message: error.message };
+  if (error) {
+    console.error("createChallenge", error.code, error.message);
+    return { ok: false, message: t.common.challenges.createFailed };
+  }
 
   // The creator joins their own challenge: a private one nobody has joined is
   // invisible even to its author on the next read, because can_see_challenge

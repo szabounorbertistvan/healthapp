@@ -1,8 +1,8 @@
-import type { Locale } from "@/lib/i18n";
+import { pluralCategory, type Locale } from "@/lib/i18n";
 
 const TIME_WORDS: Record<Locale, { never: string; today: string; oneDay: string; days: (n: number) => string }> = {
   en: { never: "never", today: "today", oneDay: "1d ago", days: (n) => `${n}d ago` },
-  ro: { never: "niciodată", today: "azi", oneDay: "acum 1 zi", days: (n) => `acum ${n} zile` },
+  ro: { never: "niciodată", today: "azi", oneDay: "acum 1 zi", days: (n) => `acum ${n}${pluralCategory("ro", n) === "other" ? " de" : ""} zile` },
 };
 
 export function timeAgo(iso: string | null, locale: Locale = "en"): string {

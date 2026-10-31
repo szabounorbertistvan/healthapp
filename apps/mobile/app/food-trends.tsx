@@ -42,7 +42,7 @@ function useFmt() {
 type Fmt = ReturnType<typeof useFmt>;
 
 export default function FoodTrends() {
-  const { t, fill } = useI18n();
+  const { t, fill, named } = useI18n();
   const { color } = useTheme();
   const f = useFmt();
   const [range, setRange] = useState<Range>(30);
@@ -81,7 +81,7 @@ export default function FoodTrends() {
             {d.plan ? (
               <Card style={{ gap: 6 }}>
                 <Eyebrow aside={d.plan.owner === "coach" ? f.n.planBy : f.n.planByYou}>{f.n.plan}</Eyebrow>
-                <Text style={{ fontFamily: font.displayBold, fontSize: 17, color: color.ink }}>{d.plan.name}</Text>
+                <Text style={{ fontFamily: font.displayBold, fontSize: 17, color: color.ink }}>{named("plan", d.plan.name)}</Text>
                 {d.today.target ? <T kind="faint">{macroLine(d.today.target, f)}</T> : null}
                 <T kind="label">{f.n.plannedToday}</T>
                 <T kind="soft">

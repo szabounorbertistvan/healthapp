@@ -1,5 +1,6 @@
 import type { TrainingLoadV1, WorkoutExerciseV1, WorkoutHistoryV1 } from "@healthapp/api/v1";
 import { circuitSegments, formatSetDuration } from "@healthapp/shared";
+import { formatDecimal } from "@healthapp/i18n";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -150,10 +151,10 @@ export default function WorkoutDayScreen() {
 
 /** One exercise: name and prescription on the surface, the coach's cue under it (DayExerciseRow). */
 function ExerciseRow({ e, mode }: { e: WorkoutExerciseV1; mode: "rpe" | "rir" | "simple" }) {
-  const { t } = useI18n();
+  const { t, num } = useI18n();
   const { color } = useTheme();
   const scale = mode === "rpe" ? "RPE" : "RIR";
-  const prescription = `${e.sets}×${e.reps}${e.measure === "time" ? " s" : ""}${e.target_rpe !== null && mode !== "simple" ? ` · ${scale} ${e.target_rpe}` : ""}${e.weight_kg ? ` · ${e.weight_kg} kg` : ""}`;
+  const prescription = `${e.sets}×${e.reps}${e.measure === "time" ? " s" : ""}${e.target_rpe !== null && mode !== "simple" ? ` · ${scale} ${e.target_rpe}` : ""}${e.weight_kg ? ` · ${num(e.weight_kg, { maxDecimals: 2 })} kg` : ""}`;
   return (
     <View>
       <Pressable
@@ -218,9 +219,10 @@ function LoadCard({ load, when }: { load: TrainingLoadV1; when: string }) {
 }
 
 /** "60 kg × 8", or "45 s" / "10 kg · 45 s" for a timed set (workout-history.tsx setText). */
-function setText(s: { weight_kg: number; reps: number; duration_seconds: number | null }): string {
-  if (s.duration_seconds) return `${s.weight_kg > 0 ? `${s.weight_kg} kg · ` : ""}${formatSetDuration(s.duration_seconds)}`;
-  return `${s.weight_kg} kg × ${s.reps}`;
+function setText(s: { weight_kg: number; reps: number; duration_seconds: number | null }, locale: string): string {
+  const kg = formatDecimal(s.weight_kg, locale === "ro" ? "ro" : "en", { maxDecimals: 2 });
+  if (s.duration_seconds) return `${s.weight_kg > 0 ? `${kg} kg · ` : ""}${formatSetDuration(s.duration_seconds)}`;
+  return `${kg} kg × ${s.reps}`;
 }
 
 /** Past sessions, newest first; the latest opens unfolded (WorkoutHistory). */
@@ -280,7 +282,7 @@ function History({ sessions, locale }: { sessions: WorkoutHistoryV1[]; locale: s
                         {exercise.sets.map((x) => (
                           <View key={x.id} style={[styles.setChip, { backgroundColor: x.is_pr ? color.accent : color.bg }]}>
                             <Text style={{ fontFamily: x.is_pr ? font.semibold : font.regular, fontSize: 12, color: x.is_pr ? color.accentFg : color.inkSoft }}>
-                              {`${setText(x)}${x.rir !== null ? ` · ${d.rir} ${x.rir}` : ""}${x.rpe !== null ? ` · ${x.rpe}/10 ${d.intensity}` : ""}`}
+                              {`${setText(x, locale)}${x.rir !== null ? ` · ${d.rir} ${x.rir}` : ""}${x.rpe !== null ? ` · ${x.rpe}/10 ${d.intensity}` : ""}`}
                             </Text>
                           </View>
                         ))}

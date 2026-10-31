@@ -45,5 +45,6 @@ export const GET = v1Route(async () => {
       target_per_week: h.target_per_week,
     })),
     check_in: { week_start: today.check_in.week_start, submitted: today.check_in.submitted },
+    open_sessions: today.open_sessions,
   });
 });

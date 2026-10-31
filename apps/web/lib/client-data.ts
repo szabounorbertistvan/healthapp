@@ -22,6 +22,7 @@ export {
   getWorkoutDay,
   getWorkoutDayHistory,
   getMySessions,
+  getMyOpenSessions,
   getMyTrainingLoad,
   getMyPrs,
 } from "./client-training";

@@ -218,7 +218,7 @@ function WeekStrip({ data, onPick }: { data: FoodDayV1; onPick: (day: string) =>
 
 /** The day at a glance (nutrition-summary.tsx): goal and eaten, what is left with its bar, the three macro rings. */
 function Summary({ data, totals }: { data: FoodDayV1; totals: MacrosV1 }) {
-  const { t } = useI18n();
+  const { t, named } = useI18n();
   const { color } = useTheme();
   const [editing, setEditing] = useState(false);
   const f = t.clientApp.food;
@@ -245,7 +245,7 @@ function Summary({ data, totals }: { data: FoodDayV1; totals: MacrosV1 }) {
     <>
       <Card style={{ gap: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <Text numberOfLines={1} style={[styles.kicker(color.inkFaint), { flexShrink: 1 }]}>{data.plan_name ?? t.common.macros.todayTitle}</Text>
+          <Text numberOfLines={1} style={[styles.kicker(color.inkFaint), { flexShrink: 1 }]}>{data.plan_name ? named("plan", data.plan_name) : t.common.macros.todayTitle}</Text>
           <Pressable accessibilityRole="button" onPress={() => setEditing((v) => !v)} style={[styles.smallPill, { backgroundColor: color.bg }]}>
             <NavIcon d="M4 20h4l10-10-4-4L4 16zM13 7l4 4" size={15} color={color.accentInk} />
             <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: color.accentInk }}>{f.editTargets}</Text>

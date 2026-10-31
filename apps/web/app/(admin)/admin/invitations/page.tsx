@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { getAdminInvitations } from "@/lib/admin/data";
 import { INVITATION_STATUSES, PAGE_SIZE, intOf, listHref, oneOf, pageOf, paging, searchOf, type Search } from "@/lib/admin/params";
 import { getI18n } from "@/lib/i18n/server";
+import { fill } from "@/lib/i18n";
 import { AdminHeader, FilterButtons, Kpi, KpiGrid, Note, Pager, Pill, SearchInput, Section, Select, Table, Td, Th, UserCell, fmtDateTime, fmtNum } from "@/components/admin/ui";
 import { ConfirmAction } from "@/components/admin/confirm-action";
 import { revokeInvitation } from "@/app/admin-actions";
@@ -46,7 +47,7 @@ export default async function AdminInvitationsPage({ searchParams }: { searchPar
         <form action="/admin/invitations" method="GET" className="mb-4 flex flex-wrap items-end gap-2">
           <SearchInput value={q} placeholder={m.searchPlaceholder} />
           <Select name="status" value={status} label={m.filters.status} allLabel={c.all} options={INVITATION_STATUSES.map((s) => ({ value: s, label: m.statuses[s] }))} />
-          <Select name="days" value={days ? String(days) : null} label={m.filters.days} allLabel={c.all} options={[7, 30, 90].map((d) => ({ value: String(d), label: c.days.replace("{n}", String(d)) }))} />
+          <Select name="days" value={days ? String(days) : null} label={m.filters.days} allLabel={c.all} options={[7, 30, 90].map((d) => ({ value: String(d), label: fill(c.days, { n: d }) }))} />
           <FilterButtons submit={c.filter} clearHref="/admin/invitations" clear={c.clear} />
         </form>
         <Table empty={rows.length === 0 ? m.empty : null} head={<>

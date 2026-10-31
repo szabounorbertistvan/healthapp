@@ -135,6 +135,8 @@ export const api = {
     call<ExerciseSearchV1>("GET", `/exercises/search?${new URLSearchParams({ q, muscle, offset: String(offset) })}`),
   workoutDay: (dayId: string) => call<WorkoutDayV1>("GET", `/workouts/${encodeURIComponent(dayId)}`),
   finishWorkout: (dayId: string) => call<WriteResultV1 & { sessionId?: string }>("POST", `/workouts/${encodeURIComponent(dayId)}/finish`, {}),
+  // "Finish" on a workout left open on an earlier day (DashboardV1.open_sessions)
+  finishOpenSession: (sessionId: string) => call<WriteResultV1 & { sessionId?: string }>("POST", `/sessions/${encodeURIComponent(sessionId)}/finish`, {}),
   workoutDone: (sessionId: string, dayId: string) => call<WorkoutDoneV1>("GET", `/sessions/${encodeURIComponent(sessionId)}/done?day=${encodeURIComponent(dayId)}`),
   sessionShare: (sessionId: string, body: Record<string, unknown>) => call<CodedResultV1>("POST", `/sessions/${encodeURIComponent(sessionId)}/share`, body),
   workoutShareCard: (query: string) => call<ShareCardV1>("GET", `/share-card/workout?${query}`),

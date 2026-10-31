@@ -13,6 +13,7 @@ import { liveUser, type LiveUser } from "@/lib/supabase/server";
 import { mutated } from "@/lib/supabase/mutate";
 import { sessionKeyFor, uuidFrom } from "@/lib/stable-id";
 import { setsOfExercise } from "@/lib/pr-history";
+import { sessionEndAt } from "@/lib/open-sessions";
 import type { ActionResult } from "./actions";
 import { notSignedIn } from "@/lib/action-result";
 
@@ -317,16 +318,59 @@ export async function finishWorkout(dayId: string): Promise<ActionResult & { ses
   if (readError) return { ok: false, message: m.couldNotFinish };
   if (!session) return { ok: false, message: m.nothingToFinish };
   if (session.completed_at === null) {
-    const failed = await mutated(
-      await supabase
-        .from("logged_sessions")
-        .update({ completed_at: new Date().toISOString() }, { count: "exact" })
-        .eq("id", session.id)
-        .eq("user_id", userId),
-    );
+    const failed = await markFinished(supabase, userId, session.id as string, new Date().toISOString());
     if (failed) return failed;
   }
   revalidatePath("/today");
   revalidatePath("/workout", "layout");
+  return { ok: true, sessionId: session.id as string };
+}
+
+/** The one write behind "Finish": completed_at on the caller's own session (mutated() turns an RLS no-op into an error). */
+async function markFinished(
+  supabase: LiveUser["supabase"],
+  userId: string,
+  sessionId: string,
+  at: string,
+): Promise<ActionResult | null> {
+  return mutated(
+    await supabase
+      .from("logged_sessions")
+      .update({ completed_at: at }, { count: "exact" })
+      .eq("id", sessionId)
+      .eq("user_id", userId),
+  );
+}
+
+/**
+ * "Finish" on a session left open on an earlier day — Today's notice
+ * (getMyOpenSessions). The same write as finishWorkout(), stamped at the last
+ * set's time rather than now (sessionEndAt, the engine's own rule in
+ * close_stale_sessions), so the workout lands on the day it was trained and
+ * does not last for days. Already finished answers ok with the same id.
+ */
+export async function finishOpenSession(sessionId: string): Promise<ActionResult & { sessionId?: string }> {
+  const live = await liveUser();
+  if (!live) return notSignedIn;
+  const { supabase, userId } = live;
+  const m = (await getI18n()).t.clientWidgets.setLogger;
+  const { data: session, error: readError } = await supabase
+    .from("logged_sessions")
+    .select("id, started_at, completed_at, logged_sets(client_ts, received_at)")
+    .eq("id", sessionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (readError) return { ok: false, message: m.couldNotFinish };
+  if (!session) return { ok: false, message: m.nothingToFinish };
+  if (session.completed_at === null) {
+    const sets = (session.logged_sets ?? []) as { client_ts: string | null; received_at: string }[];
+    const at = sessionEndAt(session.started_at as string, sets);
+    if (!at) return { ok: false, message: m.nothingToFinish };
+    const failed = await markFinished(supabase, userId, session.id as string, at);
+    if (failed) return failed;
+  }
+  revalidatePath("/today");
+  revalidatePath("/workout", "layout");
+  revalidatePath("/progress");
   return { ok: true, sessionId: session.id as string };
 }

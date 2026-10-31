@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getMyNextWorkoutDayId, getMyProgramGroups, getMySessions, hasActiveCoach } from "@/lib/client-data";
+import { getMyNextWorkoutDayId, getMyOpenSessions, getMyProgramGroups, getMySessions, hasActiveCoach } from "@/lib/client-data";
+import { OpenSessionsNotice } from "@/components/open-sessions-notice";
 import { getProfile } from "@/lib/data";
 import { HaveACoach } from "@/components/solo-program-builder";
 import { Card, EmptyState } from "@/components/ui";
@@ -15,8 +16,9 @@ import { UpgradeHint } from "@/components/upgrade";
 export default async function WorkoutPage() {
   const { t, locale } = await getI18n();
   // getProfile is request-cached (the layout already read it); its sex picks the athlete on each card.
-  const [groups, allSessions, coached, profile, plan, nextDayId] = await Promise.all([
+  const [groups, allSessions, coached, profile, plan, nextDayId, openSessions] = await Promise.all([
     getMyProgramGroups(), getMySessions(), hasActiveCoach(), getProfile(), getPlan(), getMyNextWorkoutDayId(),
+    getMyOpenSessions(),
   ]);
 
   // Every published program the client holds is listed — the coach's and their
@@ -47,6 +49,13 @@ export default async function WorkoutPage() {
           </div>
         </div>
       </div>
+
+      {/* An earlier day's sets nobody finished: missing from the history below until finished. */}
+      {openSessions.length > 0 ? (
+        <div className="mt-5 sm:mt-6">
+          <OpenSessionsNotice sessions={openSessions} />
+        </div>
+      ) : null}
 
       {/* Days on the left, history on the right once the window is wide enough
           for both (2xl); below that the history follows the days. */}

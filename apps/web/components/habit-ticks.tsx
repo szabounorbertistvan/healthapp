@@ -119,7 +119,7 @@ export function HabitTicks({ habits, removable = false }: { habits: ClientHabitR
                           habit.done_today ? "text-ink-faint line-through" : ""
                         }`}
                       >
-                        {habit.name}
+                        {info ? info.name : habit.name}
                       </span>
                       <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-ink-faint">
                         {habit.done_this_week}/{habit.target_per_week}

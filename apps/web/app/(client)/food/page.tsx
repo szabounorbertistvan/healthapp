@@ -1,3 +1,4 @@
+import { localizeDefaultName } from "@/lib/i18n";
 import Link from "next/link";
 import { getMyDayNutrition, getMyFoodDays, getMyPlanMeals, getMyQuickFoods } from "@/lib/client-data";
 import { validDay, weekDaysOf } from "@/lib/week";
@@ -166,7 +167,7 @@ export default async function FoodPage({
  * Not gated, except the adaptive-targets card above it (Premium).
  */
 async function TrendsView({ state }: { state: FoodState }) {
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   // Single entries, for what the day totals cannot say: which meal the food
   // was in, and the label nutrients — for the range and the one before it,
   // read alongside the rest. The server's day stands in for the person's here
@@ -225,7 +226,7 @@ async function TrendsView({ state }: { state: FoodState }) {
         plan={
           nutrition.plan_name && nutrition.plan_owner
             ? {
-                name: nutrition.plan_name,
+                name: localizeDefaultName("plan", nutrition.plan_name, locale),
                 owner: nutrition.plan_owner,
                 plannedKcal: plannedFoods.length > 0 ? sumMacros(plannedFoods).kcal : null,
                 plannedMeals: planMeals.length,

@@ -98,5 +98,6 @@ export const GET = v1Route(async () => {
       leaderboard_rank: board?.me?.rank ?? null,
       active_challenges: challenges.filter((c) => c.joined && c.status === "active").length,
     },
+    open_sessions: today.open_sessions,
   });
 });

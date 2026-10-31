@@ -1,5 +1,5 @@
 import { kgToDisplay } from "@healthapp/shared";
-import { getMyCheckInState } from "@/lib/client-data";
+import { getMyCheckInState, hasActiveCoach } from "@/lib/client-data";
 import { getMyCheckInQuestions } from "@/lib/check-in-questions";
 import { getProfile } from "@/lib/data";
 import { Card } from "@/components/ui";
@@ -13,11 +13,12 @@ import { fill } from "@/lib/i18n";
  * accent block Today uses for the same voice.
  */
 export default async function CheckInPage() {
-  const [{ t }, state, profile, questions] = await Promise.all([
+  const [{ t }, state, profile, questions, coached] = await Promise.all([
     getI18n(),
     getMyCheckInState(),
     getProfile(),
     getMyCheckInQuestions(),
+    hasActiveCoach(),
   ]);
   const weightUnit = profile?.weight_unit ?? "kg";
 
@@ -36,7 +37,7 @@ export default async function CheckInPage() {
         {state.submitted ? (
           <Card plain>
             <p className="font-display text-lg font-bold tracking-tight">{t.clientApp.checkIn.submittedTitle}</p>
-            <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{t.clientApp.checkIn.submittedBody}</p>
+            <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{coached ? t.clientApp.checkIn.submittedBody : t.clientApp.checkIn.submittedBodySolo}</p>
           </Card>
         ) : (
           <CheckInForm questions={questions} />
@@ -63,7 +64,9 @@ export default async function CheckInPage() {
                 <p className="mt-3 text-[12.5px] text-ink-faint">
                   {state.last.reviewed
                     ? t.clientApp.checkIn.reviewed
-                    : t.clientApp.checkIn.waitingReview}
+                    : coached
+                      ? t.clientApp.checkIn.waitingReview
+                      : t.clientApp.checkIn.savedSolo}
                 </p>
               )}
             </Card>

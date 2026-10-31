@@ -11,7 +11,7 @@ import type {
   Signal,
   TrainingLoadSummary,
 } from "@/lib/types";
-import { fill } from "@/lib/i18n";
+import { fill, localizeDefaultName } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { parseDay, weekDaysOf } from "@/lib/week";
 import { HabitTicks } from "./habit-ticks";
@@ -317,7 +317,7 @@ export function NutritionCard({ nutrition }: { nutrition: ClientDayNutrition }) 
 
   return (
     <Card plain className="overflow-hidden p-0">
-      <CardLabel right={planNote ? <span className="truncate">{nutrition.plan_name ? `${nutrition.plan_name} · ` : ""}{planNote}</span> : undefined}>
+      <CardLabel right={planNote ? <span className="truncate">{nutrition.plan_name ? `${localizeDefaultName("plan", nutrition.plan_name, locale)} · ` : ""}{planNote}</span> : undefined}>
         {t.common.nav.nutrition}
       </CardLabel>
 

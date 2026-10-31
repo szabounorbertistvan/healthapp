@@ -97,13 +97,22 @@ export async function middleware(request: NextRequest) {
     // nothing — it verifies the signature, parks the recipe in a cookie and
     // sends the person to /recipes, which is behind sign-in as usual.
     path === "/recipes/receive" ||
+    // the workout-import templates (public/import/): two blank CSV headers,
+    // nobody's data — the Android app opens them in the phone's browser,
+    // which has no session, so the login redirect would hide them
+    path === "/import/voinic-template.csv" || path === "/import/voinic-sablon.csv" ||
     // the calendar sync worker, called by a scheduler with a bearer secret
     // (app/api/cron/calendar-sync/route.ts checks it); there is no session
     path === "/api/cron/calendar-sync" ||
     // the Android app's API: no cookies, a bearer token instead — every
     // handler is wrapped in v1Route (lib/api/v1.ts), which refuses without one;
     // the one exception is /api/v1/app-config (version minimums, nobody's data)
-    path.startsWith("/api/v1/")
+    path.startsWith("/api/v1/") ||
+    // a post picture asked for by the Android app: no cookies there either, so
+    // it sends its access token. Let only such a request past the cookie gate —
+    // app/api/media/[token]/route.ts verifies that token itself and refuses a
+    // bad one; a request without it still needs a session here, as before.
+    (path.startsWith("/api/media/") && hasBearer(request))
   ) return response;
   const isLanding = path === "/";
   const isLogin = path.startsWith("/login");
@@ -121,6 +130,12 @@ export async function middleware(request: NextRequest) {
     return redirect(safeNext(request.nextUrl.searchParams.get("next")));
   }
   return response;
+}
+
+/** `Authorization: Bearer <something>` — whether it verifies is the route's job. */
+function hasBearer(request: NextRequest): boolean {
+  const header = request.headers.get("authorization") ?? "";
+  return header.startsWith("Bearer ") && header.slice("Bearer ".length).trim().length > 0;
 }
 
 export const config = {

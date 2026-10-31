@@ -18,6 +18,7 @@ import {
 import { LOAD_SET_SELECT, loadOf, toLoadSet, type LoadSetJoin } from "./training-load";
 import { LOGGED_SET_SELECT, toLoggedSetRow, type SetJoin } from "./logged-sets";
 import { toPrRows, type BestSetRow } from "./prs-map";
+import { openPastSessions, type OpenSessionJoin } from "./open-sessions";
 import { toSessionSummary, type SessionSummaryJoin } from "./session-summary";
 import { liveUser, supabaseServer } from "./supabase/server";
 import { sessionKeyFor } from "./stable-id";
@@ -28,6 +29,7 @@ import type {
   ClientProgramGroup,
   ClientWorkoutDay,
   LoggedSetRow,
+  OpenSession,
   SessionSummaryRow,
   TrainingLoadSummary,
   WorkoutHistorySession,
@@ -334,6 +336,32 @@ export async function getMySessions(limit = 12): Promise<SessionSummaryRow[]> {
     .limit(limit);
   if (error) return [];
   return ((data ?? []) as unknown as SessionSummaryJoin[]).map(toSessionSummary);
+}
+
+/**
+ * Sessions with sets from an earlier day that were never finished — Today's
+ * notice offers to finish them (finishOpenSession). Every statistic counts a
+ * session only once it carries completed_at; the engine closes these after
+ * their day (close_stale_sessions, 20261211110000), so this is usually empty.
+ * A failed read shows no notice rather than a wrong one.
+ */
+export async function getMyOpenSessions(): Promise<OpenSession[]> {
+  const live = await liveUser();
+  if (!live) return [];
+  const { supabase, userId } = live;
+  const [{ data, error }, { today, timeZone }] = await Promise.all([
+    supabase
+      .from("logged_sessions")
+      .select("id, program_day_id, started_at, day:program_days(name), logged_sets(count)")
+      .eq("user_id", userId)
+      .is("completed_at", null)
+      .gte("started_at", `${daysAgoIso(60)}T00:00:00`)
+      .order("started_at", { ascending: false })
+      .limit(20),
+    myCalendar(),
+  ]);
+  if (error) return [];
+  return openPastSessions((data ?? []) as unknown as OpenSessionJoin[], today, timeZone);
 }
 
 /**
