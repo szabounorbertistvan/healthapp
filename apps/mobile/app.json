@@ -83,6 +83,12 @@
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "03a6177d-a8ca-44b6-9da3-693319bc550e"
+      }
+    },
+    "owner": "voinic"
   }
 }
