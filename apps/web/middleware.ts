@@ -89,6 +89,9 @@ export async function middleware(request: NextRequest) {
     // what crawlers read first (20261107100000): a redirect to /login here
     // would hide the whole public directory from search engines
     path === "/robots.txt" || path === "/sitemap.xml" ||
+    // TikTok's URL-property proof for the voinic-social poster app: a static
+    // file in public/ that TikTok fetches signed out
+    /^\/tiktok[A-Za-z0-9]+\.txt$/.test(path) ||
     // the link at the foot of every marketplace email (20261115100000): it
     // must work from any inbox, signed in or not — the token is the proof
     path === "/unsubscribe" || path === "/unsubscribe/one-click" ||
