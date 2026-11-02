@@ -48,7 +48,7 @@ export function StreakCard({ view, compact = false }: { view: StreakView; compac
     <Card plain>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.s.title}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{x.s.title}</p>
           <p className="mt-1.5 flex items-center gap-2.5 font-display text-xl font-extrabold leading-tight">
             <NavIcon d={FLAME} className="h-[22px] w-[22px] text-accent" />
             {none ? x.s.startTitle : x.dayStreak(current)}
@@ -69,11 +69,11 @@ export function StreakCard({ view, compact = false }: { view: StreakView; compac
       ) : null}
       {compact ? (
         <Link href="/streak" className="mt-3 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
-          {x.s.viewStreak} →
+          {x.s.viewStreak}
         </Link>
       ) : (
         <div className="mt-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.s.calendarTitle}</p>
+          <p className="mb-2 text-[11px] font-semibold text-ink-faint">{x.s.calendarTitle}</p>
           <StreakCalendar calendar={view.calendar} />
         </div>
       )}
@@ -222,7 +222,7 @@ export function MilestoneList({ view }: { view: StreakView }) {
   const x = useStreakText();
   return (
     <Card plain>
-      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-faint">
         <NavIcon d={TROPHY} className="h-[15px] w-[15px]" />
         {x.s.milestones}
       </p>

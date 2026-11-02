@@ -82,7 +82,7 @@ export function CoachSearchBox({ query }: { query: DiscoveryQuery }) {
       role="search" aria-busy={pending} action={PATH} className="w-full"
       onSubmit={(e) => { e.preventDefault(); go(withChange(latest.current, { q: q.trim() })); }}
     >
-      <label className="flex h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 shadow-sm focus-within:border-accent">
+      <label className="flex h-14 items-center gap-3 rounded-2xl border border-edge bg-surface px-4 shadow-sm focus-within:border-accent">
         <NavIcon
           d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"
           className={`h-5 w-5 shrink-0 ${pending ? "animate-pulse text-accent" : "text-ink-faint"}`}
@@ -126,7 +126,7 @@ export function CitySelect({ query, facets }: { query: DiscoveryQuery; facets: D
       <select
         id={id} aria-busy={pending} value={query.city ?? ""}
         onChange={(e) => go(withChange(query, { city: e.target.value || null }))}
-        className="h-14 w-full appearance-none rounded-2xl border border-line bg-surface pl-11 pr-4 text-[15px] text-ink shadow-sm outline-none focus:border-accent"
+        className="h-14 w-full appearance-none rounded-2xl border border-edge bg-surface pl-11 pr-4 text-[15px] text-ink shadow-sm outline-none focus:border-accent"
       >
         <option value="">{h.anyCity}</option>
         {facets.cities.map((c) => (

@@ -73,8 +73,8 @@ export function NewProgramForm({
   }
 
   const field =
-    "h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent";
-  const legend = "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-ink-faint";
+    "h-11 w-full rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent";
+  const legend = "mb-1.5 block text-[11px] font-semibold text-ink-faint";
 
   return (
     <form onSubmit={submit} className="space-y-5">

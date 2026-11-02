@@ -67,7 +67,7 @@ export function UpgradeHint({
 /** A small "Premium" / "Coach Pro" tag beside a control the plan does not include. */
 export function PlanTag({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-accent-ink">
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-bold text-accent-ink">
       <NavIcon d={LOCK} className="h-3 w-3" />
       {label}
     </span>
@@ -91,7 +91,7 @@ export function PremiumSoon({ feature, className = "" }: { feature: FlagKey; cla
   const hint = fill(t.common.plan.soonHint, { plan: upgrade.label });
   return (
     <span title={hint} aria-label={hint}
-      className={`inline-flex items-center whitespace-nowrap rounded-full bg-accent-soft/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-accent-ink ${className}`}>
+      className={`inline-flex items-center whitespace-nowrap rounded-full bg-accent-soft/70 px-2 py-0.5 text-[11px] font-bold text-accent-ink ${className}`}>
       {fill(t.common.plan.soonTag, { plan: upgrade.label })}
     </span>
   );

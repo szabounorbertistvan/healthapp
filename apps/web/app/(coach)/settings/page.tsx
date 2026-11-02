@@ -75,14 +75,14 @@ export default async function SettingsPage() {
         <TryTrialButton />
 
         <Card plain>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.coachApp.settings.subscription}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{t.coachApp.settings.subscription}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {/* The free plan, shaped like the paid panel next to it. */}
             <div className="rounded-2xl bg-bg px-4 py-[18px]">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-display text-lg font-bold tracking-tight">{TIER_LABEL.coach_free}</p>
                 {tier !== "coach_pro" ? (
-                  <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
+                  <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent-ink">
                     {t.coachApp.settings.current}
                   </span>
                 ) : null}

@@ -92,7 +92,7 @@ export async function MarketplacePerformance({ a }: { a: CoachMarketplaceAnalyti
       {!since ? <p className="mt-3 text-[13px] text-ink-soft">{p.notYet}</p> : null}
       {since && a.sources.length > 0 ? (
         <div className="mt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{p.sources}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{p.sources}</p>
           <ul className="mt-1.5 flex flex-wrap gap-1.5" data-testid="perf-sources">
             {a.sources.map((s) => (
               <li key={s.source} className="rounded-full bg-bg px-3 py-1 text-[12.5px]">

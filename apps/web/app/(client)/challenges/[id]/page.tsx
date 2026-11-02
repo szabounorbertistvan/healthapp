@@ -36,7 +36,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
 
       <div className="mt-5 grid grid-cols-1 items-start gap-4 sm:mt-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)] xl:gap-6">
         <Card plain>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{challengeSubtitle(c, ch)}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{challengeSubtitle(c, ch)}</p>
           {c.is_platform ? (
             <p className="mt-1.5 inline-flex rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-accent-ink">{ch.platform}</p>
           ) : null}

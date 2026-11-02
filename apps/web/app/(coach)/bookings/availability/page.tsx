@@ -51,7 +51,7 @@ export default async function AvailabilityPage({ searchParams }: { searchParams:
         <div className="mt-3">
           {!data.hasProfile ? (
             <p className="text-[13px] text-ink-faint">
-              {a.noProfile} <Link href="/settings/coach-profile" className="font-semibold text-accent-ink hover:underline">→</Link>
+              {a.noProfile} <Link href="/settings/coach-profile" className="font-semibold text-accent-ink hover:underline">{t.coachProfile.card.open}</Link>
             </p>
           ) : data.services.length === 0 ? (
             <p className="text-[13px] text-ink-faint">{a.noServices}</p>

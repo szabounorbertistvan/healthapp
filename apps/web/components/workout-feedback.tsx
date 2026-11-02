@@ -121,7 +121,7 @@ export function ClientWorkoutsFeedback({ clientId, sessions, name }: { clientId:
                   <div className="mt-3 grid gap-3">
                     {byExercise(s.sets).map((g, gi) => (
                       <div key={`${g.exercise}-${gi}`}>
-                        <p className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{g.exercise}</p>
+                        <p className="text-[12px] font-semibold text-ink-faint">{g.exercise}</p>
                         <ul className="mt-1 divide-y divide-line/50">
                           {g.sets.map((x) => (
                             <li key={x.id} className="py-1.5">
@@ -164,7 +164,7 @@ export function SessionWithFeedback({ session, unit }: { session: FeedbackSessio
     <div className="grid gap-3">
       {session.comments.length > 0 ? (
         <Card plain>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.coachSays}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{m.coachSays}</p>
           <Comments comments={session.comments} />
         </Card>
       ) : null}
@@ -172,7 +172,7 @@ export function SessionWithFeedback({ session, unit }: { session: FeedbackSessio
         <div className="grid gap-3">
           {byExercise(session.sets).map((g, gi) => (
             <div key={`${g.exercise}-${gi}`}>
-              <p className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{g.exercise}</p>
+              <p className="text-[12px] font-semibold text-ink-faint">{g.exercise}</p>
               <ul className="mt-1 divide-y divide-line/50">
                 {g.sets.map((x) => (
                   <li key={x.id} className="py-1.5 text-[13px]">

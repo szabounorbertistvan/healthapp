@@ -58,14 +58,14 @@ export default async function AdminActivityPage({ searchParams }: { searchParams
           <SearchInput value={q} placeholder={m.searchPlaceholder} />
           <Select name="action" value={action} label={m.filters.action} allLabel={c.all} options={AUDIT_ACTIONS.map((a) => ({ value: a, label: m.actions[a] }))} />
           <Select name="entity" value={entity} label={m.filters.entity} allLabel={c.all} options={ENTITY_TYPES.map((e) => ({ value: e, label: e }))} />
-          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.filters.actor}
-            <input name="actor" defaultValue={actor ?? ""} placeholder="uuid" className="h-9 w-40 rounded-xl border border-line bg-surface px-2.5 font-mono text-[12px] normal-case tracking-normal text-ink outline-none focus:border-accent" /></label>
-          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.filters.target}
-            <input name="target" defaultValue={target ?? ""} placeholder="uuid" className="h-9 w-40 rounded-xl border border-line bg-surface px-2.5 font-mono text-[12px] normal-case tracking-normal text-ink outline-none focus:border-accent" /></label>
-          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.filters.from}
-            <input type="date" name="from" defaultValue={from ?? ""} className="h-9 rounded-xl border border-line bg-surface px-2.5 text-[12.5px] normal-case tracking-normal text-ink outline-none focus:border-accent" /></label>
-          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.filters.to}
-            <input type="date" name="to" defaultValue={to ?? ""} className="h-9 rounded-xl border border-line bg-surface px-2.5 text-[12.5px] normal-case tracking-normal text-ink outline-none focus:border-accent" /></label>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-ink-faint">{m.filters.actor}
+            <input name="actor" defaultValue={actor ?? ""} placeholder="uuid" className="h-9 w-40 rounded-xl border border-edge bg-surface px-2.5 font-mono text-[12px] normal-case tracking-normal text-ink outline-none focus:border-accent" /></label>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-ink-faint">{m.filters.target}
+            <input name="target" defaultValue={target ?? ""} placeholder="uuid" className="h-9 w-40 rounded-xl border border-edge bg-surface px-2.5 font-mono text-[12px] normal-case tracking-normal text-ink outline-none focus:border-accent" /></label>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-ink-faint">{m.filters.from}
+            <input type="date" name="from" defaultValue={from ?? ""} className="h-9 rounded-xl border border-edge bg-surface px-2.5 text-[12.5px] normal-case tracking-normal text-ink outline-none focus:border-accent" /></label>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-ink-faint">{m.filters.to}
+            <input type="date" name="to" defaultValue={to ?? ""} className="h-9 rounded-xl border border-edge bg-surface px-2.5 text-[12.5px] normal-case tracking-normal text-ink outline-none focus:border-accent" /></label>
           <FilterButtons submit={c.filter} clearHref="/admin/activity" clear={c.clear} />
         </form>
 
@@ -79,7 +79,7 @@ export default async function AdminActivityPage({ searchParams }: { searchParams
                 {r.actor_user_id ? (
                   <Link href={`/admin/users/${r.actor_user_id}`} className="hover:text-accent-ink">@{r.actor_username ?? r.actor_name ?? r.actor_user_id.slice(0, 8)}</Link>
                 ) : <span className="text-ink-faint">{r.action === "LOGIN_FAILED" ? c.anonymous : c.system}</span>}
-                {r.actor_role ? <span className="ml-1 text-[10.5px] uppercase tracking-wider text-ink-faint">{r.actor_role}</span> : null}
+                {r.actor_role ? <span className="ml-1 text-[11px] text-ink-faint">{r.actor_role}</span> : null}
               </Td>
               <Td nowrap><Pill tone={isAdminAction(r.action) ? "warn" : r.action === "LOGIN_FAILED" ? "risk" : "neutral"}>{m.actions[r.action] ?? r.action}</Pill></Td>
               <Td nowrap>{r.target_user_id ? <Link href={`/admin/users/${r.target_user_id}`} className="hover:text-accent-ink">@{r.target_username ?? r.target_name ?? r.target_user_id.slice(0, 8)}</Link> : <span className="text-ink-faint">{c.none}</span>}</Td>

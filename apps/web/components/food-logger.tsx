@@ -170,7 +170,7 @@ export function FoodLogger({
   return (
     <div className="mt-3 border-t border-line pt-3">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="text-[11px] font-semibold text-ink-faint">
           {fill(fl.addTo, { slot: fl.slots[slot] })}
         </p>
         <button
@@ -199,7 +199,7 @@ export function FoodLogger({
           </div>
           {portions.length > 0 ? (
             <div className="mt-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+              <p className="text-[11px] font-semibold text-ink-faint">
                 {fl.size}
               </p>
               <div className="mt-1 flex flex-wrap gap-1.5">
@@ -228,7 +228,7 @@ export function FoodLogger({
 
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+              <span className="text-[11px] font-semibold text-ink-faint">
                 {fl.grams}
               </span>
               <input
@@ -242,9 +242,11 @@ export function FoodLogger({
               <p className="pb-2 text-xs font-semibold text-risk">{fill(fl.gramsTooMuch, { max: MAX_PORTION_GRAMS })}</p>
             ) : null}
             {preview ? (
-              <p className="pb-2 text-xs tabular-nums text-ink-faint">
-                <b className="text-ink">{preview.kcal}</b> kcal · P{preview.protein} · C{preview.carbs} ·
-                F{preview.fat}
+              <p className="flex flex-wrap gap-x-2.5 pb-2 text-xs tabular-nums text-ink-faint">
+                <span><b className="text-ink">{preview.kcal}</b> kcal</span>
+                <span>P{preview.protein}</span>
+                <span>C{preview.carbs}</span>
+                <span>F{preview.fat}</span>
               </p>
             ) : null}
           </div>
@@ -421,7 +423,7 @@ export function FoodLogger({
             <div className="mt-2 space-y-3">
               {favs.length > 0 ? (
                 <section>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-ink">{fl.favorites}</p>
+                  <p className="text-[11px] font-semibold text-accent-ink">{fl.favorites}</p>
                   <ul className="mt-1 divide-y divide-line/60">
                     {favs.map((f) => row(toFoodItem(f), f.last_grams, "fav"))}
                   </ul>
@@ -429,7 +431,7 @@ export function FoodLogger({
               ) : null}
               {recent.length > 0 ? (
                 <section>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{fl.recent}</p>
+                  <p className="text-[11px] font-semibold text-ink-faint">{fl.recent}</p>
                   <ul className="mt-1 divide-y divide-line/60">
                     {recent.map((r) => row(toFoodItem(r), r.last_grams, "recent"))}
                   </ul>
@@ -512,7 +514,7 @@ function FoodRow({ food, meta, starred, onPick, onStar }: {
           <span className="min-w-0 truncate">{nameOf(food)}</span>
           {food.english_only ? (
             <span
-              className="shrink-0 rounded border border-line px-1 text-[9px] font-semibold uppercase tracking-wider text-ink-faint"
+              className="shrink-0 rounded border border-line px-1 text-[9px] font-semibold text-ink-faint"
               title={fl.englishOnlyHint}
             >
               {fl.englishOnly}

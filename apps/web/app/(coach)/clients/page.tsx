@@ -88,7 +88,7 @@ export default async function ClientsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-[13.5px]">
                   <thead>
-                    <tr className="text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                    <tr className="text-left text-[11px] text-ink-faint">
                       <th className="px-6 pb-2 pt-[18px] font-semibold">{t.coachApp.clients.thName}</th>
                       <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.clients.thStatus}</th>
                       <th className="px-3 pb-2 pt-[18px] font-semibold">{t.coachApp.clients.thSignal}</th>
@@ -178,7 +178,7 @@ export default async function ClientsPage() {
                     </div>
                     <dl className="mt-3 flex items-end justify-between gap-3">
                       <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                        <dt className="text-[11px] font-semibold text-ink-faint">
                           {t.coachApp.clients.thAdherence}
                         </dt>
                         <dd className="mt-0.5 font-display text-[19px] font-extrabold tabular-nums leading-none">
@@ -186,7 +186,7 @@ export default async function ClientsPage() {
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                        <dt className="text-[11px] font-semibold text-ink-faint">
                           {t.coachApp.clients.thLoad}
                         </dt>
                         <dd className="mt-0.5 font-display text-[19px] font-extrabold tabular-nums leading-none">
@@ -194,7 +194,7 @@ export default async function ClientsPage() {
                         </dd>
                       </div>
                       <div className="text-right">
-                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                        <dt className="text-[11px] font-semibold text-ink-faint">
                           {t.coachApp.clients.thLastActivity}
                         </dt>
                         <dd className="mt-0.5 text-[13px] tabular-nums text-ink-soft">

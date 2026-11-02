@@ -25,7 +25,7 @@ const PILL: Record<RelationshipStatus, string> = {
 export function RelationshipPill({ status }: { status: RelationshipStatus }) {
   const { t } = useI18n();
   return (
-    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${PILL[status]}`} data-testid="relationship-status" data-status={status}>
+    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${PILL[status]}`} data-testid="relationship-status" data-status={status}>
       {t.coachProfile.coaching.statuses[status]}
     </span>
   );

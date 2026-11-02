@@ -40,7 +40,7 @@ export function StatusBadge({ status }: { status: CoachProfileRow["status"] }) {
     <span
       data-testid="coach-profile-status"
       data-status={status}
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${TONE[view.tone]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${TONE[view.tone]}`}
     >
       {t.coachProfile.status[status]}
     </span>
@@ -77,7 +77,7 @@ export function BecomeCoachCard() {
 
   return (
     <Card plain>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{b.title}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{b.title}</p>
       <p className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">{b.body}</p>
       <button type="button" onClick={run} disabled={pending} className={`${BUTTON} mt-4`}>
         {pending ? b.busy : b.button}
@@ -95,7 +95,7 @@ export function CoachProfileSettingsCard({ status }: { status: CoachProfileRow["
   return (
     <Card plain>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{c.title}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{c.title}</p>
         <StatusBadge status={status} />
       </div>
       <Link href={COACH_PROFILE_PATH} className={`${BUTTON} mt-4`}>

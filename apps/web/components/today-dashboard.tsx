@@ -49,7 +49,7 @@ export function TodayWeekStrip({ today, workoutDays }: { today: string; workoutD
                 isToday ? "bg-accent text-accent-fg" : trained ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint"
               } ${past && !trained && !isToday ? "opacity-70" : ""}`}
             >
-              <span className="text-[10px] font-semibold uppercase">{weekday.format(parseDay(day))}</span>
+              <span className="text-[11px] font-semibold">{weekday.format(parseDay(day))}</span>
               <span className="text-sm font-bold tabular-nums">{parseDay(day).getDate()}</span>
               <span className={`h-[3px] w-4 rounded-full ${trained ? (isToday ? "bg-accent-fg" : "bg-accent") : "bg-transparent"}`} aria-hidden />
             </div>
@@ -80,11 +80,11 @@ function Chevron() {
   return <NavIcon d={CHEVRON} className="h-4 w-4 text-ink-faint [stroke-width:2.2]" />;
 }
 
-/** The uppercase card label, with an optional count or note on the right. */
+/** The card label, with an optional count or note on the right. */
 function CardLabel({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3 px-5 pt-[18px]">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{children}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{children}</p>
       {right ? <p className="min-w-0 truncate text-[12.5px] tabular-nums text-ink-faint">{right}</p> : null}
     </div>
   );
@@ -119,8 +119,8 @@ function SessionMeta({ session, lead }: { session: SessionSummaryRow; lead: stri
   const { t, locale } = useI18n();
   const nf = new Intl.NumberFormat(locale === "ro" ? "ro-RO" : "en-GB");
   return (
-    <p className="mt-0.5 text-[12.5px] leading-snug tabular-nums text-ink-faint first-letter:uppercase">
-      {lead} · {session.sets} {t.clientApp.workoutDay.sets} · {nf.format(Math.round(session.volume_kg))} kg
+    <p className="mt-0.5 text-[12.5px] leading-snug tabular-nums text-ink-faint">
+      {lead.charAt(0).toUpperCase() + lead.slice(1)} · {session.sets} {t.clientApp.workoutDay.sets} · {nf.format(Math.round(session.volume_kg))} kg
       {session.prs > 0 ? <> · <span className="font-semibold text-accent-ink">{session.prs} {session.prs === 1 ? t.clientApp.workoutDay.prOne : t.clientApp.workoutDay.prs}</span></> : null}
     </p>
   );
@@ -243,7 +243,7 @@ export function TrainingCard({ doneToday, recent, next, coached, streak }: {
       {/* ---- recent sessions ---- */}
       {previous.length > 0 ? (
         <div className="border-t border-line/60 px-5 pb-4 pt-3.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{d.recent}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{d.recent}</p>
           <ul className="mt-1.5 space-y-2.5">
             {previous.map((session) => (
               <li key={session.id}>
@@ -353,7 +353,7 @@ export function NutritionCard({ nutrition }: { nutrition: ClientDayNutrition }) 
 
       {/* ---- meals ---- */}
       <div className="border-t border-line/60 px-5 pb-4 pt-3.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{d.meals}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{d.meals}</p>
         <ul className="mt-1.5 space-y-2">
           {bySlot.map((m) => (
             <li key={m.slot}>
@@ -378,7 +378,7 @@ export function NutritionCard({ nutrition }: { nutrition: ClientDayNutrition }) 
         {dishfinderEnabled() && (bySlot.some((m) => m.names) || nutrition.plan_owner !== null) ? (
           <Link href="/food" className="mt-2.5 flex items-center justify-center gap-1.5 text-[12.5px] font-semibold text-accent-ink hover:underline">
             <DishFinderMark className="h-[13px] w-[13px] shrink-0" />
-            {d.recipeIdeas} →
+            {d.recipeIdeas}
           </Link>
         ) : null}
       </div>
@@ -439,7 +439,7 @@ export function CoachCard({ checkIn, coached, unread }: {
         {checkIn.last?.coach_feedback ? (
           <li className="px-5 py-3.5">
             <div className="rounded-2xl bg-accent-soft px-4 py-3.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{d.fromYourCoach}</p>
+              <p className="text-[11px] font-semibold text-accent-ink">{d.fromYourCoach}</p>
               <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{checkIn.last.coach_feedback}</p>
             </div>
           </li>
@@ -484,7 +484,7 @@ function Stat({ href, label, value, unit, unitTone = "text-ink-faint" }: {
 }) {
   return (
     <Link href={href} className="min-w-0 px-1.5 text-center hover:opacity-80">
-      <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{label}</p>
+      <p className="truncate text-[11px] font-semibold text-ink-faint">{label}</p>
       <p className="mt-0.5 font-display text-xl font-bold tabular-nums leading-tight">
         {value}
         {unit ? <span className={`ml-1 font-sans text-[11.5px] font-medium ${unitTone}`}>{unit}</span> : null}
@@ -534,7 +534,7 @@ export function WeekCard({ adherence, today, workoutDays, done, planned, streak,
   return (
     <Card plain>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.weeklyScore}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{d.weeklyScore}</p>
         <p className="text-xs text-ink-faint">{range}</p>
       </div>
 

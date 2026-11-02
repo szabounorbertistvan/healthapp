@@ -80,7 +80,7 @@ export function ChallengeCreate({ exercises }: {
 
   return (
     <Card plain className="mt-5 sm:mt-6">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.createTitle}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{ch.createTitle}</p>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-faint">{ch.createHint}</p>
 
       <label className="mt-3.5 block text-[13px] font-semibold text-ink-soft">

@@ -39,7 +39,7 @@ export function EmailPrefsCard({ prefs, role }: { prefs: Record<string, boolean>
 
   return (
     <Card plain>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.title}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{m.title}</p>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-faint">{m.intro}</p>
       <div className="mt-4 grid gap-4">
         {EMAIL_PREF_CATEGORIES.filter((c) => coaches || !c.coachOnly).map(({ category }) => {

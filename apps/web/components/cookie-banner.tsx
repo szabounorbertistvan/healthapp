@@ -31,7 +31,7 @@ export function CookieBanner() {
     <div
       role="region"
       aria-label={c.ariaLabel}
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface p-4 shadow-[0_-4px_16px_color-mix(in_srgb,var(--color-shade)_8%,transparent)]"
     >
       <div className="mx-auto flex max-w-4xl flex-col items-start gap-3 sm:flex-row sm:items-center">
         <p className="flex-1 text-sm text-ink-soft">
@@ -40,16 +40,16 @@ export function CookieBanner() {
             {c.privacyPolicy}
           </Link>
         </p>
-        <div className="flex w-full shrink-0 gap-2 sm:w-auto">
+        <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto">
           <button
             onClick={() => writeConsent("denied")}
-            className="flex-1 rounded-lg border border-line bg-bg px-4 py-2 text-sm font-semibold hover:border-ink-faint sm:flex-none"
+            className="min-h-11 flex-1 whitespace-nowrap rounded-lg border border-line bg-bg px-4 py-2 text-sm font-semibold hover:border-ink-faint sm:flex-none"
           >
             {c.essentialOnly}
           </button>
           <button
             onClick={() => writeConsent("granted")}
-            className="flex-1 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 sm:flex-none"
+            className="min-h-11 flex-1 whitespace-nowrap rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90 sm:flex-none"
           >
             {c.accept}
           </button>

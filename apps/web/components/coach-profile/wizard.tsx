@@ -315,7 +315,7 @@ function Progress({
   return (
     <nav aria-label={w.progress} className="mt-6">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{w.progress}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{w.progress}</p>
         <p className="text-[12.5px] font-semibold text-ink-soft">{fill(w.stepOf, { n: step + 1, total: STEPS.length })}</p>
       </div>
       <ol className="mt-3 flex items-center">
@@ -635,7 +635,7 @@ function WhereStep({ draft, setDraft, catalog }: StepProps & { catalog: CoachCat
                 <li key={l.city} className="flex items-center justify-between gap-3 rounded-2xl bg-bg px-4 py-2.5">
                   <span className="text-[14px]">
                     <span className="font-semibold">{cityName(l.city)}</span>
-                    {l.gymName ? <span className="text-ink-faint"> — {l.gymName}</span> : null}
+                    {l.gymName ? <span className="text-ink-faint">, {l.gymName}</span> : null}
                   </span>
                   <button
                     type="button" className={`${SMALL_BUTTON_INSET} text-risk`}
@@ -781,7 +781,7 @@ function PublishStep({
   return (
     <div className="grid gap-8">
       <section aria-labelledby="coach-photos">
-        <h3 id="coach-photos" className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{c.photos}</h3>
+        <h3 id="coach-photos" className="text-[11px] font-semibold text-ink-faint">{c.photos}</h3>
         <div className="mt-3 grid gap-5">
           <AvatarPicker name={displayName} url={avatarUrl} enabled={photoUploads} />
           <CoverPicker url={data.profile.cover_url} enabled={photoUploads && !data.revision} />
@@ -792,7 +792,7 @@ function PublishStep({
       <section aria-labelledby="coach-preview" ref={previewRef}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h3 id="coach-preview" className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{c.preview}</h3>
+            <h3 id="coach-preview" className="text-[11px] font-semibold text-ink-faint">{c.preview}</h3>
             <p className="mt-1 text-[13px] text-ink-soft">{c.previewHint}</p>
           </div>
           <button type="button" className={SMALL_BUTTON} onClick={() => onGo(0)}>{c.editProfile}</button>

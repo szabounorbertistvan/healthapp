@@ -94,10 +94,10 @@ export default async function WorkoutDayPage({
         <div className="space-y-5">
           <Card plain className="relative flex min-h-[200px] overflow-hidden p-0 xl:min-h-[224px]">
             <div className="flex min-w-0 flex-1 flex-col py-5 pl-5 pr-1 xl:p-6 xl:pr-2">
-              <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+              <h1 className="font-display text-[26px] font-extrabold leading-[1.05] tracking-tight xl:text-[32px]">{day.day_name}</h1>
+              <p className="mt-1.5 truncate text-[12px] font-semibold text-ink-faint">
                 {day.program_name} · {day.intensity_mode.toUpperCase()}
               </p>
-              <h1 className="mt-2 font-display text-[26px] font-extrabold leading-[1.05] tracking-tight xl:text-[32px]">{day.day_name}</h1>
               <p className="mt-2 text-[13px] text-ink-soft">
                 {fill(t.clientApp.workout.exercisesCount, { count: day.exercises.length })}
               </p>
@@ -134,7 +134,7 @@ export default async function WorkoutDayPage({
           </Link>
 
           <section>
-            <p className="mb-2.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+            <p className="mb-2.5 px-1 text-[11px] font-semibold text-ink-faint">
               {d.exercises} · {fill(t.clientApp.workout.exercisesCount, { count: day.exercises.length })}
             </p>
             <div className="space-y-2.5">
@@ -142,7 +142,7 @@ export default async function WorkoutDayPage({
                 seg.circuit !== null ? (
                   <div key={seg.circuit} className="space-y-2 rounded-[20px] border-l-[3px] border-accent bg-accent-soft/55 p-2 pl-[9px]">
                     {seg.label ? (
-                      <p className="flex items-center gap-1.5 px-2.5 pt-0.5 text-[10.5px] font-bold uppercase tracking-wider text-accent-ink">
+                      <p className="flex items-center gap-1.5 px-2.5 pt-0.5 text-[11px] font-bold text-accent-ink">
                         <NavIcon d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" className="h-[13px] w-[13px]" />
                         {fill(t.coachWidgets.programBuilder.circuitName, { label: seg.label })}
                       </p>

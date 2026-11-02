@@ -69,7 +69,6 @@ export async function DiscoveryHome({ query, facets, recommended, near, signedIn
           past the viewport on a phone. */}
       {/* ---------- hero: what this is, and the search ---------- */}
       <section className="relative pt-4 sm:pt-10">
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-56 w-[min(640px,100%)] -translate-x-1/2 rounded-full bg-accent-soft opacity-70 blur-3xl" />
         <div className="relative mx-auto max-w-3xl text-center">
           <h1 className="font-display text-[30px] font-extrabold leading-[1.08] tracking-tight sm:text-[46px]">{d.title}</h1>
           <p className="mx-auto mt-3 max-w-[56ch] text-[15px] text-ink-soft sm:text-[17px]">{d.subtitle}</p>
@@ -186,7 +185,7 @@ export async function DiscoveryHome({ query, facets, recommended, near, signedIn
           <p className="text-[14px] text-ink-soft"><span className="font-semibold text-ink">{h.forCoaches}</span> {h.forCoachesBody}</p>
           <Link href={coachCtaHref}
             className="inline-flex h-11 shrink-0 items-center rounded-2xl bg-bg px-5 font-display text-sm font-bold hover:bg-accent-soft">
-            {h.forCoachesCta} →
+            {h.forCoachesCta}
           </Link>
         </div>
       </section>
@@ -202,7 +201,7 @@ function SectionHead({ id, title, hint, link }: { id: string; title: string; hin
         {hint ? <p className="mt-1 max-w-[62ch] text-[13.5px] text-ink-faint">{hint}</p> : null}
       </div>
       {link ? (
-        <Link href={link.href} className="shrink-0 text-[14px] font-semibold text-accent-ink hover:underline">{link.label} →</Link>
+        <Link href={link.href} className="shrink-0 text-[14px] font-semibold text-accent-ink hover:underline">{link.label}</Link>
       ) : null}
     </div>
   );

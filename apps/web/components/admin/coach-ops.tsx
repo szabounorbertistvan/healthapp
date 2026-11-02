@@ -30,13 +30,13 @@ export async function AdminCoachOps({ summary }: { summary: AdminCoachSummary })
             {([["requests", summary.requests], ["bookings", summary.bookings], ["relationships", summary.relationships],
                ["reviews", summary.reviews]] as const).map(([key, data]) => (
               <div key={key}>
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{o[key]}</p>
+                <p className="mb-1.5 text-[11px] font-semibold text-ink-faint">{o[key]}</p>
                 <Breakdown data={data ?? {}} locale={locale} />
               </div>
             ))}
           </div>
           <div className="mt-4">
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{o.services}</p>
+            <p className="mb-1.5 text-[11px] font-semibold text-ink-faint">{o.services}</p>
             {(summary.services ?? []).length === 0 ? <Note>—</Note> : (
               <ul className="grid gap-1.5 text-[13px]">
                 {(summary.services ?? []).map((s) => (
@@ -102,7 +102,7 @@ export async function AdminCoachAttention({ rows }: { rows: AttentionRow[] }) {
                 </span>
               </span>
               <Link href={`/admin/coaches/${r.profile_id}`} className="font-semibold text-accent-ink hover:underline">
-                {t.admin.coaches.review} →
+                {t.admin.coaches.review}
               </Link>
             </li>
           ))}

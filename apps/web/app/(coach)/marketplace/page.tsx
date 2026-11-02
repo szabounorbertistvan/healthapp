@@ -79,7 +79,7 @@ export default async function MarketplacePage() {
       <section className={`${card} mt-5`} data-testid="marketplace-profile" data-state={state} data-completeness={completeness.pct}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+            <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
               state === "published" ? "bg-accent-soft text-accent-ink" : state === "suspended" ? "bg-risk-soft text-risk" : "bg-warn-soft text-warn"}`}>
               {m.states[state]}
             </span>
@@ -107,12 +107,12 @@ export default async function MarketplacePage() {
                 </span>
                 <span className={`truncate ${item.done ? "" : "text-ink-soft"}`}>
                   {item.key === "bio" && !item.done && item.earned > 0 ? m.items.bioShort : m.items[item.key]}
-                  {item.required && !item.done ? <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-wider text-warn">{m.required}</span> : null}
+                  {item.required && !item.done ? <span className="ml-1.5 text-[11px] font-semibold text-warn">{m.required}</span> : null}
                 </span>
               </span>
               {!item.done && profile.status !== "suspended" ? (
                 <Link href={item.href} className="shrink-0 text-[12.5px] font-semibold text-accent-ink hover:underline">
-                  {fill(m.gain, { n: item.weight - item.earned })} →
+                  {fill(m.gain, { n: item.weight - item.earned })}
                 </Link>
               ) : null}
             </li>
@@ -132,7 +132,7 @@ export default async function MarketplacePage() {
         </div>
         {profile.status === "published" ? (
           <div className="mt-4 rounded-2xl bg-bg px-4 py-3">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{m.shareTitle}</p>
+            <p className="text-[12px] font-semibold text-ink-faint">{m.shareTitle}</p>
             <p className="mt-1 select-all break-all font-mono text-[13px]" data-testid="marketplace-share-url">{publicUrl}</p>
             <p className="mt-1 text-[12px] text-ink-faint">{m.shareHint}</p>
           </div>
@@ -142,7 +142,7 @@ export default async function MarketplacePage() {
       {/* ---------- the rest, each leading to the page that manages it ---------- */}
       <div className="mt-3.5 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
         <section className={card} data-testid="marketplace-requests">
-          <h2 className={cardTitle}>{c.requests}<Link href="/requests" className={open}>{c.open} →</Link></h2>
+          <h2 className={cardTitle}>{c.requests}<Link href="/requests" className={open}>{c.open}</Link></h2>
           {o.requests.pending + o.requests.accepted === 0 ? <p className="mt-2 text-[13.5px] text-ink-soft">{c.requestsNone}</p> : (
             <ul className="mt-2 grid gap-1 text-[13.5px]">
               {o.requests.pending ? <li className="font-semibold text-warn">{fill(c.requestsPending, { n: o.requests.pending })}</li> : null}
@@ -152,7 +152,7 @@ export default async function MarketplacePage() {
         </section>
 
         <section className={card} data-testid="marketplace-bookings">
-          <h2 className={cardTitle}>{c.bookings}<Link href="/bookings" className={open}>{c.open} →</Link></h2>
+          <h2 className={cardTitle}>{c.bookings}<Link href="/bookings" className={open}>{c.open}</Link></h2>
           {(o.services?.bookable ?? 0) === 0 && !o.bookings.next ? (
             <p className="mt-2 text-[13.5px] text-ink-soft">{c.bookingsNoBookable} <Link href="/bookings/availability" className={open}>{m.actions.manageAvailability}</Link></p>
           ) : (
@@ -168,7 +168,7 @@ export default async function MarketplacePage() {
         </section>
 
         <section className={card} data-testid="marketplace-clients">
-          <h2 className={cardTitle}>{c.clients}<Link href="/clients" className={open}>{c.open} →</Link></h2>
+          <h2 className={cardTitle}>{c.clients}<Link href="/clients" className={open}>{c.open}</Link></h2>
           {o.clients.active + o.clients.invited + (o.clients.paused ?? 0) === 0 ? <p className="mt-2 text-[13.5px] text-ink-soft">{c.clientsNone}</p> : (
             <ul className="mt-2 grid gap-1 text-[13.5px]">
               <li className="font-semibold">{fill(c.clientsActive, { n: o.clients.active })}</li>
@@ -179,14 +179,14 @@ export default async function MarketplacePage() {
         </section>
 
         <section className={card} data-testid="marketplace-messages">
-          <h2 className={cardTitle}>{c.messages}<Link href="/messages" className={open}>{c.open} →</Link></h2>
+          <h2 className={cardTitle}>{c.messages}<Link href="/messages" className={open}>{c.open}</Link></h2>
           <p className={`mt-2 text-[13.5px] ${o.messages.unread ? "font-semibold" : "text-ink-soft"}`}>
             {o.messages.unread ? fill(c.messagesUnread, { n: o.messages.unread, c: o.messages.conversations_unread }) : c.messagesNone}
           </p>
         </section>
 
         <section className={card} data-testid="marketplace-reviews">
-          <h2 className={cardTitle}>{c.reviews}<Link href="/reviews" className={open}>{c.open} →</Link></h2>
+          <h2 className={cardTitle}>{c.reviews}<Link href="/reviews" className={open}>{c.open}</Link></h2>
           {profile.review_count === 0 || avg === null ? <p className="mt-2 text-[13.5px] text-ink-soft">{c.reviewsNone}</p> : (
             <>
               <p className="mt-2 font-semibold">{fill(profile.review_count === 1 ? c.reviewsOne : c.reviewsAvg, { avg, n: profile.review_count })}</p>
@@ -200,7 +200,7 @@ export default async function MarketplacePage() {
         </section>
 
         <section className={card} data-testid="marketplace-services">
-          <h2 className={cardTitle}>{c.services}<Link href="/settings/coach-profile?step=5" className={open}>{c.open} →</Link></h2>
+          <h2 className={cardTitle}>{c.services}<Link href="/settings/coach-profile?step=5" className={open}>{c.open}</Link></h2>
           <p className="mt-2 text-[13.5px] text-ink-soft">
             {(o.services?.active ?? 0) === 0 ? c.servicesNone : fill(c.servicesActive, { n: o.services!.active, b: o.services!.bookable })}
           </p>

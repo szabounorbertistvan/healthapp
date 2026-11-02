@@ -41,7 +41,7 @@ export async function AdminRevisionReview({ profileId, revision }: { profileId: 
           <ul className="grid gap-2">
             {diff.map((d, i) => (
               <li key={i} className="rounded-2xl bg-bg p-3">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">
+                <p className="text-[12px] font-semibold text-ink-faint">
                   {r.fields[d.field]}{"change" in d ? ` · ${d.name} · ${r.change[d.change]}` : ""}
                 </p>
                 {d.before !== undefined ? <p className="mt-1 whitespace-pre-line text-ink-faint line-through">{d.before}</p> : null}
@@ -76,7 +76,7 @@ export async function AdminRevisionQueue({ rows }: { rows: { coach_profile_id: s
               <span><span className="font-semibold">{row.display_name}</span> <span className="text-ink-faint">/coaches/{row.slug}</span></span>
               <span className="flex items-center gap-3">
                 {row.submitted_at ? <span className="text-ink-faint">{fmtDateTime(row.submitted_at, locale)}</span> : null}
-                <Link href={`/admin/coaches/${row.coach_profile_id}`} className="font-semibold text-accent-ink hover:underline">→</Link>
+                <Link href={`/admin/coaches/${row.coach_profile_id}`} className="font-semibold text-accent-ink hover:underline">{t.admin.coaches.review}</Link>
               </span>
             </li>
           ))}

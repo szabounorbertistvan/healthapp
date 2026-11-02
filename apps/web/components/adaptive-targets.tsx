@@ -80,15 +80,15 @@ export function AdaptiveTargets({
           <p className="mt-1 text-[12.5px] leading-relaxed text-ink-soft">{m.how}</p>
           <dl className="mt-3 grid grid-cols-3 gap-2">
             <div className="rounded-2xl bg-bg/60 p-3">
-              <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint">{m.maintenance}</dt>
+              <dt className="text-[11px] font-semibold text-ink-faint">{m.maintenance}</dt>
               <dd className="mt-0.5 font-display text-xl font-bold tabular-nums text-accent-ink">{estimate.tdee}</dd>
             </div>
             <div className="rounded-2xl bg-bg/60 p-3">
-              <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint">{m.avgIntake}</dt>
+              <dt className="text-[11px] font-semibold text-ink-faint">{m.avgIntake}</dt>
               <dd className="mt-0.5 font-display text-xl font-bold tabular-nums">{estimate.avg_intake}</dd>
             </div>
             <div className="rounded-2xl bg-bg/60 p-3">
-              <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint">{m.weekly}</dt>
+              <dt className="text-[11px] font-semibold text-ink-faint">{m.weekly}</dt>
               <dd className="mt-0.5 font-display text-xl font-bold tabular-nums">
                 {estimate.weekly_change_kg > 0 ? "+" : estimate.weekly_change_kg < 0 ? "−" : ""}{kg(Math.abs(estimate.weekly_change_kg))}
               </dd>

@@ -35,6 +35,6 @@ export const SOCIAL = {
     body: "text-[17px] leading-[1.45]",
     secondary: "text-[13.5px] text-ink-soft",
     count: "text-[14px] font-semibold tabular-nums",
-    time: "text-[11px] font-medium uppercase tracking-[0.06em] text-ink-faint",
+    time: "text-[11px] font-medium text-ink-faint",
   },
 } as const;

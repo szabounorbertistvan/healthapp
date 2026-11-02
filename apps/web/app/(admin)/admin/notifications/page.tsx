@@ -42,7 +42,7 @@ export default async function AdminNotificationsPage() {
             <Kpi label={m.unsent} value={n(s.notifications.unsent)} warn={s.notifications.unsent > 0} />
             <Kpi label={m.unread} value={n(s.notifications.unread)} />
           </KpiGrid>
-          <h3 className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.byCategory}</h3>
+          <h3 className="mb-2 mt-3 text-[11px] font-semibold text-ink-faint">{m.byCategory}</h3>
           <Breakdown data={s.notifications.by_category} locale={locale} />
         </Section>
         <Section title={m.byBrowser}><Breakdown data={s.by_browser} locale={locale} /></Section>

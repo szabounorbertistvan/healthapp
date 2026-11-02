@@ -54,7 +54,7 @@ export function MacroPanel({
   return (
     <Card plain>
       <div className="mb-3.5 flex items-baseline justify-between gap-2">
-        <p className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="min-w-0 truncate text-[11px] font-semibold text-ink-faint">
           {title ?? t.common.macros.todayTitle}
         </p>
         {target.kcal > 0 ? (
@@ -154,7 +154,7 @@ export function AdherenceMeter({ overall, reason }: { overall: number; reason: s
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.charts.thisWeek}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{t.common.charts.thisWeek}</p>
         <p className="text-2xl font-bold tabular-nums">{pct}%</p>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-bg">

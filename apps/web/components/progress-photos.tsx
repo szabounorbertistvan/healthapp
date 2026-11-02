@@ -254,7 +254,7 @@ export function ProgressPhotos({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+    <p className="flex items-center gap-2 text-[11px] font-semibold text-ink-faint">
       <NavIcon
         d="M4 7a2 2 0 0 1 2-2h2l1-2h6l1 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM12 9a3.5 3.5 0 1 0 0 7 3.5 3.5 0 1 0 0-7"
         className="h-[18px] w-[18px] text-accent-ink"

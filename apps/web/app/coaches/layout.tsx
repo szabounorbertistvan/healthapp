@@ -19,7 +19,7 @@ export default async function CoachesLayout({ children }: { children: React.Reac
   const [{ t }, profile, onboarding] = await Promise.all([getI18n(), getProfile(), getOnboardingState()]);
   const p = t.coachProfile.publicPage;
   const appHref = profile ? (profile.role === "client" ? "/today" : "/dashboard") : null;
-  const pill = "inline-flex h-10 items-center rounded-full bg-accent px-4 text-[13.5px] font-semibold text-accent-fg hover:opacity-90 sm:px-[18px]";
+  const pill = "inline-flex h-10 items-center whitespace-nowrap rounded-full bg-accent px-4 text-[13.5px] font-semibold text-accent-fg hover:opacity-90 sm:px-[18px]";
 
   return (
     <div className="mx-auto max-w-[1180px] px-4 pb-28 sm:px-7 sm:pb-16">

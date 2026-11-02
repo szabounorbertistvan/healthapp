@@ -55,15 +55,15 @@ export default async function LandingPage() {
       {/* Hero: the promise on the left, the pair on the right, standing on the section's floor. */}
       <section className="grid items-end gap-0 pt-2 sm:min-h-[520px] sm:grid-cols-[minmax(0,1fr)_minmax(0,440px)] sm:gap-10 sm:pt-5">
         <div className="pb-6 sm:pb-10">
+          {/* The tagline belongs to the lockup, under the wordmark, not over the headline. */}
           <Link href="/" aria-label={APP_NAME} className="inline-flex items-center gap-3 sm:gap-4">
             <LogoMark className="h-14 w-14 sm:h-[72px] sm:w-[72px]" px={72} />
-            <Wordmark className="h-6 sm:h-8" px={32} />
+            <span className="flex flex-col gap-1.5 sm:gap-2">
+              <Wordmark className="h-6 sm:h-8" px={32} />
+              <span className="font-display text-xs font-bold text-accent-ink sm:text-[13px]">{APP_TAGLINE}</span>
+            </span>
           </Link>
-          <p className="mt-5 flex items-center gap-3 font-display text-xs font-bold uppercase tracking-[0.28em] text-accent-ink">
-            <span className="h-px w-8 bg-accent" aria-hidden />
-            {APP_TAGLINE}
-          </p>
-          <h1 className="mt-4 text-balance font-display text-[34px] font-extrabold leading-[1.04] tracking-tight sm:text-[54px]">
+          <h1 className="mt-6 sm:mt-8 text-balance font-display text-[34px] font-extrabold leading-[1.04] tracking-tight sm:text-[54px]">
             {l.heroTitle}
           </h1>
           <p className="mt-4 max-w-[56ch] leading-relaxed text-ink-soft sm:mt-[18px] sm:text-[17px]">
@@ -133,7 +133,7 @@ export default async function LandingPage() {
         {BAND.map((name, i) => (
           <figure
             key={name}
-            className={`m-0 aspect-[3/2] overflow-hidden rounded-3xl bg-[#0b0b0d] ${i === 2 ? "hidden sm:block" : ""}`}
+            className={`m-0 aspect-[3/2] overflow-hidden rounded-3xl bg-story-night ${i === 2 ? "hidden sm:block" : ""}`}
           >
             <Image
               src={`/brand/athletes/hero/${name}.webp`}
@@ -323,15 +323,11 @@ function ImportHistory({ l, appHref }: { l: Dictionary["landing"]; appHref: stri
   return (
     <section className="mt-11 grid gap-8 rounded-3xl bg-surface p-6 sm:mt-[72px] sm:p-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-14">
       <div>
-        <p className="flex items-center gap-3 font-display text-xs font-bold uppercase tracking-[0.28em] text-accent-ink">
-          <span className="h-px w-8 bg-accent" aria-hidden />
-          {h.eyebrow}
-        </p>
-        <h2 className="mt-4 text-balance font-display text-[28px] font-extrabold leading-[1.08] tracking-tight sm:text-[40px]">
+        <h2 className="text-balance font-display text-[28px] font-extrabold leading-[1.08] tracking-tight sm:text-[40px]">
           {h.title}
         </h2>
         <p className="mt-4 max-w-[54ch] leading-relaxed text-ink-soft sm:text-[16px]">{fill(h.body, { app: APP_NAME })}</p>
-        <p className="mt-6 text-[12px] font-bold uppercase tracking-[0.16em] text-ink-faint">{h.sourcesLabel}</p>
+        <p className="mt-6 text-[12px] font-bold text-ink-faint">{h.sourcesLabel}</p>
         <ul className="mt-2.5 flex flex-wrap gap-2">
           {h.sources.map((name) => (
             <li key={name} className="inline-flex h-9 items-center rounded-full bg-bg px-3.5 text-[13px] font-semibold">
@@ -440,7 +436,7 @@ function BenefitColumn({
             </svg>
             <span className="min-w-0">
               {item}{" "}
-              <span className="whitespace-nowrap rounded-full bg-ink/[0.07] px-1.5 py-0.5 align-[1px] font-display text-[10px] font-bold uppercase tracking-[0.12em]">
+              <span className="whitespace-nowrap rounded-full bg-ink/[0.07] px-1.5 py-0.5 align-[1px] font-display text-[11px] font-bold ">
                 {soonLabel}
               </span>
             </span>

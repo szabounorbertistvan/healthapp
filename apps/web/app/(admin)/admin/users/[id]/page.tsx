@@ -143,11 +143,11 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
                 </KpiGrid>
                 <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.activity.topExercises}</h3>
+                    <h3 className="mb-2 text-[11px] font-semibold text-ink-faint">{m.activity.topExercises}</h3>
                     <Breakdown data={Object.fromEntries(d.activity.top_exercises.map((x) => [x.name, x.sets]))} locale={locale} />
                   </div>
                   <div>
-                    <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.activity.challenges}</h3>
+                    <h3 className="mb-2 text-[11px] font-semibold text-ink-faint">{m.activity.challenges}</h3>
                     {d.activity.challenges.length === 0 ? <p className="text-[13px] text-ink-faint">{m.activity.noChallenges}</p> : (
                       <ul className="space-y-1.5 text-[12.5px]">
                         {d.activity.challenges.map((ch) => (
@@ -158,7 +158,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
                         ))}
                       </ul>
                     )}
-                    <h3 className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.activity.badges}</h3>
+                    <h3 className="mb-2 mt-4 text-[11px] font-semibold text-ink-faint">{m.activity.badges}</h3>
                     {d.activity.badges.length === 0 ? <p className="text-[13px] text-ink-faint">{m.activity.noBadges}</p> : (
                       <div className="flex flex-wrap gap-1.5">{d.activity.badges.map((b) => <Pill key={b.slug} tone="accent">{b.name}</Pill>)}</div>
                     )}
@@ -166,7 +166,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
                 </div>
               </div>
               <div>
-                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.activity.fitness}</h3>
+                <h3 className="mb-2 text-[11px] font-semibold text-ink-faint">{m.activity.fitness}</h3>
                 <FitnessScoreCoachCard view={fitness} />
               </div>
             </div>
@@ -189,7 +189,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
                   ...(p.role !== "client" ? [{ label: m.nutrition.plansBuilt, value: n(d.nutrition.plans_built) }] : []),
                 ]} />
               </div>
-              <h3 className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.nutrition.methods}</h3>
+              <h3 className="mb-2 mt-3 text-[11px] font-semibold text-ink-faint">{m.nutrition.methods}</h3>
               <Breakdown data={d.nutrition.methods} labels={t.admin.nutrition.methods} locale={locale} />
             </Section>
 
@@ -223,7 +223,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
                 <Kpi label={m.social.followers} value={n(d.social.followers)} />
                 <Kpi label={m.social.following} value={n(d.social.following)} />
               </KpiGrid>
-              <h3 className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.social.recent}</h3>
+              <h3 className="mb-2 mt-3 text-[11px] font-semibold text-ink-faint">{m.social.recent}</h3>
               {d.social.recent_posts.length === 0 ? <p className="text-[13px] text-ink-faint">{m.social.noPosts}</p> : (
                 <ul className="divide-y divide-line/60 text-[12.5px]">
                   {d.social.recent_posts.map((post) => (
@@ -246,7 +246,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
               ]} />
               {p.role !== "client" ? (
                 <>
-                  <h3 className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.coaching.clients} · {d.coaching.clients.length}</h3>
+                  <h3 className="mb-2 mt-3 text-[11px] font-semibold text-ink-faint">{m.coaching.clients} · {d.coaching.clients.length}</h3>
                   {d.coaching.clients.length === 0 ? <p className="text-[13px] text-ink-faint">{m.coaching.noClients}</p> : (
                     <ul className="space-y-1.5">
                       {d.coaching.clients.map((cl) => (
@@ -257,7 +257,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
                       ))}
                     </ul>
                   )}
-                  <h3 className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.coaching.invitationsSent} · {d.coaching.invitations_sent.length}</h3>
+                  <h3 className="mb-2 mt-3 text-[11px] font-semibold text-ink-faint">{m.coaching.invitationsSent} · {d.coaching.invitations_sent.length}</h3>
                   {d.coaching.invitations_sent.length === 0 ? <p className="text-[13px] text-ink-faint">{m.coaching.none}</p> : (
                     <ul className="space-y-1 text-[12.5px]">
                       {d.coaching.invitations_sent.slice(0, 10).map((inv) => (
@@ -270,7 +270,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
                   )}
                 </>
               ) : null}
-              <h3 className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.coaching.invitationsReceived} · {d.coaching.invitations_received.length}</h3>
+              <h3 className="mb-2 mt-3 text-[11px] font-semibold text-ink-faint">{m.coaching.invitationsReceived} · {d.coaching.invitations_received.length}</h3>
               {d.coaching.invitations_received.length === 0 ? <p className="text-[13px] text-ink-faint">{m.coaching.none}</p> : (
                 <ul className="space-y-1 text-[12.5px]">
                   {d.coaching.invitations_received.map((inv) => (
@@ -289,7 +289,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
                 <Kpi label={m.auth.logins30d} value={n(d.auth.logins_30d)} />
                 <Kpi label={m.auth.failed30d} value={n(d.auth.failed_30d)} warn={d.auth.failed_30d > 0} />
               </KpiGrid>
-              <h3 className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.auth.history}</h3>
+              <h3 className="mb-2 mt-3 text-[11px] font-semibold text-ink-faint">{m.auth.history}</h3>
               {d.auth.history.length === 0 ? <p className="text-[13px] text-ink-faint">{m.auth.noHistory}</p> : (
                 <Table head={<><Th>{t.admin.auth.th.when}</Th><Th>{t.admin.activity.th.action}</Th><Th>{t.admin.auth.th.provider}</Th><Th>{t.admin.auth.th.ip}</Th></>}>
                   {d.auth.history.map((h, i) => (
@@ -311,7 +311,7 @@ export default async function AdminUserPage({ params, searchParams }: { params: 
                 <Kpi label={m.devices.restCancelled} value={n(d.devices.rest_pushes_cancelled)} />
                 <Kpi label={m.devices.notifications} value={n(d.devices.notifications)} sub={`${n(d.devices.notifications_unread)} ${m.devices.unread}`} />
               </KpiGrid>
-              <h3 className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.devices.push}</h3>
+              <h3 className="mb-2 mt-3 text-[11px] font-semibold text-ink-faint">{m.devices.push}</h3>
               {d.devices.push_subscriptions.length === 0 ? <Note>{m.devices.noPush}</Note> : (
                 <ul className="divide-y divide-line/60 text-[12.5px]">
                   {d.devices.push_subscriptions.map((s) => (

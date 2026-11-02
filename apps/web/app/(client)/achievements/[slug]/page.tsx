@@ -55,7 +55,7 @@ export default async function AchievementPage({ params }: { params: Promise<{ sl
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {isAchievementRarity(row.rarity) ? <RarityChip rarity={row.rarity} label={a.rarities[row.rarity]} /> : null}
               {isAchievementCategory(row.category) ? (
-                <span className="inline-flex rounded-full bg-bg px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-ink-soft">
+                <span className="inline-flex rounded-full bg-bg px-2 py-0.5 text-[11px] font-bold text-ink-soft">
                   {a.categories[row.category]}
                 </span>
               ) : null}
@@ -65,12 +65,12 @@ export default async function AchievementPage({ params }: { params: Promise<{ sl
 
         <dl className="mt-5 space-y-4 text-[13.5px]">
           <div>
-            <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-ink-soft">{a.requirementLabel}</dt>
+            <dt className="text-[11px] font-bold text-ink-soft">{a.requirementLabel}</dt>
             <dd className="mt-1">{requirementText(a, row.metric, row.target, locale)}</dd>
           </div>
 
           <div>
-            <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-ink-soft">{a.progressLabel}</dt>
+            <dt className="text-[11px] font-bold text-ink-soft">{a.progressLabel}</dt>
             <dd className="mt-1.5">
               <ChallengeProgressBar pct={p.percent} completed={earned} height="h-2.5" />
               <div className="mt-1.5 flex justify-between gap-2 tabular-nums">
@@ -82,14 +82,14 @@ export default async function AchievementPage({ params }: { params: Promise<{ sl
           </div>
 
           <div>
-            <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-ink-soft">{a.earnedLabel}</dt>
+            <dt className="text-[11px] font-bold text-ink-soft">{a.earnedLabel}</dt>
             <dd className="mt-1">
               {earned ? fill(a.earnedOn, { date: df.format(new Date(row.awarded_at!)) }) : a.notEarned}
             </dd>
           </div>
 
           <div>
-            <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-ink-soft">{a.howCounted}</dt>
+            <dt className="text-[11px] font-bold text-ink-soft">{a.howCounted}</dt>
             <dd className="mt-1 text-ink-soft">{metricExplanation(a, row.metric)}</dd>
           </div>
         </dl>

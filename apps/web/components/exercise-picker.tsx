@@ -151,7 +151,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
 
       {created ? (
         <p className="rounded-2xl bg-accent-soft px-3.5 py-2.5 text-[12.5px] font-semibold text-accent-ink">
-          {created} — {t.coachWidgets.newExerciseForm.created}
+          {created}: {t.coachWidgets.newExerciseForm.created}
         </p>
       ) : null}
 
@@ -230,7 +230,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
                     <span className="min-w-0 truncate">{exercise.name_en}</span>
                     {exercise.mine ? (
                       <>
-                        <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent-ink">{m.mine}</span>
+                        <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-0.5 text-[9px] font-semibold text-accent-ink">{m.mine}</span>
                         <button
                           type="button"
                           onClick={() => { setNewName(exercise.name_en); setRenaming(exerciseRef(exercise)); }}

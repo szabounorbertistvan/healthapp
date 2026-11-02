@@ -28,10 +28,10 @@ export function InviteButton({ disabled = false }: { disabled?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {code ? (
-        <span className="inline-flex h-9 items-center gap-2 rounded-full bg-accent-soft px-3.5 text-[13px] font-bold tabular-nums tracking-widest text-accent-ink">
+        <span className="inline-flex h-9 items-center gap-2 rounded-full bg-accent-soft px-3.5 text-[13px] font-bold tabular-nums tracking-wide text-accent-ink">
           {code}
           <button
-            className="text-[11px] font-semibold uppercase tracking-wider underline underline-offset-2 hover:opacity-80"
+            className="text-[11px] font-semibold underline underline-offset-2 hover:opacity-80"
             onClick={() => navigator.clipboard.writeText(code)}
           >
             {m.copy}

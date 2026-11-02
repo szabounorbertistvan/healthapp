@@ -33,7 +33,7 @@ export function Card({ children, className = "", plain = false }: { children: Re
 export function StatCard({ label, value, accent = false }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <Card className="flex-1 min-w-32">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{label}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{label}</p>
       <p className={`mt-1 text-2xl font-bold tabular-nums ${accent ? "text-accent-ink" : ""}`}>{value}</p>
     </Card>
   );

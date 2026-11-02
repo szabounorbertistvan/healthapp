@@ -254,7 +254,7 @@ function CopyToClient({ programId, clients }: { programId: string; clients: { id
   }
   return (
     <Card plain className="mt-4">
-      <label className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint" htmlFor="copy-target">
+      <label className="block text-[11px] font-semibold text-ink-faint" htmlFor="copy-target">
         {c.pick}
       </label>
       <div className="mt-2 flex flex-wrap items-center gap-2">

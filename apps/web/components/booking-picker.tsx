@@ -118,10 +118,10 @@ export function BookingPicker({
         <>
           <section aria-label={b.chooseDay}>
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{b.chooseDay}</h2>
+              <h2 className="text-[12px] font-semibold text-ink-faint">{b.chooseDay}</h2>
               <span className="flex gap-1.5">
-                {prevHref ? <Link href={prevHref} className="inline-flex h-9 items-center rounded-xl bg-surface px-3 text-[13px] font-semibold text-ink-soft hover:text-ink">← {b.prevWeek}</Link> : null}
-                {nextHref ? <Link href={nextHref} className="inline-flex h-9 items-center rounded-xl bg-surface px-3 text-[13px] font-semibold text-ink-soft hover:text-ink" data-testid="booking-next-week">{b.nextWeek} →</Link> : null}
+                {prevHref ? <Link href={prevHref} className="inline-flex h-9 items-center rounded-xl bg-surface px-3 text-[13px] font-semibold text-ink-soft hover:text-ink">{b.prevWeek}</Link> : null}
+                {nextHref ? <Link href={nextHref} className="inline-flex h-9 items-center rounded-xl bg-surface px-3 text-[13px] font-semibold text-ink-soft hover:text-ink" data-testid="booking-next-week">{b.nextWeek}</Link> : null}
               </span>
             </div>
             <div className="mt-2 grid grid-cols-7 gap-1.5">
@@ -132,7 +132,7 @@ export function BookingPicker({
                     aria-pressed={day === d} data-testid="booking-day" data-date={d} data-slots={count}
                     className={`flex flex-col items-center rounded-2xl px-1 py-2.5 text-center disabled:opacity-40 ${
                       day === d ? "bg-accent text-accent-fg" : "bg-surface text-ink hover:bg-accent-soft/60"}`}>
-                    <span className="text-[11px] font-semibold uppercase">{dayLabel(d, { weekday: "short" })}</span>
+                    <span className="text-[11px] font-semibold">{dayLabel(d, { weekday: "short" })}</span>
                     <span className="font-display text-[17px] font-bold tabular-nums">{dayLabel(d, { day: "numeric" })}</span>
                   </button>
                 );
@@ -143,7 +143,7 @@ export function BookingPicker({
 
           {slots.length > 0 ? (
             <section aria-label={b.chooseTime}>
-              <h2 className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">
+              <h2 className="text-[12px] font-semibold text-ink-faint">
                 {b.chooseTime} · {dayLabel(day, { weekday: "long", day: "numeric", month: "long" })}
               </h2>
               {daySlots.length === 0 ? <p className="mt-2 text-[13px] text-ink-faint">{b.noSlotsDay}</p> : (

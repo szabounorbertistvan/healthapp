@@ -41,7 +41,7 @@ export function CheckInForm({ questions = [] }: { questions?: CheckInQuestion[] 
     <Card plain>
       <div className="space-y-5">
         <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          <span className="text-[11px] font-semibold text-ink-faint">
             {fill(t.clientWidgets.checkInForm.weightKg, { unit: u.weightUnit })}
           </span>
           <input
@@ -82,7 +82,7 @@ export function CheckInForm({ questions = [] }: { questions?: CheckInQuestion[] 
 
         {questions.length > 0 ? (
           <div className="rounded-2xl bg-bg px-4 py-3.5" data-testid="check-in-coach-questions">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientWidgets.checkInForm.coachQuestions}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{t.clientWidgets.checkInForm.coachQuestions}</p>
             <div className="mt-1 divide-y divide-line/60">
               {questions.map((q) => (
                 <QuestionField key={q.id} question={q} value={answers[q.id]}
@@ -97,7 +97,7 @@ export function CheckInForm({ questions = [] }: { questions?: CheckInQuestion[] 
         ) : null}
 
         <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          <span className="text-[11px] font-semibold text-ink-faint">
             {t.clientWidgets.checkInForm.coachNote}
           </span>
           <textarea

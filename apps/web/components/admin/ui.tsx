@@ -40,7 +40,7 @@ export function Section({ title, hint, children, className = "", actions }: { ti
     <section className={`glass rounded-3xl p-4 sm:p-5 ${className}`}>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{title}</h2>
+          <h2 className="text-[11px] font-semibold text-ink-faint">{title}</h2>
           {hint ? <p className="mt-1 text-[12px] leading-relaxed text-ink-faint">{hint}</p> : null}
         </div>
         {actions}
@@ -63,7 +63,7 @@ export function Kpi({ label, value, sub, accent = false, unavailable, warn = fal
 }) {
   const body = (
     <>
-      <p className="text-[10.5px] font-semibold uppercase leading-snug tracking-wider text-ink-faint">{label}</p>
+      <p className="text-[11px] font-semibold leading-snug text-ink-faint">{label}</p>
       {unavailable ? (
         <p className="mt-1 font-display text-[22px] font-extrabold leading-none text-ink-faint" title={unavailable}>—</p>
       ) : (
@@ -108,7 +108,7 @@ export function Table({ head, children, empty }: { head: React.ReactNode; childr
     <div className="-mx-4 overflow-x-auto sm:-mx-5">
       <table className="w-full min-w-[640px] text-[13px]">
         <thead>
-          <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-faint">{head}</tr>
+          <tr className="text-left text-[11px] text-ink-faint">{head}</tr>
         </thead>
         <tbody className="divide-y divide-line/60">
           {empty ? (
@@ -180,9 +180,9 @@ export function Pager({ page, pages, first, last, total, href, labels }: {
 /** A GET filter form's select, keeping the current value. */
 export function Select({ name, value, options, label, allLabel }: { name: string; value: string | null; options: { value: string; label: string }[]; label: string; allLabel: string }) {
   return (
-    <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+    <label className="flex flex-col gap-1 text-[11px] font-semibold text-ink-faint">
       {label}
-      <select name={name} defaultValue={value ?? ""} className="h-9 rounded-xl border border-line bg-surface px-2.5 text-[13px] font-medium normal-case tracking-normal text-ink outline-none focus:border-accent">
+      <select name={name} defaultValue={value ?? ""} className="h-9 rounded-xl border border-edge bg-surface px-2.5 text-[13px] font-medium normal-case tracking-normal text-ink outline-none focus:border-accent">
         <option value="">{allLabel}</option>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>

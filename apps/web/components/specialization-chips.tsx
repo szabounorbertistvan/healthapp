@@ -67,7 +67,7 @@ export function SpecializationChips<T extends TaxonomyEntry>({
       <div className="mt-3 grid gap-4">
         {groups.map((g) => (
           <div key={g.category} role="group" aria-labelledby={`${ids}-${g.category}`} data-category={g.category}>
-            <p id={`${ids}-${g.category}`} className="text-[11.5px] font-bold uppercase tracking-[0.12em] text-ink-faint">
+            <p id={`${ids}-${g.category}`} className="text-[11.5px] font-bold text-ink-faint">
               {x.groups[g.category]}
             </p>
             {g.items.some((i) => i.styles.length === 0) ? (

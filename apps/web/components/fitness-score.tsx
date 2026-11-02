@@ -148,7 +148,7 @@ export function FitnessScoreCard({ view }: { view: FitnessScoreView }) {
   return (
     <Card plain>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.f.title}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{x.f.title}</p>
         <p className="text-[11px] text-ink-faint">{x.f.last28Days}</p>
       </div>
       <div className="mt-2">
@@ -169,7 +169,7 @@ export function FitnessScoreCard({ view }: { view: FitnessScoreView }) {
         ) : <UpgradeHint feature="fitnessTrend" upgrade={upgrade} />}
       </div>
       <Link href="/fitness-score" className="mt-3.5 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
-        {x.f.viewDetails} →
+        {x.f.viewDetails}
       </Link>
     </Card>
   );
@@ -188,7 +188,7 @@ export function FitnessScoreDetail({ view }: { view: FitnessScoreView }) {
     <div className="space-y-4">
       <Card plain>
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.f.title}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{x.f.title}</p>
           <p className="text-[11px] tabular-nums text-ink-faint">
             {x.f.last28Days} · {x.period(current.period)}
           </p>
@@ -201,7 +201,7 @@ export function FitnessScoreDetail({ view }: { view: FitnessScoreView }) {
       {plan.progressCharts ? (
       <>
       <Card plain>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.f.trendTitle}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{x.f.trendTitle}</p>
         <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
             <p className="text-xs text-ink-faint">{x.f.currentPeriod}</p>
@@ -220,7 +220,7 @@ export function FitnessScoreDetail({ view }: { view: FitnessScoreView }) {
 
       <Card plain>
         <div className="flex items-baseline justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.f.weights}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{x.f.weights}</p>
           <p className="text-[11px] text-ink-faint">{x.f.last28Days}</p>
         </div>
         <div className="mt-3">
@@ -233,7 +233,7 @@ export function FitnessScoreDetail({ view }: { view: FitnessScoreView }) {
       )}
 
       <Card plain>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.f.howTitle}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{x.f.howTitle}</p>
         <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{x.f.howIntro}</p>
         <dl className="mt-3 space-y-2.5">
           {COMPONENTS.map((key) => (
@@ -264,7 +264,7 @@ export function FitnessScoreCoachCard({ view }: { view: FitnessScoreView }) {
   return (
     <Card>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{x.f.coachTitle}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{x.f.coachTitle}</p>
         <p className="text-[11px] tabular-nums text-ink-faint">
           {x.f.last28Days} · {x.period(current.period)}
         </p>

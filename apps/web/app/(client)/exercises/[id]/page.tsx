@@ -118,7 +118,7 @@ export default async function ExerciseDetailPage({
         <ExerciseVideo exerciseId={profile.id} videoUrl={profile.video_url} source={profile.video_source} mine={profile.mine} />
         {steps.length > 0 ? (
           <>
-            <p className="mt-5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.howTo}</p>
+            <p className="mt-5 text-[11px] font-semibold text-ink-faint">{d.howTo}</p>
             <ol className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-ink-soft">
               {steps.map((step, i) => (
                 <li key={i} className="flex gap-3">

@@ -77,7 +77,7 @@ export default async function PeoplePage({
         {!results ? (
           suggested.length > 0 ? (
             <>
-              <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">{s.suggested}</h2>
+              <h2 className="text-xs font-bold text-ink-soft">{s.suggested}</h2>
               <div className="mt-2.5">
                 <PeopleList people={suggested} viewerId={viewer} detail={detail} />
               </div>

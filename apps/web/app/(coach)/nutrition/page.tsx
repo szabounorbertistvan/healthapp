@@ -49,7 +49,7 @@ export default async function NutritionPage() {
                     </div>
                   </div>
                   <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                       p.status === "published" ? "bg-accent-soft text-accent-ink" : "bg-bg text-ink-faint"
                     }`}
                   >
@@ -59,7 +59,7 @@ export default async function NutritionPage() {
 
                 <div className="mt-4 flex items-end justify-between gap-3 rounded-2xl bg-bg px-4 py-3.5">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{n.kcal}</p>
+                    <p className="text-[11px] font-semibold text-ink-faint">{n.kcal}</p>
                     <p className="mt-1 font-display text-[28px] font-extrabold tabular-nums leading-none">
                       {p.kcal_target}
                     </p>
@@ -83,7 +83,7 @@ export default async function NutritionPage() {
 function Macro({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{label}</dt>
+      <dt className="text-[11px] font-semibold text-ink-faint">{label}</dt>
       <dd className="mt-1 font-display text-base font-bold tabular-nums leading-none">
         {value}
         <span className="ml-0.5 font-sans text-[11px] font-medium text-ink-faint">g</span>

@@ -67,7 +67,7 @@ export function AdminMobileNav({ items, labels }: { items: AdminNavItem[]; label
           aria-label={labels.menu}
           className="glass glass--strong fixed inset-y-3 left-3 z-40 w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto rounded-3xl p-3 outline-none lg:hidden"
         >
-          <Dialog.Title className="mb-2 px-3 pt-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{labels.menu}</Dialog.Title>
+          <Dialog.Title className="mb-2 px-3 pt-1 text-[11px] font-semibold text-ink-faint">{labels.menu}</Dialog.Title>
           <AdminNav items={items} />
           <Dialog.Close className="sr-only">{labels.close}</Dialog.Close>
         </Dialog.Popup>

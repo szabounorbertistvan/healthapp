@@ -76,8 +76,8 @@ export function NewPlanForm({
   }
 
   const field =
-    "w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent";
-  const label = "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-ink-faint";
+    "w-full rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent";
+  const label = "mb-1.5 block text-[11px] font-semibold text-ink-faint";
 
   return (
     <form onSubmit={submit} className="max-w-md space-y-4">

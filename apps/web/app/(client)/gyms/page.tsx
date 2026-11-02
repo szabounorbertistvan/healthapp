@@ -42,7 +42,7 @@ export default async function GymsPage() {
         <GymMapLoader pins={pins} homeGymId={my.home?.id ?? null} />
         {pins.length > 0 ? (
           <section className="mt-5">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+            <h2 className="text-[11px] font-semibold text-ink-faint">
               {local.length > 0 ? fill(h.listIn, { city: local[0].city }) : h.listTop}
             </h2>
             <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

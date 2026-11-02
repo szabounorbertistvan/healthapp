@@ -54,7 +54,7 @@ export function GymRecords({
         <div className="mt-3 rounded-2xl bg-bg px-4 py-3">
           <p className="text-[13.5px] font-semibold">{t.optInTitle}</p>
           <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-faint">{t.optInHint}</p>
-          <Link href="/account" className="mt-2 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">{t.optIn} →</Link>
+          <Link href="/account" className="mt-2 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">{t.optIn}</Link>
         </div>
       ) : null}
 

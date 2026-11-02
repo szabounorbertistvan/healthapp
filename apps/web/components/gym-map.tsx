@@ -202,7 +202,7 @@ export function GymMap({ pins, homeGymId }: { pins: GymPin[]; homeGymId: string 
     const open = document.createElement("a");
     open.href = `/gyms/${pin.id}`;
     open.className = "mt-2 inline-block text-[13px] font-semibold underline";
-    open.textContent = `${h.open} →`;
+    open.textContent = h.open;
     open.addEventListener("click", (e) => { e.preventDefault(); router.push(`/gyms/${pin.id}`); });
     root.append(open);
     return root;

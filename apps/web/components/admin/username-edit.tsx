@@ -43,7 +43,7 @@ export function UsernameEdit({ userId, current }: { userId: string; current: str
         <form method="dialog" className="p-5" onSubmit={(e) => { e.preventDefault(); save(); }}>
           <h2 className="font-display text-lg font-extrabold tracking-tight">{m.renameTitle}</h2>
           <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{m.renameBody}</p>
-          <label className="mt-4 block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          <label className="mt-4 block text-[11px] font-semibold text-ink-faint">
             {m.renameLabel}
             <input value={value} onChange={(e) => setValue(e.target.value)} maxLength={24} required autoComplete="off" spellCheck={false}
               className="mt-1 h-10 w-full rounded-xl border border-line bg-bg px-3 text-[13px] font-normal normal-case tracking-normal text-ink outline-none focus:border-accent" />

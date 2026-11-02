@@ -72,7 +72,7 @@ export function VerificationCard({ data }: { data: MyCoachProfile }) {
           {p.verification_status === "verified" ? (
             <VerifiedBadge verified size="md" />
           ) : (
-            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${TONE[view.tone]}`}>
+            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${TONE[view.tone]}`}>
               {v.statuses[p.verification_status]}
             </span>
           )}
@@ -89,18 +89,18 @@ export function VerificationCard({ data }: { data: MyCoachProfile }) {
 
         {view.canRequest ? (
           <div className="mt-4 grid gap-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{v.requirements}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{v.requirements}</p>
             <ul className="grid gap-1.5 text-[14px]">
               <li className="flex items-center gap-2" data-done={complete}>
                 <Tick done={complete} />
                 <span className={complete ? "" : "text-ink-soft"}>{v.reqProfile}</span>
-                {!complete ? <span className="text-[12.5px] text-ink-faint">— {open.join(", ")}</span> : null}
+                {!complete ? <span className="text-[12.5px] text-ink-faint">({open.join(", ")})</span> : null}
               </li>
               <li className="flex items-center gap-2" data-done={data.certifications.length > 0} data-optional>
                 <Tick done={data.certifications.length > 0} optional />
                 <span className={data.certifications.length ? "" : "text-ink-soft"}>{v.reqCredentials}</span>
                 {data.certifications.length ? (
-                  <span className="text-[12.5px] text-ink-faint">— {fill(v.reqCredentialsCount, { n: data.certifications.length })}</span>
+                  <span className="text-[12.5px] text-ink-faint">({fill(v.reqCredentialsCount, { n: data.certifications.length })})</span>
                 ) : null}
               </li>
             </ul>
@@ -108,7 +108,7 @@ export function VerificationCard({ data }: { data: MyCoachProfile }) {
         ) : null}
 
         <div className="mt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{v.submitted}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{v.submitted}</p>
           {data.certifications.length === 0 ? (
             <p className={HINT}>{v.noCredentials}</p>
           ) : (

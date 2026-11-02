@@ -35,13 +35,13 @@ export default async function BillingPage() {
       </div>
 
       <Card plain>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Your plan</p>
+        <p className="text-[11px] font-semibold text-ink-faint">Your plan</p>
         <div className="mt-3 grid gap-3">
           <div className="rounded-2xl bg-bg px-4 py-[18px]">
             <div className="flex items-center justify-between gap-3">
               <p className="font-display text-lg font-bold tracking-tight">{TIER_LABEL.free}</p>
               {tier === "free" ? (
-                <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">Current</span>
+                <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent-ink">Current</span>
               ) : null}
             </div>
             <PlanFeatureList list="free" className="mt-2.5" />

@@ -1,3 +1,11 @@
+/* Hallmark · checked: 2026-11-02 · genre: atmospheric (inferred)
+ * floor: 16 FAIL left, all 19 (the owner's: data dashes for empty values and ranges, the deletion notice verbatim)
+ * fixed: 11 gates (10a, 30a, 34, 39a, 40, 48, 54, 63, 67, 19 in prose, 20) · structural: 4 printed (44c, 58, 77, 78)
+ * built: the project · redesign: polish · v2.0.0 */
+/* Hallmark · waive 24b · the story ring band and the reaction spark offset are 2.5px · half of a 5px spark, and the ring band the avatar sits in */
+/* Hallmark · waive 28b · the barcode scanner video is the live camera, opened on a tap, never the LCP · it has no frame to poster before the camera starts */
+/* Hallmark · dismissed 41 · accent-ink is gold text on the near-black page; text on a gold fill is accent-fg */
+/* Hallmark · dismissed 54 · SectionHead in the Discovery Home renders an h2 with the id each section is labelled by */
 @import "tailwindcss";
 
 /*
@@ -22,8 +30,12 @@
   --color-surface: #16171a;
   --color-ink: #f2efe8;
   --color-ink-soft: #b9b5ab;
-  --color-ink-faint: #807c73;
+  --color-ink-faint: #8c887e;
   --color-line: #2a2b30;
+  /* A form field edge: 3:1 against the surface it sits on, which a hairline is not. */
+  --color-edge: #706c63;
+  /* The cool half of the ambient light behind the glass (body::before). */
+  --color-glow-cool: #7a92be;
   --color-accent: #d4a938;
   --color-accent-fg: #0b0b0d;
   --color-accent-ink: #e6c25a;
@@ -44,12 +56,19 @@
   --color-story-night-ink: #f2efe8;
   --color-story-paper: #f2efe8;
   --color-story-paper-ink: #0b0b0d;
+  /* Text laid over a photo on a share card: white, like the photo apps do. */
+  --color-story-photo-ink: #fbfaf7;
   --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
   --font-display: var(--font-exo2), var(--font-inter), system-ui, sans-serif;
 }
 
 :root {
   color-scheme: dark;
+  /* Near-absolute light and shade for the materials (the gold pane, shadows): not a
+     surface, so they stay the same in both themes. */
+  --color-light: #fffdf7;
+  --color-light-warm: #fff4c8;
+  --color-shade: #050506;
 }
 
 /* The light palette, defined once and applied twice: by the device preference
@@ -60,11 +79,13 @@
   :root:not([data-theme="dark"]) {
     color-scheme: light;
     --color-bg: #e6e9ef;
-    --color-surface: #ffffff;
+    --color-surface: #fbfcfe;
     --color-ink: #121519;
     --color-ink-soft: #464d56;
-    --color-ink-faint: #737b85;
+    --color-ink-faint: #5f6670;
     --color-line: #dee3ea;
+    --color-edge: #848c96;
+    --color-glow-cool: #6e8abe;
     --color-accent: #c9a227;
     --color-accent-fg: #16161a;
     --color-accent-ink: #7f5c0b;
@@ -83,11 +104,13 @@
 :root[data-theme="light"] {
   color-scheme: light;
   --color-bg: #e6e9ef;
-  --color-surface: #ffffff;
+  --color-surface: #fbfcfe;
   --color-ink: #121519;
   --color-ink-soft: #464d56;
-  --color-ink-faint: #737b85;
+  --color-ink-faint: #5f6670;
   --color-line: #dee3ea;
+  --color-edge: #848c96;
+  --color-glow-cool: #6e8abe;
   --color-accent: #c9a227;
   --color-accent-fg: #16161a;
   --color-accent-ink: #7f5c0b;
@@ -101,6 +124,11 @@
   --color-tile-soft: #b9b5ab;
   --color-tile-accent: #e6c25a;
   --color-tile-line: #2f3339;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
 }
 
 body {
@@ -118,9 +146,15 @@ body {
   background: color-mix(in srgb, var(--color-bg) 70%, transparent);
   backdrop-filter: blur(6px);
 }
-body:has(.login-dialog[open]),
-body:has(.app-dialog[open]) {
-  overflow: hidden;
+html,
+body {
+  overflow-x: clip;
+}
+/* The scroll lock sits on <html>: once html clips, the overflow of body no
+   longer reaches the viewport, and clip on the root is read as hidden. */
+html:has(.login-dialog[open]),
+html:has(.app-dialog[open]) {
+  overflow: clip;
 }
 
 /* The wordmark PNG is white lettering from the logo; on the light theme flip it to ink. */
@@ -288,26 +322,26 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(70% 55% at 10% -8%, rgba(212, 169, 56, 0.26), transparent 62%),
-    radial-gradient(55% 48% at 100% 22%, rgba(122, 146, 190, 0.2), transparent 60%),
-    radial-gradient(45% 38% at 24% 78%, rgba(212, 169, 56, 0.12), transparent 60%),
-    radial-gradient(60% 45% at 62% 108%, rgba(150, 170, 210, 0.13), transparent 62%);
+    radial-gradient(70% 55% at 10% -8%, color-mix(in srgb, var(--color-accent) 26%, transparent), transparent 62%),
+    radial-gradient(55% 48% at 100% 22%, color-mix(in srgb, var(--color-glow-cool) 20%, transparent), transparent 60%),
+    radial-gradient(45% 38% at 24% 78%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 60%),
+    radial-gradient(60% 45% at 62% 108%, color-mix(in srgb, var(--color-glow-cool) 13%, transparent), transparent 62%);
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) body::before {
     background:
-      radial-gradient(70% 50% at 8% -6%, rgba(201, 162, 39, 0.42), transparent 62%),
-      radial-gradient(55% 45% at 102% 26%, rgba(110, 138, 190, 0.38), transparent 60%),
-      radial-gradient(45% 35% at 22% 72%, rgba(201, 162, 39, 0.2), transparent 60%),
-      radial-gradient(60% 45% at 60% 110%, rgba(255, 255, 255, 0.95), transparent 62%);
+      radial-gradient(70% 50% at 8% -6%, color-mix(in srgb, var(--color-accent) 42%, transparent), transparent 62%),
+      radial-gradient(55% 45% at 102% 26%, color-mix(in srgb, var(--color-glow-cool) 38%, transparent), transparent 60%),
+      radial-gradient(45% 35% at 22% 72%, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent 60%),
+      radial-gradient(60% 45% at 60% 110%, color-mix(in srgb, var(--color-surface) 95%, transparent), transparent 62%);
   }
 }
 :root[data-theme="light"] body::before {
   background:
-    radial-gradient(70% 50% at 8% -6%, rgba(201, 162, 39, 0.42), transparent 62%),
-    radial-gradient(55% 45% at 102% 26%, rgba(110, 138, 190, 0.38), transparent 60%),
-    radial-gradient(45% 35% at 22% 72%, rgba(201, 162, 39, 0.2), transparent 60%),
-    radial-gradient(60% 45% at 60% 110%, rgba(255, 255, 255, 0.95), transparent 62%);
+    radial-gradient(70% 50% at 8% -6%, color-mix(in srgb, var(--color-accent) 42%, transparent), transparent 62%),
+    radial-gradient(55% 45% at 102% 26%, color-mix(in srgb, var(--color-glow-cool) 38%, transparent), transparent 60%),
+    radial-gradient(45% 35% at 22% 72%, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent 60%),
+    radial-gradient(60% 45% at 60% 110%, color-mix(in srgb, var(--color-surface) 95%, transparent), transparent 62%);
 }
 
 @layer components {
@@ -348,9 +382,9 @@ body::before {
       var(--glass-highlight-low) 84%,
       color-mix(in srgb, var(--glass-highlight) 45%, transparent) 100%
     );
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask: linear-gradient(var(--color-bg) 0 0) content-box, linear-gradient(var(--color-bg) 0 0);
     -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(var(--color-bg) 0 0) content-box, linear-gradient(var(--color-bg) 0 0);
     mask-composite: exclude;
   }
   /* the specular */
@@ -432,9 +466,14 @@ body::before {
   .glass--interactive[aria-disabled="true"],
   .glass--disabled {
     opacity: 0.5;
-    pointer-events: none;
+    cursor: not-allowed;
     transform: none;
     filter: none;
+  }
+  /* A disabled link has no native attribute to stop the click. */
+  .glass--interactive[aria-disabled="true"],
+  .glass--disabled {
+    pointer-events: none;
   }
 
   /* ---- the accent pane: the primary button, gold all the way through ----
@@ -442,37 +481,37 @@ body::before {
      but built like the glass: a fall of light, a lit rim, a specular. */
   .glass--accent {
     --glass-tint: var(--color-accent);
-    --glass-border: color-mix(in srgb, var(--color-accent) 70%, #000 30%);
-    --glass-highlight: rgba(255, 255, 255, 0.6);
-    --glass-highlight-warm: rgba(255, 244, 200, 0.55);
-    --glass-highlight-low: rgba(0, 0, 0, 0.12);
-    --glass-specular: rgba(255, 255, 255, 0.22);
+    --glass-border: color-mix(in srgb, var(--color-accent) 70%, var(--color-shade) 30%);
+    --glass-highlight: color-mix(in srgb, var(--color-light) 60%, transparent);
+    --glass-highlight-warm: color-mix(in srgb, var(--color-light-warm) 55%, transparent);
+    --glass-highlight-low: color-mix(in srgb, var(--color-shade) 12%, transparent);
+    --glass-specular: color-mix(in srgb, var(--color-light) 22%, transparent);
     background: linear-gradient(
       135deg,
-      color-mix(in srgb, var(--color-accent) 84%, #fff) 0%,
+      color-mix(in srgb, var(--color-accent) 84%, var(--color-light)) 0%,
       var(--color-accent) 48%,
-      color-mix(in srgb, var(--color-accent) 93%, #000) 100%
+      color-mix(in srgb, var(--color-accent) 93%, var(--color-shade)) 100%
     );
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     box-shadow:
       inset 0 0 0 1px var(--glass-border),
-      inset 0 1px 0 rgba(255, 255, 255, 0.35),
-      0 1px 1px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 color-mix(in srgb, var(--color-light) 35%, transparent),
+      0 1px 1px color-mix(in srgb, var(--color-shade) 15%, transparent),
       0 8px 20px -8px color-mix(in srgb, var(--color-accent) 55%, transparent);
     color: var(--color-accent-fg);
   }
   .glass .glass--accent {
     box-shadow:
       inset 0 0 0 1px var(--glass-border),
-      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 1px 0 color-mix(in srgb, var(--color-light) 35%, transparent),
       0 6px 16px -8px color-mix(in srgb, var(--color-accent) 55%, transparent);
   }
   .glass--accent.glass--interactive:active,
   .glass--accent.glass--pressed {
     box-shadow:
       inset 0 0 0 1px var(--glass-border),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 1px 0 color-mix(in srgb, var(--color-light) 20%, transparent),
       0 3px 10px -6px color-mix(in srgb, var(--color-accent) 55%, transparent);
   }
 
@@ -675,7 +714,7 @@ body::before {
 }
 .reaction-splash {
   animation: reaction-splash 0.9s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
-  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 6px 18px color-mix(in srgb, var(--color-shade) 45%, transparent));
 }
 @media (prefers-reduced-motion: reduce) {
   .reaction-pop,
@@ -698,7 +737,7 @@ body::before {
   background: var(--color-surface);
   color: var(--color-ink);
   border-radius: 16px;
-  padding: 12px 14px;
+  padding: 12px 16px;
 }
 .maplibregl-map .maplibregl-popup-anchor-top .maplibregl-popup-tip,
 .maplibregl-map .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,

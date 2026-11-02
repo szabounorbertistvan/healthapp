@@ -27,7 +27,7 @@ export async function PublicProfileGate({ kind, coachName, moreServices, signupH
   return (
     <section aria-label={kind === "anonymous" ? g.title : g.completeTitle} data-testid="profile-gate" data-kind={kind}
       className="rounded-3xl bg-surface p-5 sm:p-6">
-      <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-ink-faint">
+      <div className="flex items-center gap-2 text-[12px] font-semibold text-ink-faint">
         <Logo size="sm" />
       </div>
       <h2 className="mt-3 font-display text-xl font-bold tracking-tight">{kind === "anonymous" ? g.title : g.completeTitle}</h2>

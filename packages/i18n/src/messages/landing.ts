@@ -10,8 +10,7 @@ const en = {
     // Coach Discovery on the landing page, right under the pillars (components/coach-discovery/landing.tsx)
     coaches: {
       nav: "Coaches",
-      eyebrow: "Discover your coach",
-      title: "The right coach can change your whole journey.",
+      title: "Discover your coach",
       body: "Browse coaches by goal, specialization and city, read real profiles, and start working with the one who fits you — online or in person.",
       cta: "Discover coaches",
       accepting: "{n} coaches taking clients now",
@@ -23,7 +22,6 @@ const en = {
     },
     // The import section (app/page.tsx, ImportHistory) — the way in for someone switching apps.
     importHistory: {
-      eyebrow: "Switching apps?",
       title: "Bring your history. Keep your records.",
       body: "Years of sets don't stay behind. Upload the export from your old app and your workouts, sets and personal records move into {app} — no starting from zero.",
       sourcesLabel: "Imports from",
@@ -254,8 +252,7 @@ const ro: typeof en = {
     startFree: "Începe gratuit",
     coaches: {
       nav: "Antrenori",
-      eyebrow: "Găsește-ți antrenorul",
-      title: "Antrenorul potrivit îți poate schimba parcursul.",
+      title: "Găsește-ți antrenorul",
       body: "Descoperă antrenori după obiectiv, specializare și oraș, citește profiluri reale și începe să lucrezi cu cel care ți se potrivește — online sau față în față.",
       cta: "Descoperă antrenorii",
       accepting: "{n} antrenori primesc clienți acum",
@@ -266,7 +263,6 @@ const ro: typeof en = {
       picks: "Antrenori pe {app}",
     },
     importHistory: {
-      eyebrow: "Schimbi aplicația?",
       title: "Vii cu istoricul. Îți păstrezi recordurile.",
       body: "Anii de antrenamente nu rămân în urmă. Încarci exportul din aplicația veche, iar antrenamentele, seriile și recordurile personale trec în {app} — nu o iei de la zero.",
       sourcesLabel: "Importă din",

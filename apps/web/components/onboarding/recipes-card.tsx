@@ -49,8 +49,7 @@ export function RecipesCard({ audience, url }: { audience: Audience; url: string
           <DishFinderMark className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{r.eyebrow}</p>
-          <h2 id={titleId} className="mt-0.5 font-display text-[15px] font-bold tracking-tight">{r.title}</h2>
+          <h2 id={titleId} className="font-display text-[15px] font-bold tracking-tight">{r.title}</h2>
           <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
             {fill(audience === "coach" ? r.coachBody : r.body, names)}
           </p>
@@ -80,7 +79,7 @@ export function RecipesCard({ audience, url }: { audience: Audience; url: string
                 </p>
                 {i === 0 ? (
                   <Link href="/food" className="mt-1 inline-block font-semibold text-accent-ink underline-offset-2 hover:underline">
-                    {fill(r.openNutrition, names)} →
+                    {fill(r.openNutrition, names)}
                   </Link>
                 ) : null}
               </div>

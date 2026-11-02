@@ -133,7 +133,7 @@ function RecipeEditorDialog({ onClose }: { onClose: () => void }) {
               </label>
             </div>
 
-            <p className="mt-5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{im.ingredients}</p>
+            <p className="mt-5 text-[11px] font-semibold text-ink-faint">{im.ingredients}</p>
             {lines.length === 0 ? <p className="mt-2 text-[12.5px] text-ink-faint">{m.noLines}</p> : (
               <ul className="mt-2 divide-y divide-line/60">
                 {lines.map((l, i) => (
@@ -180,7 +180,7 @@ function RecipeEditorDialog({ onClose }: { onClose: () => void }) {
             </div>
 
             <div className="mt-4 rounded-2xl bg-bg p-3">
-              <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{im.perServing}</span>
+              <span className="block text-[11px] font-semibold text-ink-faint">{im.perServing}</span>
               <span className="mt-1 block text-[13px] font-semibold tabular-nums">{lines.length ? macroText(preview.macros) : "—"}</span>
             </div>
 

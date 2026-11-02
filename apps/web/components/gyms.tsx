@@ -18,7 +18,7 @@ const BUTTON =
   "inline-flex h-11 items-center justify-center rounded-2xl bg-accent px-5 font-display text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-50";
 const QUIET =
   "inline-flex h-9 items-center justify-center rounded-xl bg-bg px-3.5 text-[13px] font-semibold text-ink-soft hover:text-ink disabled:opacity-50";
-const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ink-faint";
+const LABEL = "text-[11px] font-semibold text-ink-faint";
 
 function useGymError() {
   const { t } = useI18n();
@@ -465,7 +465,7 @@ export function CoachRequestsCard({ requests }: { requests: InboxRequest[] }) {
     <Card plain>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-display text-lg font-bold tracking-tight">{r.title} · {requests.length}</p>
-        <Link href="/requests" className="text-[13px] font-semibold text-accent-ink hover:underline">{r.seeAll} →</Link>
+        <Link href="/requests" className="text-[13px] font-semibold text-accent-ink hover:underline">{r.seeAll}</Link>
       </div>
       <p className="mt-1 text-[12.5px] leading-relaxed text-ink-faint">{r.hint}</p>
       <ul className="mt-3 grid gap-2.5">

@@ -54,8 +54,12 @@ export function RecipeCard({ recipe }: { recipe: MyRecipe }) {
         ) : null}
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-lg font-bold leading-tight tracking-tight">{recipe.title}</h2>
-          <p className="mt-1 text-[12.5px] tabular-nums text-ink-soft">
-            <b className="font-semibold text-ink">{s.kcal} kcal</b> · P {s.protein} g · C {s.carbs} g · G {s.fat} g {m.perServing}
+          <p className="mt-1 flex flex-wrap gap-x-3 text-[12.5px] tabular-nums text-ink-soft">
+            <b className="font-semibold text-ink">{s.kcal} kcal</b>
+            <span>P {s.protein} g</span>
+            <span>C {s.carbs} g</span>
+            <span>G {s.fat} g</span>
+            <span>{m.perServing}</span>
           </p>
           <p className="mt-0.5 text-[11.5px] text-ink-faint">
             {fill(m.servingWeight, { grams: recipe.serving_grams })} · {fill(m.madeOf, { servings: recipe.servings })} ·{" "}
@@ -72,7 +76,7 @@ export function RecipeCard({ recipe }: { recipe: MyRecipe }) {
       {recipe.lines.length > 0 ? (
         <div className="mt-3">
           <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
-            className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint hover:text-ink">
+            className="text-[11px] font-semibold text-ink-faint hover:text-ink">
             {m.ingredients} ({recipe.lines.length}) {open ? "▴" : "▾"}
           </button>
           {open ? (
@@ -173,7 +177,7 @@ export function RecipePreparation({ recipe }: { recipe: Pick<MyRecipe, "id" | "s
   return (
     <div className="mt-3">
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
-        className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint hover:text-ink">
+        className="text-[11px] font-semibold text-ink-faint hover:text-ink">
         {m.preparation}{hasSteps ? ` (${recipe.steps.length})` : ""} {open ? "▴" : "▾"}
       </button>
       {times ? <span className="ml-2 text-[11.5px] tabular-nums text-ink-faint">{times}</span> : null}
@@ -244,7 +248,7 @@ export function RecipeDetails({ recipe }: { recipe: PlanRecipe }) {
         {times ? ` · ${times}` : ""}
       </p>
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.ingredients}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{m.ingredients}</p>
         {recipe.lines.length > 0 ? (
           <ul className="mt-1 space-y-0.5 text-ink-soft">
             {recipe.lines.map((l, i) => (
@@ -257,7 +261,7 @@ export function RecipeDetails({ recipe }: { recipe: PlanRecipe }) {
         ) : <p className="mt-1 text-ink-faint">—</p>}
       </div>
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.preparation}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{m.preparation}</p>
         {recipe.steps.length > 0 ? (
           <ol className="mt-1 list-decimal space-y-1.5 pl-5 leading-relaxed text-ink-soft marker:font-semibold marker:text-ink-faint">
             {recipe.steps.map((step, i) => <li key={i}>{step}</li>)}

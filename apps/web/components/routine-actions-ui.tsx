@@ -111,7 +111,7 @@ export function RoutineActions({
       {copying || assigning ? (
         <Card plain className="mt-3">
           <label className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{r.nameLabel}</span>
+            <span className="text-[11px] font-semibold text-ink-faint">{r.nameLabel}</span>
             <input
               autoFocus
               value={name}
@@ -124,7 +124,7 @@ export function RoutineActions({
 
           {assigning ? (
             <div className="mt-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{r.assignPick}</p>
+              <p className="text-[11px] font-semibold text-ink-faint">{r.assignPick}</p>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {clients.map((c) => (
                   <button
@@ -267,7 +267,7 @@ export function RoutineDetailsForm({
     <Card plain className="mt-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{r.nameLabel}</span>
+          <span className="text-[11px] font-semibold text-ink-faint">{r.nameLabel}</span>
           <input
             value={form.name}
             maxLength={120}
@@ -276,7 +276,7 @@ export function RoutineDetailsForm({
           />
         </label>
         <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{r.descriptionLabel}</span>
+          <span className="text-[11px] font-semibold text-ink-faint">{r.descriptionLabel}</span>
           <textarea
             value={form.description}
             maxLength={2000}
@@ -293,7 +293,7 @@ export function RoutineDetailsForm({
         <Field label={r.styleLabel} value={form.style} onChange={(v) => setForm({ ...form, style: v })}
           options={TRAINING_STYLES.map((st) => ({ value: st, label: r.style[st] }))} />
         <label className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{r.weeksLabel}</span>
+          <span className="text-[11px] font-semibold text-ink-faint">{r.weeksLabel}</span>
           <input
             type="number"
             inputMode="numeric"
@@ -307,7 +307,7 @@ export function RoutineDetailsForm({
         </label>
         {canPublish ? (
           <label className="flex flex-col gap-1.5 sm:col-span-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+            <span className="text-[11px] font-semibold text-ink-faint">
               {r.visibility[form.visibility]}
             </span>
             <select
@@ -357,7 +357,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{label}</span>
+      <span className="text-[11px] font-semibold text-ink-faint">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -396,7 +396,7 @@ export function RoutineAdminFlags({ programId, featured, official }: { programId
   const button = "inline-flex h-9 items-center rounded-full bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-ink disabled:opacity-40";
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint">{r.adminFlags}</span>
+      <span className="text-[11px] font-semibold text-ink-faint">{r.adminFlags}</span>
       <button type="button" disabled={pending} onClick={() => set(!featured, official)} className={button}>
         {featured ? r.unfeature : r.feature}
       </button>

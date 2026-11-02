@@ -65,7 +65,7 @@ export function MacroTargetsForm({
   return (
     <Card className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.title}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{m.title}</p>
         <button
           type="button"
           onClick={onClose}
@@ -79,7 +79,7 @@ export function MacroTargetsForm({
       ) : null}
 
       <label className="flex flex-col gap-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{m.kcal}</span>
+        <span className="text-[11px] font-semibold text-ink-faint">{m.kcal}</span>
         <div className="flex items-baseline gap-2">
           <input
             inputMode="numeric"
@@ -99,7 +99,7 @@ export function MacroTargetsForm({
 
       <div>
         <div className="flex items-baseline justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{m.split}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{m.split}</p>
           <p className="text-xs tabular-nums">
             {m.total}{" "}
             <b className={total === 100 ? "text-accent-ink" : "text-risk"}>{total}%</b>

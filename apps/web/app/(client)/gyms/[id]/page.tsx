@@ -51,7 +51,7 @@ export default async function GymPage({
   const s = t.gyms.stats;
   const g = stats.gym;
   const nf = new Intl.NumberFormat(locale === "ro" ? "ro-RO" : "en-GB");
-  const label = "text-[11px] font-semibold uppercase tracking-wider text-ink-faint";
+  const label = "text-[11px] font-semibold text-ink-faint";
   const hours = Array.from({ length: 24 }, (_, i) => String(i));
   const openState = gymOpenState(stats.gym.opening_periods, dayIdx, Number(part("hour")), Number(part("minute")));
   const any = (o: Record<string, boolean> | null) => !!o && Object.values(o).some(Boolean);
@@ -189,7 +189,7 @@ export default async function GymPage({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className={label}>{s.coachesHere}</p>
           {stats.is_home ? (
-            <Link href="/leaderboards?scope=gym" className="text-[12.5px] font-semibold text-accent-ink hover:underline">{s.board} →</Link>
+            <Link href="/leaderboards?scope=gym" className="text-[12.5px] font-semibold text-accent-ink hover:underline">{s.board}</Link>
           ) : null}
         </div>
         {coaches.length === 0 ? (

@@ -52,10 +52,10 @@ export default async function AdminCoachApplicationsPage({ searchParams }: { sea
         <form action="/admin/coach-applications" method="GET" className="mb-4 flex flex-wrap items-end gap-2">
           <Select name="state" value={state} label={m.state} allLabel={m.states.pending}
             options={STATES.filter((s) => s !== "pending").map((s) => ({ value: s, label: m.states[s] }))} />
-          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-ink-faint">
             {m.since}
             <input type="date" name="since" defaultValue={since ?? ""}
-              className="h-9 rounded-xl border border-line bg-surface px-2.5 text-[13px] font-medium normal-case tracking-normal text-ink outline-none focus:border-accent" />
+              className="h-9 rounded-xl border border-edge bg-surface px-2.5 text-[13px] font-medium normal-case tracking-normal text-ink outline-none focus:border-accent" />
           </label>
           <FilterButtons submit={c.filter} clearHref="/admin/coach-applications" clear={c.clear} />
         </form>
@@ -88,7 +88,7 @@ export default async function AdminCoachApplicationsPage({ searchParams }: { sea
                     <Td nowrap>{row.submitted_at ? fmtDate(row.submitted_at, locale) : c.none}</Td>
                     <Td nowrap>{row.reviewed_at ? fmtDate(row.reviewed_at, locale) : c.none}</Td>
                     <Td nowrap>
-                      <Link href={`/admin/coaches/${row.id}`} className="font-semibold text-accent-ink hover:underline">{m.open} →</Link>
+                      <Link href={`/admin/coaches/${row.id}`} className="font-semibold text-accent-ink hover:underline">{m.open}</Link>
                     </Td>
                   </tr>
                 );

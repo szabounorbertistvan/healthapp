@@ -80,7 +80,7 @@ export default async function AdminSystemPage() {
             <Kpi label={m.auditTotal} value={n(h.audit_events_total)} />
             <Kpi label={t.admin.overview.errors} value={n(errors.window)} sub={m.errorsLink} warn={errors.open > 0} href="/admin/errors" />
           </KpiGrid>
-          <h3 className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.counts}</h3>
+          <h3 className="mb-2 mt-4 text-[11px] font-semibold text-ink-faint">{m.counts}</h3>
           <Breakdown data={h.table_counts} locale={locale} />
         </Section>
       </div>

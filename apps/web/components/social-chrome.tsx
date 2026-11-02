@@ -62,7 +62,7 @@ export function VisibilityPicker({ value, onChange }: { value: PostVisibility; o
   const s = t.common.social;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{s.visibilityLabel}</span>
+      <span className="text-[11px] font-semibold text-ink-faint">{s.visibilityLabel}</span>
       <div className="inline-flex gap-1 rounded-full bg-bg p-1">
         {(["public", "followers", "private"] as const).map((v) => (
           <button

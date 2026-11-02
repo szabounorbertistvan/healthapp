@@ -78,13 +78,13 @@ export function RestTimerBar() {
       >
         <div className="h-1 w-full bg-line/60">
           <div
-            className="h-full bg-accent transition-[width] duration-300 ease-linear motion-reduce:transition-none"
-            style={{ width: `${fraction * 100}%` }}
+            className="h-full w-full origin-left bg-accent transition-transform duration-300 ease-linear motion-reduce:transition-none"
+            style={{ transform: `scaleX(${fraction})` }}
           />
         </div>
         <div className="flex items-center gap-3 px-4 pb-3 pt-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-[10.5px] font-bold uppercase tracking-wider text-accent-ink">
+            <p className="text-[11px] font-bold text-accent-ink">
               {m.rest}{paused ? ` · ${m.pause}` : ""}
             </p>
             <p

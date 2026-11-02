@@ -100,8 +100,8 @@ export function SetLogger({
       <div className="flex items-center gap-3">
         <div className="h-2.5 flex-1 overflow-hidden rounded-md bg-surface">
           <div
-            className="h-full rounded-md bg-accent transition-all"
-            style={{ width: `${totalTarget ? (all.length / totalTarget) * 100 : 0}%` }}
+            className="h-full w-full origin-left rounded-md bg-accent transition-transform motion-reduce:transition-none"
+            style={{ transform: `scaleX(${totalTarget ? all.length / totalTarget : 0})` }}
           />
         </div>
         <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-ink-faint">
@@ -129,7 +129,7 @@ export function SetLogger({
           className={seg.circuit !== null ? "space-y-2.5 rounded-[20px] border-l-[3px] border-accent bg-accent-soft/55 p-2 pl-[9px]" : ""}
         >
           {seg.label ? (
-            <p className="flex items-center gap-1.5 px-2.5 pt-1 text-[10.5px] font-bold uppercase tracking-wider text-accent-ink">
+            <p className="flex items-center gap-1.5 px-2.5 pt-1 text-[11px] font-bold text-accent-ink">
               <NavIcon d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" className="h-[13px] w-[13px]" />
               {fill(t.coachWidgets.programBuilder.circuitName, { label: seg.label })} · {t.clientWidgets.setLogger.circuitHint}
             </p>
@@ -502,7 +502,7 @@ function ExerciseBlock({
 
       {coachNote ? (
         <div className="mt-2.5 rounded-xl border-l-[3px] border-accent bg-accent-soft/40 py-1.5 pl-2.5 pr-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-ink">{m.coachNote}</p>
+          <p className="text-[11px] font-semibold text-accent-ink">{m.coachNote}</p>
           <p className="mt-0.5 whitespace-pre-line text-[12.5px] text-ink">{coachNote}</p>
         </div>
       ) : null}
@@ -585,7 +585,7 @@ function ExerciseBlock({
             onClick={() => setRestPicker((v) => !v)}
             aria-expanded={restPicker}
             disabled={!exerciseId}
-            className="inline-flex items-center gap-1 text-left text-[10px] font-semibold uppercase tracking-wider text-accent-ink disabled:text-ink-faint"
+            className="inline-flex items-center gap-1 text-left text-[11px] font-semibold text-accent-ink disabled:text-ink-faint"
           >
             <NavIcon d="M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" className="h-3 w-3" />
             {t.clientWidgets.restTimer.restSeconds}
@@ -624,7 +624,7 @@ function ExerciseBlock({
 
       <div className="mt-3">
         <div className="flex items-baseline justify-between">
-          <label htmlFor={`intensity-${name}`} className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+          <label htmlFor={`intensity-${name}`} className="text-[11px] font-semibold text-ink-faint">
             {m.intensity}
           </label>
           <span className="text-xs tabular-nums">
@@ -646,7 +646,7 @@ function ExerciseBlock({
       </div>
 
       <label className="mt-2 flex flex-col gap-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{m.note}</span>
+        <span className="text-[11px] font-semibold text-ink-faint">{m.note}</span>
         <input
           value={notes}
           maxLength={500}
@@ -708,7 +708,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{label}</span>
+      <span className="text-[11px] font-semibold text-ink-faint">{label}</span>
       <input
         inputMode="decimal"
         value={value}

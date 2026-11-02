@@ -7,8 +7,8 @@ import { useI18n } from "@/lib/i18n/client";
 import type { FoodItem } from "@/lib/food-portions";
 import type { MyCustomFood } from "@/lib/client-nutrition";
 
-const inputClass = "h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm tabular-nums outline-none focus:border-accent";
-const labelClass = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint";
+const inputClass = "h-11 w-full rounded-xl border border-edge bg-surface px-3 text-sm tabular-nums outline-none focus:border-accent";
+const labelClass = "text-[11px] font-semibold text-ink-faint";
 /** foods.portions holds at most 8 (is_valid_food_portions). */
 const MAX_PORTIONS = 8;
 

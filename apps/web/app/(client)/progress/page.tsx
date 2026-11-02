@@ -293,7 +293,7 @@ export default async function ProgressPage({
                 <div className="max-h-[420px] overflow-auto">
                   <table className="w-full text-[13.5px]">
                     <thead>
-                      <tr className="border-b border-line/60 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                      <tr className="border-b border-line/60 text-left text-[11px] text-ink-faint">
                         <th className="px-5 py-3 font-semibold">{t.clientApp.progress.date}</th>
                         <th className="px-5 py-3 text-right font-semibold">
                           {t.clientApp.progress.weight} ({weightUnit})
@@ -458,7 +458,7 @@ const ICON = {
 /** An eyebrow with its icon — the heading of a block on this screen. */
 function SectionLabel({ icon, children }: { icon: string; children: React.ReactNode }) {
   return (
-    <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+    <p className="flex items-center gap-2 text-[11px] font-semibold text-ink-faint">
       <NavIcon d={icon} className="h-[18px] w-[18px] text-accent-ink" />
       {children}
     </p>
@@ -482,7 +482,7 @@ function Stat({
   return (
     <div className="flex flex-col items-center gap-2.5 rounded-3xl bg-surface px-4 py-5 text-center sm:gap-3 sm:py-6">
       <NavIcon d={icon} className="h-10 w-10 shrink-0 text-accent-ink sm:h-12 sm:w-12" />
-      <p className="w-full truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{label}</p>
+      <p className="w-full truncate text-[11px] font-semibold text-ink-faint">{label}</p>
       <p
         className={`font-display text-[32px] font-extrabold tabular-nums leading-none sm:text-[40px] ${
           accent ? "text-accent-ink" : ""

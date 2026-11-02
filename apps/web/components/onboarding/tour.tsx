@@ -232,7 +232,7 @@ function TourCard({
       className="fixed z-[60] w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-4 text-ink shadow-2xl outline-none ring-accent/50 focus-visible:ring-2"
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="text-[11px] font-semibold text-ink-faint">
           <span className="sr-only">{o.region} · </span>
           {fill(o.stepOf, { n: index + 1, total })}
         </p>

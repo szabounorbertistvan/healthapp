@@ -163,7 +163,7 @@ function Intro({
       }}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{w.eyebrow}</p>
+        <p className="text-[11px] font-semibold text-accent-ink">{w.eyebrow}</p>
         <button
           type="button"
           onClick={() => leave("skipped")}
@@ -224,7 +224,7 @@ function Dots({ count, current, label }: { count: number; current: number; label
       {Array.from({ length: count }, (_, n) => (
         <span
           key={n}
-          className={`h-1.5 rounded-full transition-all ${n === current ? "w-6 bg-accent" : n < current ? "w-1.5 bg-accent/60" : "w-1.5 bg-line"}`}
+          className={`h-1.5 rounded-full transition-colors ${n === current ? "w-6 bg-accent" : n < current ? "w-1.5 bg-accent/60" : "w-1.5 bg-line"}`}
         />
       ))}
     </div>
@@ -273,7 +273,7 @@ function Setup(props: FlowProps & {
   return (
     <section aria-labelledby="setup-title">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
+        <p className="text-[11px] font-semibold text-accent-ink">
           {fill(s.stepOf, { n: index + 1, total })}
         </p>
         <Link href={home} className="text-[13px] font-semibold text-ink-faint underline-offset-2 hover:text-ink hover:underline">

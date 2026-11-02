@@ -136,7 +136,7 @@ function PerformanceSummary({ stats, truncated }: { stats: ExerciseStats; trunca
 
   return (
     <section className="mt-5">
-      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.summary}</h2>
+      <h2 className="text-[11px] font-semibold text-ink-faint">{d.summary}</h2>
       {stats.bodyweight ? (
         // Nothing was ever loaded: lead with reps, and leave out the tiles that
         // would all read "—" (weight, 1RM, volume).
@@ -167,7 +167,7 @@ function PerformanceSummary({ stats, truncated }: { stats: ExerciseStats; trunca
 function Stat({ label, value, note, accent = false }: { label: string; value: string; note?: string; accent?: boolean }) {
   return (
     <div className={`rounded-2xl px-3.5 py-3 ${accent ? "bg-accent-soft" : "bg-surface"}`}>
-      <p className={`text-[10px] font-semibold uppercase tracking-wider ${accent ? "text-accent-ink" : "text-ink-faint"}`}>
+      <p className={`text-[11px] font-semibold ${accent ? "text-accent-ink" : "text-ink-faint"}`}>
         {label}
       </p>
       <p className={`mt-1 font-display text-[17px] font-extrabold tabular-nums leading-tight ${accent ? "text-accent-ink" : "text-ink"}`}>
@@ -261,7 +261,7 @@ export function PointsChart({
 
   return (
     <Card plain>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{title}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{title}</p>
       {points.length === 0 ? (
         <p className="mt-3 text-[13px] text-ink-faint">{d.noneInRange}</p>
       ) : points.length === 1 ? (
@@ -374,8 +374,8 @@ function SessionHistory({ sessions, timeZone }: { sessions: ExerciseSessionEntry
                   {setLabel(set, u, d.repsUnit)}
                   {set.rir !== null ? ` · ${t.clientWidgets.setLogger.rir} ${set.rir}` : ""}
                   {set.rir === null && set.rpe !== null ? ` · ${set.rpe}/10` : ""}
-                  {set.is_pr ? <span className="ml-1 text-[10px] font-bold uppercase">{d.pr}</span> : null}
-                  {set.warmup ? <span className="ml-1 text-[10px] font-semibold uppercase text-ink-faint">{d.warmup}</span> : null}
+                  {set.is_pr ? <span className="ml-1 text-[11px] font-bold">{d.pr}</span> : null}
+                  {set.warmup ? <span className="ml-1 text-[11px] font-semibold text-ink-faint">{d.warmup}</span> : null}
                 </li>
               ))}
             </ul>
@@ -409,13 +409,13 @@ function RepRecords({ records, timeZone }: { records: RepRecord[]; timeZone?: st
   return (
     <Card plain className="mt-3 overflow-hidden p-0">
       <div className="px-5 pb-1 pt-[18px]">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.repRecords}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{d.repRecords}</p>
         <p className="mt-1.5 text-[12.5px] text-ink-faint">{d.repRecordsHint}</p>
       </div>
       <ul className="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
         {runs.map((r) => (
           <li key={r.from} className="border-t border-line/60 px-5 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+            <p className="text-[11px] font-semibold text-ink-faint">
               {r.from === r.to ? r.from : `${r.from}–${r.to}`} RM
             </p>
             <p className="mt-0.5 font-display text-[19px] font-extrabold tabular-nums leading-none">

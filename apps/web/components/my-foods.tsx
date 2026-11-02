@@ -94,8 +94,12 @@ function MyFoodRow({ food }: { food: MyCustomFood }) {
       <Card plain className="flex h-full flex-col sm:p-5">
         <h2 className="font-display text-base font-bold leading-tight tracking-tight">{food.name}</h2>
         {food.brand ? <p className="mt-0.5 text-[12px] text-ink-faint">{food.brand}</p> : null}
-        <p className="mt-1.5 text-[12.5px] tabular-nums text-ink-soft">
-          <b className="font-semibold text-ink">{p.kcal} kcal</b> · P {p.protein} g · C {p.carbs} g · G {p.fat} g {m.per100g}
+        <p className="mt-1.5 flex flex-wrap gap-x-3 text-[12.5px] tabular-nums text-ink-soft">
+          <b className="font-semibold text-ink">{p.kcal} kcal</b>
+          <span>P {p.protein} g</span>
+          <span>C {p.carbs} g</span>
+          <span>G {p.fat} g</span>
+          <span>{m.per100g}</span>
         </p>
         {food.portions.length > 0 || food.barcode ? (
           <p className="mt-0.5 text-[11.5px] text-ink-faint">

@@ -75,7 +75,7 @@ export function Logo({
       <span className="flex flex-col items-start leading-none">
         <Wordmark className={s.word} px={s.wordPx} />
         {tagline ? (
-          <span className={`mt-1 ${s.tag} font-display font-semibold uppercase tracking-[0.24em] text-accent-ink`}>{APP_TAGLINE}</span>
+          <span className={`mt-1 ${s.tag} font-display font-semibold text-accent-ink`}>{APP_TAGLINE}</span>
         ) : null}
       </span>
     </span>

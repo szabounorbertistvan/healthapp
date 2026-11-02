@@ -12,7 +12,7 @@ import { authErrorMessage } from "@/lib/auth-errors";
 const MIN_PASSWORD = 8;
 
 const inputClass =
-  "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
+  "w-full rounded-lg border border-edge bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
 
 /**
  * Where the recovery email lands after /auth/callback has turned the link into

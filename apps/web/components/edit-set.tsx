@@ -10,8 +10,8 @@ import type { LoggedSetRow } from "@/lib/types";
 
 type Editable = Pick<LoggedSetRow, "id" | "weight_kg" | "reps" | "duration_seconds" | "rpe" | "rir" | "notes" | "is_pr">;
 
-const field = "w-full min-w-0 rounded-lg border border-line bg-bg px-2 py-2 text-sm tabular-nums outline-none focus:border-accent";
-const label = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint";
+const field = "w-full min-w-0 rounded-lg border border-edge bg-bg px-2 py-2 text-sm tabular-nums outline-none focus:border-accent";
+const label = "text-[11px] font-semibold text-ink-faint";
 
 /**
  * Correct a logged set in place: weight, reps, RIR (in an RIR program),
@@ -75,7 +75,7 @@ export function EditSet({
 
   return (
     <div className="mt-3 space-y-2 rounded-lg border border-accent bg-surface p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{m.editSet}</p>
+      <p className="text-[11px] font-semibold text-accent-ink">{m.editSet}</p>
       <div className={`grid gap-2 ${asRir ? "grid-cols-4" : "grid-cols-3"}`}>
         <label className="flex flex-col gap-0.5"><span className={label}>{u.weightUnit}</span>
           <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} className={field} /></label>

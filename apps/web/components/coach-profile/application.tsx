@@ -78,7 +78,7 @@ export function CoachApplicationCard({ application, uploads, disciplines }: {
         <Documents application={application} uploads={uploads} disciplines={disciplines} />
 
         <div className="mt-5">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{a.history}</h3>
+          <h3 className="text-[11px] font-semibold text-ink-faint">{a.history}</h3>
           {application.history.length === 0 ? <p className={`${HINT} mt-1.5`}>{a.noHistory}</p> : (
             <ol className="mt-1.5 grid gap-1.5" data-testid="coach-application-history">
               {application.history.map((h, i) => (
@@ -172,7 +172,7 @@ function Documents({ application, uploads, disciplines }: {
 
   return (
     <div className="mt-5">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{a.documents}</h3>
+      <h3 className="text-[11px] font-semibold text-ink-faint">{a.documents}</h3>
       {application.documents.length === 0 ? <p className={`${HINT} mt-1.5`}>{a.noDocuments}</p> : (
         <ul className="mt-1.5 grid gap-1.5" data-testid="coach-documents">
           {application.documents.map((doc) => {

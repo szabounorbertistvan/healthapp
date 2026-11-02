@@ -95,7 +95,7 @@ function BookingCard({ row, side, children }: { row: BookingRow; side: "coach" |
             <p className="text-[12.5px] text-ink-faint">{row.service_name}{price ? ` · ${price}` : ""}</p>
           </div>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${PILL[row.status] ?? PILL.cancelled}`}>
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${PILL[row.status] ?? PILL.cancelled}`}>
           {b.statuses[row.status]}
         </span>
       </div>
@@ -195,7 +195,7 @@ export function MyBookingList({ rows }: { rows: BookingRow[] }) {
       {error ? <p role="alert" className="text-[13px] text-risk">{error}</p> : null}
       {groups.filter((g) => g.rows.length > 0).map((g) => (
         <section key={g.key} aria-label={m.sections[g.key]} data-testid={`my-bookings-${g.key}`}>
-          <h2 className="mb-2.5 text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{m.sections[g.key]}</h2>
+          <h2 className="mb-2.5 text-[12px] font-semibold text-ink-faint">{m.sections[g.key]}</h2>
           <div className="grid gap-2.5">
             {g.rows.map((row) => (
               <BookingCard key={row.id} row={row} side="client">

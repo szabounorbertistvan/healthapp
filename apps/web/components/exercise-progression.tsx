@@ -133,7 +133,7 @@ export function ProgressionCard({ analysis, chartsLocked = false }: { analysis: 
 
         {a.comparison ? (
           <div className="rounded-2xl bg-bg px-3.5 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+            <p className="text-[11px] font-semibold text-ink-faint">
               {p.vsPrevious} · {f.date(a.comparison.from.day)} → {f.date(a.comparison.to.day)}
             </p>
             <dl className="mt-1.5 grid gap-1 text-[12.5px] sm:grid-cols-3">
@@ -174,7 +174,7 @@ export function ProgressionCard({ analysis, chartsLocked = false }: { analysis: 
         ) : null}
 
         <div className="rounded-2xl bg-accent-soft/40 px-3.5 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{p.suggestionTitle}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{p.suggestionTitle}</p>
           <p className="mt-1 text-[13px] leading-relaxed text-ink">{p.suggestion[a.suggestion]}</p>
         </div>
 
@@ -214,7 +214,7 @@ function Figure({ label, perf, metric, f }: {
   const v = metric === "one_rm" ? perf.best_1rm : metric === "reps" ? perf.top_reps : perf.best_set ? perf.best_set.weight_kg * perf.best_set.reps : null;
   return (
     <div className="rounded-2xl bg-bg px-3.5 py-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{label}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{label}</p>
       <p className="mt-1 font-display text-[17px] font-extrabold tabular-nums leading-tight">
         {perf.best_set ? f.set(perf.best_set) : "—"}
       </p>
@@ -229,7 +229,7 @@ function Periods({ rows, f }: { rows: PeriodChangeRow[]; f: ReturnType<typeof us
   const { p } = f;
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{p.periods}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{p.periods}</p>
       <ul className="mt-1.5 grid grid-cols-5 gap-1.5 text-center">
         {rows.map((r) => {
           const label = r.days === null ? p.periodAll : r.days === 365 ? p.periodYear : fill(p.periodDays, { days: r.days });
@@ -265,7 +265,7 @@ export function ProgressionOverview({ items, forCoach = false }: {
   return (
     <Card plain className="overflow-hidden p-0">
       <div className="px-5 pb-1 pt-[18px]">
-        <p className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ink-faint">
           {forCoach ? p.coachOverviewTitle : p.overviewTitle}
           {forCoach ? null : <PremiumSoon feature="progressionInsights" />}
         </p>

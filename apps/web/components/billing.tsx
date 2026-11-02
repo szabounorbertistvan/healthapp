@@ -38,12 +38,12 @@ export function TrialBanner({ trialEndsAt, paid }: { trialEndsAt: string | null;
     <div className="mb-4 rounded-3xl bg-accent-soft px-5 py-[18px] text-[13.5px] leading-relaxed text-accent-ink">
       {days > 0 ? (
         <>
-          <b>Free trial:</b> {days} day{days === 1 ? "" : "s"} left with full access — no card needed.
+          <b>Free trial:</b> {days} day{days === 1 ? "" : "s"} left with full access. No card needed.
           Subscribe below to keep everything after it ends.
         </>
       ) : (
         <>
-          <b>Your 30-day trial has ended.</b> You&apos;re on the Free plan — subscribe below to get
+          <b>Your 30-day trial has ended.</b> You&apos;re on the Free plan. Subscribe below to get
           full access back.
         </>
       )}
@@ -91,7 +91,7 @@ export function SubscribePanel({
       <div className="flex items-center justify-between gap-3">
         <p className="font-display text-lg font-bold tracking-tight">{TIER_LABEL[plan]}</p>
         {currentTier === plan ? (
-          <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
+          <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent-ink">
             Current
           </span>
         ) : null}

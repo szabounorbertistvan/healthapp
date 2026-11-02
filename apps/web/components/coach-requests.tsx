@@ -120,7 +120,7 @@ export function CoachRequestList({ rows }: { rows: CoachRequestRow[] }) {
                 </p>
               </div>
             </div>
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${PILL[q.status] ?? PILL.closed}`}>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${PILL[q.status] ?? PILL.closed}`}>
               {q.started ? (q.relationship_status ? r.relationshipStatuses[q.relationship_status] : r.started) : r.statuses[q.status]}
             </span>
           </div>
@@ -196,7 +196,7 @@ export function MyRequestList({ rows }: { rows: MyCoachingRequestRow[] }) {
                 <p className="text-[12.5px] text-ink-faint">{fill(r.sentOn, { date: date(q.created_at) })}</p>
               </div>
             </div>
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${PILL[q.status] ?? PILL.closed}`}>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${PILL[q.status] ?? PILL.closed}`}>
               {r.statuses[q.status]}
             </span>
           </div>

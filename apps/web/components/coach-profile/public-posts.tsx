@@ -31,7 +31,7 @@ export function PublicPostList({ posts, allHref }: { posts: CoachPublicPost[]; a
         ))}
       </ul>
       <Link href={allHref} className="mt-4 inline-flex text-[14px] font-semibold text-accent-ink hover:underline">
-        {p.seeAllPosts} →
+        {p.seeAllPosts}
       </Link>
     </div>
   );

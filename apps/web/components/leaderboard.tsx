@@ -6,8 +6,6 @@ import { Avatar } from "./social-chrome";
 import { Card } from "./ui";
 import { boardRowHref } from "@/lib/leaderboard-map";
 
-const MEDALS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
-
 function formatScore(score: number, locale: string): string {
   return score.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB", { maximumFractionDigits: 0 });
 }
@@ -39,15 +37,15 @@ export async function LeaderboardCard({
         aria-current={r.is_current_user ? "true" : undefined}
       >
         <span
-          className={`w-7 shrink-0 text-center text-[15px] tabular-nums ${r.rank <= 3 ? "font-bold" : "font-semibold text-ink-faint"}`}
+          className={`w-7 shrink-0 text-center text-[15px] tabular-nums ${r.rank <= 3 ? "font-bold text-accent-ink" : "font-semibold text-ink-faint"}`}
           aria-label={`${l.rank} ${r.rank}`}
         >
-          {MEDALS[r.rank] ?? r.rank}
+          {r.rank}
         </span>
         <Avatar name={r.display_name} url={r.avatar_url} size="h-9 w-9" />
         <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
           {r.display_name}
-          {r.is_current_user ? <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{l.you}</span> : null}
+          {r.is_current_user ? <span className="ml-1.5 text-[11px] font-semibold text-accent-ink">{l.you}</span> : null}
         </span>
         <span className="shrink-0 font-display text-[15px] font-bold tabular-nums">
           {formatScore(r.score, locale)}
@@ -89,14 +87,14 @@ export async function LeaderboardSummaryCard({ board }: { board: Leaderboard }) 
   const l = t.common.leaderboards;
   return (
     <Card plain>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{l.title}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{l.title}</p>
       <p className="mt-1.5 text-[13.5px] text-ink-soft">
         {board.me
           ? fill(l.yourRank, { rank: board.me.rank, metric: l.metrics.training_load, period: l.periods.week.toLowerCase() })
           : l.startToEnter}
       </p>
       <Link href="/leaderboards" className="mt-3 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
-        {l.viewLeaderboard} →
+        {l.viewLeaderboard}
       </Link>
     </Card>
   );

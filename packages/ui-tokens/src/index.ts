@@ -37,7 +37,7 @@ export const dark: ColorTokens = {
   surface: "#16171a",
   ink: "#f2efe8",
   inkSoft: "#b9b5ab",
-  inkFaint: "#807c73",
+  inkFaint: "#8c887e",
   line: "#2a2b30",
   accent: "#d4a938",
   accentFg: "#0b0b0d",
@@ -56,10 +56,10 @@ export const dark: ColorTokens = {
 
 export const light: ColorTokens = {
   bg: "#e6e9ef",
-  surface: "#ffffff",
+  surface: "#fbfcfe",
   ink: "#121519",
   inkSoft: "#464d56",
-  inkFaint: "#737b85",
+  inkFaint: "#5f6670",
   line: "#dee3ea",
   accent: "#c9a227",
   accentFg: "#16161a",

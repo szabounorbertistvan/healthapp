@@ -113,7 +113,7 @@ export function NotificationBell({
   const body = (
     <>
       <div className="px-4 pb-1.5 pt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{n.title}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{n.title}</p>
       </div>
       {notifications.length === 0 ? (
         <div className="px-4 pb-4 pt-1">

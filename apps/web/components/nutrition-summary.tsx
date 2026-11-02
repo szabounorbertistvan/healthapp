@@ -41,7 +41,7 @@ export function NutritionSummary({
     <div className="space-y-4">
       <Card plain>
         <div className="flex items-center justify-between gap-3">
-          <p className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          <p className="min-w-0 truncate text-[11px] font-semibold text-ink-faint">
             {planName ? localizeDefaultName("plan", planName, locale) : t.common.macros.todayTitle}
           </p>
           <button
@@ -57,7 +57,7 @@ export function NutritionSummary({
 
         <div className="mt-3.5 grid grid-cols-2 gap-2.5">
           <div className="rounded-2xl bg-bg px-3.5 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{f.goal}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{f.goal}</p>
             <p className="mt-1 font-display text-2xl font-extrabold tabular-nums leading-none">
               {hasTarget ? target.kcal : "—"}
               <span className="ml-1 font-sans text-xs font-semibold text-ink-faint">kcal</span>
@@ -65,7 +65,7 @@ export function NutritionSummary({
             <p className="mt-1.5 truncate text-[11px] text-accent-ink">{source}</p>
           </div>
           <div className="rounded-2xl bg-bg px-3.5 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{f.consumed}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{f.consumed}</p>
             <p className="mt-1 font-display text-2xl font-extrabold tabular-nums leading-none">
               {consumed}
               <span className="ml-1 font-sans text-xs font-semibold text-ink-faint">kcal</span>
@@ -90,8 +90,8 @@ export function NutritionSummary({
         </div>
         <div className="mt-2.5 h-2.5 overflow-hidden rounded-md bg-bg">
           <div
-            className={`h-full rounded-md transition-[width] duration-500 ${over ? "bg-warn" : "bg-accent"}`}
-            style={{ width: `${over ? 100 : ratio * 100}%` }}
+            className={`h-full w-full origin-left rounded-md transition-transform duration-500 motion-reduce:transition-none ${over ? "bg-warn" : "bg-accent"}`}
+            style={{ transform: `scaleX(${over ? 1 : ratio})` }}
           />
         </div>
 
@@ -119,7 +119,7 @@ function MacroRing({ label, value, target }: { label: string; value: number; tar
   const dash = c * Math.min(Math.max(ratio, 0), 1);
   return (
     <li className="flex flex-col items-center gap-2 rounded-2xl bg-bg px-2 pb-2.5 pt-3 text-center">
-      <p className="w-full truncate text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{label}</p>
+      <p className="w-full truncate text-[11px] font-semibold text-ink-faint">{label}</p>
       <div className="relative h-16 w-16">
         <svg viewBox="0 0 64 64" className="h-16 w-16 -rotate-90" aria-hidden>
           <circle cx="32" cy="32" r={r} fill="none" stroke="var(--color-line)" strokeWidth="7" />

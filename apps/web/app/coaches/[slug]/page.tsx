@@ -264,7 +264,7 @@ async function SignedInPosts({ coachId, title, allHref, seeAll }: { coachId: str
     <CoachSection title={title} id="posts">
       <div className="grid gap-3">
         {feed.items.slice(0, 3).map((post) => <PostCard key={post.id} post={post} />)}
-        <Link href={allHref} className="text-[14px] font-semibold text-accent-ink hover:underline">{seeAll} →</Link>
+        <Link href={allHref} className="text-[14px] font-semibold text-accent-ink hover:underline">{seeAll}</Link>
       </div>
     </CoachSection>
   );

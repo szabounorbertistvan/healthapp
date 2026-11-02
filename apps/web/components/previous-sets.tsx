@@ -41,7 +41,7 @@ export function PreviousSets({
   return (
     <div className="mt-2.5 rounded-xl border-l-[3px] border-line bg-bg/60 py-1.5 pl-2.5 pr-2">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="text-[11px] font-semibold text-ink-faint">
           {m.previous} · {timeAgo(previous.at, locale)}
         </p>
         {exerciseId ? (

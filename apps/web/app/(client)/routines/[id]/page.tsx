@@ -142,7 +142,7 @@ export default async function RoutineDetailPage({
 
       {check ? (
         <Card plain className="mt-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{r.completeness}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{r.completeness}</p>
           {check.errors.length + check.warnings.length === 0 ? (
             <p className="mt-2 text-[13px] font-semibold text-accent-ink">{r.completenessOk}</p>
           ) : (
@@ -177,7 +177,7 @@ export default async function RoutineDetailPage({
 
       {assignees.length > 0 ? (
         <section className="mt-5">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{r.usedBy}</h2>
+          <h2 className="text-[11px] font-semibold text-ink-faint">{r.usedBy}</h2>
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {assignees.map((a) => (
               <li key={a.program_id}>
@@ -204,7 +204,7 @@ export default async function RoutineDetailPage({
               <Card plain key={day.id}>
                 <div className="flex items-baseline justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                    <p className="text-[11px] font-semibold text-ink-faint">
                       {fill(r.dayN, { n: index + 1 })}
                     </p>
                     <p className="mt-0.5 truncate font-display text-[17px] font-bold tracking-tight">{day.name}</p>
@@ -223,7 +223,7 @@ export default async function RoutineDetailPage({
                       className={segment.circuit !== null ? "rounded-xl border-l-[3px] border-accent bg-accent-soft/40 py-1.5 pl-2.5" : ""}
                     >
                       {segment.circuit !== null ? (
-                        <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-accent-ink">
+                        <p className="mb-1 text-[11px] font-semibold text-accent-ink">
                           {fill(r.circuitLabel, { letter: circuitLabel(segment.circuit) })}
                         </p>
                       ) : null}

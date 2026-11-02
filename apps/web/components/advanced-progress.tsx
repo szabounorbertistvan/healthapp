@@ -150,7 +150,7 @@ export function Figure({
   const show = change && format;
   return (
     <div className="rounded-2xl bg-surface px-4 py-3.5">
-      <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-faint">{label}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{label}</p>
       <p className="mt-1 font-display text-[22px] font-extrabold tabular-nums leading-tight">{value}</p>
       {show ? (
         <p className="mt-1 text-[11.5px] tabular-nums text-ink-faint">
@@ -171,7 +171,7 @@ export function Figure({
 export function Eyebrow({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{children}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{children}</p>
       {aside ? <div className="text-[11px] text-ink-faint">{aside}</div> : null}
     </div>
   );
@@ -405,7 +405,7 @@ export function StrengthOverview({
           <p>{fill(a.aboutFitness, { count: FITNESS_SCORE_MIN_WORKOUTS })}</p>
           <p>{a.aboutRecovery}</p>
           <Link href="/fitness-score" className="inline-block font-semibold text-accent-ink hover:underline">
-            {a.fitnessBreakdown} →
+            {a.fitnessBreakdown}
           </Link>
         </div>
       </details>
@@ -492,7 +492,7 @@ export function ExerciseProgress({
   }
   return (
     <section className="space-y-3">
-      <Eyebrow aside={<Link href={`/exercises/${selected}`} className="font-semibold text-accent-ink hover:underline">{a.fullHistory} →</Link>}>
+      <Eyebrow aside={<Link href={`/exercises/${selected}`} className="font-semibold text-accent-ink hover:underline">{a.fullHistory}</Link>}>
         {a.exercise}
       </Eyebrow>
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
@@ -514,7 +514,7 @@ export function ExerciseProgress({
         })}
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{a.inThisPeriod}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{a.inThisPeriod}</p>
         <p className="text-[11.5px] text-ink-faint">
           {lastDay ? fill(a.lastPerformed, { date: f.date(lastDay) }) : a.notPerformed}
         </p>
@@ -649,7 +649,7 @@ export function ConsistencyOverview({
         <Bars title={a.workoutsChart} unit={buckets.unit} items={buckets.items} value={(b) => b.workouts} format={f.count} />
       )}
       <Link href="/streak" className="inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
-        {a.streakCalendar} →
+        {a.streakCalendar}
       </Link>
     </div>
   );
@@ -735,7 +735,7 @@ export function MeasurementCompare({
             {fill(a.compareCaption, { from: f.date(comparison.from), to: f.date(comparison.to) })}
           </caption>
           <thead>
-            <tr className="text-left text-[11px] uppercase tracking-wider text-ink-faint">
+            <tr className="text-left text-[11px] text-ink-faint">
               <th scope="col" className="pb-1.5 font-semibold" />
               <th scope="col" className="pb-1.5 text-right font-semibold">{f.date(comparison.from)}</th>
               <th scope="col" className="pb-1.5 text-right font-semibold">{f.date(comparison.to)}</th>

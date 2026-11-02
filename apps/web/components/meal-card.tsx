@@ -175,7 +175,7 @@ export function MealCard({
 
       {(planned && planned.length > 0) || plannedRecipe !== "none" ? (
         <div className="mt-3 rounded-2xl bg-bg px-3.5 pb-3 pt-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{f.coachPlanned}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{f.coachPlanned}</p>
           <ul className="mt-1.5 space-y-1 text-[13px] text-ink-soft">
             {(planned ?? []).map((p, i) => (
               <li key={`${p.name}-${i}`} className="flex justify-between gap-3">
@@ -242,7 +242,7 @@ function ExtraPlannedMeal({ meal, slot, day, quantity }: {
   const [logging, start] = useTransition();
   return (
     <div className="mt-3 rounded-2xl bg-bg px-3.5 pb-3 pt-2.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{fill(f.extraMeal, { name: meal.name })}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{fill(f.extraMeal, { name: meal.name })}</p>
       {meal.foods.length > 0 ? (
         <ul className="mt-1.5 space-y-1 text-[13px] text-ink-soft">
           {meal.foods.map((p, i) => (

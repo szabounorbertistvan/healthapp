@@ -27,13 +27,13 @@ export function MeasurementForm() {
 
   return (
     <Card plain>
-      <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+      <p className="flex items-center gap-2 text-[11px] font-semibold text-ink-faint">
         <NavIcon d="M12 4a2 2 0 1 0 0 4 2 2 0 1 0 0-4M12 8v3M5 11h14l-2.5 9h-9zM8 14h8" className="h-[18px] w-[18px] text-accent-ink" />
         {t.clientWidgets.measurementForm.title}
       </p>
       <div className="mt-3.5 flex flex-wrap items-end gap-2.5">
         <label className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+          <span className="text-[11px] font-semibold text-ink-faint">
             {fill(t.clientWidgets.measurementForm.weightKg, { unit: u.weightUnit })}
           </span>
           <input
@@ -44,7 +44,7 @@ export function MeasurementForm() {
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+          <span className="text-[11px] font-semibold text-ink-faint">
             {fill(t.clientWidgets.measurementForm.waistCm, { unit: u.lengthUnit })}
           </span>
           <input

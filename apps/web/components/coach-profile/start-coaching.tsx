@@ -277,7 +277,7 @@ export function StartCoachingButton({
         </button>
       );
     case "paused":
-      return <Link href="/coach" className={`${QUIET} ${size} ${className}`} data-testid="coaching-paused-cta">⏸ {p.coachingPaused}</Link>;
+      return <Link href="/coach" className={`${QUIET} ${size} ${className}`} data-testid="coaching-paused-cta">{p.coachingPaused}</Link>;
     case "accepted":
       return <MessageCoach ctx={ctx!} className={`${primary} ${size} ${className}`} />;
     case "sign_in":

@@ -21,7 +21,7 @@ export function ChallengeNumbers({ challenge: c }: { challenge: ChallengeCard })
         </span>
       </p>
       <p className="text-right">
-        <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.progress}</span>
+        <span className="block text-[11px] font-semibold text-ink-faint">{ch.progress}</span>
         <b className="font-display text-xl font-extrabold tabular-nums leading-none">{pct(c.joined ? c.pct : 0)}</b>
       </p>
     </div>
@@ -57,7 +57,7 @@ export function ChallengeDeadline({ challenge: c }: { challenge: ChallengeCard }
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl bg-bg px-3.5 py-3">
-      <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{label}</dt>
+      <dt className="text-[11px] font-semibold text-ink-faint">{label}</dt>
       <dd className="mt-1 flex items-center text-[13px] font-semibold">{children}</dd>
     </div>
   );

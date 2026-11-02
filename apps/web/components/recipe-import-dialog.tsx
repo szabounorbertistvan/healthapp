@@ -138,7 +138,7 @@ export function RecipeImportDialog(props: ImportDialogProps) {
               </label>
             </div>
 
-            <p className="mt-5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.ingredients}</p>
+            <p className="mt-5 text-[11px] font-semibold text-ink-faint">{m.ingredients}</p>
             <ul className="mt-2 divide-y divide-line/60">
               {props.lines.map((orig, i) => {
                 const l = lines[i]!;
@@ -182,7 +182,7 @@ export function RecipeImportDialog(props: ImportDialogProps) {
                 { on: recompute, label: m.recalculated, value: re.macros, set: () => setRecompute(true), choose: m.useRecalculated }].map((o) => (
                 <button key={o.label} type="button" onClick={o.set} aria-pressed={o.on}
                   className={`rounded-2xl p-3 text-left ${o.on ? "bg-accent-soft ring-1 ring-accent" : "bg-bg hover:bg-accent-soft/40"}`}>
-                  <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{o.label} · {m.perServing}</span>
+                  <span className="block text-[11px] font-semibold text-ink-faint">{o.label} · {m.perServing}</span>
                   <span className="mt-1 block text-[13px] font-semibold tabular-nums">{macroText(o.value)}</span>
                   <span className="mt-1 block text-[11.5px] text-ink-faint">{o.choose}</span>
                 </button>

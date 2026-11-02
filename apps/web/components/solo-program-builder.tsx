@@ -68,7 +68,7 @@ export function SoloProgramBuilder({
         {showDetails ? (
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="flex flex-col gap-1.5 sm:col-span-3">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientApp.routines.descriptionLabel}</span>
+              <span className="text-[11px] font-semibold text-ink-faint">{t.clientApp.routines.descriptionLabel}</span>
               <textarea
                 value={details.description}
                 maxLength={2000}
@@ -79,7 +79,7 @@ export function SoloProgramBuilder({
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientApp.builder.goalLabel}</span>
+              <span className="text-[11px] font-semibold text-ink-faint">{t.clientApp.builder.goalLabel}</span>
               <select
                 value={details.goal}
                 onChange={(e) => setDetails({ ...details, goal: e.target.value })}
@@ -90,7 +90,7 @@ export function SoloProgramBuilder({
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientApp.builder.levelLabel}</span>
+              <span className="text-[11px] font-semibold text-ink-faint">{t.clientApp.builder.levelLabel}</span>
               <select
                 value={details.level}
                 onChange={(e) => setDetails({ ...details, level: e.target.value })}
@@ -101,7 +101,7 @@ export function SoloProgramBuilder({
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{t.clientApp.routines.weeksLabel}</span>
+              <span className="text-[11px] font-semibold text-ink-faint">{t.clientApp.routines.weeksLabel}</span>
               <input
                 type="number"
                 inputMode="numeric"
@@ -171,7 +171,7 @@ export function SoloProgramBuilder({
           program sees exactly what they saw before. */}
       {programs.length > 1 || creating ? (
         <Card plain className="sm:p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          <p className="text-[11px] font-semibold text-ink-faint">
             {t.clientApp.builder.yourPrograms}
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
@@ -272,7 +272,7 @@ export function SoloProgramBuilder({
           placeholder={t.clientApp.builder.dayNamePlaceholder}
           className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
         />
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="text-[11px] font-semibold text-ink-faint">
           {t.clientApp.builder.muscleGroups}
         </p>
         <MuscleGroupPicker selected={groups} onChange={setGroups} />

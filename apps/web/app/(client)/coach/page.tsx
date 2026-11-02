@@ -56,7 +56,7 @@ export default async function CoachPage() {
           {/* no invite code: the way into the directory (20261108100000) */}
           <Link href="/coaches" data-testid="find-a-coach"
             className="inline-flex h-11 items-center rounded-2xl bg-bg px-5 text-sm font-semibold text-ink hover:bg-accent-soft/60">
-            {t.coachProfile.saved.emptyCta} →
+            {t.coachProfile.saved.emptyCta}
           </Link>
         </Card>
         <div className="mt-3.5">
@@ -75,7 +75,7 @@ export default async function CoachPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col">
       <section className="rounded-3xl bg-surface p-5" data-testid="current-coach" data-status={current.status}>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{c.current}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{c.current}</p>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar name={current.coach_name} url={current.coach_avatar} size="h-12 w-12" />

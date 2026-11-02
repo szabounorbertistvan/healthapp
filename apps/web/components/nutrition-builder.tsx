@@ -137,7 +137,7 @@ export function NutritionBuilder({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span
-            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
               plan.status === "published" ? "bg-accent-soft text-accent-ink" : "bg-surface text-ink-faint"
             }`}
           >
@@ -449,13 +449,13 @@ function TargetsCard({
 
   return (
     <Card plain className="sm:p-5">
-      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{title}</p>
+      <p className="mb-2.5 text-[11px] font-semibold text-ink-faint">{title}</p>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         {rows.map((row) => {
           const c = compareToTarget(row.actual, row.target);
           return (
             <div key={row.key} className="rounded-2xl bg-bg px-3.5 py-3" data-status={c.status}>
-              <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+              <p className="truncate text-[11px] font-semibold text-ink-faint">
                 {row.label}
               </p>
               <p className="mt-1.5 font-display text-2xl font-extrabold tabular-nums leading-none">
@@ -572,7 +572,7 @@ function MealCard({
             ) : null}
             {/* Which days this meal is for: "every day" said out loud is what
                 makes a weekday's own version legible. */}
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
               meal.day_index === 0 ? "bg-bg" : "bg-accent-soft text-accent-ink"
             }`}>
               {meal.day_index === 0
@@ -681,7 +681,7 @@ function MealCard({
           <UpgradeHint feature="ingredientPlans" upgrade={upgrade} className="w-full shrink-0 self-start lg:w-80" />
         ) : open ? (
           <div className="flex h-[clamp(32rem,82vh,64rem)] w-full shrink-0 flex-col rounded-2xl bg-bg p-3.5 lg:w-80">
-            <p className="mb-2.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+            <p className="mb-2.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ink-faint">
               {fill(m.addTo, { name: mealName })}
               {solo ? null : <PremiumSoon feature="ingredientPlans" />}
             </p>
@@ -924,7 +924,7 @@ function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => voi
                   <span className="min-w-0 truncate">{food.name_ro}</span>
                   {food.english_only ? (
                     <span
-                      className="shrink-0 rounded-full bg-bg px-1.5 text-[9px] font-semibold uppercase tracking-wider text-ink-faint"
+                      className="shrink-0 rounded-full bg-bg px-1.5 text-[9px] font-semibold text-ink-faint"
                       title={m.englishOnlyHint}
                     >
                       {m.englishOnly}
@@ -999,7 +999,7 @@ function MealRecipe({
 
   return (
     <div className="mb-3 rounded-2xl bg-bg px-3.5 py-2.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.recipe}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{m.recipe}</p>
       {linked ? (
         <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-[11rem] flex-1">

@@ -100,7 +100,7 @@ export function ProfileForm({
 
   return (
     <Card plain>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{a.profile}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{a.profile}</p>
       <div className="mt-3">
         <AvatarPicker name={form.username || form.fullName} url={avatarUrl} enabled={photoUploads} />
       </div>
@@ -374,7 +374,7 @@ export function DataExportCard() {
 
   return (
     <Card plain>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{a.yourData}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{a.yourData}</p>
       <p className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">{a.exportBody}</p>
       <button onClick={run} disabled={pending} className={`${BUTTON} mt-4`}>
         {pending ? a.exportPending : a.exportButton}
@@ -415,7 +415,7 @@ export function DeleteAccountCard() {
 
   return (
     <Card plain>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-risk">{a.deleteTitle}</p>
+      <p className="text-[11px] font-semibold text-risk">{a.deleteTitle}</p>
       <p className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">{a.deleteBody}</p>
       <label className="mt-3.5 block text-[13px] font-semibold text-ink-soft">
         {a.deleteConfirm}

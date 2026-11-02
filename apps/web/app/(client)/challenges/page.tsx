@@ -55,7 +55,7 @@ export default async function ChallengesPage({
             return (
               <section key={status}>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">{ch.sections[status]}</h2>
+                  <h2 className="text-xs font-bold text-ink-soft">{ch.sections[status]}</h2>
                   <span className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold tabular-nums text-ink-faint">
                     {items.length}
                   </span>

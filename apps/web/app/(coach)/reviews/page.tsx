@@ -28,7 +28,7 @@ export default async function CoachReviewsPage() {
         ) : (
           <p className="text-[13.5px] text-ink-faint">
             {t.coachProfile.bookings.availability.noProfile}{" "}
-            <Link href="/settings/coach-profile" className="font-semibold text-accent-ink hover:underline">→</Link>
+            <Link href="/settings/coach-profile" className="font-semibold text-accent-ink hover:underline">{t.coachProfile.card.open}</Link>
           </p>
         )}
       </div>

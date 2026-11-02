@@ -93,7 +93,7 @@ export function ProgramActivation({
     <Card plain className="space-y-3 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{b.statusLabel}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{b.statusLabel}</p>
           {state ? (
             <p className="mt-1 flex flex-wrap items-center gap-2">
               <span

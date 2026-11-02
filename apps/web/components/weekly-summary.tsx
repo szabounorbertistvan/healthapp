@@ -89,7 +89,7 @@ function Section({ title, aside, children }: { title: string; aside?: string; ch
   return (
     <section>
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{title}</h3>
+        <h3 className="text-[11px] font-semibold text-ink-faint">{title}</h3>
         {aside ? <span className="text-[11px] text-ink-faint">{aside}</span> : null}
       </div>
       <ul className="mt-1 divide-y divide-line">{children}</ul>
@@ -130,7 +130,7 @@ export function WeeklySummaryCard({ summary: s, switchPath, compact = false }: {
       {/* header: eyebrow + range on the left, the week switch on the right */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{w.title}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{w.title}</p>
           <p className="mt-0.5 truncate text-sm font-bold">
             {f.date(cur.week.start)} – {f.date(cur.week.end)}
           </p>

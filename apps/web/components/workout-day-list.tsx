@@ -70,7 +70,7 @@ export function WorkoutDayList({
       {groups.map((group) => (
         <section key={group.program_id}>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">{group.program_name}</p>
+            <p className="text-xs font-bold text-ink-soft">{group.program_name}</p>
             <span className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-faint">
               {group.is_own ? w.byYou : w.byCoach}
             </span>

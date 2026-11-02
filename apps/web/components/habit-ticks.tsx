@@ -67,7 +67,7 @@ export function HabitTicks({ habits, removable = false }: { habits: ClientHabitR
       {groups.map((group) => (
         <section key={group.category}>
           {labelled ? (
-            <p className={`mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-faint ${removable ? "" : "px-1.5"}`}>
+            <p className={`mb-1 text-[11px] font-semibold text-ink-faint ${removable ? "" : "px-1.5"}`}>
               {t.clientWidgets.habitCategories[group.category]}
             </p>
           ) : null}
@@ -182,11 +182,11 @@ export function HabitTicks({ habits, removable = false }: { habits: ClientHabitR
                   ) : null}
                   {info && showing ? (
                     <div className="ml-9 mt-1.5 rounded-2xl bg-bg px-3.5 py-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+                      <p className="text-[11px] font-semibold text-ink-faint">
                         {t.clientApp.habits.what}
                       </p>
                       <p className="mt-0.5 text-[13px] leading-relaxed text-ink-soft">{info.what}</p>
-                      <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+                      <p className="mt-2.5 text-[11px] font-semibold text-ink-faint">
                         {t.clientApp.habits.why}
                       </p>
                       <p className="mt-0.5 text-[13px] leading-relaxed text-ink-soft">{info.why}</p>

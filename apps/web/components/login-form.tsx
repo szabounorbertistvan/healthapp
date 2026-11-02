@@ -23,7 +23,7 @@ type Done = { kind: "confirm" | "reset"; email: string } | null;
 const MIN_PASSWORD = 8;
 
 const inputClass =
-  "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
+  "w-full rounded-lg border border-edge bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
 
 /**
  * The sign-in / sign-up / forgot-password form. Rendered full-page at /login
@@ -345,7 +345,7 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: LoginMode 
 
       {mode !== "forgot" && (googleEnabled || appleEnabled) ? (
         <>
-          <div className="flex items-center gap-3 py-1 text-[11px] uppercase tracking-wide text-ink-faint">
+          <div className="flex items-center gap-3 py-1 text-[11px] text-ink-faint">
             <span className="h-px flex-1 bg-line" />
             {t.login.or}
             <span className="h-px flex-1 bg-line" />

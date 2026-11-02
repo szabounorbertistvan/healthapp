@@ -88,7 +88,7 @@ export function ChallengeMilestones({ reached }: { reached: number[] }) {
   const { t } = useI18n();
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.common.challenges.milestones}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{t.common.challenges.milestones}</p>
       <ol className="mt-1.5 flex gap-1.5">
         {CHALLENGE_MILESTONES.map((m) => {
           const done = reached.includes(m);
@@ -122,7 +122,7 @@ export function ChallengeCard({ challenge: c }: { challenge: ChallengeCardRow })
             <NavIcon d={TYPE_ICON[c.type]} className="h-11 w-11 shrink-0 text-accent-ink" />
             <div className="min-w-0">
               <h3 className="truncate font-display text-lg font-bold tracking-tight">{c.title}</h3>
-              <p className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{challengeSubtitle(c, ch)}</p>
+              <p className="mt-0.5 truncate text-[11px] font-semibold text-ink-faint">{challengeSubtitle(c, ch)}</p>
             </div>
           </div>
           <ChallengeStatusBadge status={c.status} />
@@ -250,7 +250,7 @@ export function Leaderboard({ rows, type, total }: { rows: LeaderboardRow[]; typ
   return (
     <Card plain className="overflow-hidden p-0">
       <div className="flex items-baseline justify-between gap-3 px-5 pb-3 pt-[18px]">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{ch.leaderboard}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{ch.leaderboard}</p>
         {mine ? (
           <p className="text-[12.5px] tabular-nums text-ink-soft">{fill(ch.yourRank, { rank: mine.rank, total })}</p>
         ) : null}
@@ -266,7 +266,7 @@ export function Leaderboard({ rows, type, total }: { rows: LeaderboardRow[]; typ
             </span>
             <span className="min-w-0 flex-1 truncate font-semibold">
               {r.name}
-              {r.me ? <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{ch.you}</span> : null}
+              {r.me ? <span className="ml-1.5 text-[11px] font-semibold text-accent-ink">{ch.you}</span> : null}
             </span>
             <span className="shrink-0 tabular-nums text-ink-faint">
               <b className="font-display text-[15px] font-bold text-ink">{n(r.value)}</b> {unit(type)}

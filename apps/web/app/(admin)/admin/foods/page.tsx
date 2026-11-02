@@ -42,7 +42,7 @@ export default async function AdminFoodsPage({
 
       <Card plain className="mt-5 overflow-x-auto p-0 sm:mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider tabular-nums text-ink-faint">
+          <p className="text-[11px] font-semibold tabular-nums text-ink-faint">
             {fill(m.missingCount, { n: missing })}
           </p>
           <form action="/admin/foods" method="GET" className="flex flex-wrap items-center gap-2">
@@ -82,7 +82,7 @@ export default async function AdminFoodsPage({
         ) : (
           <table className="mt-4 w-full text-sm">
             <thead>
-              <tr className="border-b border-line/60 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+              <tr className="border-b border-line/60 text-left text-[11px] font-semibold text-ink-faint">
                 <th className="px-5 py-2.5 font-semibold">{m.thEnglish}</th>
                 <th className="px-5 py-2.5 font-semibold">{m.thRomanian}</th>
               </tr>

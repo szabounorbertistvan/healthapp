@@ -258,7 +258,7 @@ export default async function PersonPage({
 
         {profile.fitness_score !== null ? (
           <p className="mt-3 inline-flex items-baseline gap-2 rounded-full bg-accent px-3.5 py-1.5 text-accent-fg">
-            <span className="text-[11px] font-semibold uppercase tracking-wider opacity-75">{s.fitnessScore}</span>
+            <span className="text-[11px] font-semibold opacity-75">{s.fitnessScore}</span>
             <span className="font-display text-[17px] font-black tabular-nums leading-none">{profile.fitness_score}</span>
             {profile.fitness_score_at ? (
               <span className="text-[11px] opacity-70">

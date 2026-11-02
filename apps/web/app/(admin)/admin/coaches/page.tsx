@@ -117,7 +117,7 @@ export default async function AdminCoachesPage({ searchParams }: { searchParams:
                   <Td nowrap>{row.submitted_at ? fmtDate(row.submitted_at, locale) : c.none}</Td>
                   <Td nowrap>{fmtDate(row.updated_at, locale)}</Td>
                   <Td nowrap>
-                    <Link href={`/admin/coaches/${row.id}`} className="font-semibold text-accent-ink hover:underline">{m.review} →</Link>
+                    <Link href={`/admin/coaches/${row.id}`} className="font-semibold text-accent-ink hover:underline">{m.review}</Link>
                   </Td>
                 </tr>
               ))}

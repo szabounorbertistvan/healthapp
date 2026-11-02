@@ -11,7 +11,7 @@ import { RoleCard } from "./role-card";
 import { ConsentChecks, consentGiven, type Consent } from "./consent-checks";
 
 const inputClass =
-  "h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent";
+  "h-11 w-full rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent";
 
 /**
  * Fills in what a sign-up may have skipped: name, username, sex, age — and,

@@ -105,7 +105,7 @@ function Connected({ conn, locale, canReconnect }: { conn: CalendarIntegration; 
 
       {conn.sources.length > 0 ? (
         <fieldset className="grid gap-2" disabled={pending}>
-          <legend className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{c.calendars}</legend>
+          <legend className="text-[12px] font-semibold text-ink-faint">{c.calendars}</legend>
           {conn.sources.map((s) => (
             <Switch key={s.id} checked={s.affects_availability} label={s.name ?? "—"}
               onChange={(on) => run(() => setCalendarSourceAvailability(s.id, on))}

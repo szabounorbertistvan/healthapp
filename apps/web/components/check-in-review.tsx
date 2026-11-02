@@ -80,7 +80,7 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
       <div className="min-w-0 flex-1 space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Card plain>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.thisWeek}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{m.thisWeek}</p>
             <div className="mt-1.5">
               <Row label={m.weight} value={selected.weight_kg ? `${selected.weight_kg} kg` : "—"} />
               {metrics.map((metric) => (
@@ -89,7 +89,7 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
             </div>
           </Card>
           <Card plain className="opacity-70">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.lastWeek}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{m.lastWeek}</p>
             {selected.previous ? (
               <div className="mt-1.5">
                 <Row label={m.weight} value={selected.previous.weight_kg ? `${selected.previous.weight_kg} kg` : "—"} />
@@ -105,7 +105,7 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
 
         {selected.answers.length > 0 ? (
           <Card plain>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.yourQuestions}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{m.yourQuestions}</p>
             <dl className="mt-2 divide-y divide-line/60">
               {selected.answers.map((a, i) => (
                 <div key={i} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2 text-[13.5px]">
@@ -123,14 +123,14 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
 
         {selected.note ? (
           <Card plain>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.clientNote}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{m.clientNote}</p>
             <p className="mt-1.5 text-[13.5px] leading-relaxed">&ldquo;{selected.note}&rdquo;</p>
           </Card>
         ) : null}
 
         {selected.context ? (
           <Card plain>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.weekContext}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{m.weekContext}</p>
             <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{selected.context}</p>
           </Card>
         ) : null}

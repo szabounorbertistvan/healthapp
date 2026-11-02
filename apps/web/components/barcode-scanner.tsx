@@ -198,7 +198,7 @@ export function BarcodeScanner({
   return (
     <div className="rounded-2xl bg-bg p-3.5">
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="text-[11px] font-semibold text-ink-faint">
           {t.clientWidgets.barcodeScanner.title}
         </p>
         <button
@@ -254,7 +254,7 @@ export function BarcodeScanner({
 
       <div className="mt-3 flex items-end gap-2">
         <label className="flex flex-1 flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+          <span className="text-[11px] font-semibold text-ink-faint">
             {t.clientWidgets.barcodeScanner.orTypeNumber}
           </span>
           <input

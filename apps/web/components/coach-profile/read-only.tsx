@@ -21,7 +21,7 @@ export function CoachProfileReadOnly({
   });
   return (
     <Card plain>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{t.coachProfile.publish.preview}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{t.coachProfile.publish.preview}</p>
       <div className="mt-3 rounded-3xl bg-bg p-2 sm:p-3">
         <CoachProfilePreview profile={preview} />
       </div>

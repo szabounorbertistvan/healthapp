@@ -30,7 +30,7 @@ export function SetupCard({ done, total }: { done: number; total: number }) {
         <NavIcon d="M12 4a4 4 0 1 0 0 8 4 4 0 1 0 0-8M4 21a8 8 0 0 1 16 0M19 3v4M17 5h4" className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">
-        <p id="setup-card-title" className="font-display text-[15px] font-bold tracking-tight">{c.title}</p>
+        <h2 id="setup-card-title" className="font-display text-[15px] font-bold tracking-tight">{c.title}</h2>
         <p className="mt-0.5 text-[12.5px] text-ink-faint">{fill(c.progress, { done, total })}</p>
         <div
           role="progressbar"

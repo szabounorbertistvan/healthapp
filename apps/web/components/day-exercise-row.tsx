@@ -35,7 +35,7 @@ export function DayExerciseRow({
   // Outside the button: a cue is read, not tapped, and may run several lines.
   const cue = note ? (
     <div className="mx-2 -mt-1 rounded-b-2xl border-l-[3px] border-accent bg-accent-soft/40 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-ink">{noteLabel}</p>
+      <p className="text-[11px] font-semibold text-accent-ink">{noteLabel}</p>
       <p className="mt-0.5 whitespace-pre-line text-[13px] text-ink">{note}</p>
     </div>
   ) : null;

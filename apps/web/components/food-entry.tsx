@@ -117,9 +117,11 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
         </span>
       </div>
       <div className="mt-1 flex items-center justify-between gap-3 text-xs text-ink-faint">
-        <span className="tabular-nums">
-          {entry.grams} g · {initial(t.common.macros.protein)} {entry.macros.protein} ·{" "}
-          {initial(t.common.macros.carbs)} {entry.macros.carbs} · {initial(t.common.macros.fat)} {entry.macros.fat}
+        <span className="flex flex-wrap gap-x-2.5 tabular-nums">
+          <span>{entry.grams} g</span>
+          <span>{initial(t.common.macros.protein)} {entry.macros.protein}</span>
+          <span>{initial(t.common.macros.carbs)} {entry.macros.carbs}</span>
+          <span>{initial(t.common.macros.fat)} {entry.macros.fat}</span>
         </span>
         <span className="flex shrink-0 items-center gap-3">
           {confirming ? (

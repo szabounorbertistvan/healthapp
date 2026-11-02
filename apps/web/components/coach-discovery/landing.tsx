@@ -52,7 +52,7 @@ export async function LandingCoachDiscovery({ coachCtaHref }: { coachCtaHref: st
               </span>
               <Link href={`/coaches${discoverySearch(picks!.seeAll)}`}
                 className="rounded font-semibold text-accent-ink outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
-                {l.seeAll} →
+                {l.seeAll}
               </Link>
             </p>
           ) : null}
@@ -130,19 +130,12 @@ function Shell({ t, coachCtaHref, children }: { t: Dictionary; coachCtaHref: str
       data-testid="landing-coaches"
       className="relative mt-9 overflow-hidden rounded-[28px] bg-surface p-6 sm:mt-16 sm:p-10 lg:p-12"
     >
-      {/* the Discovery Home's own warm light, low and in the corner */}
-      <div aria-hidden className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-accent-soft opacity-60 blur-3xl sm:h-96 sm:w-96" />
-
       {/* Phones and tablets read copy → coaches → the coach invitation, so the
           second audience never sits between the main button and the coaches
           it promises. Desktop puts the invitation back under the copy. */}
       <div className="relative grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[1fr_auto] lg:gap-x-14 lg:gap-y-8">
         <div className="lg:col-start-1 lg:row-start-1 lg:self-end">
-          <p className="flex items-center gap-3 font-display text-xs font-bold uppercase tracking-[0.28em] text-accent-ink">
-            <span className="h-px w-8 bg-accent" aria-hidden />
-            {l.eyebrow}
-          </p>
-          <h2 id="landing-coaches" className="mt-4 max-w-[18ch] text-balance font-display text-[30px] font-extrabold leading-[1.06] tracking-tight sm:text-[42px]">
+          <h2 id="landing-coaches" className="max-w-[18ch] text-balance font-display text-[30px] font-extrabold leading-[1.06] tracking-tight sm:text-[42px]">
             {l.title}
           </h2>
           <p className="mt-4 max-w-[52ch] leading-relaxed text-ink-soft sm:text-[16px]">{l.body}</p>
@@ -153,7 +146,6 @@ function Shell({ t, coachCtaHref, children }: { t: Dictionary; coachCtaHref: str
               className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent px-6 font-display font-bold text-accent-fg outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface sm:w-auto"
             >
               {l.cta}
-              <span aria-hidden>→</span>
             </Link>
           </div>
         </div>
@@ -165,7 +157,7 @@ function Shell({ t, coachCtaHref, children }: { t: Dictionary; coachCtaHref: str
           <span className="font-semibold text-ink">{h.forCoaches}</span>
           <Link href={coachCtaHref} data-testid="landing-coaches-for-coaches"
             className="rounded font-semibold text-accent-ink outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
-            {h.forCoachesCta} →
+            {h.forCoachesCta}
           </Link>
         </p>
       </div>

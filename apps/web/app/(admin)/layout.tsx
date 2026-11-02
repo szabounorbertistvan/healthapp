@@ -50,12 +50,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <aside className="hidden w-60 shrink-0 flex-col px-3.5 pb-5 pt-6 lg:flex">
         <Link href="/admin" className="flex items-center gap-2 px-2.5">
           <Logo size="sm" />
-          <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-ink">{t.admin.title}</span>
+          <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-bold text-accent-ink">{t.admin.title}</span>
         </Link>
         <Link href="/settings" className="mt-2.5 flex items-center gap-2 px-2.5 text-xs text-ink-faint hover:text-ink">
           <Avatar name={name} url={profile.avatar_url} size="h-7 w-7" />
           <span className="truncate">{name}</span>
-          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-accent-ink">admin</span>
+          <span className="ml-auto text-[11px] font-semibold text-accent-ink">admin</span>
         </Link>
         <form action="/admin/search" method="GET" className="mt-4 px-1">
           <SearchInput value={null} placeholder={t.admin.search.title + "…"} />

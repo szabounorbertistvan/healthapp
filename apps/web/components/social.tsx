@@ -62,7 +62,7 @@ const VIS_ICON: Record<PostVisibility, string> = { public: GLOBE, followers: PEO
 /** The eyebrow every payload block shares: an icon and a small caps label. */
 function BlockLabel({ icon, children, tone = "text-accent-ink" }: { icon: string; children: React.ReactNode; tone?: string }) {
   return (
-    <p className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${tone}`}>
+    <p className={`flex items-center gap-1.5 text-[11px] font-semibold ${tone}`}>
       <NavIcon d={icon} className="h-[15px] w-[15px]" />
       {children}
     </p>
@@ -194,7 +194,7 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
     // where nothing sits on it.
     const scrimLayer = scrim ? (
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-5 pb-4 pt-14 text-white">
-        <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-white/70">
+        <span className="flex items-center gap-1.5 text-[11px] font-bold text-white/70">
           <NavIcon d={DUMBBELL} className="h-3.5 w-3.5" />
           {s.workoutPost}
         </span>
@@ -309,7 +309,7 @@ function PostMedia({ post, splash }: { post: FeedPost; splash: React.ReactNode }
         </div>
         {/* Rarity as the catalog had it when shared; older posts carry none. */}
         {isAchievementRarity(p.rarity) ? (
-          <p className="mt-2.5 text-[11px] font-bold uppercase tracking-wider opacity-75">
+          <p className="mt-2.5 text-[11px] font-bold opacity-75">
             {t.common.achievements.rarities[p.rarity]}
           </p>
         ) : null}

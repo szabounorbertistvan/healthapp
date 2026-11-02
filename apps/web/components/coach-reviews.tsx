@@ -302,7 +302,7 @@ export function CoachReviewsList({ data, coachName }: { data: CoachMyReviews; co
                 report={rv.status === "published" ? (
                   <ModerationMenuButton target={{ userId: "", name: rv.reviewer_name }} reviewId={rv.id}
                     muted={false} blocked={false} place="review" size="small" />
-                ) : <span className="ml-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{c.hidden}</span>} />
+                ) : <span className="ml-2 text-[11px] font-semibold text-ink-faint">{c.hidden}</span>} />
               <AnswerBox review={rv} />
             </div>
           ))}

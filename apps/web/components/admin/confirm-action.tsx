@@ -59,7 +59,7 @@ export function ConfirmAction({
           <h2 className="font-display text-lg font-extrabold tracking-tight">{title}</h2>
           <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{body}</p>
           {withReason ? (
-            <label className="mt-4 block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+            <label className="mt-4 block text-[11px] font-semibold text-ink-faint">
               {t.admin.common.reason}
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={2}
                 className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2 text-[13px] font-normal normal-case tracking-normal text-ink outline-none focus:border-accent" />

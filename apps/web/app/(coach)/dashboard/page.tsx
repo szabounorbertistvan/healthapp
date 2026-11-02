@@ -102,7 +102,7 @@ export default async function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-[13.5px]">
                   <thead>
-                    <tr className="whitespace-nowrap text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                    <tr className="whitespace-nowrap text-left text-[11px] text-ink-faint">
                       <th className="px-6 pb-2 pt-[18px] font-semibold">{t.coachApp.dashboard.thClient}</th>
                       {pro ? (
                         <>
@@ -170,7 +170,7 @@ export default async function DashboardPage() {
                     <dl className="mt-3 flex items-end justify-between gap-3">
                       {pro ? (
                         <div>
-                          <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                          <dt className="text-[11px] font-semibold text-ink-faint">
                             {t.coachApp.dashboard.thAdherence}
                           </dt>
                           <dd className="mt-1">
@@ -179,7 +179,7 @@ export default async function DashboardPage() {
                         </div>
                       ) : null}
                       <div>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                        <dt className="text-[11px] font-semibold text-ink-faint">
                           {t.coachApp.dashboard.thLastLog}
                         </dt>
                         <dd className="mt-0.5 text-[13px] tabular-nums text-ink-soft">
@@ -273,7 +273,7 @@ function Stat({
       className="flex flex-col items-center gap-2.5 rounded-3xl bg-surface px-4 py-5 text-center transition hover:bg-accent-soft/40 sm:gap-3 sm:py-6"
     >
       <NavIcon d={icon} className="h-10 w-10 shrink-0 text-accent-ink sm:h-12 sm:w-12" />
-      <p className="flex min-h-[2.4em] w-full items-center justify-center text-[11px] font-semibold uppercase leading-snug tracking-wider text-ink-faint">
+      <p className="flex min-h-[2.4em] w-full items-center justify-center text-[11px] font-semibold leading-snug text-ink-faint">
         {label}
       </p>
       <p

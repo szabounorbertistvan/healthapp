@@ -47,7 +47,7 @@ export function AddHabitForm({ existingNames }: { existingNames: string[] }) {
   return (
     <Card plain className="space-y-5">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.ideas}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{m.ideas}</p>
         <p className="mt-1 text-[12.5px] text-ink-faint">{m.tapForDetails}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {HABIT_SUGGESTION_KEYS.map((key) => {
@@ -77,11 +77,11 @@ export function AddHabitForm({ existingNames }: { existingNames: string[] }) {
         {picked ? (
           <div className="mt-3.5 rounded-2xl bg-bg px-4 py-3.5">
             <p className="font-display text-[15px] font-bold tracking-tight">{s[picked].name}</p>
-            <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+            <p className="mt-2.5 text-[11px] font-semibold text-ink-faint">
               {t.clientApp.habits.what}
             </p>
             <p className="mt-0.5 text-[13px] leading-relaxed text-ink-soft">{s[picked].what}</p>
-            <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+            <p className="mt-2.5 text-[11px] font-semibold text-ink-faint">
               {t.clientApp.habits.why}
             </p>
             <p className="mt-0.5 text-[13px] leading-relaxed text-ink-soft">{s[picked].why}</p>
@@ -106,10 +106,10 @@ export function AddHabitForm({ existingNames }: { existingNames: string[] }) {
       </div>
 
       <div>
-        <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.custom}</p>
+        <p className="mb-2.5 text-[11px] font-semibold text-ink-faint">{m.custom}</p>
         <div className="flex flex-wrap items-end gap-2.5">
           <label className="flex min-w-48 flex-1 flex-col gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{m.name}</span>
+            <span className="text-[11px] font-semibold text-ink-faint">{m.name}</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -118,7 +118,7 @@ export function AddHabitForm({ existingNames }: { existingNames: string[] }) {
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+            <span className="text-[11px] font-semibold text-ink-faint">
               {m.daysPerWeek}
             </span>
             <input

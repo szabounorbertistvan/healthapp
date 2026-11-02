@@ -288,7 +288,7 @@ export function NotificationList({
 
       {groups.filter((g) => g.rows.length > 0).map((g) => (
         <section key={g.key} className="mt-5">
-          <h2 className="px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{g.label}</h2>
+          <h2 className="px-1 text-[11px] font-semibold text-ink-faint">{g.label}</h2>
           <ul className="mt-2 overflow-hidden rounded-3xl bg-surface">
             {g.rows.map((row) => {
               const unreadRow = !isRead(row);

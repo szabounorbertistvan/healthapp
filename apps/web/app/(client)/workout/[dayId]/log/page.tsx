@@ -32,12 +32,12 @@ export default async function WorkoutLogPage({
         {day.day_name}
       </Link>
       <div className="mt-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-          {day.program_name} · {day.intensity_mode.toUpperCase()}
-        </p>
-        <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">
+        <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">
           {t.clientApp.workoutDay.logToday}
         </h1>
+        <p className="mt-1 text-[12px] font-semibold text-ink-faint">
+          {day.program_name} · {day.intensity_mode.toUpperCase()}
+        </p>
       </div>
       <div className="mt-5">
         <SetLogger day={day} previous={previous} />

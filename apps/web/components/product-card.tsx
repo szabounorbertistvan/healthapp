@@ -48,7 +48,7 @@ export function ProductCard({
       </div>
 
       <div className="p-3.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="text-[11px] font-semibold text-ink-faint">
           {t.clientWidgets.productCard.per100g}
         </p>
         <div className="mt-1.5 grid grid-cols-4 gap-2">
@@ -60,7 +60,7 @@ export function ProductCard({
 
         {serving && servingMacros ? (
           <>
-            <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+            <p className="mt-3 text-[11px] font-semibold text-ink-faint">
               {fill(t.clientWidgets.productCard.perServing, { label: serving.label, grams: serving.grams })}
             </p>
             <div className="mt-1.5 grid grid-cols-4 gap-2">
@@ -109,7 +109,7 @@ function Nutrient({
         {Math.round(value * 10) / 10}
         {unit}
       </p>
-      <p className="text-[10px] uppercase tracking-wider text-ink-faint">{label}</p>
+      <p className="text-[11px] text-ink-faint">{label}</p>
     </div>
   );
 }

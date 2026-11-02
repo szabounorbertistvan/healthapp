@@ -126,7 +126,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
       ) : null}
 
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.evidence}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{m.evidence}</p>
         <ul className="mt-1.5 flex flex-wrap gap-1.5">
           {application.specializations.map((sp) => (
             <li key={sp.slug} className={`rounded-full px-3 py-1 text-[12px] font-semibold ${sp.qualification_evidence === "required" ? "bg-warn-soft text-warn" : "bg-bg text-ink-soft"}`}>
@@ -137,7 +137,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
       </div>
 
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.documents}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{m.documents}</p>
         <p className="mt-0.5 text-[12px] text-ink-faint">{m.privateHint}</p>
         {application.documents.length === 0 ? <p className="mt-1.5 text-ink-soft">{m.noDocuments}</p> : (
           <ul className="mt-1.5 grid gap-1.5" data-testid="admin-application-documents">
@@ -177,7 +177,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
 
       {options.length ? (
         <div className="grid gap-3 rounded-2xl border border-line p-3.5" data-testid="admin-application-decide">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.checklist}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{m.checklist}</p>
           <label className="flex items-start gap-2">
             <input type="checkbox" className="mt-1" checked={profileReviewed} onChange={(e) => setProfileReviewed(e.target.checked)} data-testid="admin-profile-reviewed" />
             <span>{m.profileReviewed}</span>
@@ -205,7 +205,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
       ) : null}
 
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.history}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{m.history}</p>
         {application.history.length === 0 ? <p className="mt-1.5 text-ink-soft">{m.noHistory}</p> : (
           <ol className="mt-1.5 grid gap-1.5" data-testid="admin-application-history">
             {application.history.map((h, i) => (

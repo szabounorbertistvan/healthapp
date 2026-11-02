@@ -21,7 +21,7 @@ type Run = (action: () => Promise<{ ok: boolean; message?: string }>) => void;
 
 // Dense but never cramped: a 40px field is still thumb-sized on a phone.
 const cell = "h-10 w-full min-w-0 rounded-xl border border-line bg-bg px-2.5 text-sm tabular-nums outline-none focus:border-accent";
-const label = "text-[10px] font-semibold uppercase tracking-wider text-ink-faint";
+const label = "text-[11px] font-semibold text-ink-faint";
 /** Round icon button for the chrome around a day and its rows. */
 const iconButton = "grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft hover:text-accent-ink disabled:opacity-30";
 const PENCIL = "M4 20h4l10-10-4-4L4 16zM13 7l4 4";
@@ -120,7 +120,7 @@ export function ProgramDayEditor({
             className={seg.circuit !== null ? "rounded-2xl border-l-[3px] border-accent bg-accent-soft/30 p-2.5 pl-3" : ""}
           >
             {seg.label ? (
-              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-accent-ink">
                 <NavIcon d="M10 14a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" className="h-[15px] w-[15px]" />
                 {fill(m.circuitName, { label: seg.label })} · {fill(m.circuitRounds, { n: seg.exercises.length })}
               </p>
@@ -157,7 +157,7 @@ export function ProgramDayEditor({
           its panel stays on the card and is delimited by a border only. */}
       {replacing ? (
         <div className="mt-4 flex h-[clamp(32rem,82vh,64rem)] flex-col rounded-2xl border border-accent p-3.5">
-          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-accent-ink">{m.changeExercise}</p>
+          <p className="mb-2.5 text-[11px] font-semibold text-accent-ink">{m.changeExercise}</p>
           <ExercisePicker
             muscles={muscles}
             equipment={equipment}
@@ -196,7 +196,7 @@ export function ProgramDayEditor({
           />
         ) : (
           <div className="mt-4 flex h-[clamp(32rem,82vh,64rem)] flex-col rounded-2xl border border-line/60 p-3.5">
-            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{fill(m.addTo, { name: day.name })}</p>
+            <p className="mb-2.5 text-[11px] font-semibold text-ink-faint">{fill(m.addTo, { name: day.name })}</p>
             <ExercisePicker
               muscles={muscles}
               equipment={equipment}

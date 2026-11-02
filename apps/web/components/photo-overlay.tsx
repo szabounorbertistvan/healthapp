@@ -123,7 +123,7 @@ function StatsBlock({ item, stats, drag, handle }: {
   return (
     <div
       {...drag}
-      style={{ ...centred(item.x, item.y), width: cqw(box.w), height: cqw(box.h), color: "#fff", textShadow: SHADOW }}
+      style={{ ...centred(item.x, item.y), width: cqw(box.w), height: cqw(box.h), color: "var(--color-story-photo-ink)", textShadow: SHADOW }}
       className={drag ? `${DRAGGABLE} rounded-lg outline-1 outline-dashed outline-white/40` : "pointer-events-none"}
     >
       {rows.map(({ key, stat }, i) => {
@@ -520,9 +520,9 @@ export function PhotoOverlayEditor({
             disabled={disabled}
             onClick={() => onPick(OVERLAY_SCALE[size])}
             aria-pressed={on}
-            className={`h-7 w-8 cursor-pointer rounded-full text-[11.5px] font-bold uppercase ${on ? "bg-surface text-ink shadow-sm" : "text-ink-faint hover:text-ink"}`}
+            className={`h-7 w-8 cursor-pointer rounded-full text-[11.5px] font-bold ${on ? "bg-surface text-ink shadow-sm" : "text-ink-faint hover:text-ink"}`}
           >
-            {size}
+            {size.toUpperCase()}
           </button>
         );
       })}

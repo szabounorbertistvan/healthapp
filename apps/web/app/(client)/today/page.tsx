@@ -109,7 +109,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-extrabold tracking-tight first-letter:uppercase sm:text-[28px]">{weekday}</h1>
-          <p className="mt-1 text-[13px] text-ink-faint first-letter:uppercase">{longDate}</p>
+          <p className="mt-1 text-[13px] text-ink-faint">{longDate}</p>
         </div>
         <PageTour id="today" steps={["week", "training", "nutrition", "coach"]} />
       </header>
@@ -173,7 +173,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         {/* ---- everything else ---- */}
         <div className="space-y-4 @6xl:order-3">
           <Card plain className="overflow-hidden p-0">
-            <p className="px-5 pt-[18px] text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{d.community}</p>
+            <p className="px-5 pt-[18px] text-[11px] font-semibold text-ink-faint">{d.community}</p>
             <ul className="mt-2 divide-y divide-line/60">
               <LinkRow
                 href="/leaderboards"

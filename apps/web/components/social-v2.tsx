@@ -45,7 +45,7 @@ const RARITY_TONE: Record<AchievementRarity, string> = {
 /** The badge's catalog rarity. A label on the badge — never a comparison between people. */
 export function RarityChip({ rarity, label }: { rarity: AchievementRarity; label: string }) {
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider ${RARITY_TONE[rarity]}`}>
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${RARITY_TONE[rarity]}`}>
       {label}
     </span>
   );

@@ -140,7 +140,7 @@ export function CoachCard({ card, signedIn }: { card: CoachCardModel; signedIn: 
           {/* above the stretched link, so a tap here follows instead of opening the profile */}
           <div className="relative z-10">{follow}</div>
           <span aria-hidden className="inline-flex h-9 shrink-0 items-center rounded-full bg-accent-soft px-3.5 text-[12.5px] font-bold text-accent-ink group-hover:bg-accent group-hover:text-accent-fg">
-            {c.viewProfile} →
+            {c.viewProfile}
           </span>
         </div>
       </div>

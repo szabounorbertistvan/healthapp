@@ -37,7 +37,7 @@ export default async function AdminNutritionPage({ searchParams }: { searchParam
             <Kpi label={m.noPortions} value={n(s.foods_no_portions)} />
             <Kpi label={m.duplicates} value={n(s.foods_duplicate_names)} warn={s.foods_duplicate_names > 0} />
           </KpiGrid>
-          <h3 className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.bySource}</h3>
+          <h3 className="mb-2 mt-4 text-[11px] font-semibold text-ink-faint">{m.bySource}</h3>
           <Breakdown data={s.foods_by_source} locale={locale} />
         </Section>
 

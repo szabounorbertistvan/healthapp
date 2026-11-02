@@ -157,7 +157,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
             className="glass glass--strong absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-3xl rounded-b-none p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+            <p className="mb-2 px-1 text-[11px] font-semibold text-ink-faint">
               {t.common.moreSheet.title}
             </p>
             <nav className="flex flex-col gap-1">

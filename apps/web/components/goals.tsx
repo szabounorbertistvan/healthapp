@@ -56,7 +56,7 @@ export function GoalsPanel({ dashboard }: { dashboard: GoalDashboard }) {
 
       <section aria-labelledby="goals-active">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 id="goals-active" className="text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">{g.active}</h2>
+          <h2 id="goals-active" className="text-xs font-bold text-ink-soft">{g.active}</h2>
           {!creating && !full ? (
             <button
               type="button"
@@ -92,7 +92,7 @@ export function GoalsPanel({ dashboard }: { dashboard: GoalDashboard }) {
 
       {dashboard.closed.length > 0 ? (
         <section aria-labelledby="goals-finished">
-          <h2 id="goals-finished" className="mb-3 text-xs font-bold uppercase tracking-[0.06em] text-ink-soft">{g.finished}</h2>
+          <h2 id="goals-finished" className="mb-3 text-xs font-bold text-ink-soft">{g.finished}</h2>
           <Card plain className="p-0">
             <ul className="divide-y divide-line/60">
               {dashboard.closed.map((goal) => (

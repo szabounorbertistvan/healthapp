@@ -47,7 +47,7 @@ export function TrainingLoadCard({ load, when }: { load: TrainingLoad; when?: st
   return (
     <Card plain>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{l.title}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{l.title}</p>
         {when ? <p className="text-[11px] text-ink-faint">{l.lastSession} · {when}</p> : null}
       </div>
       <div className="mt-2 flex items-baseline gap-3">
@@ -107,7 +107,7 @@ export function TrainingLoadSummaryCard({ summary }: { summary: TrainingLoadSumm
   return (
     <Card>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{l.title}</p>
+        <p className="text-[11px] font-semibold text-ink-faint">{l.title}</p>
         <p className="text-xs text-ink-faint">
           {l.last7Days}: <b className="tabular-nums text-ink">{summary.last_7_days}</b>
         </p>

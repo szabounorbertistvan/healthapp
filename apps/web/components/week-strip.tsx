@@ -37,8 +37,8 @@ export function WeekStrip({
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{monthYear}</p>
-          <h1 className="mt-1 font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-[28px]">{heading}</h1>
+          <h1 className="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-[28px]">{heading}</h1>
+          <p className="mt-1 text-[12px] font-semibold text-ink-faint">{monthYear}</p>
         </div>
         <div className="flex items-center gap-1.5">
           {selected !== today ? (
@@ -85,7 +85,7 @@ export function WeekStrip({
                   isSelected ? "bg-accent text-accent-fg" : "bg-surface text-ink hover:bg-accent-soft"
                 }`}
               >
-                <span className={`text-[10px] font-semibold uppercase ${isSelected ? "text-accent-fg/70" : "text-ink-faint"}`}>
+                <span className={`text-[11px] font-semibold ${isSelected ? "text-accent-fg/70" : "text-ink-faint"}`}>
                   {weekday.format(date)}
                 </span>
                 <span className="text-[15px] font-bold tabular-nums leading-none sm:text-[17px]">{date.getDate()}</span>

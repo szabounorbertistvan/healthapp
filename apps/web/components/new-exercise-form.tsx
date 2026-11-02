@@ -15,8 +15,8 @@ const MECHANICS = ["compound", "isolation"] as const;
 const OTHER_GEAR = "__other__";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent";
-const labelClass = "text-[11px] font-semibold uppercase tracking-wider text-ink-faint";
+  "w-full rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent";
+const labelClass = "text-[11px] font-semibold text-ink-faint";
 
 /**
  * Create an exercise the library does not have. Lives inside the picker so it

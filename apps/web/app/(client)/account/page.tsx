@@ -70,7 +70,7 @@ export default async function AccountPage() {
           href="/billing"
           className="rounded-3xl bg-surface px-5 py-[18px] text-[13.5px] font-semibold text-ink-soft transition hover:bg-accent-soft/40 hover:text-ink"
         >
-          {t.common.nav.billing} →
+          {t.common.nav.billing}
         </Link>
         */}
 

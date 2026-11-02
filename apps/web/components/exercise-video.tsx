@@ -104,7 +104,7 @@ export function ExerciseVideo({
 
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+      <p className="text-[11px] font-semibold text-ink-faint">
         {v.title}
         {embed && savedSource === "coach" ? ` · ${v.fromCoach}` : ""}
       </p>

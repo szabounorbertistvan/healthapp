@@ -132,7 +132,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       {period ? (
         <Card plain className="mt-4 space-y-4 sm:p-5">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{r.previewTitle}</p>
+            <p className="text-[11px] font-semibold text-ink-faint">{r.previewTitle}</p>
             <p className="mt-1 font-display text-lg font-bold">{r.types[type]}</p>
             <p className="text-[12.5px] text-ink-soft">{fill(r.previewPeriod, { from: fmt(period.from), to: fmt(period.to), days: period.days })}</p>
           </div>

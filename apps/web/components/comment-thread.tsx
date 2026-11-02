@@ -62,7 +62,7 @@ export function CommentThread({ postId, page, commentCount, embedded = false, au
   return (
     <Wrapper {...(embedded ? { className: "px-2" } : { plain: true, className: "p-5" })}>
       {embedded ? null : (
-        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-faint">
           <NavIcon d="M4 5h16v11H9l-5 4z" className="h-[15px] w-[15px]" />
           {total === 1 ? s.commentOne : fill(s.commentsCount, { count: total })}
         </p>

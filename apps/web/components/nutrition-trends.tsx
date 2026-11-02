@@ -163,7 +163,7 @@ function TodayCard({ totals, target, meals }: { totals: Macros; target: Macros |
           {f.kcal(totals.kcal)} · {f.m.protein} {f.g(totals.protein)} · {f.m.carbs} {f.g(totals.carbs)} · {f.m.fat} {f.g(totals.fat)}
         </p>
         <Link href="/food" className="mt-3 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
-          {f.n.setTargets} →
+          {f.n.setTargets}
         </Link>
       </Card>
     );
@@ -464,14 +464,16 @@ function MacroSplitBars({ avg, target }: { avg: Macros | null; target: Macros | 
     <div className="space-y-3">
       {rows.map((r) => (
         <div key={r.label}>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{r.label}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{r.label}</p>
           <div className="mt-1.5 flex h-3 overflow-hidden rounded-full bg-bg">
             {(["protein", "carbs", "fat"] as const).map((k) => (
               <div key={k} className={tone[k]} style={{ width: `${r.split[k]}%` }} title={`${f.m[k]} ${r.split[k]}%`} />
             ))}
           </div>
-          <p className="mt-1 text-[11.5px] tabular-nums text-ink-soft">
-            {f.m.protein} {r.split.protein}% · {f.m.carbs} {r.split.carbs}% · {f.m.fat} {r.split.fat}%
+          <p className="mt-1 flex flex-wrap gap-x-3 text-[11.5px] tabular-nums text-ink-soft">
+            <span>{f.m.protein} {r.split.protein}%</span>
+            <span>{f.m.carbs} {r.split.carbs}%</span>
+            <span>{f.m.fat} {r.split.fat}%</span>
           </p>
         </div>
       ))}
@@ -541,14 +543,14 @@ function PlanCard({
           {f.kcal(target.kcal)} · {f.m.protein} {f.g(target.protein)} · {f.m.carbs} {f.g(target.carbs)} · {f.m.fat} {f.g(target.fat)}
         </p>
       ) : null}
-      <p className="mt-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{n.plannedToday}</p>
+      <p className="mt-2.5 text-[11px] font-semibold text-ink-faint">{n.plannedToday}</p>
       <p className="mt-1 text-[13px] tabular-nums">
         {plan.plannedMeals > 0 && plan.plannedKcal !== null
           ? fill(n.plannedKcal, { kcal: f.count(plan.plannedKcal), meals: plan.plannedMeals })
           : n.noPlannedMeals}
       </p>
       <Link href="/food" className="mt-3 inline-block text-[12.5px] font-semibold text-accent-ink hover:underline">
-        {n.openDiary} →
+        {n.openDiary}
       </Link>
     </Card>
   );
@@ -629,7 +631,7 @@ function MealsCard({ meals }: { meals: MealDistribution | null }) {
           <table className="mt-3 w-full text-[12.5px] tabular-nums">
             <caption className="sr-only">{n.mealsCaption}</caption>
             <thead>
-              <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-faint">
+              <tr className="text-left text-[11px] text-ink-faint">
                 <th scope="col" className="pb-1.5 font-semibold">{n.meal}</th>
                 <th scope="col" className="pb-1.5 text-right font-semibold">{n.shareOfKcal}</th>
                 <th scope="col" className="pb-1.5 text-right font-semibold">{n.avgWhenLogged}</th>
@@ -755,7 +757,7 @@ function HistoryCard({ days, todayIso, target }: { days: NutritionDay[]; todayIs
           <table className="w-full text-[12.5px] tabular-nums">
             <caption className="sr-only">{n.historyCaption}</caption>
             <thead>
-              <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-faint">
+              <tr className="text-left text-[11px] text-ink-faint">
                 <th scope="col" className="px-5 py-2 font-semibold">{n.day}</th>
                 <th scope="col" className="px-2 py-2 text-right font-semibold">kcal</th>
                 <th scope="col" className="px-2 py-2 text-right font-semibold">{f.m.protein}</th>

@@ -109,7 +109,7 @@ function BulkDialog({ clients, programs, canCopyPrograms, onClose }: {
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{fill(m.picked, { n: picked.size })}</span>
+              <span className="text-[11px] font-semibold text-ink-faint">{fill(m.picked, { n: picked.size })}</span>
               <button type="button" onClick={() => setPicked(new Set(clients.map((c) => c.id)))} className="text-[12px] font-semibold text-accent-ink hover:underline">{m.all}</button>
               {needYou.length > 0 ? (
                 <button type="button" onClick={() => setPicked(new Set(needYou))} className="text-[12px] font-semibold text-accent-ink hover:underline">{fill(m.needYou, { n: needYou.length })}</button>

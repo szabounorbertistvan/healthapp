@@ -94,7 +94,7 @@ export default async function AdminAuthPage({ searchParams }: { searchParams: Pr
                 </tr>
               ))}
             </Table>
-            <p className="mt-2 text-[12px] text-ink-faint"><Link href="/admin/users?sort=last_active" className="hover:text-ink">{t.admin.nav.users} →</Link></p>
+            <p className="mt-2 text-[12px] text-ink-faint"><Link href="/admin/users?sort=last_active" className="hover:text-ink">{t.admin.nav.users}</Link></p>
           </Section>
         </div>
       </div>

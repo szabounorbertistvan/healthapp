@@ -6,7 +6,7 @@
 
 /** A text input, select or textarea under its label. */
 export const FIELD =
-  "mt-1.5 h-11 w-full rounded-2xl bg-bg px-3.5 text-[14px] text-ink outline-none ring-accent/50 focus:ring-2";
+  "mt-1.5 h-11 w-full rounded-2xl border border-edge bg-bg px-3.5 text-[14px] text-ink outline-none ring-accent/50 focus:ring-2";
 
 /** The label wrapping a FIELD. */
 export const LABEL = "block text-[13px] font-semibold text-ink-soft";

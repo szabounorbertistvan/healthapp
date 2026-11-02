@@ -93,7 +93,7 @@ export default async function CoachClientPage({
           {plan.e.advancedAnalytics ? <SignalBadge signal={client.signal} /> : null}
           {relationship ? (
             <Link href={`/clients/relationship/${relationship.id}`} className="text-[12.5px] font-semibold text-ink-faint hover:text-ink" data-testid="client-relationship-link">
-              {t.coachProfile.coaching.history} →
+              {t.coachProfile.coaching.history}
             </Link>
           ) : null}
         </div>

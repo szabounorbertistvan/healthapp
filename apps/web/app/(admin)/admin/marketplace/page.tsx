@@ -90,7 +90,7 @@ export default async function AdminMarketplacePage({ searchParams }: { searchPar
                   ))}
                 </ol>
               )}
-              <h3 className="mt-4 text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{m.loginWalls}</h3>
+              <h3 className="mt-4 text-[12px] font-semibold text-ink-faint">{m.loginWalls}</h3>
               {(a.login_walls ?? []).length === 0 ? <Note>{m.notTracked}</Note> : (
                 <ol className="mt-2 grid gap-1">
                   {(a.login_walls ?? []).map((w) => (
@@ -123,11 +123,11 @@ export default async function AdminMarketplacePage({ searchParams }: { searchPar
           <form action="/admin/marketplace" method="GET" className="mb-4 flex flex-wrap items-end gap-2">
             <label className="grid gap-1 text-[12px] font-semibold text-ink-soft">
               {m.query}
-              <input name="q" defaultValue={q} className="h-9 w-64 rounded-xl border border-line bg-bg px-3 text-[13px] text-ink outline-none focus:border-accent" />
+              <input name="q" defaultValue={q} className="h-9 w-64 rounded-xl border border-edge bg-bg px-3 text-[13px] text-ink outline-none focus:border-accent" />
             </label>
             <label className="grid gap-1 text-[12px] font-semibold text-ink-soft">
               {m.city}
-              <input name="city" defaultValue={city} className="h-9 w-40 rounded-xl border border-line bg-bg px-3 text-[13px] text-ink outline-none focus:border-accent" />
+              <input name="city" defaultValue={city} className="h-9 w-40 rounded-xl border border-edge bg-bg px-3 text-[13px] text-ink outline-none focus:border-accent" />
             </label>
             <FilterButtons submit={m.run} clearHref="/admin/marketplace" clear={c.clear} />
           </form>

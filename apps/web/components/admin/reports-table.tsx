@@ -30,7 +30,7 @@ export async function ReportsTable({ rows }: { rows: AdminReport[] }) {
         return (
           <tr key={row.id} className="align-top" data-testid="admin-report" data-kind={row.kind} data-status={row.status}>
             <Td className="min-w-[220px]">
-              <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{r.kinds[row.kind]}</span>
+              <span className="block text-[11px] font-semibold text-ink-faint">{r.kinds[row.kind]}</span>
               <span className="font-semibold">{row.target_label || "—"}</span>
               {row.kind === "review" && row.review_rating ? (
                 <span className="mt-1 block text-[12.5px] text-ink-soft">

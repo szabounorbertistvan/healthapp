@@ -50,7 +50,7 @@ export default async function AdminExercisesPage({
 
       <Card plain className="mt-5 overflow-hidden p-0 sm:mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider tabular-nums text-ink-faint">
+          <p className="text-[11px] font-semibold tabular-nums text-ink-faint">
             {fill(m.missingCount, { n: missing })}
           </p>
           <form action="/admin/exercises/translate" method="GET" className="flex flex-wrap items-center gap-2">

@@ -46,7 +46,7 @@ export default async function CheckInPage() {
         {state.last ? (
           <>
             <Card plain>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+              <p className="text-[11px] font-semibold text-ink-faint">
                 {fill(t.clientApp.checkIn.lastCheckIn, { date: state.last.week_start })}
               </p>
               {state.last.weight_kg !== null ? (
@@ -73,7 +73,7 @@ export default async function CheckInPage() {
 
             {state.last.coach_feedback ? (
               <div className="rounded-3xl bg-accent-soft px-5 py-[18px]">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-ink">
+                <p className="text-[11px] font-semibold text-accent-ink">
                   {t.clientApp.checkIn.coachFeedback}
                 </p>
                 <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{state.last.coach_feedback}</p>

@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { getAdminExercises } from "@/lib/admin/data";
 import { EXERCISE_OWNERS, EXERCISE_SOURCES, PAGE_SIZE, listHref, oneOf, pageOf, paging, searchOf, str, type Search } from "@/lib/admin/params";
 import { getI18n } from "@/lib/i18n/server";
+import { NavIcon } from "@/components/client-nav";
 import { AdminHeader, FilterButtons, Kpi, KpiGrid, Note, Pager, Pill, SearchInput, Section, Select, Table, Td, Th, fmtDate, fmtNum } from "@/components/admin/ui";
 
 /** Category / equipment / muscle values are free text in the library; only what already exists in the table is offered. */
@@ -63,7 +64,7 @@ export default async function AdminExercisesPage({ searchParams }: { searchParam
         </>}>
           {rows.map((e) => (
             <tr key={e.id}>
-              <Td className="font-semibold"><span title={e.id}>{e.name_en}</span>{e.image_count > 0 ? <span className="ml-1 text-[10px] text-ink-faint">📷{e.image_count}</span> : null}</Td>
+              <Td className="font-semibold"><span title={e.id}>{e.name_en}</span>{e.image_count > 0 ? <span className="ml-1.5 inline-flex items-center gap-0.5 align-middle text-[11px] text-ink-faint" title={m.stats.withImages}><NavIcon d="M4 8h3l2-3h6l2 3h3v11H4zM12 16a3 3 0 1 0 0-6 3 3 0 1 0 0 6" className="h-3.5 w-3.5" />{e.image_count}</span> : null}</Td>
               <Td>{e.name_ro ?? <span className="text-warn">{c.none}</span>}</Td>
               <Td nowrap className="text-ink-soft">{e.category ?? c.none}</Td>
               <Td nowrap className="text-ink-soft">{e.level ?? c.none}</Td>

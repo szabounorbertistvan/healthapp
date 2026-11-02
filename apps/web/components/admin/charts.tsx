@@ -22,7 +22,7 @@ export function DailyBars({ title, points, locale, accent = false }: { title: st
   return (
     <figure className="glass glass--subtle rounded-2xl p-3.5">
       <figcaption className="mb-2 flex items-baseline justify-between gap-3">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{title}</span>
+        <span className="text-[11px] font-semibold text-ink-faint">{title}</span>
         <span className="font-display text-[15px] font-extrabold tabular-nums">{total.toLocaleString(locale)}</span>
       </figcaption>
       <svg viewBox={`0 0 ${w} ${h}`} className="h-36 w-full" role="img" aria-label={title}>
@@ -62,7 +62,7 @@ export function DailyLines({ title, series, locale }: { title: string; series: {
   return (
     <figure className="glass glass--subtle rounded-2xl p-3.5">
       <figcaption className="mb-2 flex flex-wrap items-baseline justify-between gap-3">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{title}</span>
+        <span className="text-[11px] font-semibold text-ink-faint">{title}</span>
         <span className="flex flex-wrap gap-3 text-[11px] text-ink-soft">
           {series.map((s) => (
             <span key={s.label} className="inline-flex items-center gap-1.5">

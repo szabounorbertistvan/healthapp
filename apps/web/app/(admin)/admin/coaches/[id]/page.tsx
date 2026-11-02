@@ -222,7 +222,7 @@ async function VerificationPanel({ review }: { review: Review }) {
         {review.verification_note ? <p className="text-ink-faint">{fill(v.lastNote, { note: review.verification_note })}</p> : null}
 
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{v.credentials}</p>
+          <p className="text-[11px] font-semibold text-ink-faint">{v.credentials}</p>
           {review.credentials.length === 0 ? <Note>{v.noCredentials}</Note> : (
             <ul className="mt-1.5 grid gap-1.5">
               {review.credentials.map((c) => (

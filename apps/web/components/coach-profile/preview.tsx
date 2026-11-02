@@ -177,7 +177,7 @@ export function CoachProfileView({
               </ul>
               {profile.client_goals?.length ? (
                 <div className="mt-5" data-testid="coach-client-goals-public">
-                  <h3 className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{p.goalsTitle}</h3>
+                  <h3 className="text-[12px] font-semibold text-ink-faint">{p.goalsTitle}</h3>
                   <ul className="mt-2 flex flex-wrap gap-1.5">
                     {profile.client_goals.map((g) => (
                       <li key={g} className="rounded-full bg-bg px-3 py-1 text-[13px] font-semibold text-ink-soft">
@@ -200,7 +200,7 @@ export function CoachProfileView({
                   const duration = durationText(sv.duration_value ?? null, sv.duration_unit ?? null);
                   return (
                     <li key={sv.id} className="flex flex-col rounded-3xl bg-surface p-5" data-testid="coach-public-service">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{s.kinds[sv.kind]}</p>
+                      <p className="text-[11px] font-semibold text-ink-faint">{s.kinds[sv.kind]}</p>
                       <p className="mt-1 font-display text-lg font-bold tracking-tight">{sv.name}</p>
                       {/* how and how long — the two things people ask before the price */}
                       <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -382,7 +382,7 @@ function Approach({ profile, teaser }: { profile: CoachPublicProfile; teaser: { 
         ) : null}
         {experience ? (
           <div>
-            <h3 className="text-[12px] font-semibold uppercase tracking-wider text-ink-faint">{p.experienceTitle}</h3>
+            <h3 className="text-[12px] font-semibold text-ink-faint">{p.experienceTitle}</h3>
             <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">{experience}</p>
             {teaser?.cut.experience ? <GatedMore href={teaser.href} /> : null}
           </div>
@@ -509,7 +509,7 @@ function Facts({ profile, formats, years }: { profile: CoachPublicProfile; forma
               {locale === "ro" ? l.city : l.city_en}
               {l.gym_name ? (
                 <>
-                  <span className="text-ink-faint"> — </span>
+                  <span className="text-ink-faint">, </span>
                   {/* a maps search for the gym in its city: a link out, no maps API (lib/gym-map.ts) */}
                   <a
                     href={gymMapHref({ name: l.gym_name, city: l.city })}
@@ -545,7 +545,7 @@ function Facts({ profile, formats, years }: { profile: CoachPublicProfile; forma
 
   return (
     <div className="rounded-3xl bg-surface p-5">
-      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{p.facts}</h2>
+      <h2 className="text-[11px] font-semibold text-ink-faint">{p.facts}</h2>
       {rows.length ? (
         <dl className="mt-3 grid gap-3">
           {rows.map((r) => (

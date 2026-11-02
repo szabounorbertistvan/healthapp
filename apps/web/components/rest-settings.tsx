@@ -129,7 +129,7 @@ export function RestTimerCard({ prefs }: { prefs: RestPrefs }) {
 
   return (
     <Card plain>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{m.title}</p>
+      <p className="text-[11px] font-semibold text-ink-faint">{m.title}</p>
 
       <label className="mt-3 block text-[13px] font-semibold text-ink-soft">
         {m.defaultRest}
@@ -267,7 +267,7 @@ export function RestDurationPicker({
 
   return (
     <div className="mt-3 rounded-2xl bg-bg/60 p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+      <p className="text-[11px] font-semibold text-ink-faint">
         {fill(m.restForExercise, { name: exerciseName })}
       </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -298,7 +298,7 @@ export function RestDurationPicker({
             commit(n);
           }}
         >
-          <label className="flex flex-col gap-1 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-ink-faint">
             {m.customSeconds}
             <input
               inputMode="numeric"
