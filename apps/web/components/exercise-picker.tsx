@@ -9,6 +9,7 @@ import { exerciseImage, exerciseImages } from "@/lib/exercise-images";
 import { fill } from "@/lib/i18n";
 import { NewExerciseForm } from "./new-exercise-form";
 import { ExerciseVideo } from "./exercise-video";
+import { upperFirst } from "@/lib/upper-first";
 
 /** Matches EXERCISE_PAGE_SIZE in app/library-actions.ts. */
 const PAGE_SIZE = 60;
@@ -104,7 +105,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
       {/* Wraps rather than squeezing: "Creează exercițiu" is a long label next
           to a search field on a 390px phone. */}
       <div className="flex flex-wrap gap-2">
-        <label className="flex h-[42px] min-w-[11rem] flex-1 items-center gap-2.5 rounded-2xl bg-bg px-3.5 text-ink-faint">
+        <label className="flex h-[42px] min-w-[11rem] flex-1 items-center gap-2.5 rounded-2xl border border-edge bg-bg px-3.5 text-ink-faint">
           <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
             <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
           </svg>
@@ -230,7 +231,7 @@ export function ExercisePicker({ muscles, equipment, onPick, pendingLabel, initi
                     <span className="min-w-0 truncate">{exercise.name_en}</span>
                     {exercise.mine ? (
                       <>
-                        <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-0.5 text-[9px] font-semibold text-accent-ink">{m.mine}</span>
+                        <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent-ink">{upperFirst(m.mine)}</span>
                         <button
                           type="button"
                           onClick={() => { setNewName(exercise.name_en); setRenaming(exerciseRef(exercise)); }}

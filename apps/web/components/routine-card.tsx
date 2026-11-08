@@ -9,6 +9,7 @@ import { fill } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/client";
 import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
+import { upperFirst } from "@/lib/upper-first";
 
 /**
  * One routine on a shelf. The same card in My programs, Discover and Saved —
@@ -52,7 +53,7 @@ export function RoutineCardView({ card, href, showSave = true }: {
               {card.name}
             </p>
           </Link>
-          <p className="mt-1 truncate text-[12.5px] text-ink-soft">{fill(r.by, { author: card.author_name })}</p>
+          <p className="mt-1 truncate text-[12.5px] text-ink-soft">{upperFirst(fill(r.by, { author: card.author_name }))}</p>
         </div>
         <Badges card={card} />
       </div>
@@ -107,7 +108,7 @@ function Badges({ card }: { card: RoutineCard }) {
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">
       {badges.map((b) => (
-        <span key={b.text} className={`rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold ${b.tone}`}>
+        <span key={b.text} className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${b.tone}`}>
           {b.text}
         </span>
       ))}

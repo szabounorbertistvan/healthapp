@@ -108,7 +108,7 @@ export function ExerciseTranslateRow({
           }}
           placeholder={m.namePlaceholder}
           aria-label={m.namePlaceholder}
-          className="h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+          className="h-11 w-full rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent"
         />
         <textarea
           value={steps}
@@ -119,7 +119,7 @@ export function ExerciseTranslateRow({
           rows={6}
           placeholder={m.instructionsPlaceholder}
           aria-label={m.instructionsPlaceholder}
-          className="w-full rounded-2xl border border-line bg-bg px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-accent"
+          className="w-full rounded-2xl border border-edge bg-bg px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-accent"
         />
         <div className="flex items-center gap-3">
           <button

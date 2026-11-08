@@ -58,7 +58,7 @@ function DeltaPill({ d }: { d: Delta | null }) {
   const arrow = d.direction === "up" ? "▲" : d.direction === "down" ? "▼" : "•";
   return (
     <span className={`inline-flex w-14 shrink-0 items-center justify-end gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${tone}`}>
-      <span className="text-[9px]">{arrow}</span>
+      <span className="text-[11px]">{arrow}</span>
       {f.pctAbs(d.pct)}
     </span>
   );

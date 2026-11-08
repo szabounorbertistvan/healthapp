@@ -62,7 +62,7 @@ export function SoloProgramBuilder({
             maxLength={120}
             onChange={(e) => setName(e.target.value)}
             placeholder={t.clientApp.builder.namePlaceholder}
-            className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
+            className="w-full rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
           />
         </label>
         {showDetails ? (
@@ -75,7 +75,7 @@ export function SoloProgramBuilder({
                 rows={2}
                 placeholder={t.clientApp.routines.descriptionPlaceholder}
                 onChange={(e) => setDetails({ ...details, description: e.target.value })}
-                className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
+                className="w-full rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
               />
             </label>
             <label className="flex flex-col gap-1.5">
@@ -83,7 +83,7 @@ export function SoloProgramBuilder({
               <select
                 value={details.goal}
                 onChange={(e) => setDetails({ ...details, goal: e.target.value })}
-                className="h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+                className="h-11 w-full rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent"
               >
                 <option value="">—</option>
                 {ROUTINE_GOALS.map((g) => <option key={g} value={g}>{t.clientApp.routines.goal[g]}</option>)}
@@ -94,7 +94,7 @@ export function SoloProgramBuilder({
               <select
                 value={details.level}
                 onChange={(e) => setDetails({ ...details, level: e.target.value })}
-                className="h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+                className="h-11 w-full rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent"
               >
                 <option value="">—</option>
                 {ROUTINE_LEVELS.map((l) => <option key={l} value={l}>{t.clientApp.routines.level[l]}</option>)}
@@ -109,7 +109,7 @@ export function SoloProgramBuilder({
                 max={52}
                 value={details.weeks}
                 onChange={(e) => setDetails({ ...details, weeks: e.target.value })}
-                className="h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+                className="h-11 w-full rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent"
               />
             </label>
           </div>
@@ -270,7 +270,7 @@ export function SoloProgramBuilder({
           value={dayName}
           onChange={(e) => setDayName(e.target.value)}
           placeholder={t.clientApp.builder.dayNamePlaceholder}
-          className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
+          className="w-full rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
         />
         <p className="text-[11px] font-semibold text-ink-faint">
           {t.clientApp.builder.muscleGroups}

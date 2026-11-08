@@ -388,7 +388,7 @@ function DayTabs({
         }`}
       >
         {m.everyDay}
-        <span className={`mt-0.5 text-[10.5px] font-medium ${day === 0 ? "opacity-80" : "text-ink-faint"}`}>{m.baseMenu}</span>
+        <span className={`mt-0.5 text-[11px] font-medium ${day === 0 ? "opacity-80" : "text-ink-faint"}`}>{m.baseMenu}</span>
       </button>
       {days.map((totals, i) => {
         const status = compareToTarget(totals.kcal, target).status;
@@ -409,7 +409,7 @@ function DayTabs({
               <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[status]}`} />
               {m.weekdays[i]}
             </span>
-            <span className={`mt-0.5 text-[10.5px] font-medium tabular-nums ${selected ? "opacity-80" : "text-ink-faint"}`}>
+            <span className={`mt-0.5 text-[11px] font-medium tabular-nums ${selected ? "opacity-80" : "text-ink-faint"}`}>
               {Math.round(totals.kcal)}
             </span>
           </button>
@@ -852,7 +852,7 @@ function GramsInput({
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
         }}
-        className="w-20 rounded-xl border border-line bg-surface px-2.5 py-2 text-sm tabular-nums outline-none focus:border-accent"
+        className="w-20 rounded-xl border border-edge bg-surface px-2.5 py-2 text-sm tabular-nums outline-none focus:border-accent"
       />
       <span className="text-[11px] font-medium text-ink-faint">g</span>
     </span>
@@ -903,7 +903,7 @@ function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => voi
 
   return (
     <div className="flex min-h-0 flex-col gap-3">
-      <label className="flex h-[42px] items-center gap-2.5 rounded-2xl bg-surface px-3.5 text-ink-faint">
+      <label className="flex h-[42px] items-center gap-2.5 rounded-2xl border border-edge bg-surface px-3.5 text-ink-faint">
         <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
           <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
         </svg>
@@ -924,7 +924,7 @@ function FoodPicker({ onPick }: { onPick: (food: FoodItem, grams: number) => voi
                   <span className="min-w-0 truncate">{food.name_ro}</span>
                   {food.english_only ? (
                     <span
-                      className="shrink-0 rounded-full bg-bg px-1.5 text-[9px] font-semibold text-ink-faint"
+                      className="shrink-0 rounded-full bg-bg px-1.5 text-[11px] font-semibold text-ink-faint"
                       title={m.englishOnlyHint}
                     >
                       {m.englishOnly}

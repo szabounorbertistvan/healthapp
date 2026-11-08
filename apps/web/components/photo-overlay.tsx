@@ -594,7 +594,7 @@ export function PhotoOverlayEditor({
           onChange={(e) => setText(e.target.value.slice(0, OVERLAY_TEXT_MAX))}
           maxLength={OVERLAY_TEXT_MAX}
           placeholder={s.overlayTextPlaceholder}
-          className="mt-2 h-10 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+          className="mt-2 h-10 w-full rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent"
         />
       </div>
     </div>

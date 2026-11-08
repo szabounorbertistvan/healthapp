@@ -62,7 +62,7 @@ export function ConfirmAction({
             <label className="mt-4 block text-[11px] font-semibold text-ink-faint">
               {t.admin.common.reason}
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={2}
-                className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2 text-[13px] font-normal normal-case tracking-normal text-ink outline-none focus:border-accent" />
+                className="mt-1 w-full rounded-xl border border-edge bg-bg px-3 py-2 text-[13px] font-normal normal-case tracking-normal text-ink outline-none focus:border-accent" />
             </label>
           ) : null}
           {error ? <p className="mt-3 text-[12.5px] text-risk">{error}</p> : null}

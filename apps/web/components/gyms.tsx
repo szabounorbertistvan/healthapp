@@ -321,7 +321,7 @@ function RequestButton({ coach, gymId }: { coach: GymCoach; gymId: string }) {
       }}
     >
       <textarea
-        className="w-full rounded-2xl bg-bg px-3.5 py-2.5 text-[14px] text-ink outline-none ring-accent/50 focus:ring-2"
+        className="w-full rounded-2xl border border-edge bg-bg px-3.5 py-2.5 text-[14px] text-ink outline-none ring-accent/50 focus:ring-2"
         rows={3}
         maxLength={2000}
         value={note}

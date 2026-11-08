@@ -40,7 +40,7 @@ export function MeasurementForm() {
             inputMode="decimal"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            className="w-24 rounded-xl border border-line bg-bg px-3 py-2.5 text-sm tabular-nums outline-none focus:border-accent"
+            className="w-24 rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm tabular-nums outline-none focus:border-accent"
           />
         </label>
         <label className="flex flex-col gap-1.5">
@@ -51,7 +51,7 @@ export function MeasurementForm() {
             inputMode="decimal"
             value={waist}
             onChange={(e) => setWaist(e.target.value)}
-            className="w-24 rounded-xl border border-line bg-bg px-3 py-2.5 text-sm tabular-nums outline-none focus:border-accent"
+            className="w-24 rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm tabular-nums outline-none focus:border-accent"
           />
         </label>
         <button

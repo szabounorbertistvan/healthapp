@@ -235,7 +235,7 @@ function Periods({ rows, f }: { rows: PeriodChangeRow[]; f: ReturnType<typeof us
           const label = r.days === null ? p.periodAll : r.days === 365 ? p.periodYear : fill(p.periodDays, { days: r.days });
           return (
             <li key={String(r.days)} className="rounded-xl bg-bg px-1 py-2">
-              <p className="text-[10.5px] font-semibold text-ink-faint">{label}</p>
+              <p className="text-[11px] font-semibold text-ink-faint">{label}</p>
               <p className={`mt-0.5 text-[13px] font-bold tabular-nums ${
                 r.change_pct === null ? "text-ink-faint" : r.change_pct > 0 ? "text-accent-ink" : "text-ink"
               }`}>

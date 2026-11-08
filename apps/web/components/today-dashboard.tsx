@@ -560,7 +560,7 @@ export function WeekCard({ adherence, today, workoutDays, done, planned, streak,
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
               aria-label={d.statusInfo}
-              className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full border border-line text-[10px] font-semibold text-ink-faint hover:text-ink"
+              className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full border border-line text-[11px] font-semibold text-ink-faint hover:text-ink"
             >
               i
             </button>

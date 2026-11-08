@@ -32,7 +32,7 @@ export function CountBars({ values, labels, every = 1, caption }: {
         {values.map((v, i) => (
           <div key={i} className="relative flex h-full flex-1 flex-col justify-end" title={`${labels[i]}: ${v}`}>
             {i === peak && v > 0 ? (
-              <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 -translate-y-full text-[10.5px] font-semibold tabular-nums text-ink-soft">
+              <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 -translate-y-full text-[11px] font-semibold tabular-nums text-ink-soft">
                 {v}
               </span>
             ) : null}
@@ -43,7 +43,7 @@ export function CountBars({ values, labels, every = 1, caption }: {
           </div>
         ))}
       </div>
-      <div className="mt-1 flex gap-[2px] text-[10.5px] text-ink-faint" aria-hidden>
+      <div className="mt-1 flex gap-[2px] text-[11px] text-ink-faint" aria-hidden>
         {labels.map((l, i) => (
           <span key={i} className="flex-1 text-center tabular-nums">{i % every === 0 ? l : ""}</span>
         ))}

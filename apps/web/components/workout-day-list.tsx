@@ -10,6 +10,7 @@ import type { ClientProgramGroup, ClientWorkoutDay, Sex } from "@/lib/types";
 import { Card } from "./ui";
 import { SwipeToDelete } from "./swipe-to-delete";
 import { Athlete } from "./athlete";
+import { upperFirst } from "@/lib/upper-first";
 
 /**
  * Training, the list. Every published program the client holds is shown — the
@@ -72,7 +73,7 @@ export function WorkoutDayList({
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <p className="text-xs font-bold text-ink-soft">{group.program_name}</p>
             <span className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-faint">
-              {group.is_own ? w.byYou : w.byCoach}
+              {upperFirst(group.is_own ? w.byYou : w.byCoach)}
             </span>
             {group.followed && groups.length > 1 ? (
               <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent-ink">

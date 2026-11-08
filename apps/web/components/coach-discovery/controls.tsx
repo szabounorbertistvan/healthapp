@@ -438,7 +438,7 @@ export function SortSelect({ query }: { query: DiscoveryQuery }) {
       <select
         id={id} value={query.sort} title={query.sort === "recommended" ? d.recommendedHint : undefined}
         onChange={(e) => go(withChange(query, { sort: e.target.value as DiscoverySort }))}
-        className="h-11 rounded-2xl border border-line bg-surface px-3.5 text-[13.5px] font-semibold text-ink outline-none ring-accent/50 focus:ring-2"
+        className="h-11 rounded-2xl border border-edge bg-surface px-3.5 text-[13.5px] font-semibold text-ink outline-none ring-accent/50 focus:ring-2"
       >
         {/* nearest first only means something once the reader shared where they are */}
         {DISCOVERY_SORTS.filter((s) => s !== "distance" || query.near).map((s) => <option key={s} value={s}>{d.sorts[s]}</option>)}

@@ -161,7 +161,7 @@ export function AdminTierSelect({ userId, tier }: { userId: string; tier: Tier }
         defaultValue={tier}
         disabled={pending}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 rounded-xl border border-line bg-surface px-2.5 text-[13px] outline-none focus:border-accent disabled:opacity-50"
+        className="h-9 rounded-xl border border-edge bg-surface px-2.5 text-[13px] outline-none focus:border-accent disabled:opacity-50"
       >
         {GRANTABLE.map((t) => (
           <option key={t} value={t}>{TIER_LABEL[t]}</option>

@@ -94,7 +94,7 @@ export function MacroTargetsForm({
           />
           <span className="text-sm text-ink-faint">kcal {m.perDay}</span>
         </div>
-        <span className="text-[10px] text-ink-faint">{m.kcalHint}</span>
+        <span className="text-[11px] text-ink-faint">{m.kcalHint}</span>
       </label>
 
       <div>
@@ -105,14 +105,14 @@ export function MacroTargetsForm({
             <b className={total === 100 ? "text-accent-ink" : "text-risk"}>{total}%</b>
           </p>
         </div>
-        <p className="mt-0.5 text-[10px] text-ink-faint">{m.splitHint}</p>
+        <p className="mt-0.5 text-[11px] text-ink-faint">{m.splitHint}</p>
         <div className="mt-3 space-y-3">
           {MACRO_KEYS.map((key) => (
             <div key={key}>
               <div className="flex items-baseline justify-between text-sm">
                 <label htmlFor={`split-${key}`} className="font-semibold text-ink-soft">
                   {labels[key]}
-                  <span className="ml-1 text-[10px] font-normal text-ink-faint">
+                  <span className="ml-1 text-[11px] font-normal text-ink-faint">
                     {fill(labels.kcalPerGram, { n: KCAL_PER_GRAM[key] })}
                   </span>
                 </label>

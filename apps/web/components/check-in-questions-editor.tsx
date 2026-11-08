@@ -85,17 +85,17 @@ export function CheckInQuestionsEditor({ questions, clients }: {
             <label className="text-[12.5px] font-semibold text-ink-soft">
               {m.prompt}
               <input id="ciq-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} maxLength={200}
-                placeholder={m.promptPlaceholder} className={`${FIELD} bg-surface`} />
+                placeholder={m.promptPlaceholder} className={`${FIELD} border border-edge bg-surface`} />
             </label>
             <label className="text-[12.5px] font-semibold text-ink-soft">
               {m.kind}
-              <select id="ciq-kind" value={kind} onChange={(e) => setKind(e.target.value as CheckInQuestionKind)} className={`${FIELD} bg-surface`}>
+              <select id="ciq-kind" value={kind} onChange={(e) => setKind(e.target.value as CheckInQuestionKind)} className={`${FIELD} border border-edge bg-surface`}>
                 {KINDS.map((k) => <option key={k} value={k}>{m.kinds[k]}</option>)}
               </select>
             </label>
             <label className="text-[12.5px] font-semibold text-ink-soft">
               {m.forWhom}
-              <select id="ciq-client" value={clientId} onChange={(e) => setClientId(e.target.value)} className={`${FIELD} bg-surface`}>
+              <select id="ciq-client" value={clientId} onChange={(e) => setClientId(e.target.value)} className={`${FIELD} border border-edge bg-surface`}>
                 <option value="">{m.allClients}</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>

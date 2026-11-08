@@ -19,6 +19,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useUnits } from "@/lib/units/client";
 import { Card } from "./ui";
 import { ProgressionCard } from "./exercise-progression";
+import { upperFirst } from "@/lib/upper-first";
 
 /**
  * The numbers behind one lift: what you last did, your bests, the
@@ -173,7 +174,7 @@ function Stat({ label, value, note, accent = false }: { label: string; value: st
       <p className={`mt-1 font-display text-[17px] font-extrabold tabular-nums leading-tight ${accent ? "text-accent-ink" : "text-ink"}`}>
         {value}
       </p>
-      {note ? <p className="mt-0.5 text-[10.5px] tabular-nums text-ink-faint">{note}</p> : null}
+      {note ? <p className="mt-0.5 text-[11px] tabular-nums text-ink-faint">{note}</p> : null}
     </div>
   );
 }
@@ -274,7 +275,7 @@ export function PointsChart({
       ) : (
         <LineChart points={points} unit={unit} fmt={fmt} locale={locale} />
       )}
-      {hint ? <p className="mt-2 text-[10.5px] text-ink-faint">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-[11px] text-ink-faint">{hint}</p> : null}
     </Card>
   );
 }
@@ -375,7 +376,7 @@ function SessionHistory({ sessions, timeZone }: { sessions: ExerciseSessionEntry
                   {set.rir !== null ? ` · ${t.clientWidgets.setLogger.rir} ${set.rir}` : ""}
                   {set.rir === null && set.rpe !== null ? ` · ${set.rpe}/10` : ""}
                   {set.is_pr ? <span className="ml-1 text-[11px] font-bold">{d.pr}</span> : null}
-                  {set.warmup ? <span className="ml-1 text-[11px] font-semibold text-ink-faint">{d.warmup}</span> : null}
+                  {set.warmup ? <span className="ml-1 text-[11px] font-semibold text-ink-faint">{upperFirst(d.warmup)}</span> : null}
                 </li>
               ))}
             </ul>

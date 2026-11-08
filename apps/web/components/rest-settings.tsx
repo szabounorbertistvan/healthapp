@@ -304,7 +304,7 @@ export function RestDurationPicker({
               inputMode="numeric"
               value={seconds}
               onChange={(e) => setSeconds(e.target.value.replace(/[^\d]/g, ""))}
-              className="h-10 w-28 rounded-xl border border-line bg-surface px-2.5 text-sm tabular-nums outline-none focus:border-accent"
+              className="h-10 w-28 rounded-xl border border-edge bg-surface px-2.5 text-sm tabular-nums outline-none focus:border-accent"
             />
           </label>
           <button type="submit" disabled={pending} className="inline-flex h-10 items-center justify-center rounded-xl bg-accent px-4 font-display text-[13px] font-bold text-accent-fg disabled:opacity-50">

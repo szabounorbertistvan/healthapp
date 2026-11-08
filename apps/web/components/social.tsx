@@ -557,7 +557,7 @@ export function PostCard({ post, detail = false, removeOnUnsave = false }: {
             maxLength={POST_TEXT_MAX}
             rows={3}
             aria-label={s.editPost}
-            className="w-full resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
+            className="w-full resize-none rounded-2xl border border-edge bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
           />
           <div className="mt-2 flex items-center justify-end gap-2">
             <span className="mr-auto text-[11px] tabular-nums text-ink-faint">{draft.length}/{POST_TEXT_MAX}</span>
@@ -884,7 +884,7 @@ function ShareSheet({ post, onClose }: { post: FeedPost; onClose: () => void }) 
               rows={3}
               placeholder={s.shareCaption}
               aria-label={s.shareCaption}
-              className="w-full resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
+              className="w-full resize-none rounded-2xl border border-edge bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
             />
             <div className="mt-2">
               <VisibilityPicker value={visibility} onChange={setVisibility} />
@@ -934,7 +934,7 @@ function ShareSheet({ post, onClose }: { post: FeedPost; onClose: () => void }) 
                   value={url}
                   onFocus={(e) => e.currentTarget.select()}
                   aria-label={s.copyLink}
-                  className="mt-1.5 h-11 w-full rounded-xl border border-line bg-bg px-3 text-[13px] outline-none focus:border-accent"
+                  className="mt-1.5 h-11 w-full rounded-xl border border-edge bg-bg px-3 text-[13px] outline-none focus:border-accent"
                 />
               </div>
             ) : null}
@@ -1426,7 +1426,7 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
             aria-label={s.composerPlaceholder}
             maxLength={POST_TEXT_MAX}
             rows={3}
-            className="min-w-0 flex-1 resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
+            className="min-w-0 flex-1 resize-none rounded-2xl border border-edge bg-bg px-3.5 py-3 text-[15px] outline-none focus:border-accent"
           />
         </div>
         {photoUploads && items.length > 0 ? (
@@ -1481,7 +1481,7 @@ export function Composer({ me, photoUploads = false }: { me?: { name: string; av
                   onChange={(e) => setWeight(e.target.value)}
                   inputMode="decimal"
                   placeholder={u.weightUnit}
-                  className="h-9 w-20 rounded-xl border border-line bg-bg px-2.5 text-sm tabular-nums outline-none focus:border-accent"
+                  className="h-9 w-20 rounded-xl border border-edge bg-bg px-2.5 text-sm tabular-nums outline-none focus:border-accent"
                 />
               ) : null}
             </label>
@@ -1720,7 +1720,7 @@ export function SharePanel({ session, onShare, onSharePr, photoUploads = false }
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, POST_TEXT_MAX))}
               placeholder={s.composerPlaceholder}
-              className="h-11 w-full rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent"
+              className="h-11 w-full rounded-xl border border-edge bg-bg px-3.5 text-sm outline-none focus:border-accent"
             />
             {photoUploads ? (
               <>

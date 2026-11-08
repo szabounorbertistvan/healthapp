@@ -162,7 +162,7 @@ export function NotificationBell({
       >
         <NavIcon d="M12 4a5 5 0 0 0-5 5v3l-1.5 3h13L17 12V9a5 5 0 0 0-5-5M10 18a2 2 0 0 0 4 0" className="h-[18px] w-[18px]" />
         {badge > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-accent px-1 font-display text-[10px] font-bold tabular-nums text-accent-fg">
+          <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-accent px-1 font-display text-[11px] font-bold tabular-nums text-accent-fg">
             {badge > 9 ? "9+" : badge}
           </span>
         ) : null}

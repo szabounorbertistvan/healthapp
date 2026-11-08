@@ -58,7 +58,7 @@ export function JoinCoach({ redirectTo, autoFocus = true }: { redirectTo?: strin
         value={code}
         onChange={(e) => setCode(e.target.value)}
         placeholder={w.codePlaceholder}
-        className="h-11 w-full rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent"
+        className="h-11 w-full rounded-xl border border-edge bg-bg px-3.5 text-sm outline-none focus:border-accent"
       />
       <button
         type="button"

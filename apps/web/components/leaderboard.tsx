@@ -5,6 +5,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { Avatar } from "./social-chrome";
 import { Card } from "./ui";
 import { boardRowHref } from "@/lib/leaderboard-map";
+import { upperFirst } from "@/lib/upper-first";
 
 function formatScore(score: number, locale: string): string {
   return score.toLocaleString(locale === "ro" ? "ro-RO" : "en-GB", { maximumFractionDigits: 0 });
@@ -45,7 +46,7 @@ export async function LeaderboardCard({
         <Avatar name={r.display_name} url={r.avatar_url} size="h-9 w-9" />
         <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
           {r.display_name}
-          {r.is_current_user ? <span className="ml-1.5 text-[11px] font-semibold text-accent-ink">{l.you}</span> : null}
+          {r.is_current_user ? <span className="ml-1.5 text-[11px] font-semibold text-accent-ink">{upperFirst(l.you)}</span> : null}
         </span>
         <span className="shrink-0 font-display text-[15px] font-bold tabular-nums">
           {formatScore(r.score, locale)}

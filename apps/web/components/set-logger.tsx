@@ -642,7 +642,7 @@ function ExerciseBlock({
           onChange={(e) => setIntensity(parseInt(e.target.value, 10))}
           className="mt-1 w-full"
         />
-        <p className="text-[10px] text-ink-faint">{m.intensityScale}</p>
+        <p className="text-[11px] text-ink-faint">{m.intensityScale}</p>
       </div>
 
       <label className="mt-2 flex flex-col gap-1">
@@ -652,7 +652,7 @@ function ExerciseBlock({
           maxLength={500}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={m.notePlaceholder}
-          className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none focus:border-accent"
+          className="h-11 w-full rounded-xl border border-edge bg-surface px-3 text-sm outline-none focus:border-accent"
         />
       </label>
     </Card>
@@ -714,7 +714,7 @@ function Field({
         value={value}
         aria-label={label}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-[4.25rem] rounded-xl border border-line bg-surface px-2.5 text-sm tabular-nums outline-none focus:border-accent"
+        className="h-11 w-[4.25rem] rounded-xl border border-edge bg-surface px-2.5 text-sm tabular-nums outline-none focus:border-accent"
       />
     </label>
   );

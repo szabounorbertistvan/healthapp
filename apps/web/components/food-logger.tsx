@@ -235,7 +235,7 @@ export function FoodLogger({
                 inputMode="decimal"
                 value={grams}
                 onChange={(e) => setGrams(e.target.value)}
-                className="w-24 rounded-xl border border-line bg-surface px-2.5 py-2 text-sm tabular-nums outline-none focus:border-accent"
+                className="w-24 rounded-xl border border-edge bg-surface px-2.5 py-2 text-sm tabular-nums outline-none focus:border-accent"
               />
             </label>
             {tooMuch ? (
@@ -514,7 +514,7 @@ function FoodRow({ food, meta, starred, onPick, onStar }: {
           <span className="min-w-0 truncate">{nameOf(food)}</span>
           {food.english_only ? (
             <span
-              className="shrink-0 rounded border border-line px-1 text-[9px] font-semibold text-ink-faint"
+              className="shrink-0 rounded border border-line px-1 text-[11px] font-semibold text-ink-faint"
               title={fl.englishOnlyHint}
             >
               {fl.englishOnly}

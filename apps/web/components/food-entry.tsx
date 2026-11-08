@@ -76,7 +76,7 @@ export function FoodEntry({ entry }: { entry: ClientFoodEntry }) {
                 setEditing(false);
               }
             }}
-            className="w-24 rounded-xl border border-line bg-surface px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-accent"
+            className="w-24 rounded-xl border border-edge bg-surface px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-accent"
           />
           <span className="text-xs text-ink-faint">g</span>
           <span className="text-xs tabular-nums text-ink-faint">

@@ -58,7 +58,7 @@ export function FoodTranslateRow({
             onKeyDown={(e) => e.key === "Enter" && save()}
             placeholder={m.placeholder}
             lang="ro"
-            className="w-full min-w-40 rounded-xl border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+            className="w-full min-w-40 rounded-xl border border-edge bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <button
             type="button"

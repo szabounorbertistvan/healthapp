@@ -92,7 +92,7 @@ export function SessionGymPicker({ sessionId, current, home, recent }: {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={m.search}
                 aria-label={m.search}
-                className="h-11 w-full rounded-2xl bg-bg px-3.5 text-[14px] text-ink outline-none ring-accent/50 focus:ring-2"
+                className="h-11 w-full rounded-2xl border border-edge bg-bg px-3.5 text-[14px] text-ink outline-none ring-accent/50 focus:ring-2"
               />
               {hits.length > 0 ? (
                 <ul className="mt-2 grid gap-1.5">

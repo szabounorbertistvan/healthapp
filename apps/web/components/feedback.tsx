@@ -106,7 +106,7 @@ export function FeedbackButton({ sheet = false }: { sheet?: boolean }) {
               autoFocus
               placeholder={f.placeholder[kind]}
               aria-label={f.title}
-              className="mt-3 w-full resize-y rounded-2xl border border-line bg-bg px-3.5 py-3 text-[14px] leading-relaxed text-ink outline-none placeholder:text-ink-faint focus:border-accent"
+              className="mt-3 w-full resize-y rounded-2xl border border-edge bg-bg px-3.5 py-3 text-[14px] leading-relaxed text-ink outline-none placeholder:text-ink-faint focus:border-accent"
             />
             {error ? <p className="mt-2 text-[12.5px] text-risk">{error}</p> : null}
 

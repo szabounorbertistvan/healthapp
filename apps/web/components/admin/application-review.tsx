@@ -189,7 +189,7 @@ export function AdminApplicationReview({ application, name, fmt }: {
           <label className="grid gap-1">
             <span className="text-[12px] font-semibold text-ink-soft">{m.note}</span>
             <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} rows={3} placeholder={m.notePlaceholder}
-              className="rounded-xl border border-line bg-bg px-3 py-2 text-[13.5px] text-ink outline-none focus:border-accent" data-testid="admin-application-note" />
+              className="rounded-xl border border-edge bg-bg px-3 py-2 text-[13.5px] text-ink outline-none focus:border-accent" data-testid="admin-application-note" />
           </label>
           <div className="flex flex-wrap gap-2">
             {options.map((d) => (

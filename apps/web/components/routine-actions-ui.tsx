@@ -118,7 +118,7 @@ export function RoutineActions({
               maxLength={120}
               onChange={(e) => setName(e.target.value)}
               placeholder={r.namePlaceholder}
-              className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none focus:border-accent"
+              className="h-11 w-full rounded-xl border border-edge bg-surface px-3 text-sm outline-none focus:border-accent"
             />
           </label>
 
@@ -272,7 +272,7 @@ export function RoutineDetailsForm({
             value={form.name}
             maxLength={120}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none focus:border-accent"
+            className="h-11 w-full rounded-xl border border-edge bg-surface px-3 text-sm outline-none focus:border-accent"
           />
         </label>
         <label className="flex flex-col gap-1.5 sm:col-span-2">
@@ -283,7 +283,7 @@ export function RoutineDetailsForm({
             rows={3}
             placeholder={r.descriptionPlaceholder}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm outline-none focus:border-accent"
+            className="w-full rounded-xl border border-edge bg-surface px-3 py-2.5 text-sm outline-none focus:border-accent"
           />
         </label>
         <Field label={r.allLevels} value={form.level} onChange={(v) => setForm({ ...form, level: v })}
@@ -302,7 +302,7 @@ export function RoutineDetailsForm({
             value={form.weeks}
             aria-invalid={error === r.weeksRange}
             onChange={(e) => setForm({ ...form, weeks: e.target.value })}
-            className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none focus:border-accent"
+            className="h-11 w-full rounded-xl border border-edge bg-surface px-3 text-sm outline-none focus:border-accent"
           />
         </label>
         {canPublish ? (
@@ -313,7 +313,7 @@ export function RoutineDetailsForm({
             <select
               value={form.visibility}
               onChange={(e) => setForm({ ...form, visibility: e.target.value as typeof form.visibility })}
-              className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none focus:border-accent"
+              className="h-11 w-full rounded-xl border border-edge bg-surface px-3 text-sm outline-none focus:border-accent"
             >
               {(["private", "followers", "public"] as const).map((v) => (
                 <option key={v} value={v}>{r.visibility[v]}</option>
@@ -361,7 +361,7 @@ function Field({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none focus:border-accent"
+        className="h-11 w-full rounded-xl border border-edge bg-surface px-3 text-sm outline-none focus:border-accent"
       >
         <option value="">—</option>
         {options.map((o) => (

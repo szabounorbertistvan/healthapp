@@ -235,7 +235,7 @@ export function BarcodeScanner({
                 : t.clientWidgets.barcodeScanner.holdInFrame}
           </p>
           {engine === "zxing" && status === "scanning" ? (
-            <span className="absolute right-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/70">
+            <span className="absolute right-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white/70">
               {t.clientWidgets.barcodeScanner.compatDecoder}
             </span>
           ) : null}
@@ -263,7 +263,7 @@ export function BarcodeScanner({
             onChange={(e) => setManual(e.target.value.replace(/\D/g, ""))}
             onKeyDown={(e) => e.key === "Enter" && submitManual()}
             placeholder="5941234567890"
-            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm tabular-nums outline-none focus:border-accent"
+            className="w-full rounded-lg border border-edge bg-surface px-3 py-2 text-sm tabular-nums outline-none focus:border-accent"
           />
         </label>
         <button

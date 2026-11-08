@@ -138,7 +138,7 @@ export function CoachTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
   }, [open]);
 
   const cell =
-    "relative flex h-[52px] flex-col items-center justify-center gap-0.5 text-center text-[10.5px] font-semibold leading-tight tracking-[0.01em]";
+    "relative flex h-[52px] flex-col items-center justify-center gap-0.5 text-center text-[11px] font-semibold leading-tight tracking-[0.01em]";
 
   return (
     <>

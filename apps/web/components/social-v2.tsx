@@ -337,7 +337,7 @@ export function SocialPrivacyCard({ privacy }: { privacy: SocialPrivacy }) {
       aria-label={label}
       disabled={pending}
       onChange={(e) => onChange(e.target.value as ProfileVisibility)}
-      className="mt-1.5 h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent disabled:opacity-60"
+      className="mt-1.5 h-11 w-full rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent disabled:opacity-60"
     >
       {(["public", "followers", "private"] as const).map((v) => (
         <option key={v} value={v}>{s.visibility[v]}</option>
@@ -422,7 +422,7 @@ export function PeopleSearchBox({ placeholder, cityPlaceholder, submitLabel }: {
 
   return (
     <form className="mt-4 flex flex-wrap gap-2" role="search" aria-busy={pending}>
-      <label className="flex h-11 min-w-[10rem] flex-1 items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 focus-within:border-accent">
+      <label className="flex h-11 min-w-[10rem] flex-1 items-center gap-2.5 rounded-2xl border border-edge bg-surface px-3.5 focus-within:border-accent">
         <NavIcon d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3" className={`h-[17px] w-[17px] shrink-0 ${pending ? "animate-pulse text-accent" : "text-ink-faint"}`} />
         <input
           name="q"
@@ -436,7 +436,7 @@ export function PeopleSearchBox({ placeholder, cityPlaceholder, submitLabel }: {
       </label>
       {/* City is free text on the profile and already shown there, so it is
           a filter rather than a new kind of data. */}
-      <label className="flex h-11 min-w-[8rem] items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 focus-within:border-accent">
+      <label className="flex h-11 min-w-[8rem] items-center gap-2.5 rounded-2xl border border-edge bg-surface px-3.5 focus-within:border-accent">
         <input
           name="city"
           value={city}
@@ -485,7 +485,7 @@ export function ListSearchBox({ basePath, placeholder }: { basePath: string; pla
 
   return (
     <form role="search" aria-busy={pending} onSubmit={(e) => e.preventDefault()}>
-      <label className="flex h-11 items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 focus-within:border-accent">
+      <label className="flex h-11 items-center gap-2.5 rounded-2xl border border-edge bg-surface px-3.5 focus-within:border-accent">
         <NavIcon
           d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"
           className={`h-[17px] w-[17px] shrink-0 ${pending ? "animate-pulse text-accent" : "text-ink-faint"}`}

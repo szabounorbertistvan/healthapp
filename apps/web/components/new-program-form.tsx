@@ -152,7 +152,7 @@ export function NewProgramForm({
             rows={2}
             placeholder={t.clientApp.routines.descriptionPlaceholder}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent"
+            className="w-full rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent"
           />
         </div>
       </div>

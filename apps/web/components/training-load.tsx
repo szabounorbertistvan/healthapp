@@ -175,7 +175,7 @@ function LoadBars({ daily }: { daily: { day: string; load: number }[] }) {
           );
         })}
       </svg>
-      <div className="mt-1 grid text-center text-[10px] text-ink-faint" style={{ gridTemplateColumns: `repeat(${daily.length}, 1fr)` }}>
+      <div className="mt-1 grid text-center text-[11px] text-ink-faint" style={{ gridTemplateColumns: `repeat(${daily.length}, 1fr)` }}>
         {daily.map((d) => (
           <span key={d.day}>{weekday.format(parseDay(d.day))}</span>
         ))}

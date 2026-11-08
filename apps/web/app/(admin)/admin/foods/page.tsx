@@ -47,7 +47,7 @@ export default async function AdminFoodsPage({
           </p>
           <form action="/admin/foods" method="GET" className="flex flex-wrap items-center gap-2">
             {!onlyMissing ? <input type="hidden" name="all" value="1" /> : null}
-            <label className="flex h-[42px] w-64 min-w-0 items-center gap-2.5 rounded-2xl bg-bg px-3.5 text-ink-faint">
+            <label className="flex h-[42px] w-64 min-w-0 items-center gap-2.5 rounded-2xl border border-edge bg-bg px-3.5 text-ink-faint">
               <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
                 <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
               </svg>

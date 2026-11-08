@@ -7,6 +7,7 @@ import type { Dictionary, Locale } from "@/lib/i18n";
 import { fill } from "@/lib/i18n";
 import { Avatar } from "./social-chrome";
 import { Card } from "./ui";
+import { upperFirst } from "@/lib/upper-first";
 
 /**
  * "Gym records" on /gyms/[id]: per lift, each listed person's best at this
@@ -101,7 +102,7 @@ export function GymRecords({
                   <Avatar name={r.display_name} url={r.avatar_url} size="h-9 w-9" />
                   <span className="min-w-0 flex-1">
                     {r.is_me ? (
-                      <span className="block truncate text-[14px] font-semibold">{t.you}</span>
+                      <span className="block truncate text-[14px] font-semibold">{upperFirst(t.you)}</span>
                     ) : (
                       <Link href={`/people/${r.user_id}`} className="block truncate text-[14px] font-semibold hover:underline">{r.display_name}</Link>
                     )}

@@ -49,7 +49,7 @@ export function CheckInForm({ questions = [] }: { questions?: CheckInQuestion[] 
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             placeholder={t.clientWidgets.checkInForm.optional}
-            className="mt-1.5 h-11 w-36 rounded-xl border border-line bg-bg px-3 text-sm tabular-nums outline-none focus:border-accent"
+            className="mt-1.5 h-11 w-36 rounded-xl border border-edge bg-bg px-3 text-sm tabular-nums outline-none focus:border-accent"
           />
         </label>
 
@@ -104,7 +104,7 @@ export function CheckInForm({ questions = [] }: { questions?: CheckInQuestion[] 
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
-            className="mt-1.5 w-full resize-y rounded-xl border border-line bg-bg px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-accent"
+            className="mt-1.5 w-full resize-y rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-accent"
           />
         </label>
 
@@ -178,7 +178,7 @@ function QuestionField({ question, value, onChange }: {
         <input inputMode="decimal" aria-label={question.prompt} value={typeof value === "number" ? String(value) : ""}
           onChange={(e) => { const n = parseDecimal(e.target.value); onChange(e.target.value.trim() === "" || n === null ? null : n); }}
           placeholder={f.optional}
-          className="mt-1.5 h-10 w-36 rounded-xl border border-line bg-surface px-3 text-sm tabular-nums outline-none focus:border-accent" />
+          className="mt-1.5 h-10 w-36 rounded-xl border border-edge bg-surface px-3 text-sm tabular-nums outline-none focus:border-accent" />
       ) : question.kind === "yes_no" ? (
         <div className="mt-1.5 flex gap-1.5" role="radiogroup" aria-label={question.prompt}>
           {[true, false].map((b) => (
@@ -192,7 +192,7 @@ function QuestionField({ question, value, onChange }: {
       ) : (
         <textarea aria-label={question.prompt} rows={2} maxLength={1000} value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value.trim() ? e.target.value : null)}
-          className="mt-1.5 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent" />
+          className="mt-1.5 w-full resize-y rounded-xl border border-edge bg-surface px-3 py-2 text-sm outline-none focus:border-accent" />
       )}
     </div>
   );

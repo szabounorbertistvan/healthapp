@@ -163,7 +163,7 @@ export function Figure({
           </span>
         </p>
       ) : null}
-      {hint ? <p className="mt-1 text-[10.5px] text-ink-faint">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-[11px] text-ink-faint">{hint}</p> : null}
     </div>
   );
 }

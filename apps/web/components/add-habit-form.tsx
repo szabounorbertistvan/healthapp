@@ -9,6 +9,7 @@ import {
 } from "@/lib/habit-suggestions";
 import { Card } from "./ui";
 import { NavIcon } from "./client-nav";
+import { upperFirst } from "@/lib/upper-first";
 
 const CHECK = "m5 12 5 5 9-10";
 
@@ -114,18 +115,18 @@ export function AddHabitForm({ existingNames }: { existingNames: string[] }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={m.namePlaceholder}
-              className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
+              className="w-full rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-ink-faint focus:border-accent"
             />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-[11px] font-semibold text-ink-faint">
-              {m.daysPerWeek}
+              {upperFirst(m.daysPerWeek)}
             </span>
             <input
               inputMode="numeric"
               value={perWeek}
               onChange={(e) => setPerWeek(e.target.value)}
-              className="w-20 rounded-xl border border-line bg-bg px-3 py-2.5 text-sm tabular-nums outline-none focus:border-accent"
+              className="w-20 rounded-xl border border-edge bg-bg px-3 py-2.5 text-sm tabular-nums outline-none focus:border-accent"
             />
           </label>
           <button

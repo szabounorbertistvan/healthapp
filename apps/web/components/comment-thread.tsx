@@ -239,7 +239,7 @@ function CommentRow({
               onChange={(e) => setDraft(e.target.value.slice(0, COMMENT_MAX))}
               maxLength={COMMENT_MAX}
               aria-label={s.editComment}
-              className="h-10 min-w-0 flex-1 rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+              className="h-10 min-w-0 flex-1 rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent"
             />
             <button
               type="submit"
@@ -469,7 +469,7 @@ export function CommentComposer({
           placeholder={replyTo ? s.writeReply : s.writeComment}
           maxLength={COMMENT_MAX}
           aria-label={replyTo ? s.writeReply : s.writeComment}
-          className={`min-w-0 flex-1 rounded-xl border border-line bg-bg px-3.5 text-sm outline-none focus:border-accent ${compact ? "h-10 rounded-full" : "h-11"}`}
+          className={`min-w-0 flex-1 rounded-xl border border-edge bg-bg px-3.5 text-sm outline-none focus:border-accent ${compact ? "h-10 rounded-full" : "h-11"}`}
         />
         <button
           type="submit"

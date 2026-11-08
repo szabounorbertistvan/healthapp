@@ -260,7 +260,7 @@ function ModerationSheet({ dialogRef, target, postId, commentId, reviewId, coach
                   onChange={(e) => dispatch({ type: "details", details: e.target.value.slice(0, REPORT_DETAILS_MAX) })}
                   maxLength={REPORT_DETAILS_MAX}
                   rows={3}
-                  className="mt-1 w-full resize-none rounded-2xl border border-line bg-bg px-3.5 py-3 text-[14px] outline-none focus:border-accent"
+                  className="mt-1 w-full resize-none rounded-2xl border border-edge bg-bg px-3.5 py-3 text-[14px] outline-none focus:border-accent"
                 />
                 <span className="block text-right text-[11px] tabular-nums text-ink-faint">
                   {state.details.length}/{REPORT_DETAILS_MAX}

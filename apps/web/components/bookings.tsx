@@ -65,7 +65,7 @@ function ConfirmWithReason({ label, onConfirm, busy, testId }: {
     <span className="flex w-full flex-wrap items-center gap-2">
       <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} placeholder={b.reasonPrompt}
         aria-label={b.reasonPrompt} autoFocus
-        className="h-10 min-w-0 flex-1 rounded-xl bg-bg px-3 text-[13.5px] outline-none ring-accent/50 focus:ring-2" />
+        className="h-10 min-w-0 flex-1 rounded-xl border border-edge bg-bg px-3 text-[13.5px] outline-none ring-accent/50 focus:ring-2" />
       <button type="button" className={ACCENT_BTN} disabled={busy} data-testid={`${testId}-confirm`}
         onClick={() => onConfirm(reason.trim() || null)}>{label}</button>
       <button type="button" className="text-[13px] font-semibold text-ink-faint hover:text-ink" onClick={() => setOpen(false)}>✕</button>

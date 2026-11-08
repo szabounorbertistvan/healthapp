@@ -93,7 +93,7 @@ export function EditSet({
         maxLength={500}
         onChange={(e) => setNotes(e.target.value)}
         placeholder={m.notePlaceholder}
-        className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+        className="w-full rounded-lg border border-edge bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
       />
       {error ? <p className="text-xs text-risk">{error}</p> : null}
       <div className="flex flex-wrap gap-2">

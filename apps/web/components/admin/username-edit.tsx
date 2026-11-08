@@ -46,7 +46,7 @@ export function UsernameEdit({ userId, current }: { userId: string; current: str
           <label className="mt-4 block text-[11px] font-semibold text-ink-faint">
             {m.renameLabel}
             <input value={value} onChange={(e) => setValue(e.target.value)} maxLength={24} required autoComplete="off" spellCheck={false}
-              className="mt-1 h-10 w-full rounded-xl border border-line bg-bg px-3 text-[13px] font-normal normal-case tracking-normal text-ink outline-none focus:border-accent" />
+              className="mt-1 h-10 w-full rounded-xl border border-edge bg-bg px-3 text-[13px] font-normal normal-case tracking-normal text-ink outline-none focus:border-accent" />
           </label>
           <p className="mt-1.5 text-[12px] text-ink-faint">{m.renameHint}</p>
           {error ? <p className="mt-3 text-[12.5px] text-risk">{error}</p> : null}

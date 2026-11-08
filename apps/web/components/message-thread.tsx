@@ -176,7 +176,7 @@ export function MessageThread({
             // An empty thread is opened to write in it: the composer is ready.
             autoFocus={initialMessages.length === 0}
             maxLength={4000}
-            className="h-11 min-w-0 flex-1 rounded-2xl border border-line bg-surface px-4 text-sm outline-none focus:border-accent"
+            className="h-11 min-w-0 flex-1 rounded-2xl border border-edge bg-surface px-4 text-sm outline-none focus:border-accent"
           />
           <button
             onClick={send}

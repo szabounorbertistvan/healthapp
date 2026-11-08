@@ -47,7 +47,7 @@ export function PreviousSets({
         {exerciseId ? (
           <Link
             href={`/exercises/${exerciseId}`}
-            className="inline-flex shrink-0 items-center gap-1 text-[10.5px] font-semibold text-ink-faint hover:text-accent-ink"
+            className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-ink-faint hover:text-accent-ink"
           >
             {m.openExercise}
             <NavIcon d="m9 6 6 6-6 6" className="h-3 w-3" />
@@ -57,7 +57,7 @@ export function PreviousSets({
       <ul className="mt-1 space-y-0.5">
         {previous.sets.map((s) => (
           <li key={s.set_index} className="flex items-baseline gap-2 text-[11.5px] tabular-nums text-ink-soft">
-            <span className="w-3 shrink-0 text-right text-[10px] text-ink-faint">{s.set_index}</span>
+            <span className="w-3 shrink-0 text-right text-[11px] text-ink-faint">{s.set_index}</span>
             <span className="font-semibold text-ink">
               {s.duration_seconds
                 ? `${s.weight_kg > 0 ? `${kgToDisplay(s.weight_kg, u.weightUnit)} ${u.weightUnit} · ` : ""}${formatSetDuration(s.duration_seconds)}`

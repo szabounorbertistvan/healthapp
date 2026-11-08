@@ -10,6 +10,7 @@ import type { ChallengeCard as ChallengeCardRow, LeaderboardRow } from "@/lib/ty
 import { challengeSubtitle } from "@/lib/challenge-map";
 import { NavIcon } from "./client-nav";
 import { Card } from "./ui";
+import { upperFirst } from "@/lib/upper-first";
 
 const CHEVRON = "m9 6 6 6-6 6";
 const CLOCK = "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 7v5l3 2";
@@ -266,7 +267,7 @@ export function Leaderboard({ rows, type, total }: { rows: LeaderboardRow[]; typ
             </span>
             <span className="min-w-0 flex-1 truncate font-semibold">
               {r.name}
-              {r.me ? <span className="ml-1.5 text-[11px] font-semibold text-accent-ink">{ch.you}</span> : null}
+              {r.me ? <span className="ml-1.5 text-[11px] font-semibold text-accent-ink">{upperFirst(ch.you)}</span> : null}
             </span>
             <span className="shrink-0 tabular-nums text-ink-faint">
               <b className="font-display text-[15px] font-bold text-ink">{n(r.value)}</b> {unit(type)}

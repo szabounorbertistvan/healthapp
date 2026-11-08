@@ -140,7 +140,7 @@ export function CheckInReview({ checkIns }: { checkIns: CheckInRow[] }) {
           onChange={(e) => setFeedback(e.target.value)}
           placeholder={fill(m.feedbackPlaceholder, { name: selected.full_name })}
           rows={3}
-          className="w-full rounded-2xl border border-line bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
+          className="w-full rounded-2xl border border-edge bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
         />
         <div className="flex flex-wrap items-center gap-2.5">
           <button

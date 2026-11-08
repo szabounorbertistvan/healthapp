@@ -22,6 +22,7 @@ import { NavIcon } from "@/components/client-nav";
 import { RoutineActions, RoutineAdminFlags, RoutineDetailsForm } from "@/components/routine-actions-ui";
 import { SaveButton } from "@/components/routine-card";
 import { getI18n } from "@/lib/i18n/server";
+import { upperFirst } from "@/lib/upper-first";
 
 /**
  * One routine, front to back: what it is, who wrote it, every day and every
@@ -100,7 +101,7 @@ export default async function RoutineDetailPage({
             <h1 className="font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-[28px]">
               {card.name}
             </h1>
-            <p className="mt-1.5 text-[13px] text-ink-soft">{fill(r.by, { author: card.author_name })}</p>
+            <p className="mt-1.5 text-[13px] text-ink-soft">{upperFirst(fill(r.by, { author: card.author_name }))}</p>
           </div>
           <SaveButton card={card} withLabel />
         </div>
@@ -186,7 +187,7 @@ export default async function RoutineDetailPage({
                   className="inline-flex h-9 items-center rounded-full bg-surface px-3.5 text-[12.5px] font-semibold text-ink-soft hover:text-accent-ink"
                 >
                   {a.client_name}
-                  {a.status === "draft" ? <span className="ml-1.5 text-[10.5px] text-ink-faint">{r.draft}</span> : null}
+                  {a.status === "draft" ? <span className="ml-1.5 text-[11px] text-ink-faint">{r.draft}</span> : null}
                 </Link>
               </li>
             ))}

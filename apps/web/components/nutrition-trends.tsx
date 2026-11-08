@@ -654,7 +654,7 @@ function MealsCard({ meals }: { meals: MealDistribution | null }) {
                       ) : (
                         <>
                           {f.kcal(s.avg.kcal)}
-                          <span className="block text-[10.5px] text-ink-faint">
+                          <span className="block text-[11px] text-ink-faint">
                             {f.m.protein} {f.g(s.avg.protein)}
                           </span>
                         </>
@@ -776,7 +776,7 @@ function HistoryCard({ days, todayIso, target }: { days: NutritionDay[]; todayIs
                         {f.date(d.day)}
                       </Link>
                       {d.day === todayIso ? (
-                        <span className="ml-1.5 text-[10.5px] font-normal text-ink-faint">{n.inProgress}</span>
+                        <span className="ml-1.5 text-[11px] font-normal text-ink-faint">{n.inProgress}</span>
                       ) : null}
                     </th>
                     <td className={`px-2 py-2 text-right ${over ? "text-warn" : ""}`}>{f.count(d.kcal)}</td>
@@ -786,7 +786,7 @@ function HistoryCard({ days, todayIso, target }: { days: NutritionDay[]; todayIs
                     <td className="px-5 py-2 text-right">
                       {d.meals}
                       {d.day !== todayIso && d.meals <= PARTIAL_DAY_MAX_MEALS ? (
-                        <span className="ml-1 text-[10.5px] text-ink-faint">· {n.partialTag}</span>
+                        <span className="ml-1 text-[11px] text-ink-faint">· {n.partialTag}</span>
                       ) : null}
                     </td>
                   </tr>

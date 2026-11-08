@@ -54,7 +54,7 @@ export function RoutineFilters({
 
   return (
     <div className="mt-4 space-y-2.5">
-      <label className="flex h-11 items-center gap-2.5 rounded-2xl bg-surface px-3.5 text-ink-faint">
+      <label className="flex h-11 items-center gap-2.5 rounded-2xl border border-edge bg-surface px-3.5 text-ink-faint">
         <NavIcon d="m20 20-3.5-3.5M13 6a7 7 0 1 1-9.9 9.9A7 7 0 0 1 13 6z" className="h-4 w-4 shrink-0" />
         <input
           value={q}
@@ -150,8 +150,8 @@ function Select({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label={label}
-      className={`h-10 shrink-0 rounded-full px-3.5 text-[12.5px] font-semibold outline-none ${
-        value ? "bg-accent-soft text-accent-ink" : "bg-surface text-ink-soft"
+      className={`h-10 shrink-0 rounded-full border px-3.5 text-[12.5px] font-semibold outline-none ${
+        value ? "border-accent bg-accent-soft text-accent-ink" : "border-edge bg-surface text-ink-soft"
       }`}
     >
       <option value="">{label}</option>

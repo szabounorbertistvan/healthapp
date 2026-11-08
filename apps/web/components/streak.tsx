@@ -134,7 +134,7 @@ export function StreakCalendar({ calendar }: { calendar: CalendarDay[][] }) {
     // scrolling sideways.
     <div className="max-w-[380px]">
       <div className="flex gap-1">
-        <div className="grid shrink-0 grid-rows-7 gap-1 pr-1 text-[9px] leading-none text-ink-faint">
+        <div className="grid shrink-0 grid-rows-7 gap-1 pr-1 text-[11px] leading-none text-ink-faint">
           {weekdays.map((w, i) => (
             <span key={i} className="flex h-4 items-center">{i % 2 === 0 ? w : ""}</span>
           ))}

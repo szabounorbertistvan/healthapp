@@ -131,7 +131,7 @@ export function ExerciseVideo({
             onChange={(e) => setUrl(e.target.value)}
             placeholder={v.placeholder}
             autoFocus
-            className="h-10 min-w-0 flex-1 rounded-2xl bg-bg px-3.5 text-[13.5px] text-ink outline-none ring-accent/50 focus:ring-2"
+            className="h-10 min-w-0 flex-1 rounded-2xl border border-edge bg-bg px-3.5 text-[13.5px] text-ink outline-none ring-accent/50 focus:ring-2"
           />
           <button
             type="button"

@@ -262,7 +262,7 @@ function CopyToClient({ programId, clients }: { programId: string; clients: { id
           id="copy-target"
           value={target}
           onChange={(e) => setTarget(e.target.value)}
-          className="h-11 min-w-48 rounded-xl border border-line bg-bg px-3 text-sm outline-none focus:border-accent"
+          className="h-11 min-w-48 rounded-xl border border-edge bg-bg px-3 text-sm outline-none focus:border-accent"
         >
           {clients.map((client) => (
             <option key={client.id} value={client.id}>{client.name}</option>

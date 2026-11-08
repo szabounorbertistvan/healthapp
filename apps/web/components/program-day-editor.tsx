@@ -20,7 +20,7 @@ import type { ProgramDetail, ProgramExerciseRow } from "@/lib/types";
 type Run = (action: () => Promise<{ ok: boolean; message?: string }>) => void;
 
 // Dense but never cramped: a 40px field is still thumb-sized on a phone.
-const cell = "h-10 w-full min-w-0 rounded-xl border border-line bg-bg px-2.5 text-sm tabular-nums outline-none focus:border-accent";
+const cell = "h-10 w-full min-w-0 rounded-xl border border-edge bg-bg px-2.5 text-sm tabular-nums outline-none focus:border-accent";
 const label = "text-[11px] font-semibold text-ink-faint";
 /** Round icon button for the chrome around a day and its rows. */
 const iconButton = "grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft hover:text-accent-ink disabled:opacity-30";
@@ -371,7 +371,7 @@ function ExerciseCard({
             placeholder={m.coachNotePlaceholder}
             onChange={(e) => setNotes(e.target.value)}
             onBlur={() => { if (notes.trim() !== (row.notes ?? "").trim()) onNotes(notes); }}
-            className="min-h-[4.5rem] w-full rounded-xl border border-line bg-bg px-2.5 py-2 text-sm outline-none focus:border-accent"
+            className="min-h-[4.5rem] w-full rounded-xl border border-edge bg-bg px-2.5 py-2 text-sm outline-none focus:border-accent"
           /></label>
       ) : (
         <button type="button" disabled={disabled} onClick={() => setNotesOpen(true)} className="mt-2 text-[12.5px] font-semibold text-ink-faint hover:text-accent-ink">

@@ -245,7 +245,7 @@ export function MediaTray({ api, disabled, onAddMore }: { api: MediaDraftApi; di
                 {item.status === "ready" ? (
                   <button type="button" disabled={disabled} onClick={() => setAltFor(altFor === item.key ? null : item.key)}
                     aria-label={fill(s.mediaAltEdit, { n })} aria-pressed={altFor === item.key}
-                    className={`h-8 rounded-full px-2 text-[10.5px] font-bold ${item.alt ? "bg-accent text-accent-fg" : "bg-black/60 text-white"} focus-visible:outline-2 focus-visible:outline-accent`}>
+                    className={`h-8 rounded-full px-2 text-[11px] font-bold ${item.alt ? "bg-accent text-accent-fg" : "bg-black/60 text-white"} focus-visible:outline-2 focus-visible:outline-accent`}>
                     ALT
                   </button>
                 ) : null}
@@ -277,7 +277,7 @@ export function MediaTray({ api, disabled, onAddMore }: { api: MediaDraftApi; di
             disabled={disabled}
             onChange={(e) => api.dispatch({ type: "alt", key: altItem.key, alt: e.target.value })}
             placeholder={s.mediaAltPlaceholder}
-            className="mt-1 h-10 w-full rounded-xl border border-line bg-bg px-3 text-[13.5px] outline-none focus:border-accent"
+            className="mt-1 h-10 w-full rounded-xl border border-edge bg-bg px-3 text-[13.5px] outline-none focus:border-accent"
           />
         </label>
       ) : null}
